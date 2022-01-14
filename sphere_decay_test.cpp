@@ -18,6 +18,7 @@
 // =============================================================================
 
 #include "H5_force_classes.h"
+#include "chrono_irrlicht/ChIrrNodeAsset.h"
 
 using namespace irr;
 using namespace irr::core;
@@ -74,6 +75,14 @@ int main(int argc, char* argv[]) {
 	ChSystemNSC system;
 	system.Set_G_acc(ChVector<>(0, 0, -9.81));
 
+	// Create the Irrlicht application for visualizing
+	// -------------------------------
+	ChIrrApp application(&system, L"Sphere Decay Test", core::dimension2d<u32>(800, 600), VerticalDir::Z);
+	application.AddTypicalLogo();
+	application.AddTypicalSky();
+	application.AddTypicalLights();
+	application.AddTypicalCamera(core::vector3df(-7.5, 30, 0), core::vector3df(-7.5, 0, 0)); // arguments are (location, orientation) as vectors
+
 	// make first body with no force other than gravity
 	auto body_1 = chrono_types::make_shared<ChBodyEasySphere>(5, 1); // arguments are (radius, density) TODO: what density to use?
 	system.AddBody(body_1);
@@ -92,20 +101,27 @@ int main(int argc, char* argv[]) {
 	col_1->SetColor(ChColor(0.6f, 0, 0));
 	body_1->AddAsset(col_1);
 
-	// make second body to compare
-	// body 2 has custom forces
-	auto body_2 = chrono_types::make_shared<ChBodyEasySphere>(5, 1); // arguments are (radius, density) TODO: what density to use? density only does things if mass is not set
-	system.AddBody(body_2);
-	body_2->SetPos(ChVector<>(0, 0, -1)); // start with center of sphere 1m above water x-y plane
-	body_2->SetIdentifier(1);
-	body_2->SetBodyFixed(false);
-	body_2->SetCollide(false);
-	body_2->SetMass(261.8e3); // mass is 261.3x10^3 kg...not in h5 file
-	body_2->SetInertiaXX(ChVector<>(body_2->GetMass(), body_2->GetMass(), body_2->GetMass()));
+	//// Attach a visualization asset by importing an stl mesh with irrlicht (not working)
+	//IAnimatedMesh* temp = application.GetSceneManager()->getMesh("../../test_for_chrono/oes_task10_sphere.stl");
+	////IMesh* stl = temp->getMesh(0);
+	//IMeshSceneNode* node_stl = application.GetSceneManager()->addOctreeSceneNode(temp);
+	//auto blah = make_shared<ChIrrNodeAsset>();
+	//body_2->AddAsset(temp);
 
-	// Attach a visualization asset.
-	auto sph_2 = chrono_types::make_shared<ChSphereShape>();
-	body_2->AddAsset(sph_2);
+	// set up body_2 (with forces in addition to gravity) with a mesh
+	std::shared_ptr<ChBody> body_2 = chrono_types::make_shared<ChBodyEasyMesh>(                   //
+		GetChronoDataFile("../../test_for_chrono/oes_task10_sphere.obj").c_str(),  // file name
+		1000,                                                            // density
+		false,                                                           // do not evaluate mass automatically
+		true,                                                            // create visualization asset
+		false,                                                           // do not collide
+		nullptr,                                                         // no need for contact material
+		0                                                                // swept sphere radius
+		);
+	system.Add(body_2);
+	body_2->SetPos(ChVector<>(0, 0, -1));
+	body_2->SetMass(261.8e3);
+	// attach color asset to body_2
 	auto col_2 = chrono_types::make_shared<ChColorAsset>();
 	col_2->SetColor(ChColor(0, 0, 0.6f));
 	body_2->AddAsset(col_2);
@@ -126,22 +142,12 @@ int main(int argc, char* argv[]) {
 	body_2->AddForce(force);
 	body_2->AddForce(torque);
 
-	// hack of buoyancy force
-	auto fb = chrono_types::make_shared<ChForce>();
-	auto co = chrono_types::make_shared<ChFunction_Const>(261.724 * 1000 * 9.81);
-	fb->SetF_z(co);
-	body_2->AddForce(fb);
+	// add buoyancy force from h5 file info
+	auto fb = chrono_types::make_shared<BuoyancyForce>(sphere_file_info);
+	body_2->AddForce(fb->getForce_ptr());
 
-
-	// Create the Irrlicht application for visualizing
-	// -------------------------------
-
-	ChIrrApp application(&system, L"ChAddedMass Demo", core::dimension2d<u32>(800, 600), VerticalDir::Z);
-	application.AddTypicalLogo();
-	application.AddTypicalSky();
-	application.AddTypicalLights();
-	application.AddTypicalCamera(core::vector3df(-7.5, 30, 0), core::vector3df(-7.5, 0, 0)); // arguments are (location, orientation) as vectors
-
+	// update irrlicht app with body info
+	//application.AssetBind(body_1);
 	application.AssetBindAll();
 	application.AssetUpdateAll();
 
@@ -182,6 +188,7 @@ int main(int argc, char* argv[]) {
 			//	full_period = true;
 			//	std::cout << "frame: " << frame << std::endl;
 			//}
+			//GetLog() << "\n" << fb->getForce_ptr()->GetForce() << "that's the force pointer value\n\n";
 		}
 
 		application.EndScene();

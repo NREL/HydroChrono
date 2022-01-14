@@ -114,6 +114,16 @@ ChVector<> BodyFileInfo::get_equil_cb() const {
 	return cb;
 }
 
+double BodyFileInfo::get_rho() const {
+	return rho;
+}
+double BodyFileInfo::get_g() const {
+	return g;
+}
+double BodyFileInfo::get_disp_vol() const {
+	return disp_vol;
+}
+
 // =============================================================================
 
 ForceTorqueFunc::ForceTorqueFunc(LinRestorForce* b, int i) : base(b), index(i) {	}
@@ -182,5 +192,22 @@ void LinRestorForce::SetTorque(std::shared_ptr<ChForce> torque) {
 
 // =============================================================================
 
+BuoyancyForce::BuoyancyForce(BodyFileInfo& file) {
+	fileInfo = file;
+	// get value from file
+	bf = fileInfo.get_rho() * fileInfo.get_g() * fileInfo.get_disp_vol();
+	// set function to y = bf
+	fc.Set_yconst(bf);
+	// set pointer to function y=bf
+	fc_ptr = std::shared_ptr<ChFunction_Const>(&fc, [](ChFunction_Const*) {} );
+	// set force as function pointer in +z direction
+	force.SetF_z(fc_ptr);
+	// have force_ptr point to force
+	force_ptr = std::shared_ptr<ChForce>(&force, [](ChForce*) {});
+	// buoyancy force should be [0 0 671980]
+}
 
+std::shared_ptr<ChForce> BuoyancyForce::getForce_ptr() {
+	return force_ptr;
+}
 

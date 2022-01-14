@@ -42,6 +42,9 @@ public:
 	ChMatrixDynamic<double> get_lin_matrix() const;
 	ChVector<> get_equil_cg() const;
 	ChVector<> get_equil_cb() const;
+	double get_rho() const;
+	double get_g() const;
+	double get_disp_vol() const;
 };
 // =============================================================================
 class LinRestorForce;
@@ -83,11 +86,17 @@ public:
 };
 // =============================================================================
 
-class BuoyancyForceFunc : public ChFunction {
+class BuoyancyForce {
 private:
-	BodyFileInfo *fileInfo;
+	BodyFileInfo fileInfo;
+	double bf;
+	ChFunction_Const fc;
+	std::shared_ptr<ChFunction_Const> fc_ptr;
+	ChForce force;
+	std::shared_ptr<ChForce> force_ptr;
+
 public:
-	virtual ForceTorqueFunc* Clone() const override;
-	virtual double 	Get_y(double x) const override;
+	BuoyancyForce(BodyFileInfo& info);
+	std::shared_ptr<ChForce> getForce_ptr();
 };
 
