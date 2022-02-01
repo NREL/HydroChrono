@@ -12,7 +12,7 @@
 #include "chrono_irrlicht/ChIrrApp.h"
 #include "chrono_irrlicht/ChIrrMeshTools.h"
 
-#include "chrono/fea/ChElementAddedMass.h"
+//#include "chrono/fea/ChElementAddedMass.h"
 #include "chrono/fea/ChNodeFEAxyz.h"
 #include "chrono/fea/ChMeshFileLoader.h"
 #include "chrono/physics/ChForce.h"
@@ -27,6 +27,7 @@ using namespace chrono::fea;
 class BodyFileInfo {
 private:
 	ChMatrixDynamic<double> lin_matrix;
+	ChMatrixDynamic<double> K_matrix[1001];
 	ChVector<double> cg;
 	ChVector<double> cb;
 	double rho;
@@ -45,6 +46,7 @@ public:
 	double get_rho() const;
 	double get_g() const;
 	double get_disp_vol() const;
+	ChMatrixDynamic<double> get_impulse_resp_matrix(int i) const;
 };
 // =============================================================================
 class LinRestorForce;
@@ -99,4 +101,44 @@ public:
 	BuoyancyForce(BodyFileInfo& info);
 	std::shared_ptr<ChForce> getForce_ptr();
 };
+
+// =============================================================================
+
+class ImpulseResponseForce;
+class IRF_func : public ChFunction {
+private:
+	ImpulseResponseForce* base;
+	int index;
+
+public:
+	IRF_func(ImpulseResponseForce* b, int i);
+	virtual IRF_func* Clone() const override;
+	virtual double 	Get_y(double x) const override;
+	void SetBase(ImpulseResponseForce* b);
+	void SetIndex(int i);
+};
+
+class ImpulseResponseForce {
+private:
+	BodyFileInfo fileInfo;
+	std::shared_ptr<ChBody> body;
+	//std::vector<double> velHistory; // keep as vector and use push_back?
+	IRF_func forces[6];
+	std::shared_ptr<IRF_func> force_ptrs[6];
+
+public:
+	ImpulseResponseForce();
+	ImpulseResponseForce(BodyFileInfo& file, std::shared_ptr<ChBody> object);
+	// ensures these member functions are not given a default definition by compiler
+	// these features don't make sense to have, and break things when they exist
+	ImpulseResponseForce(const ImpulseResponseForce& other) = delete;
+	ImpulseResponseForce operator = (const ImpulseResponseForce& rhs) = delete;
+
+	ChVectorN<double, 6> Get_p() const; //TODO rename this
+
+	double coordinateFunc(int i);
+	void SetForce(std::shared_ptr<ChForce> force);
+	void SetTorque(std::shared_ptr<ChForce> torque);
+};
+
 

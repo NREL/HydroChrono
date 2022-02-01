@@ -76,14 +76,13 @@ int main(int argc, char* argv[]) {
 	system.Set_G_acc(ChVector<>(0, 0, -9.81));
 
 	// Create the Irrlicht application for visualizing
-	// -------------------------------
 	ChIrrApp application(&system, L"Sphere Decay Test", core::dimension2d<u32>(800, 600), VerticalDir::Z);
 	application.AddTypicalLogo();
 	application.AddTypicalSky();
 	application.AddTypicalLights();
 	application.AddTypicalCamera(core::vector3df(-7.5, 30, 0), core::vector3df(-7.5, 0, 0)); // arguments are (location, orientation) as vectors
 
-	// make first body with no force other than gravity
+	// make first body with no force (other than gravity)
 	auto body_1 = chrono_types::make_shared<ChBodyEasySphere>(5, 1); // arguments are (radius, density) TODO: what density to use?
 	system.AddBody(body_1);
 	body_1->SetPos(ChVector<>(-15, 0, -1));
@@ -101,7 +100,7 @@ int main(int argc, char* argv[]) {
 	col_1->SetColor(ChColor(0.6f, 0, 0));
 	body_1->AddAsset(col_1);
 
-	//// Attach a visualization asset by importing an stl mesh with irrlicht (not working)
+	//// Attach a visualization asset by importing an stl mesh with irrlicht (not working/not used)
 	//IAnimatedMesh* temp = application.GetSceneManager()->getMesh("../../test_for_chrono/oes_task10_sphere.stl");
 	////IMesh* stl = temp->getMesh(0);
 	//IMeshSceneNode* node_stl = application.GetSceneManager()->addOctreeSceneNode(temp);
@@ -110,13 +109,13 @@ int main(int argc, char* argv[]) {
 
 	// set up body_2 (with forces in addition to gravity) with a mesh
 	std::shared_ptr<ChBody> body_2 = chrono_types::make_shared<ChBodyEasyMesh>(                   //
-		GetChronoDataFile("../../test_for_chrono/oes_task10_sphere.obj").c_str(),  // file name
-		1000,                                                            // density
-		false,                                                           // do not evaluate mass automatically
-		true,                                                            // create visualization asset
-		false,                                                           // do not collide
-		nullptr,                                                         // no need for contact material
-		0                                                                // swept sphere radius
+		GetChronoDataFile("../../test_for_chrono/oes_task10_sphere.obj").c_str(),                 // file name
+		1000,                                                                                     // density
+		false,                                                                                    // do not evaluate mass automatically
+		true,                                                                                     // create visualization asset
+		false,                                                                                    // do not collide
+		nullptr,                                                                                  // no need for contact material
+		0                                                                                         // swept sphere radius
 		);
 	system.Add(body_2);
 	body_2->SetPos(ChVector<>(0, 0, -1));
@@ -128,19 +127,28 @@ int main(int argc, char* argv[]) {
 
 	// testing adding external forces to the body_2
 	// TODO look at GetChronoDataFile!!! for file name here vvvv
+	std::cout << "\n\ntest\n\n" << std::endl;
 	BodyFileInfo sphere_file_info("../../test_for_chrono/sphere.h5", "body1");
 	LinRestorForce lin_restor_force_2(sphere_file_info, body_2);
+	ImpulseResponseForce irf(sphere_file_info, body_2);
 	// declare some forces to be initialized in lin_restor_force_2 to be applied to to body_2 later
 	auto force = chrono_types::make_shared<ChForce>();
 	auto torque = chrono_types::make_shared<ChForce>();
+	auto force2 = chrono_types::make_shared<ChForce>();
+	auto torque2 = chrono_types::make_shared<ChForce>();
 	// set torque flag for torque
 	torque->SetMode(ChForce::ForceType::TORQUE);
+	torque2->SetMode(ChForce::ForceType::TORQUE);
 	// initialize force and torque with member functions
 	lin_restor_force_2.SetForce(force);
 	lin_restor_force_2.SetTorque(torque);
-	// apply force and torque to body
+	irf.SetForce(force2);
+	irf.SetTorque(torque2);
+	// apply force and torque to the body
 	body_2->AddForce(force);
 	body_2->AddForce(torque);
+	body_2->AddForce(force2);
+	body_2->AddForce(torque2);
 
 	// add buoyancy force from h5 file info
 	auto fb = chrono_types::make_shared<BuoyancyForce>(sphere_file_info);
@@ -163,6 +171,7 @@ int main(int argc, char* argv[]) {
 	double timestep = 0.005;
 	application.SetTimestep(timestep);
 
+	// set up output file for body_2 position each step
 	std::ofstream zpos("outfile/output.txt", std::ofstream::out);
 	zpos.precision(5);
 	zpos.width(10);
