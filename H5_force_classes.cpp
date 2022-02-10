@@ -36,7 +36,6 @@ void BodyFileInfo::read_data() {
 			lin_matrix(i, j) = temp[i * dims[1] + j];
 		}
 	}
-	lin_matrix *= 10000; // Units are off? scale by 10000? dividing by water density?
 	dataset.close();
 	delete [] temp;
 
@@ -49,7 +48,7 @@ void BodyFileInfo::read_data() {
 	temp = new double[dims[0] * dims[1]];
 	dataset.read(temp, H5::PredType::NATIVE_DOUBLE, mspace1, filespace);
 	// put into equil chvector
-	for (int i = 0; i < 3; i++) {
+	for (int i = 0; i < dims[0]; i++) {
 		cb[i] = temp[i];
 	}
 	dataset.close();
@@ -64,7 +63,7 @@ void BodyFileInfo::read_data() {
 	//temp = new double[dims[0] * dims[1]];
 	dataset.read(temp, H5::PredType::NATIVE_DOUBLE, mspace1, filespace);
 	// put into equil chvector
-	for (int i = 0; i < 3; i++) {
+	for (int i = 0; i < dims[0]; i++) {
 		cg[i] = temp[i];
 	}
 	dataset.close();
@@ -93,6 +92,7 @@ void BodyFileInfo::read_data() {
 	dataset.read(temp, H5::PredType::NATIVE_DOUBLE, mspace1, filespace);
 	rho = temp[0];
 	dataset.close();
+	lin_matrix *= 10000; // Units are off? scale by 10000? dividing by water density?
 	//delete[] temp;
 
 	// read g
@@ -114,21 +114,15 @@ void BodyFileInfo::read_data() {
 	int rank3 = filespace.getSimpleExtentDims(dims3);
 	// read file into data_out 2d array
 	H5::DataSpace mspace3(rank3, dims3);
-	temp = new double[dims3[0]*dims3[1]*dims3[2]]; // TODO change to dynamic memory and delete?
+	//temp = new double[dims3[0]*dims3[1]*dims3[2]];  // dims2[0] is number of rows, dims3[1] is number of columns, dims3[2] is number of matrices
+	K_matrix = new double[dims3[0] * dims3[1] * dims3[2]];
 	// read file info into data_out, a 2d array
-	dataset.read(temp, H5::PredType::NATIVE_DOUBLE, mspace3, filespace);
-	// turn the 2d array into a ChMatrix (Eigen dynamic matrix)
-	for (int k = 0; k < dims3[2]; k++) {
-		K_matrix[k].resize(6, 6);
-		for (int i = 0; i < dims3[0]; i++) {
-			for (int j = 0; j < dims3[1]; j++) {
-				K_matrix[k](i, j) = temp[ k + dims3[2]*( i * dims3[1] + j ) ]; 
-				// h5 file stores first elm of each matrix first, then second elem of each matrix next, row major
-			}
-		}
+	dataset.read(K_matrix, H5::PredType::NATIVE_DOUBLE, mspace3, filespace);
+	for (int i = 0; i < 3; i++) { // TODO just use K_dims later
+		K_dims[i] = dims3[i];
 	}
 	dataset.close();
-	delete[] temp;
+	//delete[] temp;
 
 	data_name = bodyNum + "/hydro_coeffs/radiation_damping/impulse_response_fun/t";
 	dataset = sphereFile.openDataSet(data_name);
@@ -136,11 +130,13 @@ void BodyFileInfo::read_data() {
 	rank = filespace.getSimpleExtentDims(dims);
 	mspace1 = H5::DataSpace(rank, dims);
 	temp = new double[dims[0] * dims[1]];
+	timesteps.resize(dims[0]);
 	dataset.read(temp, H5::PredType::NATIVE_DOUBLE, mspace1, filespace);
 	// put into equil chvector
-	for (int i = 0; i < dims[1]; i++) {
-		cg[i] = temp[i];
+	for (int i = 0; i < dims[0]; i++) {
+		timesteps[i] = temp[i];
 	}
+
 	dataset.close();
 	delete[] temp;
 
@@ -148,6 +144,10 @@ void BodyFileInfo::read_data() {
 }
 
 BodyFileInfo::BodyFileInfo() {}
+
+BodyFileInfo::~BodyFileInfo() {
+	delete[] K_matrix;
+}
 
 /*******************************************************************************
 * BodyFileInfo constructor
@@ -212,10 +212,40 @@ double BodyFileInfo::get_disp_vol() const {
 
 /*******************************************************************************
 * BodyFileInfo::get_impulse_resp_matrix()
-* returns impulse response function matrix K for step i (TODO how to get i)
+* returns impulse response coeff for row m, column n, step s
 *******************************************************************************/
-ChMatrixDynamic<double> BodyFileInfo::get_impulse_resp_matrix(int i) const {
-	return K_matrix[i];
+double BodyFileInfo::get_impulse_resp(int m, int n, int s) const {
+	int index = s + K_dims[2] * (n + m * K_dims[1]);
+	if (index < 0 || index >= K_dims[0] * K_dims[1] * K_dims[2]) {
+		std::cout << "out of bounds IRF\n";
+		return 0;
+	}
+	else {
+		return K_matrix[index];
+	}
+}
+
+/*******************************************************************************
+* BodyFileInfo::get_K_dims(int i) returns the i-th component of the dimensions of K_matrix
+* i = [0,1,2] -> [number of rows, number of columns, number of matrices]
+*******************************************************************************/
+int BodyFileInfo::get_K_dims(int i) const {
+	return K_dims[i];
+}
+
+
+/*******************************************************************************
+* BodyFileInfo::get_delta_t() returns the difference in first 2 timesteps
+*******************************************************************************/
+double BodyFileInfo::get_delta_t() const {
+	return timesteps[1] - timesteps[0];
+}
+/*******************************************************************************
+* BodyFileInfo::get_times()
+* returns the vector of timesteps from h5 file
+*******************************************************************************/
+std::vector<double> BodyFileInfo::get_times() const {
+	return timesteps;
 }
 
 // =============================================================================
@@ -343,6 +373,10 @@ void LinRestorForce::SetTorque(std::shared_ptr<ChForce> torque) {
 
 // =============================================================================
 
+/*******************************************************************************
+* BuoyancyForce constructor
+* requires BodyFileInfo to initialize data
+*******************************************************************************/
 BuoyancyForce::BuoyancyForce(BodyFileInfo& file) {
 	fileInfo = file;
 	// get value from file
@@ -355,44 +389,60 @@ BuoyancyForce::BuoyancyForce(BodyFileInfo& file) {
 	force.SetF_z(fc_ptr);
 	// have force_ptr point to force
 	force_ptr = std::shared_ptr<ChForce>(&force, [](ChForce*) {});
-	// buoyancy force should be [0 0 671980]
 }
 
 /*******************************************************************************
+* BuoyancyForce::getForce_ptr()
+* returns shared pointer to force vector for buoyancy force for use with Project
+* Chrono
 *******************************************************************************/
 std::shared_ptr<ChForce> BuoyancyForce::getForce_ptr() {
 	return force_ptr;
 }
 
 /*******************************************************************************
+* IRF_func default constructor
+* initializes object handling matrix math (base)
+* and index for which DoF to use
 *******************************************************************************/
 IRF_func::IRF_func(ImpulseResponseForce* b, int i) : base(b), index(i) { }
 
 /*******************************************************************************
+* IRF_func::Clone()
+* required overload function since IRF_func inherits from Chrono::ChFunction
 *******************************************************************************/
 IRF_func* IRF_func::Clone() const {
 	return new IRF_func(*this);
 }
 
 /*******************************************************************************
+* IRF_func::Get_y()
+* overloaded function from Chrono::ChFunction to update force each timestep
 *******************************************************************************/
 double 	IRF_func::Get_y(double x) const {
+	//std::cout << base->body->GetChTime() << "\t";
 	return base->coordinateFunc(index);
 }
 
 /*******************************************************************************
+* IRF_func::SetBase(ImpulseResponseForce* b)
+* optional function for setting base object outside of constructor
 *******************************************************************************/
 void IRF_func::SetBase(ImpulseResponseForce* b) {
 	base = b;
 }
 
 /*******************************************************************************
+* IRF_func::SetIndex(int i)
+* optional function for setting index outside of constructor
 *******************************************************************************/
 void IRF_func::SetIndex(int i) { 
 	index = i;
 }
 
 /*******************************************************************************
+* default constructor, only initializes forces and force pointers, use other
+* constructor to fully initialize object
 *******************************************************************************/
 ImpulseResponseForce::ImpulseResponseForce() : forces{ {this, 0}, {this, 1}, {this, 2}, {this, 3}, {this, 4}, {this, 5} } {
 	for (unsigned i = 0; i < 6; i++) {
@@ -406,29 +456,85 @@ ImpulseResponseForce::ImpulseResponseForce() : forces{ {this, 0}, {this, 1}, {th
 }
 
 /*******************************************************************************
+* ImpulseResponseForce constructor, calls default constructor to initialize force 
+* function/vectors. Then initializes several persistent variable
 *******************************************************************************/
 ImpulseResponseForce::ImpulseResponseForce(BodyFileInfo& file, std::shared_ptr<ChBody> object) : ImpulseResponseForce() {
 	body = object;
 	fileInfo = file;
 	// initialize other things from file here
-}
-/*******************************************************************************
-*******************************************************************************/
-ChVectorN<double, 6> ImpulseResponseForce::Get_p() const {
-	// This function does all the matrix multiplication etc for IRF stuff each timestep
-	// should return the combined force/torque 6dof vector to apply to body
+	velHistory.resize(1001); // TODO make dynamic later
+	timeSteps = file.get_times();
 	ChVectorN<double, 6> temp;
 	for (int i = 0; i < 6; i++) {
 		temp[i] = 0;
+		currentForce[i] = 0;
 	}
-	return temp;
+	for (int i = 0; i < 1001; i++) {		
+		velHistory[i] = temp;
+	}
+	offset = 0;
+	prevTime = -1;
+}
+/*******************************************************************************
+* convolutionIntegral()
+* currently works for 1 body, with no interpolation steps
+*******************************************************************************/
+ChVectorN<double, 6> ImpulseResponseForce::convolutionIntegral() {
+	// since convolutionIntegral called for each DoF each timestep, we only want to 
+	// calculate the vector force once each timestep. Save the prevTime
+	if (body->GetChTime() == prevTime) {
+		return currentForce;
+	}
+	prevTime = body->GetChTime();
+	int size = 1001;
+	// "shift" everything left 1
+	offset--;
+	if (offset < -1 * size) {
+		offset += size;
+	}
+	int r = 6, c = 6;
+
+	double* timeseries = new double [r*c*size]; // 1001x6x6
+	double* tmp_s = new double [r*size]; // 1001x6
+#define TIMESERIES(row,col,step) timeseries[(row)*c*size + (col)*size + (step)]
+#define TMP_S(row,step) tmp_s[(row)*size + (step)]
+
+	// set last entry as velocity
+	for (int i = 0; i < 3; i++) { 
+		velHistory[(((size + offset) % size) + size) % size][i] = body->GetPos_dt()[i];
+		velHistory[(((size + offset) % size) + size) % size][i + 3] = body->GetRot_dt().Q_to_Euler123()[i]; 
+	}
+	int vi;
+	for (int row = 0; row < 6; row++) {
+		currentForce[row] = 0;
+		for (int st = 0; st < size; st++) {
+			vi = (((st + offset) % size) + size) % size;
+			TMP_S(row,st) = 0;
+			for (int col = 0; col < 6; col++) {
+				TIMESERIES(row,col,st) = fileInfo.get_impulse_resp(row, col, st)*velHistory[vi][col] * 1000; 
+				TMP_S(row,st) += TIMESERIES(row,col,st);
+			}
+			if (st > 0) {
+				currentForce[row] -= (TMP_S(row,st - 1) + TMP_S(row, st)) / 2.0 * (timeSteps[st] - timeSteps[st - 1ull]);
+			}
+		}
+	}
+	// Deallocate memory
+#undef TIMESERIES
+#undef TMP_S
+    delete[] timeseries;
+	delete[] tmp_s;
+	return currentForce;
 }
 
 /*******************************************************************************
+* ImpulseResponseForce::coordinateFunc(int i)
+* returns the ith component of impulse response force for i = 0,...,5
 *******************************************************************************/
 double ImpulseResponseForce::coordinateFunc(int i) {
 	if (i >= 0 && i < 6) {
-		return Get_p()[i];
+		return convolutionIntegral()[i];
 	}
 	else {
 		std::cout << "wrong index" << std::endl;
@@ -437,6 +543,8 @@ double ImpulseResponseForce::coordinateFunc(int i) {
 }
 
 /*******************************************************************************
+* ImpulseResponseForce::SetForce()
+* initializes external pointer force with ChFunction components
 *******************************************************************************/
 void ImpulseResponseForce::SetForce(std::shared_ptr<ChForce> force) {
 	force->SetF_x(force_ptrs[0]);
@@ -445,6 +553,8 @@ void ImpulseResponseForce::SetForce(std::shared_ptr<ChForce> force) {
 }
 
 /*******************************************************************************
+* ImpulseResponseForce::SetTorque()
+* initializes external pointer torque with ChFunction components
 *******************************************************************************/
 void ImpulseResponseForce::SetTorque(std::shared_ptr<ChForce> torque) {
 	torque->SetF_x(force_ptrs[3]);

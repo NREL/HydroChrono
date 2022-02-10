@@ -100,13 +100,6 @@ int main(int argc, char* argv[]) {
 	col_1->SetColor(ChColor(0.6f, 0, 0));
 	body_1->AddAsset(col_1);
 
-	//// Attach a visualization asset by importing an stl mesh with irrlicht (not working/not used)
-	//IAnimatedMesh* temp = application.GetSceneManager()->getMesh("../../test_for_chrono/oes_task10_sphere.stl");
-	////IMesh* stl = temp->getMesh(0);
-	//IMeshSceneNode* node_stl = application.GetSceneManager()->addOctreeSceneNode(temp);
-	//auto blah = make_shared<ChIrrNodeAsset>();
-	//body_2->AddAsset(temp);
-
 	// set up body_2 (with forces in addition to gravity) with a mesh
 	std::shared_ptr<ChBody> body_2 = chrono_types::make_shared<ChBodyEasyMesh>(                   //
 		GetChronoDataFile("../../test_for_chrono/oes_task10_sphere.obj").c_str(),                 // file name
@@ -126,8 +119,6 @@ int main(int argc, char* argv[]) {
 	body_2->AddAsset(col_2);
 
 	// testing adding external forces to the body_2
-	// TODO look at GetChronoDataFile!!! for file name here vvvv
-	std::cout << "\n\ntest\n\n" << std::endl;
 	BodyFileInfo sphere_file_info("../../test_for_chrono/sphere.h5", "body1");
 	LinRestorForce lin_restor_force_2(sphere_file_info, body_2);
 	ImpulseResponseForce irf(sphere_file_info, body_2);
@@ -168,7 +159,7 @@ int main(int argc, char* argv[]) {
 	auto gmres_solver = chrono_types::make_shared<ChSolverMINRES>();  // change to mkl or minres?
 	gmres_solver->SetMaxIterations(300);
 	system.SetSolver(gmres_solver);
-	double timestep = 0.005;
+	double timestep = 0.015; // also sets the timesteps in system it seems
 	application.SetTimestep(timestep);
 
 	// set up output file for body_2 position each step
@@ -181,17 +172,15 @@ int main(int argc, char* argv[]) {
 	int frame = 0;
 	//bool full_period = false;
 	//ChVector<> initial_pos = body_2->GetPos();
-	GetLog() << "Currently running with gravity, buoyancy, and linear restoring forces\n";
+	zpos << "#Time\t\tBody_2 Pos\n";
 	while (application.GetDevice()->run()) {
 		application.BeginScene();
 
 		application.DrawAll();
 		if (buttonPressed) {
-			if (frame == 0) {
-				zpos << "#Time\t\tBody_2 Pos\n";
-			}
 			application.DoStep();
 			zpos << system.GetChTime() << "\t" << body_2->GetPos().z() << /*"\t" << body_2->GetPos_dt().z() <<*/ "\n";
+			//std::cout << body_2->GetChTime() << "\t" << body_2->GetPos()[2] << "\t" << body_2->GetPos_dt()[2] << "\t" << body_2->GetAppliedForce()[2] << "\n";
 			frame++;
 			//if (!full_period && (body_2->GetPos().Equals(initial_pos, 0.00001) ) && frame > 5 ) {
 			//	full_period = true;

@@ -27,9 +27,11 @@ using namespace chrono::fea;
 class BodyFileInfo {
 private:
 	ChMatrixDynamic<double> lin_matrix;
-	ChMatrixDynamic<double> K_matrix[1001];
+	double* K_matrix;
+	double K_dims[3];
 	ChVector<double> cg;
 	ChVector<double> cb;
+	std::vector<double> timesteps;
 	double rho;
 	double g;
 	double disp_vol;
@@ -40,13 +42,17 @@ private:
 public:
 	BodyFileInfo();
 	BodyFileInfo(std::string file, std::string bodyName);
+	~BodyFileInfo();
 	ChMatrixDynamic<double> get_lin_matrix() const;
 	ChVector<> get_equil_cg() const;
 	ChVector<> get_equil_cb() const;
 	double get_rho() const;
 	double get_g() const;
 	double get_disp_vol() const;
-	ChMatrixDynamic<double> get_impulse_resp_matrix(int i) const;
+	double get_impulse_resp(int i, int n, int m) const;
+	int get_K_dims(int i) const;
+	double get_delta_t() const;
+	std::vector<double> get_times() const;
 };
 // =============================================================================
 class LinRestorForce;
@@ -122,9 +128,13 @@ class ImpulseResponseForce {
 private:
 	BodyFileInfo fileInfo;
 	std::shared_ptr<ChBody> body;
-	//std::vector<double> velHistory; // keep as vector and use push_back?
+	std::vector<ChVectorN<double, 6>> velHistory;
+	ChVectorN<double, 6> currentForce;
+	std::vector<double> timeSteps;
 	IRF_func forces[6];
 	std::shared_ptr<IRF_func> force_ptrs[6];
+	int offset;
+	double prevTime;
 
 public:
 	ImpulseResponseForce();
@@ -134,7 +144,7 @@ public:
 	ImpulseResponseForce(const ImpulseResponseForce& other) = delete;
 	ImpulseResponseForce operator = (const ImpulseResponseForce& rhs) = delete;
 
-	ChVectorN<double, 6> Get_p() const; //TODO rename this
+	ChVectorN<double, 6> convolutionIntegral(); //TODO rename this
 
 	double coordinateFunc(int i);
 	void SetForce(std::shared_ptr<ChForce> force);
