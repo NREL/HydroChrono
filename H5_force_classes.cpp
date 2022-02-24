@@ -25,15 +25,15 @@ void BodyFileInfo::read_data() {
 	int rank = filespace.getSimpleExtentDims(dims);
 	// read file into data_out 2d array
 	H5::DataSpace mspace1(rank, dims);
-	double *temp; // TODO change to dynamic memory and delete?
+	double *temp; 
 	temp = new double[dims[0] * dims[1]];
 	// read file info into data_out, a 2d array
 	dataset.read(temp, H5::PredType::NATIVE_DOUBLE, mspace1, filespace);
 	// turn the 2d array into a ChMatrix (Eigen dynamic matrix)
-	lin_matrix.resize(6, 6); // TODO use dims[0] and dims [1]?
+	lin_matrix.resize(dims[0], dims[1]); 
 	for (int i = 0; i < dims[0]; i++) {
 		for (int j = 0; j < dims[1]; j++) {
-			lin_matrix(i, j) = temp[i * dims[1] + j];
+			lin_matrix(i, j) = temp[i * dims[1] + j]; 
 		}
 	}
 	dataset.close();
@@ -92,7 +92,6 @@ void BodyFileInfo::read_data() {
 	dataset.read(temp, H5::PredType::NATIVE_DOUBLE, mspace1, filespace);
 	rho = temp[0];
 	dataset.close();
-	lin_matrix *= 10000; // Units are off? scale by 10000? dividing by water density?
 	//delete[] temp;
 
 	// read g
@@ -105,22 +104,23 @@ void BodyFileInfo::read_data() {
 	g = temp[0];
 	dataset.close();
 	delete[] temp;
+	lin_matrix *= rho*g; // Units are off? scale by rho*g
 
 	// read K
 	data_name = bodyNum + "/hydro_coeffs/radiation_damping/impulse_response_fun/K";
 	dataset = sphereFile.openDataSet(data_name);
 	filespace = dataset.getSpace();
-	hsize_t dims3[3];    // dataset dimensions
-	int rank3 = filespace.getSimpleExtentDims(dims3);
+	//hsize_t dims3[3];    // dataset dimensions
+	int rank3 = filespace.getSimpleExtentDims(K_dims);
 	// read file into data_out 2d array
-	H5::DataSpace mspace3(rank3, dims3);
+	H5::DataSpace mspace3(rank3, K_dims);
 	//temp = new double[dims3[0]*dims3[1]*dims3[2]];  // dims2[0] is number of rows, dims3[1] is number of columns, dims3[2] is number of matrices
-	K_matrix = new double[dims3[0] * dims3[1] * dims3[2]];
+	K_matrix = new double[K_dims[0] * K_dims[1] * K_dims[2]];
 	// read file info into data_out, a 2d array
 	dataset.read(K_matrix, H5::PredType::NATIVE_DOUBLE, mspace3, filespace);
-	for (int i = 0; i < 3; i++) { // TODO just use K_dims later
-		K_dims[i] = dims3[i];
-	}
+	//for (int i = 0; i < 3; i++) { 
+	//	K_dims[i] = dims3[i];
+	//}
 	dataset.close();
 	//delete[] temp;
 
@@ -221,7 +221,7 @@ double BodyFileInfo::get_impulse_resp(int m, int n, int s) const {
 		return 0;
 	}
 	else {
-		return K_matrix[index];
+		return K_matrix[index] * get_rho(); // scale radiation force by rho
 	}
 }
 
@@ -315,24 +315,26 @@ LinRestorForce::LinRestorForce() : forces{ {this, 0}, {this, 1}, {this, 2}, {thi
 * also initializes ChBody that this force will be applied to
 *******************************************************************************/
 LinRestorForce::LinRestorForce(BodyFileInfo& lin, std::shared_ptr<ChBody> object) : LinRestorForce() {
-	//TODO check lin is initialized
 	bobber = object;
 	fileInfo = lin;
-	equil << fileInfo.get_equil_cg().eigen(), fileInfo.get_equil_cb().eigen();
+	equil << fileInfo.get_equil_cg().eigen(), 0, 0, 0; // set equilibrium to (cg0, cg1, cg2, 0, 0, 0)
+	prevTime = -1;
 }
 
 /*******************************************************************************
-* LinRestorForce::Get_p()
+* LinRestorForce::matrixMult()
 * calculates the matrix multiplication each time step for linear restoring stiffness
 * f = [linear restoring stiffness matrix] [displacement vector]
 *******************************************************************************/
-ChVectorN<double, 6> LinRestorForce::Get_p() const {
-	//TODO check this is correct?
-	ChVectorN<double, 6> temp;
-	temp << bobber->GetPos().eigen(), bobber->GetRot().Q_to_Euler123().eigen();
-	temp = equil - temp;
-	temp = fileInfo.get_lin_matrix() * temp;
-	return temp;
+ChVectorN<double, 6> LinRestorForce::matrixMult() { 
+	if (bobber->GetChTime() == prevTime) {
+		return currentForce;
+	}
+	prevTime = bobber->GetChTime();
+	currentForce << bobber->GetPos().eigen(), bobber->GetRot().Q_to_Euler123().eigen();
+	currentForce = equil - currentForce;
+	currentForce = fileInfo.get_lin_matrix() * currentForce;
+	return currentForce;
 }
 
 /*******************************************************************************
@@ -343,7 +345,7 @@ ChVectorN<double, 6> LinRestorForce::Get_p() const {
 *******************************************************************************/
 double LinRestorForce::coordinateFunc(int i) {
 	if (i >= 0 && i < 6) {
-		return Get_p()[i];
+		return matrixMult()[i];
 	}
 	else {
 		std::cout << "wrong index" << std::endl;
@@ -380,7 +382,8 @@ void LinRestorForce::SetTorque(std::shared_ptr<ChForce> torque) {
 BuoyancyForce::BuoyancyForce(BodyFileInfo& file) {
 	fileInfo = file;
 	// get value from file
-	bf = fileInfo.get_rho() * fileInfo.get_g() * fileInfo.get_disp_vol();
+	//std::cout << "rho=" << fileInfo.get_rho() << " g=" << fileInfo.get_g() << " V=" << fileInfo.get_disp_vol() << std::endl;
+	bf = fileInfo.get_rho() * fileInfo.get_g() * fileInfo.get_disp_vol() * 1.5;
 	// set function to y = bf
 	fc.Set_yconst(bf);
 	// set pointer to function y=bf
@@ -457,13 +460,13 @@ ImpulseResponseForce::ImpulseResponseForce() : forces{ {this, 0}, {this, 1}, {th
 
 /*******************************************************************************
 * ImpulseResponseForce constructor, calls default constructor to initialize force 
-* function/vectors. Then initializes several persistent variable
+* function/vectors. Then initializes several persistent variables
 *******************************************************************************/
 ImpulseResponseForce::ImpulseResponseForce(BodyFileInfo& file, std::shared_ptr<ChBody> object) : ImpulseResponseForce() {
 	body = object;
 	fileInfo = file;
 	// initialize other things from file here
-	velHistory.resize(1001); // TODO make dynamic later
+	velHistory.resize(file.get_K_dims(2));
 	timeSteps = file.get_times();
 	ChVectorN<double, 6> temp;
 	for (int i = 0; i < 6; i++) {
@@ -509,10 +512,10 @@ ChVectorN<double, 6> ImpulseResponseForce::convolutionIntegral() {
 	for (int row = 0; row < 6; row++) {
 		currentForce[row] = 0;
 		for (int st = 0; st < size; st++) {
-			vi = (((st + offset) % size) + size) % size;
+			vi = (((st + offset) % size) + size) % size; // vi takes care of circshift function from matLab
 			TMP_S(row,st) = 0;
 			for (int col = 0; col < 6; col++) {
-				TIMESERIES(row,col,st) = fileInfo.get_impulse_resp(row, col, st)*velHistory[vi][col] * 1000; 
+				TIMESERIES(row,col,st) = fileInfo.get_impulse_resp(row, col, st)*velHistory[vi][col];
 				TMP_S(row,st) += TIMESERIES(row,col,st);
 			}
 			if (st > 0) {

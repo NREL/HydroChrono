@@ -135,8 +135,8 @@ endif()
 # files in your project. 
 #--------------------------------------------------------------
 
-add_executable(myexe "demo_FEA_added_mass.cpp")
-add_executable(sphere_decay "sphere_decay_test.cpp" "H5_force_classes.cpp")
+#add_executable(myexe "demo_FEA_added_mass.cpp")
+add_executable(sphere_decay "sphere_decay_test.cpp" "H5_force_classes.cpp" "H5_force_classes.h")
 
 #--------------------------------------------------------------
 # Set properties for your executable target
@@ -151,16 +151,16 @@ set_target_properties(sphere_decay PROPERTIES
 	    COMPILE_DEFINITIONS "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
 	    LINK_FLAGS "${CHRONO_LINKER_FLAGS}")
 
-set_target_properties(myexe PROPERTIES 
-	    COMPILE_FLAGS "${CHRONO_CXX_FLAGS} ${EXTRA_COMPILE_FLAGS}"
-	    COMPILE_DEFINITIONS "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
-	    LINK_FLAGS "${CHRONO_LINKER_FLAGS}")
+#set_target_properties(myexe PROPERTIES 
+#	    COMPILE_FLAGS "${CHRONO_CXX_FLAGS} ${EXTRA_COMPILE_FLAGS}"
+#	    COMPILE_DEFINITIONS "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
+#	    LINK_FLAGS "${CHRONO_LINKER_FLAGS}")
 
 #--------------------------------------------------------------
 # Link to Chrono libraries and dependency libraries
 #--------------------------------------------------------------
 
-target_link_libraries(myexe ${CHRONO_LIBRARIES} ${LINK_LIBS})
+#target_link_libraries(myexe ${CHRONO_LIBRARIES} ${LINK_LIBS})
 target_link_libraries(sphere_decay ${CHRONO_LIBRARIES} ${LINK_LIBS})
 
 #--------------------------------------------------------------

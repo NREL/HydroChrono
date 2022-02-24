@@ -28,7 +28,7 @@ class BodyFileInfo {
 private:
 	ChMatrixDynamic<double> lin_matrix;
 	double* K_matrix;
-	double K_dims[3];
+	hsize_t K_dims[3];
 	ChVector<double> cg;
 	ChVector<double> cb;
 	std::vector<double> timesteps;
@@ -76,6 +76,8 @@ private:
 	ChVectorN<double, 6> equil;
 	ForceTorqueFunc forces[6];
 	std::shared_ptr<ForceTorqueFunc> force_ptrs[6];
+	ChVectorN<double, 6> currentForce;
+	double prevTime;
 
 public:
 	LinRestorForce();
@@ -86,7 +88,7 @@ public:
 	LinRestorForce(const LinRestorForce& other) = delete;
 	LinRestorForce operator = (const LinRestorForce& rhs) = delete;
 
-	ChVectorN<double, 6> Get_p() const;
+	ChVectorN<double, 6> matrixMult();
 
 	double coordinateFunc(int i);
 	void SetForce(std::shared_ptr<ChForce> force);
@@ -144,7 +146,7 @@ public:
 	ImpulseResponseForce(const ImpulseResponseForce& other) = delete;
 	ImpulseResponseForce operator = (const ImpulseResponseForce& rhs) = delete;
 
-	ChVectorN<double, 6> convolutionIntegral(); //TODO rename this
+	ChVectorN<double, 6> convolutionIntegral(); 
 
 	double coordinateFunc(int i);
 	void SetForce(std::shared_ptr<ChForce> force);

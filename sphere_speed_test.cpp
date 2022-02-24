@@ -20,54 +20,54 @@
 #include "H5_force_classes.h"
 #include "chrono_irrlicht/ChIrrNodeAsset.h"
 
-using namespace irr;
-using namespace irr::core;
-using namespace irr::scene;
-using namespace irr::video;
-using namespace irr::io;
-using namespace irr::gui;
+//using namespace irr;
+//using namespace irr::core;
+//using namespace irr::scene;
+//using namespace irr::video;
+//using namespace irr::io;
+//using namespace irr::gui;
 
 // =============================================================================
-class MyEventReceiver : public IEventReceiver {
-public:
-	MyEventReceiver(ChIrrAppInterface* myapp, bool& buttonPressed)
-		: pressed(buttonPressed) {
-		// store pointer application
-		application = myapp;
-
-		// ..add a GUI button to control pause/play
-		pauseButton = application->GetIGUIEnvironment()->addButton(rect<s32>(510, 20, 650, 35));
-		buttonText = application->GetIGUIEnvironment()->addStaticText(L"Paused", rect<s32>(560, 20, 600, 35), false);
-	}
-
-	bool OnEvent(const SEvent& event) {
-		// check if user clicked button
-		if (event.EventType == EET_GUI_EVENT) {
-			switch (event.GUIEvent.EventType) {
-			case EGET_BUTTON_CLICKED:
-				pressed = !pressed;
-				if (pressed) {
-					buttonText->setText(L"Playing");
-				}
-				else {
-					buttonText->setText(L"Paused");
-				}
-				return pressed;
-				break;
-			default:
-				break;
-			}
-		}
-		return false;
-	}
-
-private:
-	ChIrrAppInterface* application;
-	IGUIButton* pauseButton;
-	IGUIStaticText* buttonText;
-
-	bool& pressed;
-};
+//class MyEventReceiver : public IEventReceiver {
+//public:
+//	MyEventReceiver(ChIrrAppInterface* myapp, bool& buttonPressed)
+//		: pressed(buttonPressed) {
+//		// store pointer application
+//		application = myapp;
+//
+//		// ..add a GUI button to control pause/play
+//		pauseButton = application->GetIGUIEnvironment()->addButton(rect<s32>(510, 20, 650, 35));
+//		buttonText = application->GetIGUIEnvironment()->addStaticText(L"Paused", rect<s32>(560, 20, 600, 35), false);
+//	}
+//
+//	bool OnEvent(const SEvent& event) {
+//		// check if user clicked button
+//		if (event.EventType == EET_GUI_EVENT) {
+//			switch (event.GUIEvent.EventType) {
+//			case EGET_BUTTON_CLICKED:
+//				pressed = !pressed;
+//				if (pressed) {
+//					buttonText->setText(L"Playing");
+//				}
+//				else {
+//					buttonText->setText(L"Paused");
+//				}
+//				return pressed;
+//				break;
+//			default:
+//				break;
+//			}
+//		}
+//		return false;
+//	}
+//
+//private:
+//	ChIrrAppInterface* application;
+//	IGUIButton* pauseButton;
+//	IGUIStaticText* buttonText;
+//
+//	bool& pressed;
+//};
 
 int main(int argc, char* argv[]) {
 	GetLog() << "Copyright (c) 2017 projectchrono.org\nChrono version: " << CHRONO_VERSION << "\n\n";
@@ -76,11 +76,11 @@ int main(int argc, char* argv[]) {
 	system.Set_G_acc(ChVector<>(0, 0, -9.81));
 
 	// Create the Irrlicht application for visualizing
-	ChIrrApp application(&system, L"Sphere Decay Test", core::dimension2d<u32>(800, 600), VerticalDir::Z);
-	application.AddTypicalLogo();
-	application.AddTypicalSky();
-	application.AddTypicalLights();
-	application.AddTypicalCamera(core::vector3df(0, 30, 0), core::vector3df(0, 0, 0)); // arguments are (location, orientation) as vectors
+	//ChIrrApp application(&system, L"Sphere Decay Test", core::dimension2d<u32>(800, 600), VerticalDir::Z);
+	//application.AddTypicalLogo();
+	//application.AddTypicalSky();
+	//application.AddTypicalLights();
+	//application.AddTypicalCamera(core::vector3df(0, 30, 0), core::vector3df(0, 0, 0)); // arguments are (location, orientation) as vectors
 
 	// set up body (with forces in addition to gravity) with a mesh
 	std::shared_ptr<ChBody> body = chrono_types::make_shared<ChBodyEasyMesh>(                   //
@@ -131,25 +131,26 @@ int main(int argc, char* argv[]) {
 
 	// update irrlicht app with body info
 	//application.AssetBind(body_1);
-	application.AssetBindAll();
-	application.AssetUpdateAll();
+	//application.AssetBindAll();
+	//application.AssetUpdateAll();
 
 	// some tools to handle the pause button
-	bool buttonPressed = false;
-	MyEventReceiver receiver(&application, buttonPressed);
-	application.SetUserEventReceiver(&receiver);
+	//bool buttonPressed = false;
+	//MyEventReceiver receiver(&application, buttonPressed);
+	//application.SetUserEventReceiver(&receiver);
 
 	// Info about which solver to use - may want to change this later
 	auto gmres_solver = chrono_types::make_shared<ChSolverMINRES>();  // change to mkl or minres?
 	gmres_solver->SetMaxIterations(300);
 	system.SetSolver(gmres_solver);
 	double timestep = 0.015; // also sets the timesteps in system it seems
-	application.SetTimestep(timestep);
+	//application.SetTimestep(timestep);
+
 
 	// set up output file for body position each step
-	std::ofstream zpos("outfile/output.txt", std::ofstream::out);
-	zpos.precision(10);
-	zpos.width(12);
+	std::ofstream zpos("speed/output.txt", std::ofstream::out);
+	zpos.precision(7);
+	zpos.width(10);
 	//zpos.SetNumFormat("%10.5f"); // 10 characters displayed total, 5 digit precision (after decimal)
 
 	// Simulation loop
@@ -158,19 +159,19 @@ int main(int argc, char* argv[]) {
 	//ChVector<> initial_pos = body->GetPos();
 	std::cout << "Body mass=" << body->GetMass() << std::endl;
 	zpos << "#Time\tBody Pos\n";
-	while (application.GetDevice()->run() && system.GetChTime() <= 40) {
+	while (application.GetDevice()->run() && system.GetChTime() <= 25) {
 		application.BeginScene();
 		application.DrawAll();
-		if (buttonPressed) {
-			zpos << system.GetChTime() << "\t" << body->GetPos().z() << /*"\t" << body->GetPos_dt().z() <<*/ "\n";
-			application.DoStep();
-			frame++;
-			//if (!full_period && (body->GetPos().Equals(initial_pos, 0.00001) ) && frame > 5 ) {
-			//	full_period = true;
-			//	std::cout << "frame: " << frame << std::endl;
-			//}
-			//GetLog() << "\n" << fb->getForce_ptr()->GetForce() << "that's the force pointer value\n\n";
-		}
+		//if (buttonPressed) {
+		zpos << system.GetChTime() << "\t" << body->GetPos().z() << /*"\t" << body->GetPos_dt().z() <<*/ "\n";
+		application.DoStep();
+		frame++;
+		//if (!full_period && (body->GetPos().Equals(initial_pos, 0.00001) ) && frame > 5 ) {
+		//	full_period = true;
+		//	std::cout << "frame: " << frame << std::endl;
+		//}
+		//GetLog() << "\n" << fb->getForce_ptr()->GetForce() << "that's the force pointer value\n\n";
+	//}
 
 		application.EndScene();
 	}
