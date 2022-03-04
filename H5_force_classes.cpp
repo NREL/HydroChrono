@@ -383,7 +383,7 @@ BuoyancyForce::BuoyancyForce(BodyFileInfo& file) {
 	fileInfo = file;
 	// get value from file
 	//std::cout << "rho=" << fileInfo.get_rho() << " g=" << fileInfo.get_g() << " V=" << fileInfo.get_disp_vol() << std::endl;
-	bf = fileInfo.get_rho() * fileInfo.get_g() * fileInfo.get_disp_vol() * 1.5;
+	bf = fileInfo.get_rho() * fileInfo.get_g() * fileInfo.get_disp_vol();
 	// set function to y = bf
 	fc.Set_yconst(bf);
 	// set pointer to function y=bf

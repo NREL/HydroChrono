@@ -76,13 +76,14 @@ int main(int argc, char* argv[]) {
 	system.Set_G_acc(ChVector<>(0, 0, -9.81));
 
 	// Create the Irrlicht application for visualizing
+	// names of some functions changed feb 7, 2022 (AddTypicalLogo -> AddLogo, etc)
 	ChIrrApp application(&system, L"Sphere Decay Test", core::dimension2d<u32>(800, 600), VerticalDir::Z);
-	application.AddTypicalLogo();
-	application.AddTypicalSky();
+	application.AddLogo();
+	application.AddSkyBox();
 	application.AddTypicalLights();
-	application.AddTypicalCamera(core::vector3df(0, 30, 0), core::vector3df(0, 0, 0)); // arguments are (location, orientation) as vectors
+	application.AddCamera(core::vector3df(0, 30, 0), core::vector3df(0, 0, 0)); // arguments are (location, orientation) as vectors
 
-	// set up body (with forces in addition to gravity) with a mesh
+	// set up body from a mesh
 	std::shared_ptr<ChBody> body = chrono_types::make_shared<ChBodyEasyMesh>(                   //
 		GetChronoDataFile("../../test_for_chrono/oes_task10_sphere.obj").c_str(),                 // file name
 		1000,                                                                                     // density
@@ -92,11 +93,18 @@ int main(int argc, char* argv[]) {
 		nullptr,                                                                                  // no need for contact material
 		0                                                                                         // swept sphere radius
 		);
+	
+	// old shpere stuff (not mesh)
+	//std::shared_ptr<ChBody> body = chrono_types::make_shared<ChBodyEasySphere>(5, 1);
+	//auto sph = chrono_types::make_shared<ChSphereShape>();
+	//body->AddAsset(sph);
+
 	system.Add(body);
 	body->SetPos(ChVector<>(0, 0, -1));
 	//body->SetMass(261.8e3);
 	//body->SetMass(261.8e3 + 130.8768);
 	body->SetMass(261.8e3 + 130.8768e3); // added mass 130.8768 kg times rho=1000
+	body->SetInertiaXX(ChVector<>(1, 1, 1));
 	// attach color asset to body
 	auto col_2 = chrono_types::make_shared<ChColorAsset>();
 	col_2->SetColor(ChColor(0, 0, 0.6f));
@@ -156,13 +164,21 @@ int main(int argc, char* argv[]) {
 	int frame = 0;
 	//bool full_period = false;
 	//ChVector<> initial_pos = body->GetPos();
+
 	std::cout << "Body mass=" << body->GetMass() << std::endl;
-	zpos << "#Time\tBody Pos\n";
-	while (application.GetDevice()->run() && system.GetChTime() <= 40) {
+	zpos << "#Time\tBody Pos\tBody vel (heave)\tforce (heave)\n";
+	system.EnableSolverMatrixWrite(true, "blah");
+	while (application.GetDevice()->run() && system.GetChTime() <= 20) {
 		application.BeginScene();
 		application.DrawAll();
-		if (buttonPressed) {
-			zpos << system.GetChTime() << "\t" << body->GetPos().z() << /*"\t" << body->GetPos_dt().z() <<*/ "\n";
+		/*if (buttonPressed)*/if(true) {
+			if (frame == 8) {
+				ChSparseMatrix M;
+				system.GetMassMatrix(&M);
+				std::cout << "initial mass matrix\n" << M << std::endl;
+				system.DumpSystemMatrices(true, true, true, true, "C:\\Users\\ZQUINTON\\code\\test_for_chrono_build\\Release\\outfile\\decay");
+			}
+			zpos << system.GetChTime() << "\t" << body->GetPos().z() << "\t" << body->GetPos_dt().z() << "\t" << body->GetAppliedForce().z() << "\n";
 			application.DoStep();
 			frame++;
 			//if (!full_period && (body->GetPos().Equals(initial_pos, 0.00001) ) && frame > 5 ) {
