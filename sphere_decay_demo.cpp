@@ -17,7 +17,7 @@
 //
 // =============================================================================
 
-#include "H5_force_classes.h"
+#include "hydro_forces.h"
 #include "chrono_irrlicht/ChIrrNodeAsset.h"
 
 using namespace irr;
@@ -94,21 +94,30 @@ int main(int argc, char* argv[]) {
 		0                                                                                         // swept sphere radius
 		);
 	
-	// old shpere stuff (not mesh)
+	// old sphere stuff (not mesh)
 	//std::shared_ptr<ChBody> body = chrono_types::make_shared<ChBodyEasySphere>(5, 1);
 	//auto sph = chrono_types::make_shared<ChSphereShape>();
 	//body->AddAsset(sph);
 
 	system.Add(body);
 	body->SetPos(ChVector<>(0, 0, -1));
-	//body->SetMass(261.8e3);
-	//body->SetMass(261.8e3 + 130.8768);
-	body->SetMass(261.8e3 + 130.8768e3); // added mass 130.8768 kg times rho=1000
-	body->SetInertiaXX(ChVector<>(1, 1, 1));
+	body->SetMass(261.8e3);
 	// attach color asset to body
 	auto col_2 = chrono_types::make_shared<ChColorAsset>();
 	col_2->SetColor(ChColor(0, 0, 0.6f));
 	body->AddAsset(col_2);
+
+	// test added mass as load here-------------------------------------------------------
+	//vars for testing
+	ChVector<> m_offset(0, 0, 0); ///< offset of the center of mass, in body coordinate system
+	double m_mass = 130.8768e3; ///< added mass [kg]
+	// ChVector<> m_IXX = VNULL;  ///< added diag. inertia values Ixx, Iyy, Izz (in body coordinate system, centered in body)
+	// ChVector<> m_IXY = VNULL;   ///< added off.diag. inertia values Ixy, Ixz, Iyz including the "-"sign (in body coordinate system, centered in body)
+
+	auto my_loadcontainer = chrono_types::make_shared< ChLoadContainer>();
+	system.Add(my_loadcontainer);
+	auto my_loadbodyinertia = chrono_types::make_shared<ChLoadAddedMass>(body, m_offset, m_mass);
+	my_loadcontainer->Add(my_loadbodyinertia);
 
 	// testing adding external forces to the body
 	BodyFileInfo sphere_file_info("../../test_for_chrono/sphere.h5", "body1");
@@ -138,7 +147,6 @@ int main(int argc, char* argv[]) {
 	body->AddForce(fb->getForce_ptr());
 
 	// update irrlicht app with body info
-	//application.AssetBind(body_1);
 	application.AssetBindAll();
 	application.AssetUpdateAll();
 
@@ -158,16 +166,13 @@ int main(int argc, char* argv[]) {
 	std::ofstream zpos("outfile/output.txt", std::ofstream::out);
 	zpos.precision(10);
 	zpos.width(12);
-	//zpos.SetNumFormat("%10.5f"); // 10 characters displayed total, 5 digit precision (after decimal)
 
 	// Simulation loop
 	int frame = 0;
-	//bool full_period = false;
-	//ChVector<> initial_pos = body->GetPos();
 
 	std::cout << "Body mass=" << body->GetMass() << std::endl;
 	zpos << "#Time\tBody Pos\tBody vel (heave)\tforce (heave)\n";
-	system.EnableSolverMatrixWrite(true, "blah");
+	//system.EnableSolverMatrixWrite(true, "blah");
 	while (application.GetDevice()->run() && system.GetChTime() <= 20) {
 		application.BeginScene();
 		application.DrawAll();
@@ -176,16 +181,11 @@ int main(int argc, char* argv[]) {
 				ChSparseMatrix M;
 				system.GetMassMatrix(&M);
 				std::cout << "initial mass matrix\n" << M << std::endl;
-				system.DumpSystemMatrices(true, true, true, true, "C:\\Users\\ZQUINTON\\code\\test_for_chrono_build\\Release\\outfile\\decay");
+				system.DumpSystemMatrices(true, true, true, true, "C:\\Users\\ZQUINTON\\code\\test_for_chrono_build\\Release\\outfile\\output");
 			}
 			zpos << system.GetChTime() << "\t" << body->GetPos().z() << "\t" << body->GetPos_dt().z() << "\t" << body->GetAppliedForce().z() << "\n";
 			application.DoStep();
 			frame++;
-			//if (!full_period && (body->GetPos().Equals(initial_pos, 0.00001) ) && frame > 5 ) {
-			//	full_period = true;
-			//	std::cout << "frame: " << frame << std::endl;
-			//}
-			//GetLog() << "\n" << fb->getForce_ptr()->GetForce() << "that's the force pointer value\n\n";
 		}
 
 		application.EndScene();

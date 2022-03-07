@@ -16,7 +16,7 @@ cmake_minimum_required(VERSION 3.10.1)
 # Modify the project name if you want: 
 #--------------------------------------------------------------
 
-project(my_project CXX)
+project(WEC_Chrono CXX)
 
 #--------------------------------------------------------------
 # === 2 ===
@@ -135,9 +135,7 @@ endif()
 # files in your project. 
 #--------------------------------------------------------------
 
-#add_executable(myexe "demo_FEA_added_mass.cpp")
-add_executable(sphere_decay "sphere_decay_test.cpp" "H5_force_classes.cpp" "H5_force_classes.h")
-add_executable(addedMassTest "addedMassTest.cpp" "H5_force_classes.cpp" "H5_force_classes.h")
+add_executable(sphere_decay_demo "sphere_decay_demo.cpp" "hydro_forces.cpp" "hydro_forces.h")
 
 #--------------------------------------------------------------
 # Set properties for your executable target
@@ -147,28 +145,17 @@ add_executable(addedMassTest "addedMassTest.cpp" "H5_force_classes.cpp" "H5_forc
 # source tree (if using a build version of Chrono), or in its
 # install tree (if using an installed version of Chrono).
 #--------------------------------------------------------------
-set_target_properties(sphere_decay PROPERTIES 
+
+set_target_properties(sphere_decay_demo PROPERTIES 
 	    COMPILE_FLAGS "${CHRONO_CXX_FLAGS} ${EXTRA_COMPILE_FLAGS}"
 	    COMPILE_DEFINITIONS "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
 	    LINK_FLAGS "${CHRONO_LINKER_FLAGS}")
-
-set_target_properties(addedMassTest PROPERTIES 
-	    COMPILE_FLAGS "${CHRONO_CXX_FLAGS} ${EXTRA_COMPILE_FLAGS}"
-	    COMPILE_DEFINITIONS "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
-	    LINK_FLAGS "${CHRONO_LINKER_FLAGS}")
-
-#set_target_properties(myexe PROPERTIES 
-#	    COMPILE_FLAGS "${CHRONO_CXX_FLAGS} ${EXTRA_COMPILE_FLAGS}"
-#	    COMPILE_DEFINITIONS "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
-#	    LINK_FLAGS "${CHRONO_LINKER_FLAGS}")
 
 #--------------------------------------------------------------
 # Link to Chrono libraries and dependency libraries
 #--------------------------------------------------------------
 
-#target_link_libraries(myexe ${CHRONO_LIBRARIES} ${LINK_LIBS})
-target_link_libraries(sphere_decay ${CHRONO_LIBRARIES} ${LINK_LIBS})
-target_link_libraries(addedMassTest ${CHRONO_LIBRARIES} ${LINK_LIBS})
+target_link_libraries(sphere_decay_demo ${CHRONO_LIBRARIES} ${LINK_LIBS})
 
 #--------------------------------------------------------------
 # === 4 (OPTIONAL) ===

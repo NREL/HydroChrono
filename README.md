@@ -12,9 +12,10 @@
 
 ## Building Demos
 1. Install above requirements, and build Chrono
-2. Configure and generate CMake, specifying Chrono_DIR as Chrono Build location (`../chrono_build/cmake`) and HDF5_DIR as (`../CMake-hdf5-1.10.8/CMake-hdf5-1.10.8/build/HDF5-1.10.8-win64/HDF5-1.10.8-win64/share/cmake)
+2. Configure and generate CMake, specifying Chrono_DIR as Chrono Build location (`../chrono_build/cmake`) and HDF5_DIR as (`../CMake-hdf5-1.10.8/CMake-hdf5-1.10.8/build/HDF5-1.10.8-win64/HDF5-1.10.8-win64/share/cmake`)
 3. Build `test_for_chrono` in adjacent file `test_for_chrono_build`
-4. Navigate to `test_for_chrono_build/Release` (or Debug) and run executables
+4. Copy `chrono_build/bin/data` file into `project_build/data`
+5. Navigate to `test_for_chrono_build/Release` (or Debug) and run executables (Important note: may need to set up output files `../test_for_chrono_build/Release/outfile/output.txt`)
 
 ## Files
 * H5_force_classes.cpp and H5_force_classes.h
@@ -23,4 +24,4 @@
 	* demo for hyrdo forces 
 * addedMassTest.cpp
 	* demo for hydro forces with added mass implemented as custom load
-	* addedMass class declared/defined in this file for now- eventually will be moved to H5_force_class
+	* addedMass class declared/defined in this file for now - eventually will be moved to H5_force_class
