@@ -107,18 +107,6 @@ int main(int argc, char* argv[]) {
 	col_2->SetColor(ChColor(0, 0, 0.6f));
 	body->AddAsset(col_2);
 
-	// test added mass as load here-------------------------------------------------------
-	//vars for testing
-	ChVector<> m_offset(0, 0, 0); ///< offset of the center of mass, in body coordinate system
-	double m_mass = 130.8768e3; ///< added mass [kg]
-	// ChVector<> m_IXX = VNULL;  ///< added diag. inertia values Ixx, Iyy, Izz (in body coordinate system, centered in body)
-	// ChVector<> m_IXY = VNULL;   ///< added off.diag. inertia values Ixy, Ixz, Iyz including the "-"sign (in body coordinate system, centered in body)
-
-	auto my_loadcontainer = chrono_types::make_shared< ChLoadContainer>();
-	system.Add(my_loadcontainer);
-	auto my_loadbodyinertia = chrono_types::make_shared<ChLoadAddedMass>(body, m_offset, m_mass);
-	my_loadcontainer->Add(my_loadbodyinertia);
-
 	// testing adding external forces to the body
 	BodyFileInfo sphere_file_info("../../test_for_chrono/sphere.h5", "body1");
 	LinRestorForce lin_restor_force_2(sphere_file_info, body);
@@ -145,6 +133,14 @@ int main(int argc, char* argv[]) {
 	// add buoyancy force from h5 file info
 	auto fb = chrono_types::make_shared<BuoyancyForce>(sphere_file_info);
 	body->AddForce(fb->getForce_ptr());
+
+	auto my_loadcontainer = chrono_types::make_shared< ChLoadContainer>();
+	system.Add(my_loadcontainer);
+	// auto my_loadbodyinertia = chrono_types::make_shared<ChLoadAddedMass>(body, sphere_file_info);
+	//ChVector<> m_offset(0, 0, 0); ///< offset of the center of mass, in body coordinate system
+	//double m_mass = 130.8768e3; ///< added mass [kg]
+	auto my_loadbodyinertia = chrono_types::make_shared<ChLoadAddedMass>(body, sphere_file_info);
+	my_loadcontainer->Add(my_loadbodyinertia);
 
 	// update irrlicht app with body info
 	application.AssetBindAll();
@@ -173,7 +169,7 @@ int main(int argc, char* argv[]) {
 	std::cout << "Body mass=" << body->GetMass() << std::endl;
 	zpos << "#Time\tBody Pos\tBody vel (heave)\tforce (heave)\n";
 	//system.EnableSolverMatrixWrite(true, "blah");
-	while (application.GetDevice()->run() && system.GetChTime() <= 20) {
+	while (application.GetDevice()->run() && system.GetChTime() <= 25) {
 		application.BeginScene();
 		application.DrawAll();
 		/*if (buttonPressed)*/if(true) {

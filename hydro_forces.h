@@ -29,6 +29,7 @@ using namespace chrono::fea;
 class BodyFileInfo {
 private:
 	ChMatrixDynamic<double> lin_matrix;
+	ChMatrixDynamic<double> inf_freq;
 	double* K_matrix;
 	hsize_t K_dims[3];
 	ChVector<double> cg;
@@ -46,6 +47,7 @@ public:
 	BodyFileInfo(std::string file, std::string bodyName);
 	~BodyFileInfo();
 	ChMatrixDynamic<double> get_lin_matrix() const;
+	ChMatrixDynamic<double> get_added_mass_matrix() const;
 	ChVector<> get_equil_cg() const;
 	ChVector<> get_equil_cb() const;
 	double get_rho() const;
@@ -158,61 +160,16 @@ public:
 class ChLoadAddedMass : public ChLoadCustom {
 public:
 	ChLoadAddedMass(std::shared_ptr<ChBody> body,  ///< object to apply additional inertia to
-		const ChVector<>& m_offset,     ///< offset of the center of mass, in body coordinate system
-		const double m_mass/*,            ///< added mass [kg]
-		const ChVector<>& m_IXX = VNULL,  ///< added diag. inertia values Ixx, Iyy, Izz (in body coordinate system, centered in body)
-		const ChVector<>& m_IXY = VNULL */  ///< added off.diag. inertia values Ixy, Ixz, Iyz including the "-"sign (in body coordinate system, centered in body)
-	);
+		const BodyFileInfo& file );                ///< h5 file to initialize added mass with
+	//ChLoadAddedMass(std::shared_ptr<ChBody> body,  ///< object to apply additional inertia to
+	//	const ChVector<>& m_offset,     ///< offset of the center of mass, in body coordinate system
+	//	const double m_mass/*,            ///< added mass [kg]
+	//	const ChVector<>& m_IXX = VNULL,  ///< added diag. inertia values Ixx, Iyy, Izz (in body coordinate system, centered in body)
+	//	const ChVector<>& m_IXY = VNULL */  ///< added off.diag. inertia values Ixy, Ixz, Iyz including the "-"sign (in body coordinate system, centered in body)
+	//);
 
 	/// "Virtual" copy constructor (covariant return type).
 	virtual ChLoadAddedMass* Clone() const override { return new ChLoadAddedMass(*this); }
-
-	/// Set the inertia tensor of the body, assumed in the body reference basis, with body reference as center.
-	/// The provided 3x3 matrix should be symmetric and contain the inertia tensor as:
-	/// system: 
-	/// <pre>
-	///               [ int{y^2+z^2}dm    -int{xy}dm    -int{xz}dm    ]
-	/// newXInertia = [                  int{x^2+z^2}   -int{yz}dm    ]
-	///               [     (symm.)                    int{x^2+y^2}dm ]
-	/// </pre>
-	//void SetInertia(const ChMatrix33<>& newXInertia);
-
-	/// Set the inertia tensor of the body, assumed in the body reference basis, with body reference as center.
-	/// The return 3x3 symmetric matrix contains the following values:
-	/// <pre>
-	///  [ int{y^2+z^2}dm    -int{xy}dm    -int{xz}dm    ]
-	///  [                  int{x^2+z^2}   -int{yz}dm    ]
-	///  [       (symm.)                  int{x^2+y^2}dm ]
-	/// </pre>
-	//const ChMatrix33<>& GetInertia() const { return this->I; }
-
-	/// Set the diagonal part of the inertia tensor (Ixx, Iyy, Izz values). 
-	/// The vector should contain these moments of inertia, assumed in the body reference basis, with body reference as center:
-	/// <pre>
-	/// iner = [  int{y^2+z^2}dm   int{x^2+z^2}   int{x^2+y^2}dm ]
-	/// </pre>
-	//void SetInertiaXX(const ChVector<>& iner);
-
-	/// Get the diagonal part of the inertia tensor (Ixx, Iyy, Izz values). 
-	/// The vector contains these values, assumed in the body reference basis, with body reference as center:
-	/// <pre>
-	/// [  int{y^2+z^2}dm   int{x^2+z^2}   int{x^2+y^2}dm ]
-	/// </pre>
-	//ChVector<> GetInertiaXX() const;
-
-	/// Set the off-diagonal part of the inertia tensor (Ixy, Ixz, Iyz values).
-	/// The vector contains these values, assumed in the body reference basis, with body reference as center:
-	/// <pre>
-	/// iner = [ -int{xy}dm   -int{xz}dm   -int{yz}dm ]
-	/// </pre>
-	//void SetInertiaXY(const ChVector<>& iner);
-
-	/// Get the extra-diagonal part of the inertia tensor (Ixy, Ixz, Iyz values).
-	/// The vector contains these values, assumed in the body reference basis, with body reference as center:
-	/// <pre>
-	/// [ -int{xy}dm   -int{xz}dm   -int{yz}dm ]
-	/// </pre>
-	//ChVector<> GetInertiaXY() const;
 
 	/// Compute Q, the generalized load. 
 	/// In this case, it computes the quadratic (centrifugal, gyroscopic) terms. 
@@ -238,14 +195,11 @@ public:
 		const ChVectorDynamic<>& w,     ///< the w vector
 		const double c) override;       ///< a scaling factor
 private:
-	ChVector<> c_m;       ///< offset of center of mass
-	double  mass;         ///< added mass
-	ChMatrix33<> I;       ///< added inertia tensor, in body coordinates
+	//ChVector<> c_m;       ///< offset of center of mass
+	//double  mass;         ///< added mass
+	//ChMatrix33<> I;
+	ChMatrixDynamic<double> inf_freq;       ///< added mass at infinite frequency in global coordinates
 
 	virtual bool IsStiff() override { return true; } // this to force the use of the inertial M, R and K matrices
 
-	//static bool use_inertial_damping_matrix_R;  // default true. Can be disabled globally, for testing or optimization
-	//static bool use_inertial_stiffness_matrix_K;// default true. Can be disabled globally, for testing or optimization
-	//static bool use_gyroscopic_torque;          // default true. Can be disabled globally, for testing or optimization
 };
-

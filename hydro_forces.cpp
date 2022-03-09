@@ -37,7 +37,24 @@ void BodyFileInfo::read_data() {
 		}
 	}
 	dataset.close();
-	delete [] temp;
+	delete[] temp;
+
+	data_name = bodyNum + "/hydro_coeffs/added_mass/inf_freq";
+	dataset = sphereFile.openDataSet(data_name);
+	filespace = dataset.getSpace();
+	rank = filespace.getSimpleExtentDims(dims);
+	mspace1 = H5::DataSpace(rank, dims);
+	temp = new double[dims[0] * dims[1]];
+	dataset.read(temp, H5::PredType::NATIVE_DOUBLE, mspace1, filespace);
+	// put into equil chvector
+	inf_freq.resize(dims[0], dims[1]);
+	for (int i = 0; i < dims[0]; i++) {
+		for (int j = 0; j < dims[1]; j++) {
+			inf_freq(i, j) = temp[i * dims[1] + j];
+		}
+	}
+	dataset.close();
+	delete[] temp;
 
 	// repeat same steps from above to get the cb and cg...reusing some of the previous arrays etc
 	data_name = bodyNum + "/properties/cb";
@@ -52,7 +69,6 @@ void BodyFileInfo::read_data() {
 		cb[i] = temp[i];
 	}
 	dataset.close();
-	//delete [] temp;
 
 	// repeat finally for cg
 	data_name = bodyNum + "/properties/cg";
@@ -60,7 +76,6 @@ void BodyFileInfo::read_data() {
 	filespace = dataset.getSpace();
 	rank = filespace.getSimpleExtentDims(dims);
 	mspace1 = H5::DataSpace(rank, dims);
-	//temp = new double[dims[0] * dims[1]];
 	dataset.read(temp, H5::PredType::NATIVE_DOUBLE, mspace1, filespace);
 	// put into equil chvector
 	for (int i = 0; i < dims[0]; i++) {
@@ -77,10 +92,8 @@ void BodyFileInfo::read_data() {
 	mspace1 = H5::DataSpace(rank, dims);
 	temp = new double[dims[0] * dims[1]];
 	dataset.read(temp, H5::PredType::NATIVE_DOUBLE, mspace1, filespace);
-	// put into equil chvector
 	disp_vol = temp[0];
 	dataset.close();
-	//delete[] temp;
 
 	// read rho
 	data_name = "simulation_parameters/rho";
@@ -88,11 +101,9 @@ void BodyFileInfo::read_data() {
 	filespace = dataset.getSpace();
 	rank = filespace.getSimpleExtentDims(dims);
 	mspace1 = H5::DataSpace(rank, dims);
-	//temp = new double[dims[0] * dims[1]];
 	dataset.read(temp, H5::PredType::NATIVE_DOUBLE, mspace1, filespace);
 	rho = temp[0];
 	dataset.close();
-	//delete[] temp;
 
 	// read g
 	data_name = "simulation_parameters/g";
@@ -104,26 +115,22 @@ void BodyFileInfo::read_data() {
 	g = temp[0];
 	dataset.close();
 	delete[] temp;
-	lin_matrix *= rho*g; // Units are off? scale by rho*g
+	lin_matrix *= rho*g; // scale by rho*g
 
 	// read K
 	data_name = bodyNum + "/hydro_coeffs/radiation_damping/impulse_response_fun/K";
 	dataset = sphereFile.openDataSet(data_name);
 	filespace = dataset.getSpace();
-	//hsize_t dims3[3];    // dataset dimensions
 	int rank3 = filespace.getSimpleExtentDims(K_dims);
 	// read file into data_out 2d array
 	H5::DataSpace mspace3(rank3, K_dims);
-	//temp = new double[dims3[0]*dims3[1]*dims3[2]];  // dims2[0] is number of rows, dims3[1] is number of columns, dims3[2] is number of matrices
+	// K_dims[0] is number of rows, K_dims[1] is number of columns, K_dims[2] is number of matrices
 	K_matrix = new double[K_dims[0] * K_dims[1] * K_dims[2]];
 	// read file info into data_out, a 2d array
 	dataset.read(K_matrix, H5::PredType::NATIVE_DOUBLE, mspace3, filespace);
-	//for (int i = 0; i < 3; i++) { 
-	//	K_dims[i] = dims3[i];
-	//}
 	dataset.close();
-	//delete[] temp;
 
+	// read timesteps vector
 	data_name = bodyNum + "/hydro_coeffs/radiation_damping/impulse_response_fun/t";
 	dataset = sphereFile.openDataSet(data_name);
 	filespace = dataset.getSpace();
@@ -132,7 +139,7 @@ void BodyFileInfo::read_data() {
 	temp = new double[dims[0] * dims[1]];
 	timesteps.resize(dims[0]);
 	dataset.read(temp, H5::PredType::NATIVE_DOUBLE, mspace1, filespace);
-	// put into equil chvector
+	// put into timesteps chvector
 	for (int i = 0; i < dims[0]; i++) {
 		timesteps[i] = temp[i];
 	}
@@ -168,6 +175,14 @@ BodyFileInfo::BodyFileInfo(std::string file, std::string bodyName) {
 *******************************************************************************/
 ChMatrixDynamic<double> BodyFileInfo::get_lin_matrix() const {
 	return lin_matrix;
+}
+
+/*******************************************************************************
+* BodyFileInfo::get_added_mass_matrix()
+* returns the added mass matrix at infinite frequency
+*******************************************************************************/
+ChMatrixDynamic<double> BodyFileInfo::get_added_mass_matrix() const {
+	return inf_freq * rho;
 }
 
 /*******************************************************************************
@@ -568,23 +583,18 @@ void ImpulseResponseForce::SetTorque(std::shared_ptr<ChForce> torque) {
 // -----------------------------------------------------------------------------
 // ChLoadAddedMass
 // -----------------------------------------------------------------------------
-
-// for testing and optimizations
-//bool ChLoadAddedMass::use_inertial_damping_matrix_R = true;   // default true. Can be disabled globally, for testing or optimization
-//bool ChLoadAddedMass::use_inertial_stiffness_matrix_K = true; // default true. Can be disabled globally, for testing or optimization
-//bool ChLoadAddedMass::use_gyroscopic_torque = true;           // default true. Can be disabled globally, for testing or optimization
-
-
 ChLoadAddedMass::ChLoadAddedMass(std::shared_ptr<ChBody> body,  ///< object to apply additional inertia to
-	const ChVector<>& m_offset,      ///< offset of the center of mass, in body coordinate system
-	const double m_mass/*,             ///< added mass [kg]
-	const ChVector<>& m_IXX,         ///< added diag. inertia values Ixx, Iyy, Izz (in body coordinate system, centered in body)
-	const ChVector<>& m_IXY*/)
-	: ChLoadCustom(body), c_m(m_offset), mass(m_mass)
-{
-	//this->SetInertiaXX(m_IXX);
-	//this->SetInertiaXY(m_IXY);
+	const BodyFileInfo& file) : ChLoadCustom(body) {
+	inf_freq = file.get_added_mass_matrix();
 }
+//ChLoadAddedMass::ChLoadAddedMass(std::shared_ptr<ChBody> body,  ///< object to apply additional inertia to
+//	const ChVector<>& m_offset,      ///< offset of the center of mass, in body coordinate system
+//	const double m_mass)             ///< added mass [kg]
+//	: ChLoadCustom(body), c_m(m_offset), mass(m_mass)
+//{
+//	//this->SetInertiaXX(m_IXX);
+//	//this->SetInertiaXY(m_IXY);
+//}
 
 // The inertia tensor functions
 
@@ -623,33 +633,7 @@ ChLoadAddedMass::ChLoadAddedMass(std::shared_ptr<ChBody> body,  ///< object to a
 //	return iner;
 //}
 
-void ChLoadAddedMass::ComputeQ(ChState* state_x, ChStateDelta* state_w) { // state_x is position, state_w is velocity?
-	//auto mbody = std::dynamic_pointer_cast<ChBody>(this->loadable);
-	//if (!mbody->Variables().IsActive())
-	//	return;
-
-	//// fetch speeds/pos/accel as 3d vectors for convenience
-	//ChVector<> v_x = state_w->segment(0, 3); // abs. 
-	//ChVector<> v_w = state_w->segment(3, 3); // local 
-
-	///* // NO ACCELERATION PROPORTIONAL TERM ADDED HERE! Can use LoadIntLoadResidual_Mv if needed.
-	//ChVector<> Ma_x = this->mass * (a_x + chrono::Vcross(a_w, this->c_m));
-	//ChVector<> Ma_w = this->mass * chrono::Vcross(this->c_m, a_x) + this->I * a_w;
-	//*/
-
-	//// Terms of inertial quadratic type (centrifugal, gyroscopic)
-	//ChVector<> quadratic_x;
-	//ChVector<> quadratic_w;
-	//quadratic_x = this->mass * chrono::Vcross(v_w, chrono::Vcross(v_w, this->c_m)); // centrifugal: m*(w X w X c_m)
-	///*if (this->use_gyroscopic_torque)*/if(true)
-	//	quadratic_w = chrono::Vcross(v_w, this->I * v_w); // gyroscopical: w X J*w
-	//else
-	//	quadratic_w = VNULL;
-
-	//load_Q.segment(0, 3) = -(quadratic_x).eigen(); // sign: negative, as Q goes in RHS
-	//load_Q.segment(3, 3) = -(quadratic_w).eigen(); // sign: negative, as Q goes in RHS
-}
-
+void ChLoadAddedMass::ComputeQ(ChState* state_x, ChStateDelta* state_w) { } // state_x is position, state_w is velocity
 
 void ChLoadAddedMass::ComputeJacobian(ChState* state_x,       ///< state position to evaluate jacobians
 	ChStateDelta* state_w,  ///< state speed to evaluate jacobians
@@ -675,17 +659,12 @@ void ChLoadAddedMass::ComputeJacobian(ChState* state_x,       ///< state positio
 	// Analytic expression of inertial load jacobians.
 	// Note signs: positive as they go in LHS. 
 
-	// M mass matrix terms (6x6, split in four 3x3 blocks for convenience)
-	//jacobians->M.setZero();
-	//jacobians->M.block(0, 0, 3, 3).diagonal().setConstant(this->mass);
-	//jacobians->M.block(0, 3, 3, 3) = this->mass * chrono::ChStarMatrix33<>(-this->c_m);
-	//jacobians->M.block(3, 0, 3, 3) = this->mass * chrono::ChStarMatrix33<>(this->c_m);
-	//jacobians->M.block(3, 3, 3, 3) = this->I;
-
 	//set mass matrix here
-	jacobians->M(0, 0) = 71.57346 * 1000;
-	jacobians->M(1, 1) = 71.57342 * 1000;
-	jacobians->M(2, 2) = 130.8768 * 1000;
+	jacobians->M = inf_freq;
+	//jacobians->M.setZero();
+	//jacobians->M(0, 0) = 71.57346 * 1000;
+	//jacobians->M(1, 1) = 71.57342 * 1000;
+	//jacobians->M(2, 2) = 130.8768 * 1000;
 	//jacobians->M(3, 3) = 286.2663 * 1000;
 	//jacobians->M(4, 4) = 286.2663 * 1000;
 	//jacobians->M(5, 5) = 6.817555E-8 * 1000;
@@ -695,21 +674,12 @@ void ChLoadAddedMass::ComputeJacobian(ChState* state_x,       ///< state positio
 	//jacobians->M(0, 4) = 143.1402 * 1000;
 
 	// R gyroscopic damping matrix terms (6x6, split in 3x3 blocks for convenience)
+	// 0 for added mass
 	jacobians->R.setZero();
-	///*if (this->use_inertial_damping_matrix_R)*/if(true) {
-	//	//  Ri = [0, - m*[w~][c~] - m*[([w~]*c)~]  ; 0 , [w~][I] - [([I]*w)~]  ]
-	//	jacobians->R.block(0, 3, 3, 3) = -this->mass * (wtilde * ctilde + ChStarMatrix33<>(wtilde * c_m));
-	//	jacobians->R.block(3, 3, 3, 3) = wtilde * I - ChStarMatrix33<>(I * v_w);
-	//}
 
 	// K inertial stiffness matrix terms (6x6, split in 3x3 blocks for convenience)
+	// 0 for added mass
 	jacobians->K.setZero();
-	///*if (this->use_inertial_stiffness_matrix_K)*/if(true) {
-	//	ChStarMatrix33<> atilde(a_w);  // [a~]
-	//	// Ki_al = [0, -m*[([a~]c)~] -m*[([w~][w~]c)~] ; 0, m*[c~][xpp~] ]
-	//	jacobians->K.block(0, 3, 3, 3) = -this->mass * ChStarMatrix33<>(atilde * c_m) - this->mass * ChStarMatrix33<>(wtilde * (wtilde * c_m));
-	//	jacobians->K.block(3, 3, 3, 3) = this->mass * ctilde * ChStarMatrix33<>(a_x);
-	//}
 }
 
 // The default base implementation in ChLoadCustom could suffice, but here reimplement it in sake of higher speed
@@ -722,10 +692,17 @@ void ChLoadAddedMass::LoadIntLoadResidual_Mv(ChVectorDynamic<>& R, const ChVecto
 		return;
 
 	// fetch w as a contiguous vector
-	ChVector<> a_x = w.segment(loadable->GetSubBlockOffset(0), 3);
-	ChVector<> a_w = w.segment(loadable->GetSubBlockOffset(0) + 3, 3);
+	//ChVector<> a_x = w.segment(loadable->GetSubBlockOffset(0), 3);
+	//ChVector<> a_w = w.segment(loadable->GetSubBlockOffset(0) + 3, 3);
 
 	// R+=c*M*a  
-	R.segment(loadable->GetSubBlockOffset(0), 3) += c * (this->mass * (a_x + chrono::Vcross(a_w, this->c_m))).eigen();
-	R.segment(loadable->GetSubBlockOffset(0) + 3, 3) += c * (this->mass * chrono::Vcross(this->c_m, a_x) + this->I * a_w).eigen();
+	// segment gives the chunk of vector starting at the first argument, and going for as many elements as the second argument...
+	// in this case, segment gets the 3vector starting at the 0th DOF's offset (ie 0)
+	//R.segment(loadable->GetSubBlockOffset(0), 3) += c * (this->mass * (a_x + chrono::Vcross(a_w, this->c_m))).eigen();
+	// in this case, segment gets the 3vector starting at the 0th DOF's + 3 offset (ie 3)
+	//R.segment(loadable->GetSubBlockOffset(0) + 3, 3) += c * (this->mass * chrono::Vcross(this->c_m, a_x) + this->I * a_w).eigen();
+	// since R is a vector, we can probably just do R += C*M*a with no need to separate w into a_x and a_w above
+	R += c * jacobians->M * w;
+	//std::cout << jacobians->M << std::endl << std::endl;
+	// this still works, so that's neat
 }
