@@ -1,4 +1,7 @@
 #include "hydro_forces.h"
+
+// =============================================================================
+// BodyFileInfo Class Definitions
 // =============================================================================
 
 /*******************************************************************************
@@ -264,6 +267,8 @@ std::vector<double> BodyFileInfo::get_times() const {
 }
 
 // =============================================================================
+// ForceTorqueFunc Class Definitions
+// =============================================================================
 
 /*******************************************************************************
 * ForceTorqueFunc constructor
@@ -306,6 +311,8 @@ void ForceTorqueFunc::SetIndex(int i) {
 	index = i;
 }
 
+// =============================================================================
+// LinRestorForce Class Definitions
 // =============================================================================
 
 /*******************************************************************************
@@ -389,6 +396,8 @@ void LinRestorForce::SetTorque(std::shared_ptr<ChForce> torque) {
 }
 
 // =============================================================================
+// BuoyancyForce Class Definitions
+// =============================================================================
 
 /*******************************************************************************
 * BuoyancyForce constructor
@@ -397,7 +406,6 @@ void LinRestorForce::SetTorque(std::shared_ptr<ChForce> torque) {
 BuoyancyForce::BuoyancyForce(BodyFileInfo& file) {
 	fileInfo = file;
 	// get value from file
-	//std::cout << "rho=" << fileInfo.get_rho() << " g=" << fileInfo.get_g() << " V=" << fileInfo.get_disp_vol() << std::endl;
 	bf = fileInfo.get_rho() * fileInfo.get_g() * fileInfo.get_disp_vol();
 	// set function to y = bf
 	fc.Set_yconst(bf);
@@ -417,6 +425,10 @@ BuoyancyForce::BuoyancyForce(BodyFileInfo& file) {
 std::shared_ptr<ChForce> BuoyancyForce::getForce_ptr() {
 	return force_ptr;
 }
+
+// =============================================================================
+// IRF_func Class Definitions
+// =============================================================================
 
 /*******************************************************************************
 * IRF_func default constructor
@@ -457,6 +469,10 @@ void IRF_func::SetBase(ImpulseResponseForce* b) {
 void IRF_func::SetIndex(int i) { 
 	index = i;
 }
+
+// =============================================================================
+// ImpuleseResponseForce Class Definitions
+// =============================================================================
 
 /*******************************************************************************
 * default constructor, only initializes forces and force pointers, use other
@@ -505,7 +521,7 @@ ChVectorN<double, 6> ImpulseResponseForce::convolutionIntegral() {
 		return currentForce;
 	}
 	prevTime = body->GetChTime();
-	int size = 1001;
+	int size = fileInfo.get_K_dims(2);
 	// "shift" everything left 1
 	offset--;
 	if (offset < -1 * size) {
@@ -513,8 +529,9 @@ ChVectorN<double, 6> ImpulseResponseForce::convolutionIntegral() {
 	}
 	int r = 6, c = 6;
 
-	double* timeseries = new double [r*c*size]; // 1001x6x6
-	double* tmp_s = new double [r*size]; // 1001x6
+	double* timeseries = new double [r*c*size];
+	double* tmp_s = new double [r*size]; 
+	// define shortcuts for accessing 1D arrrays as 3D (or 2D) arrays
 #define TIMESERIES(row,col,step) timeseries[(row)*c*size + (col)*size + (step)]
 #define TMP_S(row,step) tmp_s[(row)*size + (step)]
 
@@ -580,120 +597,53 @@ void ImpulseResponseForce::SetTorque(std::shared_ptr<ChForce> torque) {
 	torque->SetF_z(force_ptrs[5]);
 }
 
-// -----------------------------------------------------------------------------
-// ChLoadAddedMass
-// -----------------------------------------------------------------------------
+// =============================================================================
+// ChLoadAddedMass Class Definitions
+// =============================================================================
+
+/*******************************************************************************
+* ChLoadAddedMass constructor
+* initializes body to have load applied to and added mass matrix from h5 file object
+*******************************************************************************/
 ChLoadAddedMass::ChLoadAddedMass(std::shared_ptr<ChBody> body,  ///< object to apply additional inertia to
 	const BodyFileInfo& file) : ChLoadCustom(body) {
-	inf_freq = file.get_added_mass_matrix();
+	inf_freq = file.get_added_mass_matrix(); //TODO switch all uses of BodyFileInfo object to be like this, instead of copying the object each time?
 }
-//ChLoadAddedMass::ChLoadAddedMass(std::shared_ptr<ChBody> body,  ///< object to apply additional inertia to
-//	const ChVector<>& m_offset,      ///< offset of the center of mass, in body coordinate system
-//	const double m_mass)             ///< added mass [kg]
-//	: ChLoadCustom(body), c_m(m_offset), mass(m_mass)
-//{
-//	//this->SetInertiaXX(m_IXX);
-//	//this->SetInertiaXY(m_IXY);
-//}
 
-// The inertia tensor functions
-
-//void ChLoadAddedMass::SetInertia(const ChMatrix33<>& newXInertia) {
-//	I = newXInertia;
-//}
-
-//void ChLoadAddedMass::SetInertiaXX(const ChVector<>& iner) {
-//	I(0, 0) = iner.x();
-//	I(1, 1) = iner.y();
-//	I(2, 2) = iner.z();
-//}
-
-//void ChLoadAddedMass::SetInertiaXY(const ChVector<>& iner) {
-//	I(0, 1) = iner.x();
-//	I(0, 2) = iner.y();
-//	I(1, 2) = iner.z();
-//	I(1, 0) = iner.x();
-//	I(2, 0) = iner.y();
-//	I(2, 1) = iner.z();
-//}
-
-//ChVector<> ChLoadAddedMass::GetInertiaXX() const {
-//	ChVector<> iner;
-//	iner.x() = I(0, 0);
-//	iner.y() = I(1, 1);
-//	iner.z() = I(2, 2);
-//	return iner;
-//}
-
-//ChVector<> ChLoadAddedMass::GetInertiaXY() const {
-//	ChVector<> iner;
-//	iner.x() = I(0, 1);
-//	iner.y() = I(0, 2);
-//	iner.z() = I(1, 2);
-//	return iner;
-//}
-
-void ChLoadAddedMass::ComputeQ(ChState* state_x, ChStateDelta* state_w) { } // state_x is position, state_w is velocity
-
+/*******************************************************************************
+* ChLoadAddedMass::ComputeJacobian()
+* Computes Jacobian for load, in this case just the mass matrix is initialized
+* as the added mass matrix
+*******************************************************************************/
 void ChLoadAddedMass::ComputeJacobian(ChState* state_x,       ///< state position to evaluate jacobians
 	ChStateDelta* state_w,  ///< state speed to evaluate jacobians
 	ChMatrixRef mK,         ///< result dQ/dx
 	ChMatrixRef mR,         ///< result dQ/dv
 	ChMatrixRef mM          ///< result dQ/da
 ) {
-	// fetch speeds as 3d vectors for convenience
-	//ChVector<> v_x = state_w->segment(0, 3); // abs. 
-	//ChVector<> v_w = state_w->segment(3, 3); // local 
-	// (note: accelerations should be fetched from a "state_acc" like we did for speeds with state_w, 
-	// but acc. are not available in ComputeQ inputs... maybe in future we should change the ChLoad 
-	// class to support also this. For this special case, it works also with the following trick, but 
-	// would fail the default numerical differentiation in ComputeJacobian() for the M=dQ/da matrix, so 
-	// we override ComputeJacobian and provide the analytical jacobians)
-	//auto mbody = std::dynamic_pointer_cast<ChBody>(this->loadable);
-	//ChVector<> a_x = mbody->GetA().transpose() * mbody->GetPos_dtdt(); // local 
-	//ChVector<> a_w = mbody->GetWacc_loc(); // local 
-
-	//ChStarMatrix33<> wtilde(v_w);  // [w~]
-	//ChStarMatrix33<> ctilde(c_m);  // [c~]
-
-	// Analytic expression of inertial load jacobians.
-	// Note signs: positive as they go in LHS. 
-
 	//set mass matrix here
 	jacobians->M = inf_freq;
-	//jacobians->M.setZero();
-	//jacobians->M(0, 0) = 71.57346 * 1000;
-	//jacobians->M(1, 1) = 71.57342 * 1000;
-	//jacobians->M(2, 2) = 130.8768 * 1000;
-	//jacobians->M(3, 3) = 286.2663 * 1000;
-	//jacobians->M(4, 4) = 286.2663 * 1000;
-	//jacobians->M(5, 5) = 6.817555E-8 * 1000;
-	//jacobians->M(3, 1) = -143.14 * 1000;
-	//jacobians->M(4, 0) = 143.1401 * 1000;
-	//jacobians->M(1, 3) = -143.1401 * 1000;
-	//jacobians->M(0, 4) = 143.1402 * 1000;
 
-	// R gyroscopic damping matrix terms (6x6, split in 3x3 blocks for convenience)
+	// R gyroscopic damping matrix terms (6x6)
 	// 0 for added mass
 	jacobians->R.setZero();
 
-	// K inertial stiffness matrix terms (6x6, split in 3x3 blocks for convenience)
+	// K inertial stiffness matrix terms (6x6)
 	// 0 for added mass
 	jacobians->K.setZero();
 }
 
-// The default base implementation in ChLoadCustom could suffice, but here reimplement it in sake of higher speed
-// because we can exploiti the sparsity of the formulas.
+/*******************************************************************************
+* ChLoadAddedMass::LoadIntLoadResidual_Mv()
+* Computes LoadIntLoadResidual_Mv for vector w, const c, and vector R
+* Note R here is vector, and is not R gyroscopic damping matrix from ComputeJacobian
+*******************************************************************************/
 void ChLoadAddedMass::LoadIntLoadResidual_Mv(ChVectorDynamic<>& R, const ChVectorDynamic<>& w, const double c) {
 	if (!this->jacobians)
 		return;
 
 	if (!loadable->IsSubBlockActive(0))
 		return;
-
-	// fetch w as a contiguous vector
-	//ChVector<> a_x = w.segment(loadable->GetSubBlockOffset(0), 3);
-	//ChVector<> a_w = w.segment(loadable->GetSubBlockOffset(0) + 3, 3);
 
 	// R+=c*M*a  
 	// segment gives the chunk of vector starting at the first argument, and going for as many elements as the second argument...
@@ -703,6 +653,4 @@ void ChLoadAddedMass::LoadIntLoadResidual_Mv(ChVectorDynamic<>& R, const ChVecto
 	//R.segment(loadable->GetSubBlockOffset(0) + 3, 3) += c * (this->mass * chrono::Vcross(this->c_m, a_x) + this->I * a_w).eigen();
 	// since R is a vector, we can probably just do R += C*M*a with no need to separate w into a_x and a_w above
 	R += c * jacobians->M * w;
-	//std::cout << jacobians->M << std::endl << std::endl;
-	// this still works, so that's neat
 }

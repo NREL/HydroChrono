@@ -12,8 +12,6 @@
 #include "chrono_irrlicht/ChIrrApp.h"
 #include "chrono_irrlicht/ChIrrMeshTools.h"
 
-//#include "chrono/fea/ChElementAddedMass.h"
-#include "chrono/fea/ChNodeFEAxyz.h"
 #include "chrono/fea/ChMeshFileLoader.h"
 #include "chrono/physics/ChForce.h"
 #include "chrono/physics/ChLoadContainer.h"
@@ -72,7 +70,7 @@ public:
 	void SetBase(LinRestorForce* b);
 	void SetIndex(int i);
 };
-
+// =============================================================================
 class LinRestorForce {
 private:
 	std::shared_ptr<ChBody> bobber;
@@ -99,7 +97,6 @@ public:
 	void SetTorque(std::shared_ptr<ChForce> torque);
 };
 // =============================================================================
-
 class BuoyancyForce {
 private:
 	BodyFileInfo fileInfo;
@@ -113,9 +110,7 @@ public:
 	BuoyancyForce(BodyFileInfo& info);
 	std::shared_ptr<ChForce> getForce_ptr();
 };
-
 // =============================================================================
-
 class ImpulseResponseForce;
 class IRF_func : public ChFunction {
 private:
@@ -129,7 +124,7 @@ public:
 	void SetBase(ImpulseResponseForce* b);
 	void SetIndex(int i);
 };
-
+// =============================================================================
 class ImpulseResponseForce {
 private:
 	BodyFileInfo fileInfo;
@@ -156,17 +151,11 @@ public:
 	void SetForce(std::shared_ptr<ChForce> force);
 	void SetTorque(std::shared_ptr<ChForce> torque);
 };
-
+// =============================================================================
 class ChLoadAddedMass : public ChLoadCustom {
 public:
 	ChLoadAddedMass(std::shared_ptr<ChBody> body,  ///< object to apply additional inertia to
 		const BodyFileInfo& file );                ///< h5 file to initialize added mass with
-	//ChLoadAddedMass(std::shared_ptr<ChBody> body,  ///< object to apply additional inertia to
-	//	const ChVector<>& m_offset,     ///< offset of the center of mass, in body coordinate system
-	//	const double m_mass/*,            ///< added mass [kg]
-	//	const ChVector<>& m_IXX = VNULL,  ///< added diag. inertia values Ixx, Iyy, Izz (in body coordinate system, centered in body)
-	//	const ChVector<>& m_IXY = VNULL */  ///< added off.diag. inertia values Ixy, Ixz, Iyz including the "-"sign (in body coordinate system, centered in body)
-	//);
 
 	/// "Virtual" copy constructor (covariant return type).
 	virtual ChLoadAddedMass* Clone() const override { return new ChLoadAddedMass(*this); }
@@ -178,7 +167,7 @@ public:
 	/// The M*a term is not added: to this end one could use LoadIntLoadResidual_Mv afterward.
 	virtual void ComputeQ(ChState* state_x,      ///< state position to evaluate Q
 		ChStateDelta* state_w  ///< state speed to evaluate Q
-	) override;
+	) override {}
 
 	/// For efficiency reasons, do not let the parent class do automatic differentiation
 	/// to compute the R, K matrices. Use analytic expressions instead. For example, R is 
@@ -195,9 +184,6 @@ public:
 		const ChVectorDynamic<>& w,     ///< the w vector
 		const double c) override;       ///< a scaling factor
 private:
-	//ChVector<> c_m;       ///< offset of center of mass
-	//double  mass;         ///< added mass
-	//ChMatrix33<> I;
 	ChMatrixDynamic<double> inf_freq;       ///< added mass at infinite frequency in global coordinates
 
 	virtual bool IsStiff() override { return true; } // this to force the use of the inertial M, R and K matrices

@@ -76,7 +76,6 @@ int main(int argc, char* argv[]) {
 	system.Set_G_acc(ChVector<>(0, 0, -9.81));
 
 	// Create the Irrlicht application for visualizing
-	// names of some functions changed feb 7, 2022 (AddTypicalLogo -> AddLogo, etc)
 	ChIrrApp application(&system, L"Sphere Decay Test", core::dimension2d<u32>(800, 600), VerticalDir::Z);
 	application.AddLogo();
 	application.AddSkyBox();
@@ -94,11 +93,12 @@ int main(int argc, char* argv[]) {
 		0                                                                                         // swept sphere radius
 		);
 	
-	// old sphere stuff (not mesh)
+	// old sphere stuff (for when you're not using mesh above)
 	//std::shared_ptr<ChBody> body = chrono_types::make_shared<ChBodyEasySphere>(5, 1);
 	//auto sph = chrono_types::make_shared<ChSphereShape>();
 	//body->AddAsset(sph);
 
+	// set up body initial conditions
 	system.Add(body);
 	body->SetPos(ChVector<>(0, 0, -1));
 	body->SetMass(261.8e3);
@@ -107,10 +107,11 @@ int main(int argc, char* argv[]) {
 	col_2->SetColor(ChColor(0, 0, 0.6f));
 	body->AddAsset(col_2);
 
-	// testing adding external forces to the body
-	BodyFileInfo sphere_file_info("../../test_for_chrono/sphere.h5", "body1");
-	LinRestorForce lin_restor_force_2(sphere_file_info, body);
-	ImpulseResponseForce irf(sphere_file_info, body);
+	// testing adding hydro forces to the body-----------------------------------------------------------------
+	BodyFileInfo sphere_file_info("../../test_for_chrono/sphere.h5", "body1");     /// < object to read h5 file info
+	LinRestorForce lin_restor_force_2(sphere_file_info, body);                     /// < object for linear restoring force
+	ImpulseResponseForce irf(sphere_file_info, body);                              /// < object for impulse restoring force
+	
 	// declare some forces to be initialized in lin_restor_force_2 to be applied to to body later
 	auto force = chrono_types::make_shared<ChForce>();
 	auto torque = chrono_types::make_shared<ChForce>();
@@ -134,13 +135,12 @@ int main(int argc, char* argv[]) {
 	auto fb = chrono_types::make_shared<BuoyancyForce>(sphere_file_info);
 	body->AddForce(fb->getForce_ptr());
 
+	// set up added mass as load
 	auto my_loadcontainer = chrono_types::make_shared< ChLoadContainer>();
 	system.Add(my_loadcontainer);
-	// auto my_loadbodyinertia = chrono_types::make_shared<ChLoadAddedMass>(body, sphere_file_info);
-	//ChVector<> m_offset(0, 0, 0); ///< offset of the center of mass, in body coordinate system
-	//double m_mass = 130.8768e3; ///< added mass [kg]
 	auto my_loadbodyinertia = chrono_types::make_shared<ChLoadAddedMass>(body, sphere_file_info);
 	my_loadcontainer->Add(my_loadbodyinertia);
+	// end hydro forces ----------------------------------------------------------------------------------
 
 	// update irrlicht app with body info
 	application.AssetBindAll();
@@ -155,35 +155,30 @@ int main(int argc, char* argv[]) {
 	auto gmres_solver = chrono_types::make_shared<ChSolverMINRES>();  // change to mkl or minres?
 	gmres_solver->SetMaxIterations(300);
 	system.SetSolver(gmres_solver);
-	double timestep = 0.015; // also sets the timesteps in system it seems
+	double timestep = 0.015; // also sets the timesteps in chrono system
 	application.SetTimestep(timestep);
 
 	// set up output file for body position each step
-	std::ofstream zpos("outfile/output.txt", std::ofstream::out);
+	std::string of = "outfile/output.txt";                    /// < put name of your output file here
+	std::ofstream zpos(of, std::ofstream::out);
+	if (!zpos.is_open()) { 
+		std::cout << "Error opening file \"" + of + "\". Please make sure this file path exists then try again\n";
+		return -1;
+	}
 	zpos.precision(10);
 	zpos.width(12);
+	zpos << "#Time\tBody Pos\tBody vel (heave)\tforce (heave)\n";
 
 	// Simulation loop
 	int frame = 0;
-
-	std::cout << "Body mass=" << body->GetMass() << std::endl;
-	zpos << "#Time\tBody Pos\tBody vel (heave)\tforce (heave)\n";
-	//system.EnableSolverMatrixWrite(true, "blah");
 	while (application.GetDevice()->run() && system.GetChTime() <= 25) {
 		application.BeginScene();
 		application.DrawAll();
-		/*if (buttonPressed)*/if(true) {
-			if (frame == 8) {
-				ChSparseMatrix M;
-				system.GetMassMatrix(&M);
-				std::cout << "initial mass matrix\n" << M << std::endl;
-				system.DumpSystemMatrices(true, true, true, true, "C:\\Users\\ZQUINTON\\code\\test_for_chrono_build\\Release\\outfile\\output");
-			}
+		if (buttonPressed)/*if(true)*/ {
 			zpos << system.GetChTime() << "\t" << body->GetPos().z() << "\t" << body->GetPos_dt().z() << "\t" << body->GetAppliedForce().z() << "\n";
 			application.DoStep();
 			frame++;
 		}
-
 		application.EndScene();
 	}
 	zpos.close();
