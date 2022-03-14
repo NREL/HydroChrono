@@ -7,7 +7,7 @@
 	* Irrlicht Engine
 	* CMake
 	* GIT client
-* H5Cpp header file from HDF5Group [github link](https://github.com/steven-varga/h5cpp)
+* H5Cpp header file from HDF5Group [Download Link](https://portal.hdfgroup.org/display/support/Downloads) [Instructions](https://portal.hdfgroup.org/display/support/Building+HDF5+with+CMake#BuildingHDF5withCMake-quickins)
 * (optional) Gnuplot [Gnuplot Home](http://www.gnuplot.info/) or other plotting software
 
 ## Building Demo
