@@ -328,6 +328,8 @@ LinRestorForce::LinRestorForce() : forces{ {this, 0}, {this, 1}, {this, 2}, {thi
 		// default deletion logic to do nothing
 		// Also! don't need to worry about deleting this later, because stack arrays are always deleted automatically
 	}
+	placeholder = chrono_types::make_shared<ChForce>();
+	placeholdertorque = chrono_types::make_shared<ChForce>();
 }
 
 /*******************************************************************************
@@ -379,20 +381,23 @@ double LinRestorForce::coordinateFunc(int i) {
 * LinRestorForce::SetForce
 * used to initialize components of force (external ChForce pointer)
 *******************************************************************************/
-void LinRestorForce::SetForce(std::shared_ptr<ChForce> force) {
-	force->SetF_x(force_ptrs[0]);
-	force->SetF_y(force_ptrs[1]);
-	force->SetF_z(force_ptrs[2]);
+void LinRestorForce::SetForce() {
+	placeholder->SetF_x(force_ptrs[0]);
+	placeholder->SetF_y(force_ptrs[1]);
+	placeholder->SetF_z(force_ptrs[2]);
+	bobber->AddForce(placeholder);
 }
 
 /*******************************************************************************
 * LinRestorForce::SetTorque
 * used to initialize components of torque (external ChForce pointer with TORQUE flag set)
 *******************************************************************************/
-void LinRestorForce::SetTorque(std::shared_ptr<ChForce> torque) {
-	torque->SetF_x(force_ptrs[3]);
-	torque->SetF_y(force_ptrs[4]);
-	torque->SetF_z(force_ptrs[5]);
+void LinRestorForce::SetTorque() {
+	placeholdertorque->SetF_x(force_ptrs[3]);
+	placeholdertorque->SetF_y(force_ptrs[4]);
+	placeholdertorque->SetF_z(force_ptrs[5]);
+	placeholdertorque->SetMode(ChForce::ForceType::TORQUE);
+	bobber->AddForce(placeholdertorque);
 }
 
 // =============================================================================
@@ -450,7 +455,6 @@ IRF_func* IRF_func::Clone() const {
 * overloaded function from Chrono::ChFunction to update force each timestep
 *******************************************************************************/
 double 	IRF_func::Get_y(double x) const {
-	//std::cout << base->body->GetChTime() << "\t";
 	return base->coordinateFunc(index);
 }
 
@@ -487,6 +491,8 @@ ImpulseResponseForce::ImpulseResponseForce() : forces{ {this, 0}, {this, 1}, {th
 		// default deletion logic to do nothing
 		// Also! don't need to worry about deleting this later, because stack arrays are always deleted automatically
 	}
+	placeholder = chrono_types::make_shared<ChForce>();
+	placeholdertorque = chrono_types::make_shared<ChForce>();
 }
 
 /*******************************************************************************
@@ -581,20 +587,23 @@ double ImpulseResponseForce::coordinateFunc(int i) {
 * ImpulseResponseForce::SetForce()
 * initializes external pointer force with ChFunction components
 *******************************************************************************/
-void ImpulseResponseForce::SetForce(std::shared_ptr<ChForce> force) {
-	force->SetF_x(force_ptrs[0]);
-	force->SetF_y(force_ptrs[1]);
-	force->SetF_z(force_ptrs[2]);
+void ImpulseResponseForce::SetForce() {
+	placeholder->SetF_x(force_ptrs[0]);
+	placeholder->SetF_y(force_ptrs[1]);
+	placeholder->SetF_z(force_ptrs[2]);
+	body->AddForce(placeholder);
 }
 
 /*******************************************************************************
 * ImpulseResponseForce::SetTorque()
 * initializes external pointer torque with ChFunction components
 *******************************************************************************/
-void ImpulseResponseForce::SetTorque(std::shared_ptr<ChForce> torque) {
-	torque->SetF_x(force_ptrs[3]);
-	torque->SetF_y(force_ptrs[4]);
-	torque->SetF_z(force_ptrs[5]);
+void ImpulseResponseForce::SetTorque() {
+	placeholdertorque->SetF_x(force_ptrs[3]);
+	placeholdertorque->SetF_y(force_ptrs[4]);
+	placeholdertorque->SetF_z(force_ptrs[5]);
+	placeholdertorque->SetMode(ChForce::ForceType::TORQUE);
+	body->AddForce(placeholdertorque);
 }
 
 // =============================================================================
@@ -653,4 +662,40 @@ void ChLoadAddedMass::LoadIntLoadResidual_Mv(ChVectorDynamic<>& R, const ChVecto
 	//R.segment(loadable->GetSubBlockOffset(0) + 3, 3) += c * (this->mass * chrono::Vcross(this->c_m, a_x) + this->I * a_w).eigen();
 	// since R is a vector, we can probably just do R += C*M*a with no need to separate w into a_x and a_w above
 	R += c * jacobians->M * w;
+}
+
+// =============================================================================
+// LoadAllHydroForces Class Definitions
+// =============================================================================
+/*******************************************************************************
+* 
+*******************************************************************************/
+LoadAllHydroForces::LoadAllHydroForces(std::shared_ptr<ChBody> object, std::string file) 
+	: file_info(file, "body1"), lin_restor_force_2(file_info, object), irf(file_info, object) {
+	//force = chrono_types::make_shared<ChForce>();
+	//force2 = chrono_types::make_shared<ChForce>();
+	//torque = chrono_types::make_shared<ChForce>();
+	//torque2 = chrono_types::make_shared<ChForce>();
+
+	fb = chrono_types::make_shared<BuoyancyForce>(file_info);
+	my_loadcontainer = chrono_types::make_shared<ChLoadContainer>();
+	my_loadbodyinertia = chrono_types::make_shared<ChLoadAddedMass>(object, file_info);
+
+	// set torque flag for torque
+	// initialize force and torque with member functions
+	//torque->SetMode(ChForce::ForceType::TORQUE);
+	//torque2->SetMode(ChForce::ForceType::TORQUE);
+	
+	lin_restor_force_2.SetForce();
+	lin_restor_force_2.SetTorque();
+	irf.SetForce();
+	irf.SetTorque();
+
+	//object->AddForce(force);
+	//object->AddForce(torque);
+	//object->AddForce(force2);
+	//object->AddForce(torque2);
+	object->AddForce(fb->getForce_ptr());
+	object->GetSystem()->Add(my_loadcontainer);
+	my_loadcontainer->Add(my_loadbodyinertia);
 }

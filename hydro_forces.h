@@ -80,7 +80,8 @@ private:
 	std::shared_ptr<ForceTorqueFunc> force_ptrs[6];
 	ChVectorN<double, 6> currentForce;
 	double prevTime;
-
+	std::shared_ptr<ChForce> placeholder;
+	std::shared_ptr<ChForce> placeholdertorque;
 public:
 	LinRestorForce();
 	LinRestorForce(BodyFileInfo& lin, std::shared_ptr<ChBody> object);
@@ -93,8 +94,8 @@ public:
 	ChVectorN<double, 6> matrixMult();
 
 	double coordinateFunc(int i);
-	void SetForce(std::shared_ptr<ChForce> force);
-	void SetTorque(std::shared_ptr<ChForce> torque);
+	void SetForce();
+	void SetTorque();
 };
 // =============================================================================
 class BuoyancyForce {
@@ -136,7 +137,8 @@ private:
 	std::shared_ptr<IRF_func> force_ptrs[6];
 	int offset;
 	double prevTime;
-
+	std::shared_ptr<ChForce> placeholder;
+	std::shared_ptr<ChForce> placeholdertorque;
 public:
 	ImpulseResponseForce();
 	ImpulseResponseForce(BodyFileInfo& file, std::shared_ptr<ChBody> object);
@@ -148,8 +150,8 @@ public:
 	ChVectorN<double, 6> convolutionIntegral(); 
 
 	double coordinateFunc(int i);
-	void SetForce(std::shared_ptr<ChForce> force);
-	void SetTorque(std::shared_ptr<ChForce> torque);
+	void SetForce();
+	void SetTorque();
 };
 // =============================================================================
 class ChLoadAddedMass : public ChLoadCustom {
@@ -188,4 +190,22 @@ private:
 
 	virtual bool IsStiff() override { return true; } // this to force the use of the inertial M, R and K matrices
 
+};
+// =============================================================================
+class LoadAllHydroForces {
+private:
+	BodyFileInfo file_info;     /// < object to read h5 file info
+	LinRestorForce lin_restor_force_2;                     /// < object for linear restoring force
+	ImpulseResponseForce irf;                              /// < object for impulse restoring force
+
+	// declare some forces to be initialized in lin_restor_force_2 to be applied to to body later
+	//std::shared_ptr<ChForce> force;
+	//std::shared_ptr<ChForce> torque;
+	//std::shared_ptr<ChForce> force2;
+	//std::shared_ptr<ChForce> torque2;
+	std::shared_ptr<BuoyancyForce> fb;
+	std::shared_ptr<ChLoadContainer> my_loadcontainer;
+	std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia;
+public:
+	LoadAllHydroForces(std::shared_ptr<ChBody> object, std::string file);
 };

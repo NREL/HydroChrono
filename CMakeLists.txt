@@ -136,6 +136,7 @@ endif()
 #--------------------------------------------------------------
 
 add_executable(sphere_decay_demo "sphere_decay_demo.cpp" "hydro_forces.cpp" "hydro_forces.h")
+add_executable(sphere_decay_no_viz "sphere_decay_no_viz.cpp" "hydro_forces.cpp" "hydro_forces.h")
 
 #--------------------------------------------------------------
 # Set properties for your executable target
@@ -151,11 +152,17 @@ set_target_properties(sphere_decay_demo PROPERTIES
 	    COMPILE_DEFINITIONS "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
 	    LINK_FLAGS "${CHRONO_LINKER_FLAGS}")
 
+set_target_properties(sphere_decay_no_viz PROPERTIES 
+	    COMPILE_FLAGS "${CHRONO_CXX_FLAGS} ${EXTRA_COMPILE_FLAGS}"
+	    COMPILE_DEFINITIONS "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
+	    LINK_FLAGS "${CHRONO_LINKER_FLAGS}")
+
 #--------------------------------------------------------------
 # Link to Chrono libraries and dependency libraries
 #--------------------------------------------------------------
 
 target_link_libraries(sphere_decay_demo ${CHRONO_LIBRARIES} ${LINK_LIBS})
+target_link_libraries(sphere_decay_no_viz ${CHRONO_LIBRARIES} ${LINK_LIBS})
 
 #--------------------------------------------------------------
 # === 4 (OPTIONAL) ===
