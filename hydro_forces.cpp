@@ -355,7 +355,7 @@ ChVectorN<double, 6> LinRestorForce::matrixMult() {
 		return currentForce;
 	}
 	prevTime = bobber->GetChTime();
-	currentForce << bobber->GetPos().eigen(), bobber->GetRot().Q_to_Euler123().eigen();
+	currentForce << bobber->GetPos().eigen(), bobber->GetWvel_par(); //GetRot().Q_to_Euler123().eigen();
 	currentForce = equil - currentForce;
 	currentForce = fileInfo.get_lin_matrix() * currentForce;
 	return currentForce;
@@ -544,7 +544,7 @@ ChVectorN<double, 6> ImpulseResponseForce::convolutionIntegral() {
 	// set last entry as velocity
 	for (int i = 0; i < 3; i++) { 
 		velHistory[(((size + offset) % size) + size) % size][i] = body->GetPos_dt()[i];
-		velHistory[(((size + offset) % size) + size) % size][i + 3] = body->GetRot_dt().Q_to_Euler123()[i]; 
+		velHistory[(((size + offset) % size) + size) % size][i + 3] = body->GetWvel_par(); //GetRot_dt().Q_to_Euler123()[i]; 
 	}
 	int vi;
 	for (int row = 0; row < 6; row++) {
