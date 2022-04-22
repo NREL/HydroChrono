@@ -12,7 +12,7 @@
 
 ## Building Demo
 1. Install above requirements, and build Chrono
-2. Configure and generate CMake, specifying Chrono_DIR as Chrono Build location (`../chrono_build/cmake`) and HDF5_DIR as (`../CMake-hdf5-1.10.8/CMake-hdf5-1.10.8/build/HDF5-1.10.8-win64/HDF5-1.10.8-win64/share/cmake`)
+2. Configure and generate CMake, specifying Chrono_DIR as Chrono Build location (`../chrono_build/cmake`) and HDF5_DIR as (`../CMake-hdf5-1.10.8/CMake-hdf5-1.10.8/build/HDF5-1.10.8-win64/share/cmake`)
 3. Build `test_for_chrono` in adjacent file `test_for_chrono_build`
 4. Copy `chrono_build/bin/data` file into `test_for_chrono_build/data`
 5. Navigate to `test_for_chrono_build/Release` (or Debug) and run executables (Important note: may need to set up output files `../test_for_chrono_build/Release/outfile/output.txt`)
