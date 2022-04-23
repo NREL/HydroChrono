@@ -28,8 +28,18 @@ class BodyFileInfo {
 private:
 	ChMatrixDynamic<double> lin_matrix;
 	ChMatrixDynamic<double> inf_freq;
-	double* K_matrix;
-	hsize_t K_dims[3];
+	double* rirf_matrix;
+	hsize_t rirf_dims[3];
+	double* radiation_damping_matrix;
+	hsize_t radiation_damping_dims[3];
+	double* excitation_mag_matrix;
+	hsize_t excitation_mag_dims[3];
+	double* excitation_phase_matrix;
+	hsize_t excitation_phase_dims[3];
+	double* excitation_re_matrix;
+	hsize_t excitation_re_dims[3];
+	double* excitation_im_matrix;
+	hsize_t excitation_im_dims[3];
 	ChVector<double> cg;
 	ChVector<double> cb;
 	std::vector<double> timesteps;
@@ -39,7 +49,7 @@ private:
 	std::string h5_file_name;
 	std::string bodyNum;
 	void read_data(); 
-
+	
 public:
 	BodyFileInfo();
 	BodyFileInfo(std::string file, std::string bodyName);
@@ -52,7 +62,7 @@ public:
 	double get_g() const;
 	double get_disp_vol() const;
 	double get_impulse_resp(int i, int n, int m) const;
-	int get_K_dims(int i) const;
+	int get_rirf_dims(int i) const;
 	double get_delta_t() const;
 	std::vector<double> get_times() const;
 };

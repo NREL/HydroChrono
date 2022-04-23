@@ -124,13 +124,13 @@ void BodyFileInfo::read_data() {
 	data_name = bodyNum + "/hydro_coeffs/radiation_damping/impulse_response_fun/K";
 	dataset = sphereFile.openDataSet(data_name);
 	filespace = dataset.getSpace();
-	int rank3 = filespace.getSimpleExtentDims(K_dims);
+	int rank3 = filespace.getSimpleExtentDims(rirf_dims);
 	// read file into data_out 2d array
-	H5::DataSpace mspace3(rank3, K_dims);
-	// K_dims[0] is number of rows, K_dims[1] is number of columns, K_dims[2] is number of matrices
-	K_matrix = new double[K_dims[0] * K_dims[1] * K_dims[2]];
+	H5::DataSpace mspace3(rank3, rirf_dims);
+	// rirf_dims[0] is number of rows, rirf_dims[1] is number of columns, rirf_dims[2] is number of matrices
+	rirf_matrix = new double[rirf_dims[0] * rirf_dims[1] * rirf_dims[2]];
 	// read file info into data_out, a 2d array
-	dataset.read(K_matrix, H5::PredType::NATIVE_DOUBLE, mspace3, filespace);
+	dataset.read(rirf_matrix, H5::PredType::NATIVE_DOUBLE, mspace3, filespace);
 	dataset.close();
 
 	// read timesteps vector
@@ -146,9 +146,73 @@ void BodyFileInfo::read_data() {
 	for (int i = 0; i < dims[0]; i++) {
 		timesteps[i] = temp[i];
 	}
-
 	dataset.close();
 	delete[] temp;
+
+	// read B(w)
+	data_name = bodyNum + "/hydro_coeffs/radiation_damping/all";
+	dataset = sphereFile.openDataSet(data_name);
+	filespace = dataset.getSpace();
+	rank3 = filespace.getSimpleExtentDims(radiation_damping_dims);
+	// read file into data_out 2d array
+	H5::DataSpace mspaceB(rank3, radiation_damping_dims);
+	// radiation_damping_dims[0] is number of rows, radiation_damping_dims[1] is number of columns, radiation_damping_dims[2] is number of matrices
+	radiation_damping_matrix = new double[radiation_damping_dims[0] * radiation_damping_dims[1] * radiation_damping_dims[2]];
+	// read file info into data_out, a 2d array
+	dataset.read(radiation_damping_matrix, H5::PredType::NATIVE_DOUBLE, mspaceB, filespace);
+	dataset.close();
+
+	// read excitation force coefficients - magnitude
+	data_name = bodyNum + "/hydro_coeffs/excitation/mag";
+	dataset = sphereFile.openDataSet(data_name);
+	filespace = dataset.getSpace();
+	rank3 = filespace.getSimpleExtentDims(excitation_mag_dims);
+	// read file into data_out 2d array
+	H5::DataSpace mspaceExMag(rank3, excitation_mag_dims);
+	//// excitation_mag_dims[0] is number of rows, excitation_mag_dims[1] is number of columns, excitation_mag_dims[2] is number of matrices
+	excitation_mag_matrix = new double[excitation_mag_dims[0] * excitation_mag_dims[1] * excitation_mag_dims[2]];
+	//// read file info into data_out, a 2d array
+	dataset.read(excitation_mag_matrix, H5::PredType::NATIVE_DOUBLE, mspaceExMag, filespace);
+	dataset.close();
+
+	// read excitation force coefficients - phase
+	data_name = bodyNum + "/hydro_coeffs/excitation/phase";
+	dataset = sphereFile.openDataSet(data_name);
+	filespace = dataset.getSpace();
+	rank3 = filespace.getSimpleExtentDims(excitation_phase_dims);
+	// read file into data_out 2d array
+	H5::DataSpace mspaceExPhase(rank3, excitation_phase_dims);
+	//// excitation_phase_dims[0] is number of rows, excitation_phase_dims[1] is number of columns, excitation_phase_dims[2] is number of matrices
+	excitation_phase_matrix = new double[excitation_phase_dims[0] * excitation_phase_dims[1] * excitation_phase_dims[2]];
+	//// read file info into data_out, a 2d array
+	dataset.read(excitation_phase_matrix, H5::PredType::NATIVE_DOUBLE, mspaceExPhase, filespace);
+	dataset.close();
+
+	// read excitation force coefficients - real
+	data_name = bodyNum + "/hydro_coeffs/excitation/re";
+	dataset = sphereFile.openDataSet(data_name);
+	filespace = dataset.getSpace();
+	rank3 = filespace.getSimpleExtentDims(excitation_re_dims);
+	// read file into data_out 2d array
+	H5::DataSpace mspaceExRe(rank3, excitation_re_dims);
+	//// excitation_phase_dims[0] is number of rows, excitation_phase_dims[1] is number of columns, excitation_phase_dims[2] is number of matrices
+	excitation_re_matrix = new double[excitation_re_dims[0] * excitation_re_dims[1] * excitation_re_dims[2]];
+	//// read file info into data_out, a 2d array
+	dataset.read(excitation_re_matrix, H5::PredType::NATIVE_DOUBLE, mspaceExRe, filespace);
+	dataset.close();
+
+	// read excitation force coefficients - im
+	data_name = bodyNum + "/hydro_coeffs/excitation/im";
+	dataset = sphereFile.openDataSet(data_name);
+	filespace = dataset.getSpace();
+	rank3 = filespace.getSimpleExtentDims(excitation_im_dims);
+	// read file into data_out 2d array
+	H5::DataSpace mspaceExIm(rank3, excitation_im_dims);
+	//// excitation_phase_dims[0] is number of rows, excitation_phase_dims[1] is number of columns, excitation_phase_dims[2] is number of matrices
+	excitation_im_matrix = new double[excitation_im_dims[0] * excitation_im_dims[1] * excitation_im_dims[2]];
+	//// read file info into data_out, a 2d array
+	dataset.read(excitation_im_matrix, H5::PredType::NATIVE_DOUBLE, mspaceExIm, filespace);
+	dataset.close();
 
 	sphereFile.close();
 }
@@ -156,7 +220,7 @@ void BodyFileInfo::read_data() {
 BodyFileInfo::BodyFileInfo() {}
 
 BodyFileInfo::~BodyFileInfo() {
-	delete[] K_matrix;
+	delete[] rirf_matrix;
 }
 
 /*******************************************************************************
@@ -233,22 +297,22 @@ double BodyFileInfo::get_disp_vol() const {
 * returns impulse response coeff for row m, column n, step s
 *******************************************************************************/
 double BodyFileInfo::get_impulse_resp(int m, int n, int s) const {
-	int index = s + K_dims[2] * (n + m * K_dims[1]);
-	if (index < 0 || index >= K_dims[0] * K_dims[1] * K_dims[2]) {
+	int index = s + rirf_dims[2] * (n + m * rirf_dims[1]);
+	if (index < 0 || index >= rirf_dims[0] * rirf_dims[1] * rirf_dims[2]) {
 		std::cout << "out of bounds IRF\n";
 		return 0;
 	}
 	else {
-		return K_matrix[index] * get_rho(); // scale radiation force by rho
+		return rirf_matrix[index] * get_rho(); // scale radiation force by rho
 	}
 }
 
 /*******************************************************************************
-* BodyFileInfo::get_K_dims(int i) returns the i-th component of the dimensions of K_matrix
+* BodyFileInfo::get_rirf_dims(int i) returns the i-th component of the dimensions of radiation_damping_matrix
 * i = [0,1,2] -> [number of rows, number of columns, number of matrices]
 *******************************************************************************/
-int BodyFileInfo::get_K_dims(int i) const {
-	return K_dims[i];
+int BodyFileInfo::get_rirf_dims(int i) const {
+	return rirf_dims[i];
 }
 
 
@@ -503,7 +567,7 @@ ImpulseResponseForce::ImpulseResponseForce(BodyFileInfo& file, std::shared_ptr<C
 	body = object;
 	fileInfo = file;
 	// initialize other things from file here
-	velHistory.resize(file.get_K_dims(2));
+	velHistory.resize(file.get_rirf_dims(2));
 	timeSteps = file.get_times();
 	ChVectorN<double, 6> temp;
 	for (int i = 0; i < 6; i++) {
@@ -527,7 +591,7 @@ ChVectorN<double, 6> ImpulseResponseForce::convolutionIntegral() {
 		return currentForce;
 	}
 	prevTime = body->GetChTime();
-	int size = fileInfo.get_K_dims(2);
+	int size = fileInfo.get_rirf_dims(2);
 	// "shift" everything left 1
 	offset--;
 	if (offset < -1 * size) {
@@ -544,7 +608,7 @@ ChVectorN<double, 6> ImpulseResponseForce::convolutionIntegral() {
 	// set last entry as velocity
 	for (int i = 0; i < 3; i++) { 
 		velHistory[(((size + offset) % size) + size) % size][i] = body->GetPos_dt()[i];
-		velHistory[(((size + offset) % size) + size) % size][i + 3] = body->GetWvel_par(); //GetRot_dt().Q_to_Euler123()[i]; 
+		velHistory[(((size + offset) % size) + size) % size][i + 3] = body->GetWvel_par()[i]; //GetRot_dt().Q_to_Euler123()[i]; 
 	}
 	int vi;
 	for (int row = 0; row < 6; row++) {
