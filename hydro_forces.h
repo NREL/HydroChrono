@@ -24,7 +24,7 @@ using namespace chrono::irrlicht;
 using namespace chrono::fea;
 
 // =============================================================================
-class BodyFileInfo {
+class H5FileInfo {
 private:
 	ChMatrixDynamic<double> lin_matrix;
 	ChMatrixDynamic<double> inf_added_mass;
@@ -51,9 +51,9 @@ private:
 	void read_data();
 
 public:
-	BodyFileInfo();
-	BodyFileInfo(std::string file, std::string bodyName);
-	~BodyFileInfo();
+	H5FileInfo();
+	H5FileInfo(std::string file, std::string bodyName); //TODO: systemName
+	~H5FileInfo();
 	ChMatrixDynamic<double> get_lin_matrix() const;
 	ChMatrixDynamic<double> get_inf_added_mass_matrix() const;
 	ChVector<> get_equil_cg() const;
@@ -64,114 +64,86 @@ public:
 	double get_rirf_val(int i, int n, int m) const;
 	double get_excitation_mag(int m, int n, int w) const;
 	double get_excitation_phase(int m, int n, int w) const;
-	double get_excitation_re(int m, int n, int w) const;
-	double get_excitation_im(int m, int n, int w) const;
+	//double get_excitation_re(int m, int n, int w) const;
+	//double get_excitation_im(int m, int n, int w) const;
 	int get_rirf_dims(int i) const;
 	double get_delta_t() const;
 	std::vector<double> get_times() const;
 };
 // =============================================================================
-class LinRestorForce;
+class HydroForces;
 class ForceTorqueFunc : public ChFunction {
 private:
-	LinRestorForce* base;
+	HydroForces* base;
 	int index;
 
 public:
-	ForceTorqueFunc(LinRestorForce* b, int i);
+	ForceTorqueFunc(HydroForces* b, int i);
 	virtual ForceTorqueFunc* Clone() const override;
 	virtual double 	Get_y(double x) const override;
-	void SetBase(LinRestorForce* b);
+	void SetBase(HydroForces* b);
 	void SetIndex(int i);
 };
 // =============================================================================
-class LinRestorForce {
+class HydroForces {
 private:
-	std::shared_ptr<ChBody> bobber;
-	BodyFileInfo fileInfo;
+	std::shared_ptr<ChBody> body;
+	H5FileInfo fileInfo;
 	ChVectorN<double, 6> equil;
 	ForceTorqueFunc forces[6];
 	std::shared_ptr<ForceTorqueFunc> force_ptrs[6];
 	ChVectorN<double, 6> currentForce;
-	double prevTime;
-	std::shared_ptr<ChForce> placeholder;
-	std::shared_ptr<ChForce> placeholdertorque;
-public:
-	LinRestorForce();
-	LinRestorForce(BodyFileInfo& lin, std::shared_ptr<ChBody> object);
-
-	// ensures these member functions are not given a default definition by compiler
-	// these features don't make sense to have, and break things when they exist
-	LinRestorForce(const LinRestorForce& other) = delete;
-	LinRestorForce operator = (const LinRestorForce& rhs) = delete;
-
-	ChVectorN<double, 6> matrixMult();
-
-	double coordinateFunc(int i);
-	void SetForce();
-	void SetTorque();
-};
-// =============================================================================
-class BuoyancyForce {
-private:
-	BodyFileInfo fileInfo;
-	double bf;
-	ChFunction_Const fc;
-	std::shared_ptr<ChFunction_Const> fc_ptr;
-	ChForce force;
-	std::shared_ptr<ChForce> force_ptr;
-
-public:
-	BuoyancyForce(BodyFileInfo& info);
-	std::shared_ptr<ChForce> getForce_ptr();
-};
-// =============================================================================
-class ImpulseResponseForce;
-class IRF_func : public ChFunction {
-private:
-	ImpulseResponseForce* base;
-	int index;
-
-public:
-	IRF_func(ImpulseResponseForce* b, int i);
-	virtual IRF_func* Clone() const override;
-	virtual double 	Get_y(double x) const override;
-	void SetBase(ImpulseResponseForce* b);
-	void SetIndex(int i);
-};
-// =============================================================================
-class ImpulseResponseForce {
-private:
-	BodyFileInfo fileInfo;
-	std::shared_ptr<ChBody> body;
-	std::vector<ChVectorN<double, 6>> velHistory;
-	ChVectorN<double, 6> currentForce;
+	ChVectorN<double, 6> forceRadiationDamping;
+	ChVectorN<double, 6> forceRadiationDampingFreq;
+	ChVectorN<double, 6> forceExcitation;
+	std::vector<ChVectorN<double, 6>> velocityHistory;
 	std::vector<double> timeSteps;
-	IRF_func forces[6];
-	std::shared_ptr<IRF_func> force_ptrs[6];
 	int offset;
+	double currentTime;
 	double prevTime;
-	std::shared_ptr<ChForce> placeholder;
-	std::shared_ptr<ChForce> placeholdertorque;
+	double prevTimeIRF;
+	double prevTimeEx;
+	std::shared_ptr<ChForce> chronoForce;
+	std::shared_ptr<ChForce> chronoTorque;
 public:
-	ImpulseResponseForce();
-	ImpulseResponseForce(BodyFileInfo& file, std::shared_ptr<ChBody> object);
+	HydroForces();
+	HydroForces(H5FileInfo& sysH5FileInfo, std::shared_ptr<ChBody> object);
+
 	// ensures these member functions are not given a default definition by compiler
 	// these features don't make sense to have, and break things when they exist
-	ImpulseResponseForce(const ImpulseResponseForce& other) = delete;
-	ImpulseResponseForce operator = (const ImpulseResponseForce& rhs) = delete;
+	HydroForces(const HydroForces& other) = delete;
+	HydroForces operator = (const HydroForces& rhs) = delete;
 
-	ChVectorN<double, 6> convolutionIntegral();
-
+	ChVectorN<double, 6> fHydrostaticStiffness();
+	ChVectorN<double, 6> fRadDamping();
+	ChVectorN<double, 6> fRadDampingFreq();
+	//ChVectorN<double, 6> fExcitationRegularFreq();
 	double coordinateFunc(int i);
 	void SetForce();
 	void SetTorque();
 };
+// TDO: bring this back!
+//// =============================================================================
+//class BuoyancyForce {
+//private:
+//	H5FileInfo fileInfo;
+//	double buoyancy;
+//	ChFunction_Const fc;
+//	std::shared_ptr<ChFunction_Const> fc_ptr;
+//	ChForce force;
+//	std::shared_ptr<ChForce> force_ptr;
+//
+//public:
+//	BuoyancyForce(H5FileInfo& info);
+//	std::shared_ptr<ChForce> getForce_ptr();
+//};
+// =============================================================================
+
 // =============================================================================
 class ChLoadAddedMass : public ChLoadCustom {
 public:
 	ChLoadAddedMass(std::shared_ptr<ChBody> body,  ///< object to apply additional inertia to
-		const BodyFileInfo& file );                ///< h5 file to initialize added mass with
+		const H5FileInfo& file );                ///< h5 file to initialize added mass with
 
 	/// "Virtual" copy constructor (covariant return type).
 	virtual ChLoadAddedMass* Clone() const override { return new ChLoadAddedMass(*this); }
@@ -208,16 +180,9 @@ private:
 // =============================================================================
 class LoadAllHydroForces {
 private:
-	BodyFileInfo file_info;     /// < object to read h5 file info
-	LinRestorForce lin_restor_force_2;                     /// < object for linear restoring force
-	ImpulseResponseForce irf;                              /// < object for impulse restoring force
-
-	// declare some forces to be initialized in lin_restor_force_2 to be applied to to body later
-	//std::shared_ptr<ChForce> force;
-	//std::shared_ptr<ChForce> torque;
-	//std::shared_ptr<ChForce> force2;
-	//std::shared_ptr<ChForce> torque2;
-	std::shared_ptr<BuoyancyForce> fb;
+	H5FileInfo sysFileInfo;     /// < object to read h5 file info
+	HydroForces hydro_force;                     /// < object for linear restoring force
+	//std::shared_ptr<BuoyancyForce> buoyancy_force;
 	std::shared_ptr<ChLoadContainer> my_loadcontainer;
 	std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia;
 public:
