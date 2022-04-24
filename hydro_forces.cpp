@@ -524,6 +524,27 @@ ChVectorN<double, 6> HydroForces::fRadDamping() {
 }
 
 /*******************************************************************************
+* HydroForces::fExcitationRegularFreq()
+*
+*******************************************************************************/
+ChVectorN<double, 6> HydroForces::fExcitationRegularFreq() {
+	if (body->GetChTime() == prevTimeEx) {
+		return forceExcitation;
+	}
+	prevTimeEx = body->GetChTime();
+	// TODO: pass these as inputs from model .cpp file
+	double waveAmplitude = 0.5;
+	double waveOmega = 0.6981;
+	int freqIndex = 13;
+	for (int rowEx = 0; rowEx < 6; rowEx++) {
+		double forceExcitationMag = fileInfo.get_excitation_mag(rowEx, 0, freqIndex);
+		double forceExcitationPhase = fileInfo.get_excitation_phase(rowEx, 0, freqIndex);
+		forceExcitation[rowEx] = forceExcitationMag * waveAmplitude * cos(waveOmega * body->GetChTime() + forceExcitationPhase);
+	}
+	return forceExcitation;
+}
+
+/*******************************************************************************
 * HydroForces::coordinateFunc
 * if index is in [0,6] the corresponding vector component of the force vector
 * is returned
@@ -533,7 +554,7 @@ double HydroForces::coordinateFunc(int i) {
 	if (i >= 0 && i < 6) {
 		double forceHs = fHydrostaticStiffness()[i];
 		double forceRad = fRadDamping()[i];
-		//double forceExcitation = fExcitationRegularFreq()[i];
+		double forceExcitation = fExcitationRegularFreq()[i];
 		double totalForce = forceHs + forceRad;
 		return totalForce;
 	}

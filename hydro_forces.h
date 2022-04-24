@@ -117,7 +117,7 @@ public:
 	ChVectorN<double, 6> fHydrostaticStiffness();
 	ChVectorN<double, 6> fRadDamping();
 	ChVectorN<double, 6> fRadDampingFreq();
-	//ChVectorN<double, 6> fExcitationRegularFreq();
+	ChVectorN<double, 6> fExcitationRegularFreq();
 	double coordinateFunc(int i);
 	void SetForce();
 	void SetTorque();
