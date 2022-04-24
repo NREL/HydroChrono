@@ -27,7 +27,7 @@ using namespace chrono::fea;
 class BodyFileInfo {
 private:
 	ChMatrixDynamic<double> lin_matrix;
-	ChMatrixDynamic<double> inf_freq;
+	ChMatrixDynamic<double> inf_added_mass;
 	double* rirf_matrix;
 	hsize_t rirf_dims[3];
 	double* radiation_damping_matrix;
@@ -48,20 +48,24 @@ private:
 	double disp_vol;
 	std::string h5_file_name;
 	std::string bodyNum;
-	void read_data(); 
-	
+	void read_data();
+
 public:
 	BodyFileInfo();
 	BodyFileInfo(std::string file, std::string bodyName);
 	~BodyFileInfo();
 	ChMatrixDynamic<double> get_lin_matrix() const;
-	ChMatrixDynamic<double> get_added_mass_matrix() const;
+	ChMatrixDynamic<double> get_inf_added_mass_matrix() const;
 	ChVector<> get_equil_cg() const;
 	ChVector<> get_equil_cb() const;
 	double get_rho() const;
 	double get_g() const;
 	double get_disp_vol() const;
-	double get_impulse_resp(int i, int n, int m) const;
+	double get_rirf_val(int i, int n, int m) const;
+	double get_excitation_mag(int m, int n, int w) const;
+	double get_excitation_phase(int m, int n, int w) const;
+	double get_excitation_re(int m, int n, int w) const;
+	double get_excitation_im(int m, int n, int w) const;
 	int get_rirf_dims(int i) const;
 	double get_delta_t() const;
 	std::vector<double> get_times() const;
@@ -157,7 +161,7 @@ public:
 	ImpulseResponseForce(const ImpulseResponseForce& other) = delete;
 	ImpulseResponseForce operator = (const ImpulseResponseForce& rhs) = delete;
 
-	ChVectorN<double, 6> convolutionIntegral(); 
+	ChVectorN<double, 6> convolutionIntegral();
 
 	double coordinateFunc(int i);
 	void SetForce();
@@ -172,8 +176,8 @@ public:
 	/// "Virtual" copy constructor (covariant return type).
 	virtual ChLoadAddedMass* Clone() const override { return new ChLoadAddedMass(*this); }
 
-	/// Compute Q, the generalized load. 
-	/// In this case, it computes the quadratic (centrifugal, gyroscopic) terms. 
+	/// Compute Q, the generalized load.
+	/// In this case, it computes the quadratic (centrifugal, gyroscopic) terms.
 	/// Signs are negative as Q assumed at right hand side, so Q= -Fgyro -Fcentrifugal
 	/// Called automatically at each Update().
 	/// The M*a term is not added: to this end one could use LoadIntLoadResidual_Mv afterward.
@@ -182,7 +186,7 @@ public:
 	) override {}
 
 	/// For efficiency reasons, do not let the parent class do automatic differentiation
-	/// to compute the R, K matrices. Use analytic expressions instead. For example, R is 
+	/// to compute the R, K matrices. Use analytic expressions instead. For example, R is
 	/// the well known gyroscopic damping matrix. Also, compute the M matrix.
 	virtual void ComputeJacobian(ChState* state_x,       ///< state position to evaluate jacobians
 		ChStateDelta* state_w,  ///< state speed to evaluate jacobians
@@ -196,7 +200,7 @@ public:
 		const ChVectorDynamic<>& w,     ///< the w vector
 		const double c) override;       ///< a scaling factor
 private:
-	ChMatrixDynamic<double> inf_freq;       ///< added mass at infinite frequency in global coordinates
+	ChMatrixDynamic<double> inf_added_mass_J;       ///< added mass at infinite frequency in global coordinates
 
 	virtual bool IsStiff() override { return true; } // this to force the use of the inertial M, R and K matrices
 

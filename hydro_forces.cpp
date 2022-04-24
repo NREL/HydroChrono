@@ -6,7 +6,7 @@
 
 /*******************************************************************************
 * BodyFileInfo::read_data()
-* private member function called from constructor 
+* private member function called from constructor
 * reads h5 file data and stores it in member variables for use with other
 * classes and forces
 *******************************************************************************/
@@ -28,15 +28,15 @@ void BodyFileInfo::read_data() {
 	int rank = filespace.getSimpleExtentDims(dims);
 	// read file into data_out 2d array
 	H5::DataSpace mspace1(rank, dims);
-	double *temp; 
+	double *temp;
 	temp = new double[dims[0] * dims[1]];
 	// read file info into data_out, a 2d array
 	dataset.read(temp, H5::PredType::NATIVE_DOUBLE, mspace1, filespace);
 	// turn the 2d array into a ChMatrix (Eigen dynamic matrix)
-	lin_matrix.resize(dims[0], dims[1]); 
+	lin_matrix.resize(dims[0], dims[1]);
 	for (int i = 0; i < dims[0]; i++) {
 		for (int j = 0; j < dims[1]; j++) {
-			lin_matrix(i, j) = temp[i * dims[1] + j]; 
+			lin_matrix(i, j) = temp[i * dims[1] + j];
 		}
 	}
 	dataset.close();
@@ -50,10 +50,10 @@ void BodyFileInfo::read_data() {
 	temp = new double[dims[0] * dims[1]];
 	dataset.read(temp, H5::PredType::NATIVE_DOUBLE, mspace1, filespace);
 	// put into equil chvector
-	inf_freq.resize(dims[0], dims[1]);
+	inf_added_mass.resize(dims[0], dims[1]);
 	for (int i = 0; i < dims[0]; i++) {
 		for (int j = 0; j < dims[1]; j++) {
-			inf_freq(i, j) = temp[i * dims[1] + j];
+			inf_added_mass(i, j) = temp[i * dims[1] + j];
 		}
 	}
 	dataset.close();
@@ -86,7 +86,7 @@ void BodyFileInfo::read_data() {
 	}
 	dataset.close();
 	delete[] temp;
-	
+
 	// read displaced volume for buoyancy force
 	data_name = bodyNum + "/properties/disp_vol";
 	dataset = sphereFile.openDataSet(data_name);
@@ -238,18 +238,18 @@ BodyFileInfo::BodyFileInfo(std::string file, std::string bodyName) {
 
 /*******************************************************************************
 * BodyFileInfo::get_lin_matrix()
-* returns the linear restoring stiffness matrix 
+* returns the linear restoring stiffness matrix
 *******************************************************************************/
 ChMatrixDynamic<double> BodyFileInfo::get_lin_matrix() const {
 	return lin_matrix;
 }
 
 /*******************************************************************************
-* BodyFileInfo::get_added_mass_matrix()
+* BodyFileInfo::get_inf_added_mass_matrix()
 * returns the added mass matrix at infinite frequency
 *******************************************************************************/
-ChMatrixDynamic<double> BodyFileInfo::get_added_mass_matrix() const {
-	return inf_freq * rho;
+ChMatrixDynamic<double> BodyFileInfo::get_inf_added_mass_matrix() const {
+	return inf_added_mass * rho;
 }
 
 /*******************************************************************************
@@ -285,7 +285,7 @@ double BodyFileInfo::get_g() const {
 }
 
 /*******************************************************************************
-* BodyFileInfo::get_disp_vol() 
+* BodyFileInfo::get_disp_vol()
 * returns displaced volume when body at equilibrium, m^3
 *******************************************************************************/
 double BodyFileInfo::get_disp_vol() const {
@@ -296,7 +296,7 @@ double BodyFileInfo::get_disp_vol() const {
 * BodyFileInfo::get_impulse_resp_matrix()
 * returns impulse response coeff for row m, column n, step s
 *******************************************************************************/
-double BodyFileInfo::get_impulse_resp(int m, int n, int s) const {
+double BodyFileInfo::get_rirf_val(int m, int n, int s) const {
 	int index = s + rirf_dims[2] * (n + m * rirf_dims[1]);
 	if (index < 0 || index >= rirf_dims[0] * rirf_dims[1] * rirf_dims[2]) {
 		std::cout << "out of bounds IRF\n";
@@ -315,6 +315,25 @@ int BodyFileInfo::get_rirf_dims(int i) const {
 	return rirf_dims[i];
 }
 
+//TODO: Get B(w)
+
+/*******************************************************************************
+* BodyFileInfo::get_excitation_mag()
+* returns excitation magnitudes for row i, column j, frequency k
+*******************************************************************************/
+double BodyFileInfo::get_excitation_mag(int i, int j, int k) const {
+	int indexExMag = k + excitation_mag_dims[2] * i;
+	return excitation_mag_matrix[indexExMag] * rho * g;
+}
+
+/*******************************************************************************
+* BodyFileInfo::get_excitation_phase()
+* returns excitation phases for row i, column j, frequency k
+*******************************************************************************/
+double BodyFileInfo::get_excitation_phase(int i, int j, int k) const {
+	int indexExPhase = k + excitation_phase_dims[2] * i;
+	return excitation_phase_matrix[indexExPhase];
+}
 
 /*******************************************************************************
 * BodyFileInfo::get_delta_t() returns the difference in first 2 timesteps
@@ -322,6 +341,7 @@ int BodyFileInfo::get_rirf_dims(int i) const {
 double BodyFileInfo::get_delta_t() const {
 	return timesteps[1] - timesteps[0];
 }
+
 /*******************************************************************************
 * BodyFileInfo::get_times()
 * returns the vector of timesteps from h5 file
@@ -345,8 +365,8 @@ ForceTorqueFunc::ForceTorqueFunc(LinRestorForce* b, int i) : base(b), index(i) {
 * ForceTorqueFunc::Clone()
 * required override function since ForceTorqueFunc inherits from ChFunction
 *******************************************************************************/
-ForceTorqueFunc* ForceTorqueFunc::Clone() const  { 
-	return new ForceTorqueFunc(*this); 
+ForceTorqueFunc* ForceTorqueFunc::Clone() const  {
+	return new ForceTorqueFunc(*this);
 }
 
 /*******************************************************************************
@@ -386,9 +406,9 @@ void ForceTorqueFunc::SetIndex(int i) {
 LinRestorForce::LinRestorForce() : forces{ {this, 0}, {this, 1}, {this, 2}, {this, 3}, {this, 4}, {this, 5} } {
 	for (unsigned i = 0; i < 6; i++) {
 		force_ptrs[i] = std::shared_ptr<ForceTorqueFunc>(forces + i, [](ForceTorqueFunc*) {});
-		// sets force_ptrs[i] to point to forces[i] but since forces is on the stack, it is faster and it is 
+		// sets force_ptrs[i] to point to forces[i] but since forces is on the stack, it is faster and it is
 		// automatically deallocated...shared pointers typically manage heap pointers, and will try deleting
-		// them as soon as done. Doesn't work on stack array (can't delete stack arrays), we overload the 
+		// them as soon as done. Doesn't work on stack array (can't delete stack arrays), we overload the
 		// default deletion logic to do nothing
 		// Also! don't need to worry about deleting this later, because stack arrays are always deleted automatically
 	}
@@ -414,7 +434,7 @@ LinRestorForce::LinRestorForce(BodyFileInfo& lin, std::shared_ptr<ChBody> object
 * calculates the matrix multiplication each time step for linear restoring stiffness
 * f = [linear restoring stiffness matrix] [displacement vector]
 *******************************************************************************/
-ChVectorN<double, 6> LinRestorForce::matrixMult() { 
+ChVectorN<double, 6> LinRestorForce::matrixMult() {
 	if (bobber->GetChTime() == prevTime) {
 		return currentForce;
 	}
@@ -534,7 +554,7 @@ void IRF_func::SetBase(ImpulseResponseForce* b) {
 * IRF_func::SetIndex(int i)
 * optional function for setting index outside of constructor
 *******************************************************************************/
-void IRF_func::SetIndex(int i) { 
+void IRF_func::SetIndex(int i) {
 	index = i;
 }
 
@@ -549,9 +569,9 @@ void IRF_func::SetIndex(int i) {
 ImpulseResponseForce::ImpulseResponseForce() : forces{ {this, 0}, {this, 1}, {this, 2}, {this, 3}, {this, 4}, {this, 5} } {
 	for (unsigned i = 0; i < 6; i++) {
 		force_ptrs[i] = std::shared_ptr<IRF_func>(forces + i, [](IRF_func*) {});
-		// sets force_ptrs[i] to point to forces[i] but since forces is on the stack, it is faster and it is 
+		// sets force_ptrs[i] to point to forces[i] but since forces is on the stack, it is faster and it is
 		// automatically deallocated...shared pointers typically manage heap pointers, and will try deleting
-		// them as soon as done. Doesn't work on stack array (can't delete stack arrays), we overload the 
+		// them as soon as done. Doesn't work on stack array (can't delete stack arrays), we overload the
 		// default deletion logic to do nothing
 		// Also! don't need to worry about deleting this later, because stack arrays are always deleted automatically
 	}
@@ -560,7 +580,7 @@ ImpulseResponseForce::ImpulseResponseForce() : forces{ {this, 0}, {this, 1}, {th
 }
 
 /*******************************************************************************
-* ImpulseResponseForce constructor, calls default constructor to initialize force 
+* ImpulseResponseForce constructor, calls default constructor to initialize force
 * function/vectors. Then initializes several persistent variables
 *******************************************************************************/
 ImpulseResponseForce::ImpulseResponseForce(BodyFileInfo& file, std::shared_ptr<ChBody> object) : ImpulseResponseForce() {
@@ -574,7 +594,7 @@ ImpulseResponseForce::ImpulseResponseForce(BodyFileInfo& file, std::shared_ptr<C
 		temp[i] = 0;
 		currentForce[i] = 0;
 	}
-	for (int i = 0; i < 1001; i++) {		
+	for (int i = 0; i < 1001; i++) {
 		velHistory[i] = temp;
 	}
 	offset = 0;
@@ -585,7 +605,7 @@ ImpulseResponseForce::ImpulseResponseForce(BodyFileInfo& file, std::shared_ptr<C
 * currently works for 1 body, with no interpolation steps
 *******************************************************************************/
 ChVectorN<double, 6> ImpulseResponseForce::convolutionIntegral() {
-	// since convolutionIntegral called for each DoF each timestep, we only want to 
+	// since convolutionIntegral called for each DoF each timestep, we only want to
 	// calculate the vector force once each timestep. Save the prevTime
 	if (body->GetChTime() == prevTime) {
 		return currentForce;
@@ -600,15 +620,15 @@ ChVectorN<double, 6> ImpulseResponseForce::convolutionIntegral() {
 	int r = 6, c = 6;
 
 	double* timeseries = new double [r*c*size];
-	double* tmp_s = new double [r*size]; 
+	double* tmp_s = new double [r*size];
 	// define shortcuts for accessing 1D arrrays as 3D (or 2D) arrays
 #define TIMESERIES(row,col,step) timeseries[(row)*c*size + (col)*size + (step)]
 #define TMP_S(row,step) tmp_s[(row)*size + (step)]
 
 	// set last entry as velocity
-	for (int i = 0; i < 3; i++) { 
+	for (int i = 0; i < 3; i++) {
 		velHistory[(((size + offset) % size) + size) % size][i] = body->GetPos_dt()[i];
-		velHistory[(((size + offset) % size) + size) % size][i + 3] = body->GetWvel_par()[i]; //GetRot_dt().Q_to_Euler123()[i]; 
+		velHistory[(((size + offset) % size) + size) % size][i + 3] = body->GetWvel_par()[i]; //GetRot_dt().Q_to_Euler123()[i];
 	}
 	int vi;
 	for (int row = 0; row < 6; row++) {
@@ -617,7 +637,7 @@ ChVectorN<double, 6> ImpulseResponseForce::convolutionIntegral() {
 			vi = (((st + offset) % size) + size) % size; // vi takes care of circshift function from matLab
 			TMP_S(row,st) = 0;
 			for (int col = 0; col < 6; col++) {
-				TIMESERIES(row,col,st) = fileInfo.get_impulse_resp(row, col, st)*velHistory[vi][col];
+				TIMESERIES(row,col,st) = fileInfo.get_rirf_val(row, col, st)*velHistory[vi][col];
 				TMP_S(row,st) += TIMESERIES(row,col,st);
 			}
 			if (st > 0) {
@@ -680,7 +700,7 @@ void ImpulseResponseForce::SetTorque() {
 *******************************************************************************/
 ChLoadAddedMass::ChLoadAddedMass(std::shared_ptr<ChBody> body,  ///< object to apply additional inertia to
 	const BodyFileInfo& file) : ChLoadCustom(body) {
-	inf_freq = file.get_added_mass_matrix(); //TODO switch all uses of BodyFileInfo object to be like this, instead of copying the object each time?
+	inf_added_mass_J = file.get_inf_added_mass_matrix(); //TODO switch all uses of BodyFileInfo object to be like this, instead of copying the object each time?
 }
 
 /*******************************************************************************
@@ -695,7 +715,7 @@ void ChLoadAddedMass::ComputeJacobian(ChState* state_x,       ///< state positio
 	ChMatrixRef mM          ///< result dQ/da
 ) {
 	//set mass matrix here
-	jacobians->M = inf_freq;
+	jacobians->M = inf_added_mass_J;
 
 	// R gyroscopic damping matrix terms (6x6)
 	// 0 for added mass
@@ -718,7 +738,7 @@ void ChLoadAddedMass::LoadIntLoadResidual_Mv(ChVectorDynamic<>& R, const ChVecto
 	if (!loadable->IsSubBlockActive(0))
 		return;
 
-	// R+=c*M*a  
+	// R+=c*M*a
 	// segment gives the chunk of vector starting at the first argument, and going for as many elements as the second argument...
 	// in this case, segment gets the 3vector starting at the 0th DOF's offset (ie 0)
 	//R.segment(loadable->GetSubBlockOffset(0), 3) += c * (this->mass * (a_x + chrono::Vcross(a_w, this->c_m))).eigen();
@@ -732,9 +752,9 @@ void ChLoadAddedMass::LoadIntLoadResidual_Mv(ChVectorDynamic<>& R, const ChVecto
 // LoadAllHydroForces Class Definitions
 // =============================================================================
 /*******************************************************************************
-* 
+*
 *******************************************************************************/
-LoadAllHydroForces::LoadAllHydroForces(std::shared_ptr<ChBody> object, std::string file) 
+LoadAllHydroForces::LoadAllHydroForces(std::shared_ptr<ChBody> object, std::string file)
 	: file_info(file, "body1"), lin_restor_force_2(file_info, object), irf(file_info, object) {
 	//force = chrono_types::make_shared<ChForce>();
 	//force2 = chrono_types::make_shared<ChForce>();
@@ -749,7 +769,7 @@ LoadAllHydroForces::LoadAllHydroForces(std::shared_ptr<ChBody> object, std::stri
 	// initialize force and torque with member functions
 	//torque->SetMode(ChForce::ForceType::TORQUE);
 	//torque2->SetMode(ChForce::ForceType::TORQUE);
-	
+
 	lin_restor_force_2.SetForce();
 	lin_restor_force_2.SetTorque();
 	irf.SetForce();
