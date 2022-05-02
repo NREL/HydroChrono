@@ -83,7 +83,7 @@ int main(int argc, char* argv[]) {
 
 	// set up body initial conditions
 	system.Add(body);
-	body->SetPos(ChVector<>(0, 0, -1));
+	body->SetPos(ChVector<>(0, 0, -2));
 	body->SetMass(261.8e3);
 	// attach color asset to body
 	auto col_2 = chrono_types::make_shared<ChColorAsset>();
@@ -156,11 +156,11 @@ int main(int argc, char* argv[]) {
 
 	// Simulation loop
 	int frame = 0;
-	while (/*application.GetDevice()->run() && */system.GetChTime() <= 40) {
+	while (/*application.GetDevice()->run() && */system.GetChTime() <= 400) {
 		//application.BeginScene();
 		//application.DrawAll();
 		/*if (buttonPressed)*/if(true) {
-			zpos << system.GetChTime() << "\t" << body->GetPos().z() << "\t" << body->GetPos_dt().z() << "\t" << body->GetAppliedForce().z() << "\n";
+			zpos << system.GetChTime() << "\t" << body->GetPos().x() << "\t" << body->GetPos().z() << "\t" << body->GetPos_dt().z() << "\t" << body->GetAppliedForce().z() << "\n";
 			system.DoStepDynamics(timestep);
 			frame++;
 		}

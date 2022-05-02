@@ -70,6 +70,18 @@ public:
 	double get_delta_t() const;
 	std::vector<double> get_times() const;
 };
+//// =============================================================================
+//class HydroInputs {
+//public:
+//	HydroInputs();
+//	~HydroInputs();
+//	double regularWaveAmplitude;
+//	double regularWavePeriod;
+//	double regularWaveOmega;
+//	double get_regular_wave_omega(double regularWavePeriod);
+//private:
+//	
+//};
 // =============================================================================
 class HydroForces;
 class ForceTorqueFunc : public ChFunction {
@@ -92,6 +104,7 @@ private:
 	ChVectorN<double, 6> equil;
 	ForceTorqueFunc forces[6];
 	std::shared_ptr<ForceTorqueFunc> force_ptrs[6];
+	ChVectorN<double, 6> activeDofs;
 	ChVectorN<double, 6> currentForce;
 	ChVectorN<double, 6> forceRadiationDamping;
 	ChVectorN<double, 6> forceRadiationDampingFreq;

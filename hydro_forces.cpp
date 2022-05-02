@@ -395,6 +395,8 @@ void ForceTorqueFunc::SetIndex(int i) {
 	index = i;
 }
 
+
+
 // =============================================================================
 // HydroForces Class Definitions
 // =============================================================================
@@ -451,7 +453,7 @@ ChVectorN<double, 6> HydroForces::fHydrostaticStiffness() {
 		return currentForce;
 	}
 	prevTime = body->GetChTime();
-	currentForce << body->GetPos().eigen(), body->GetWvel_par();
+	currentForce << body->GetPos().eigen(), body->GetRot().Q_to_Euler123();// body->GetRot().Q_to_Euler123().eigen();// body->GetWvel_par();
 
 	currentForce = currentForce - equil;
 
@@ -533,13 +535,19 @@ ChVectorN<double, 6> HydroForces::fExcitationRegularFreq() {
 	}
 	prevTimeEx = body->GetChTime();
 	// TODO: pass these as inputs from model .cpp file
-	double waveAmplitude = 0.5;
-	double waveOmega = 0.6981;
-	int freqIndex = 13;
+	double waveAmplitude = 0.022;
+	double waveOmega = 2.10;
+	int freqIndex = 41;
 	for (int rowEx = 0; rowEx < 6; rowEx++) {
+		// TODO: just get these at initialization
 		double forceExcitationMag = fileInfo.get_excitation_mag(rowEx, 0, freqIndex);
 		double forceExcitationPhase = fileInfo.get_excitation_phase(rowEx, 0, freqIndex);
-		forceExcitation[rowEx] = forceExcitationMag * waveAmplitude * cos(waveOmega * body->GetChTime() + forceExcitationPhase);
+		if (rowEx == 2) {
+			forceExcitation[rowEx] = forceExcitationMag * waveAmplitude * cos(waveOmega * body->GetChTime() + forceExcitationPhase);
+		}
+		else {
+			forceExcitation[rowEx] = 0.0;
+		}
 	}
 	return forceExcitation;
 }
@@ -555,7 +563,7 @@ double HydroForces::coordinateFunc(int i) {
 		double forceHs = fHydrostaticStiffness()[i];
 		double forceRad = fRadDamping()[i];
 		double forceExcitation = fExcitationRegularFreq()[i];
-		double totalForce = forceHs + forceRad;
+		double totalForce = forceHs + forceRad + forceExcitation;
 		return totalForce;
 	}
 	else {
