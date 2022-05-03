@@ -1,7 +1,7 @@
 # Implementing Hydro Forces with Project Chrono and HDF5 files
 
 ## Requirements
-* Chrono installed and built (currently using dev branch from Feb. 23, 2022) and Chrono dependencies (see [Chrono Install/Build Guide](https://api.projectchrono.org/tutorial_install_chrono.html) )
+* Chrono installed and built (currently using dev branch from Feb. 23, 2022) (built with Irrlicht module) and Chrono dependencies (see [Chrono Install/Build Guide](https://api.projectchrono.org/tutorial_install_chrono.html) )
 	* C++ Compiler
 	* Eigen3
 	* Irrlicht Engine

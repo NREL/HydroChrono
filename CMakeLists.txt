@@ -1,110 +1,33 @@
 #--------------------------------------------------------------
-# 
-# Example of CMake configuration file to build an external 
-# project depending on Chrono and on optional Chrono modules.
-# 
-# This minimal sample project can be used as a template for a
-# user project.  Modify sections 1, 2, and 3 below as appropriate.
-# 
+# CMake file for HydroChrono library and its demos
+# Eventually will add SWIG and python lines to generate python
+# library from C++ code
 #--------------------------------------------------------------
- 
 
-cmake_minimum_required(VERSION 3.10.1)
+cmake_minimum_required(VERSION 3.18.2)
 
 #--------------------------------------------------------------
-# === 1 === 
 # Modify the project name if you want: 
 #--------------------------------------------------------------
 
-project(WEC_Chrono CXX)
+project(HydroChrono CXX)
 
-#--------------------------------------------------------------
-# === 2 ===
-# Find the Chrono package and any REQUIRED or OPTIONAL modules
-# by invoking the find_package function in CONFIG mode:
-#    find_package(Chrono
-#	              COMPONENTS req_module1 req_module1 ...
-#	              OPTIONAL opt_module1 opt_module2 ...
-#                 CONFIG)
-# The following Chrono modules can be requested (their names
-# are case insensitive): Cascade, Cosimulation, FEA, Irrlicht,
-# Matlab, Parallel, Postprocess, Python, Vehicle.
-# 
-# Note that you will have to set the variable Chrono_DIR to 
-# specify the location of the ChronoConfig.cmake script, if
-# it is not in its default install location.
-# Chrono_DIR can be either a Chrono build tree or a Chrono install tree.
-# 
-# The following variables are set and can be used further down:
-# CHRONO_FOUND
-#   set to true if Chrono and all required components were found
-# CHRONO_C_FLAGS
-# CHRONO_CXX_FLAGS
-#   C and C++ compilation flags
-# CHRONO_INCLUDE_DIRS
-#   additional paths for included headers
-# CHRONO_LIBRARIES
-#   list of required libraries (with full path)
-# CHRONO_LINKER_FLAGS
-#   additional linker flags
-# CHRONO_DLLS
-#   list of all DLL dependencies (with full path)
-# CHRONO_DATA_DIR
-#   path to the Chrono data make_directory
-# 
-# In addition, for each requested component [COMPONENT], the
-# following variable is set to true (ON) or false (OFF):
-# CHRONO_[COMPONENT]_FOUND
-# 
-# In this example, we only request the Irrlicht module (required)
-#--------------------------------------------------------------
-
-find_package(Chrono
-             COMPONENTS Irrlicht
-             CONFIG)
-
+# find required packages and libraries to make HydroChrono library
 set (LIB_TYPE STATIC) # or SHARED
 string(TOLOWER ${LIB_TYPE} SEARCH_TYPE)
+
+find_package(Chrono COMPONENTS Irrlicht CONFIG)
 find_package(HDF5 NAMES hdf5 COMPONENTS CXX ${SEARCH_TYPE})
-include_directories(${HDF5_INCLUDE_DIRS})
+#find_package(SWIG REQUIRED)
+#find_package(PythonLibs)
+#include(${SWIG_USE_FILE})
+
+include_directories(${HDF5_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR} ${CHRONO_INCLUDE_DIRS})
+#include_directories(${HDF5_INCLUDE_DIRS} ${PYTHON_INCLUDE_PATH} ${CMAKE_CURRENT_SOURCE_DIR} ${CHRONO_INCLUDE_DIRS})
+
 set(PROJECT_LIBS ${HDF5_LIBS} ${HDF5_LIBRARIES})
-# pkg_check_modules(HDF5PP REQUIRED HDF5pp)
-set (LINK_LIBS ${LINK_LIBS} ${HDF5_CXX_${LIB_TYPE}_LIBRARY})
-# set (example hdf_example)
-
-
-#--------------------------------------------------------------
-# Return now if Chrono or a required component was not found.
-#--------------------------------------------------------------
-
-if (NOT Chrono_FOUND)
-  message("Could not find Chrono or one of its required modules")
-  return()
-endif()
-
-#--------------------------------------------------------------
-# Enable creation of "application bundles" on MacOSX.
-#--------------------------------------------------------------
-
-# This is necessary for any Irrlicht-based project (like the example here).
-# For OpenGL-based or non-graphics projects, this is optional and the block
-# below can be removed (or else explcitly set CMAKE_MACOSX_BUNDLE to 'OFF').
-#
-# If creating application bundles, the build output will be named 'myexe.app'.
-# Use the convenience script 'run_app.sh' available under 'contrib/appbundle-macosx/'
-# to run:
-#     start_demo.sh myexe.app
-
-if(APPLE)
-    set(CMAKE_MACOSX_BUNDLE ON)
-endif()
-
-#--------------------------------------------------------------
-# Add path to Chrono headers and to headers of all dependencies
-# of the requested modules.
-#--------------------------------------------------------------
-
-include_directories(${CHRONO_INCLUDE_DIRS})
+set (LINK_LIBS ${LINK_LIBS} ${CHRONO_LIBRARIES} ${HDF5_CXX_${LIB_TYPE}_LIBRARY})
+#SET(CMAKE_SWIG_FLAGS "")
 
 #-----------------------------------------------------------------------------
 # Fix for VS 2017 15.8 and newer to handle alignment specification with Eigen
@@ -135,8 +58,11 @@ endif()
 # files in your project. 
 #--------------------------------------------------------------
 
-add_executable(sphere_decay_demo "sphere_decay_demo.cpp" "hydro_forces.cpp" "hydro_forces.h")
-add_executable(sphere_decay_no_viz "sphere_decay_no_viz.cpp" "hydro_forces.cpp" "hydro_forces.h")
+add_library(HydroChrono STATIC "hydro_forces.cpp" "hydro_forces.h")
+add_executable(sphere_decay_demo "sphere_decay_demo.cpp")
+add_executable(sphere_decay_no_viz "sphere_decay_no_viz.cpp")
+#SWIG_ADD_LIBRARY(py_wec_chrono LANGUAGE python SOURCES hydro_forces_no_viz.i)
+
 
 #--------------------------------------------------------------
 # Set properties for your executable target
@@ -146,6 +72,11 @@ add_executable(sphere_decay_no_viz "sphere_decay_no_viz.cpp" "hydro_forces.cpp" 
 # source tree (if using a build version of Chrono), or in its
 # install tree (if using an installed version of Chrono).
 #--------------------------------------------------------------
+
+set_target_properties(HydroChrono PROPERTIES 
+	    COMPILE_FLAGS "${CHRONO_CXX_FLAGS} ${EXTRA_COMPILE_FLAGS}"
+	    COMPILE_DEFINITIONS "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
+	    LINK_FLAGS "${CHRONO_LINKER_FLAGS}")
 
 set_target_properties(sphere_decay_demo PROPERTIES 
 	    COMPILE_FLAGS "${CHRONO_CXX_FLAGS} ${EXTRA_COMPILE_FLAGS}"
@@ -161,8 +92,10 @@ set_target_properties(sphere_decay_no_viz PROPERTIES
 # Link to Chrono libraries and dependency libraries
 #--------------------------------------------------------------
 
-target_link_libraries(sphere_decay_demo ${CHRONO_LIBRARIES} ${LINK_LIBS})
-target_link_libraries(sphere_decay_no_viz ${CHRONO_LIBRARIES} ${LINK_LIBS})
+target_link_libraries(HydroChrono ${LINK_LIBS})
+target_link_libraries(sphere_decay_no_viz HydroChrono)
+target_link_libraries(sphere_decay_demo HydroChrono)
+#SWIG_LINK_LIBRARIES(py_wec_chrono wec_chrono ${PYTHON_LIBRARIES})
 
 #--------------------------------------------------------------
 # === 4 (OPTIONAL) ===

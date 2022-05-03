@@ -67,7 +67,7 @@ int main(int argc, char* argv[]) {
 
 	// set up body from a mesh
 	std::shared_ptr<ChBody> body = chrono_types::make_shared<ChBodyEasyMesh>(                   //
-		GetChronoDataFile("../../test_for_chrono/oes_task10_sphere.obj").c_str(),                 // file name
+		GetChronoDataFile("../../HydroChrono/oes_task10_sphere.obj").c_str(),                 // file name
 		1000,                                                                                     // density
 		false,                                                                                    // do not evaluate mass automatically
 		true,                                                                                     // create visualization asset
@@ -92,42 +92,7 @@ int main(int argc, char* argv[]) {
 
 	HydroInputs myHydroInputs;
 	myHydroInputs.regularWaveAmplitude = 0.022;
-	LoadAllHydroForces blah(body, "../../test_for_chrono/sphere.h5", myHydroInputs);
-
-	//// testing adding hydro forces to the body-----------------------------------------------------------------
-	//BodyFileInfo sphere_file_info("../../test_for_chrono/sphere.h5", "body1");     /// < object to read h5 file info
-	//LinRestorForce lin_restor_force_2(sphere_file_info, body);                     /// < object for linear restoring force
-	//ImpulseResponseForce irf(sphere_file_info, body);                              /// < object for impulse restoring force
-	//
-	//// declare some forces to be initialized in lin_restor_force_2 to be applied to to body later
-	//auto force = chrono_types::make_shared<ChForce>();
-	//auto torque = chrono_types::make_shared<ChForce>();
-	//auto force2 = chrono_types::make_shared<ChForce>();
-	//auto torque2 = chrono_types::make_shared<ChForce>();
-	//// set torque flag for torque
-	//torque->SetMode(ChForce::ForceType::TORQUE);
-	//torque2->SetMode(ChForce::ForceType::TORQUE);
-	//// initialize force and torque with member functions
-	//lin_restor_force_2.SetForce(force);
-	//lin_restor_force_2.SetTorque(torque);
-	//irf.SetForce(force2);
-	//irf.SetTorque(torque2);
-	//// apply force and torque to the body
-	//body->AddForce(force);
-	//body->AddForce(torque);
-	//body->AddForce(force2);
-	//body->AddForce(torque2);
-
-	//// add buoyancy force from h5 file info
-	//auto fb = chrono_types::make_shared<BuoyancyForce>(sphere_file_info);
-	//body->AddForce(fb->getForce_ptr());
-
-	//// set up added mass as load
-	//auto my_loadcontainer = chrono_types::make_shared< ChLoadContainer>();
-	//system.Add(my_loadcontainer);
-	//auto my_loadbodyinertia = chrono_types::make_shared<ChLoadAddedMass>(body, sphere_file_info);
-	//my_loadcontainer->Add(my_loadbodyinertia);
-	// end hydro forces ----------------------------------------------------------------------------------
+	LoadAllHydroForces blah(body, "../../HydroChrono/sphere.h5", myHydroInputs);
 
 	// update irrlicht app with body info
 	application.AssetBindAll();
@@ -146,7 +111,7 @@ int main(int argc, char* argv[]) {
 	application.SetTimestep(timestep);
 
 	// set up output file for body position each step
-	std::string of = "outfile/output.txt";                    /// < put name of your output file here
+	std::string of = "output.txt";                    /// < put name of your output file here
 	std::ofstream zpos(of, std::ofstream::out);
 	if (!zpos.is_open()) { 
 		std::cout << "Error opening file \"" + of + "\". Please make sure this file path exists then try again\n";
