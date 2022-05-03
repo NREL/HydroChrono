@@ -120,6 +120,22 @@ void H5FileInfo::read_data() {
 	delete[] temp;
 	lin_matrix *= rho*g; // scale by rho*g
 
+	// read frequencies
+	data_name = "simulation_parameters/w";
+	dataset = sphereFile.openDataSet(data_name);
+	filespace = dataset.getSpace();
+	rank = filespace.getSimpleExtentDims(freq_dims);
+	mspace1 = H5::DataSpace(rank, freq_dims);
+	temp = new double[freq_dims[0] * freq_dims[1]];
+	freq_list.resize(freq_dims[0]);
+	dataset.read(temp, H5::PredType::NATIVE_DOUBLE, mspace1, filespace);
+	// put into timesteps chvector
+	for (int i = 0; i < freq_dims[0]; i++) {
+		freq_list[i] = temp[i];
+	}
+	dataset.close();
+	delete[] temp;
+
 	// read K
 	data_name = bodyNum + "/hydro_coeffs/radiation_damping/impulse_response_fun/K";
 	dataset = sphereFile.openDataSet(data_name);
@@ -318,6 +334,38 @@ int H5FileInfo::get_rirf_dims(int i) const {
 //TODO: Get B(w)
 
 /*******************************************************************************
+* H5FileInfo::get_num_freqs()
+* returns number of frequencies computed
+*******************************************************************************/
+double H5FileInfo::get_num_freqs() const {
+	return freq_dims[0];
+}
+
+/*******************************************************************************
+* H5FileInfo::get_omega_min()
+* returns min value of omega 
+*******************************************************************************/
+double H5FileInfo::get_omega_min() const {
+	return freq_list[0];
+}
+
+/*******************************************************************************
+* H5FileInfo::get_omega_max()
+* returns max value of omega
+*******************************************************************************/
+double H5FileInfo::get_omega_max() const {
+	return freq_list[freq_dims[0] - 1];
+}
+
+/*******************************************************************************
+* H5FileInfo::get_domega()
+* returns omega step size
+*******************************************************************************/
+double H5FileInfo::get_domega() const {
+	return get_omega_max() / get_num_freqs();
+}
+
+/*******************************************************************************
 * H5FileInfo::get_excitation_mag()
 * returns excitation magnitudes for row i, column j, frequency k
 *******************************************************************************/
@@ -395,7 +443,25 @@ void ForceTorqueFunc::SetIndex(int i) {
 	index = i;
 }
 
+// =============================================================================
+// HydroInputs Class Definitions
+// =============================================================================
 
+HydroInputs::HydroInputs() {
+	
+}
+
+	
+//public:
+//	HydroInputs();
+//	~HydroInputs();
+//	double regularWaveAmplitude;
+//	double regularWavePeriod;
+//	double regularWaveOmega;
+//	double get_regular_wave_omega(double regularWavePeriod);
+//private:
+//	
+//};
 
 // =============================================================================
 // HydroForces Class Definitions
@@ -420,13 +486,30 @@ HydroForces::HydroForces() : forces{ {this, 0}, {this, 1}, {this, 2}, {this, 3},
 
 /*******************************************************************************
 * HydroForces constructor
-* calls default constructor and initializes linear restoring stiffness force info
+* calls default constructor and initializes hydro force info
 * from H5FileInfo
 * also initializes ChBody that this force will be applied to
 *******************************************************************************/
-HydroForces::HydroForces(H5FileInfo& sysH5FileInfo, std::shared_ptr<ChBody> object) : HydroForces() {
+HydroForces::HydroForces(H5FileInfo& sysH5FileInfo, std::shared_ptr<ChBody> object, HydroInputs userHydroInputs) : HydroForces() {
 	body = object;
 	fileInfo = sysH5FileInfo;
+	hydroInputs = userHydroInputs;
+	// define wave inputs here
+	// TODO: switch depending on wave option (regular, regularCIC, irregular, noWaveCIC)
+	waveAmplitude = hydroInputs.regularWaveAmplitude;
+	waveOmega = hydroInputs.regularWaveOmega;
+	domega = fileInfo.get_domega();
+	double freqIndexDes = (waveOmega / domega) - 1;
+	int freqIndexFloor = floor(freqIndexDes);
+	double freqInterpVal = freqIndexDes - freqIndexFloor;
+
+	for (int rowEx = 0; rowEx < 6; rowEx++) {
+		forceExcitationMag = fileInfo.get_excitation_mag(rowEx, 0, 41);
+		forceExcitationPhase = fileInfo.get_excitation_phase(rowEx, 0, 41);
+	}
+
+
+
 	equil << fileInfo.get_equil_cg().eigen(), 0, 0, 0; // set equilibrium to (cg0, cg1, cg2, 0, 0, 0)
 	prevTime = -1;
 	prevTimeIRF = -1;
@@ -534,14 +617,7 @@ ChVectorN<double, 6> HydroForces::fExcitationRegularFreq() {
 		return forceExcitation;
 	}
 	prevTimeEx = body->GetChTime();
-	// TODO: pass these as inputs from model .cpp file
-	double waveAmplitude = 0.022;
-	double waveOmega = 2.10;
-	int freqIndex = 41;
 	for (int rowEx = 0; rowEx < 6; rowEx++) {
-		// TODO: just get these at initialization
-		double forceExcitationMag = fileInfo.get_excitation_mag(rowEx, 0, freqIndex);
-		double forceExcitationPhase = fileInfo.get_excitation_phase(rowEx, 0, freqIndex);
 		if (rowEx == 2) {
 			forceExcitation[rowEx] = forceExcitationMag * waveAmplitude * cos(waveOmega * body->GetChTime() + forceExcitationPhase);
 		}
@@ -659,17 +735,15 @@ void ChLoadAddedMass::LoadIntLoadResidual_Mv(ChVectorDynamic<>& R, const ChVecto
 /*******************************************************************************
 *
 *******************************************************************************/
-LoadAllHydroForces::LoadAllHydroForces(std::shared_ptr<ChBody> object, std::string file) :
-	sysFileInfo(file, "body1"), hydro_force(sysFileInfo, object) {
+LoadAllHydroForces::LoadAllHydroForces(std::shared_ptr<ChBody> object, std::string file, HydroInputs userHydroInputs) :
+	sysFileInfo(file, "body1"), hydro_force(sysFileInfo, object, userHydroInputs) {
 
-	//buoyancy_force = chrono_types::make_shared<BuoyancyForce>(fileInfo);
 	my_loadcontainer = chrono_types::make_shared<ChLoadContainer>();
 	my_loadbodyinertia = chrono_types::make_shared<ChLoadAddedMass>(object, sysFileInfo);
 
-	hydro_force.SetForce();
-	hydro_force.SetTorque();
-
-	//object->AddForce(buoyancy_force->getForce_ptr());
 	object->GetSystem()->Add(my_loadcontainer);
 	my_loadcontainer->Add(my_loadbodyinertia);
+
+	hydro_force.SetForce();
+	hydro_force.SetTorque();
 }

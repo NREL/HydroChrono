@@ -90,7 +90,9 @@ int main(int argc, char* argv[]) {
 	col_2->SetColor(ChColor(0, 0, 0.6f));
 	body->AddAsset(col_2);
 
-	LoadAllHydroForces blah(body, "../../test_for_chrono/sphere.h5");
+	HydroInputs myHydroInputs;
+	myHydroInputs.regularWaveAmplitude = 0.022;
+	LoadAllHydroForces blah(body, "../../test_for_chrono/sphere.h5", myHydroInputs);
 
 	//// testing adding hydro forces to the body-----------------------------------------------------------------
 	//BodyFileInfo sphere_file_info("../../test_for_chrono/sphere.h5", "body1");     /// < object to read h5 file info

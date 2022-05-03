@@ -43,6 +43,10 @@ private:
 	ChVector<double> cg;
 	ChVector<double> cb;
 	std::vector<double> timesteps;
+	hsize_t freq_dims[3];
+	std::vector<double> freq_list;
+	double omega_min;
+	double omega_max;
 	double rho;
 	double g;
 	double disp_vol;
@@ -64,24 +68,32 @@ public:
 	double get_rirf_val(int i, int n, int m) const;
 	double get_excitation_mag(int m, int n, int w) const;
 	double get_excitation_phase(int m, int n, int w) const;
+	double get_omega_min() const;
+	double get_omega_max() const;
+	double get_domega() const;
 	//double get_excitation_re(int m, int n, int w) const;
 	//double get_excitation_im(int m, int n, int w) const;
 	int get_rirf_dims(int i) const;
 	double get_delta_t() const;
 	std::vector<double> get_times() const;
+	double get_num_freqs() const;
 };
-//// =============================================================================
-//class HydroInputs {
-//public:
-//	HydroInputs();
-//	~HydroInputs();
-//	double regularWaveAmplitude;
-//	double regularWavePeriod;
-//	double regularWaveOmega;
-//	double get_regular_wave_omega(double regularWavePeriod);
-//private:
-//	
-//};
+
+// =============================================================================
+class HydroInputs {
+public:
+	HydroInputs();
+	//~HydroInputs();
+	double regularWaveAmplitude;
+	double regularWaveOmega;
+	int freqIndex;
+	//double regularWavePeriod;
+	//double regularWaveOmega;
+	//double get_regular_wave_omega(double regularWavePeriod);
+private:
+	
+};
+
 // =============================================================================
 class HydroForces;
 class ForceTorqueFunc : public ChFunction {
@@ -101,6 +113,7 @@ class HydroForces {
 private:
 	std::shared_ptr<ChBody> body;
 	H5FileInfo fileInfo;
+	HydroInputs hydroInputs;
 	ChVectorN<double, 6> equil;
 	ForceTorqueFunc forces[6];
 	std::shared_ptr<ForceTorqueFunc> force_ptrs[6];
@@ -109,6 +122,14 @@ private:
 	ChVectorN<double, 6> forceRadiationDamping;
 	ChVectorN<double, 6> forceRadiationDampingFreq;
 	ChVectorN<double, 6> forceExcitation;
+	double waveAmplitude;
+	double waveOmega;
+	double domega;
+	double freqIndexDes;
+	int freqIndexFloor;
+	double freqInterpVal;
+	double forceExcitationMag;
+	double forceExcitationPhase;
 	std::vector<ChVectorN<double, 6>> velocityHistory;
 	std::vector<double> timeSteps;
 	int offset;
@@ -120,7 +141,7 @@ private:
 	std::shared_ptr<ChForce> chronoTorque;
 public:
 	HydroForces();
-	HydroForces(H5FileInfo& sysH5FileInfo, std::shared_ptr<ChBody> object);
+	HydroForces(H5FileInfo& sysH5FileInfo, std::shared_ptr<ChBody> object, HydroInputs userHydroInputs);
 
 	// ensures these member functions are not given a default definition by compiler
 	// these features don't make sense to have, and break things when they exist
@@ -195,9 +216,10 @@ class LoadAllHydroForces {
 private:
 	H5FileInfo sysFileInfo;     /// < object to read h5 file info
 	HydroForces hydro_force;                     /// < object for linear restoring force
+	HydroInputs userHydroInputs;
 	//std::shared_ptr<BuoyancyForce> buoyancy_force;
 	std::shared_ptr<ChLoadContainer> my_loadcontainer;
 	std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia;
 public:
-	LoadAllHydroForces(std::shared_ptr<ChBody> object, std::string file);
+	LoadAllHydroForces(std::shared_ptr<ChBody> object, std::string file, HydroInputs userHydroInputs);
 };
