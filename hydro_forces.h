@@ -66,8 +66,10 @@ public:
 	double get_g() const;
 	double get_disp_vol() const;
 	double get_rirf_val(int i, int n, int m) const;
-	double get_excitation_mag(int m, int n, int w) const;
-	double get_excitation_phase(int m, int n, int w) const;
+	double get_excitation_mag_ix(int m, int n, int w) const;
+	double get_excitation_mag_interp(int i, int j, double freqIndexDes) const;
+	double get_excitation_phase_ix(int m, int n, int w) const;
+	double get_excitation_phase_interp(int i, int j, double freqIndexDes) const;
 	double get_omega_min() const;
 	double get_omega_max() const;
 	double get_domega() const;
@@ -128,8 +130,8 @@ private:
 	double freqIndexDes;
 	int freqIndexFloor;
 	double freqInterpVal;
-	double forceExcitationMag;
-	double forceExcitationPhase;
+	ChVectorN<double, 6> forceExcitationMag;
+	ChVectorN<double, 6> forceExcitationPhase;
 	std::vector<ChVectorN<double, 6>> velocityHistory;
 	std::vector<double> timeSteps;
 	int offset;

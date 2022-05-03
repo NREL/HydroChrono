@@ -366,21 +366,48 @@ double H5FileInfo::get_domega() const {
 }
 
 /*******************************************************************************
-* H5FileInfo::get_excitation_mag()
-* returns excitation magnitudes for row i, column j, frequency k
+* H5FileInfo::get_excitation_mag_ix()
+* returns excitation magnitudes for row i, column j, frequency ix k
 *******************************************************************************/
-double H5FileInfo::get_excitation_mag(int i, int j, int k) const {
+double H5FileInfo::get_excitation_mag_ix(int i, int j, int k) const {
 	int indexExMag = k + excitation_mag_dims[2] * i;
+	
 	return excitation_mag_matrix[indexExMag] * rho * g;
 }
 
 /*******************************************************************************
-* H5FileInfo::get_excitation_phase()
+* H5FileInfo::get_excitation_mag_interp()
+* returns excitation magnitudes for row i, column j, frequency ix k
+*******************************************************************************/
+double H5FileInfo::get_excitation_mag_interp(int i, int j, double freqIndexDes) const {
+	double freqInterpVal = freqIndexDes - floor(freqIndexDes);
+	double excitationMagFloor = get_excitation_mag_ix(i, j, floor(freqIndexDes));
+	double excitationMagCeil = get_excitation_mag_ix(i, j, floor(freqIndexDes) +1);
+	double excitationMag = (freqInterpVal * (excitationMagCeil - excitationMagFloor)) + excitationMagFloor;
+
+	return excitationMag;
+}
+
+/*******************************************************************************
+* H5FileInfo::get_excitation_phase_ix()
 * returns excitation phases for row i, column j, frequency k
 *******************************************************************************/
-double H5FileInfo::get_excitation_phase(int i, int j, int k) const {
+double H5FileInfo::get_excitation_phase_ix(int i, int j, int k) const {
 	int indexExPhase = k + excitation_phase_dims[2] * i;
 	return excitation_phase_matrix[indexExPhase];
+}
+
+/*******************************************************************************
+* H5FileInfo::get_excitation_phase_interp()
+* returns excitation phases for row i, column j, frequency ix k
+*******************************************************************************/
+double H5FileInfo::get_excitation_phase_interp(int i, int j, double freqIndexDes) const {
+	double freqInterpVal = freqIndexDes - floor(freqIndexDes);
+	double excitationPhaseFloor = get_excitation_phase_ix(i, j, floor(freqIndexDes));
+	double excitationPhaseCeil = get_excitation_phase_ix(i, j, floor(freqIndexDes) + 1);
+	double excitationPhase = (freqInterpVal * (excitationPhaseCeil - excitationPhaseFloor)) + excitationPhaseFloor;
+
+	return excitationPhase;
 }
 
 /*******************************************************************************
@@ -499,16 +526,19 @@ HydroForces::HydroForces(H5FileInfo& sysH5FileInfo, std::shared_ptr<ChBody> obje
 	waveAmplitude = hydroInputs.regularWaveAmplitude;
 	waveOmega = hydroInputs.regularWaveOmega;
 	domega = fileInfo.get_domega();
-	double freqIndexDes = (waveOmega / domega) - 1;
-	int freqIndexFloor = floor(freqIndexDes);
-	double freqInterpVal = freqIndexDes - freqIndexFloor;
+	freqIndexDes = (waveOmega / domega) - 1;
+	//int freqIndexFloor = floor(freqIndexDes);
+	//double freqInterpVal = freqIndexDes - freqIndexFloor;
 
 	for (int rowEx = 0; rowEx < 6; rowEx++) {
-		forceExcitationMag = fileInfo.get_excitation_mag(rowEx, 0, 41);
-		forceExcitationPhase = fileInfo.get_excitation_phase(rowEx, 0, 41);
+		forceExcitationMag[rowEx] = fileInfo.get_excitation_mag_interp(rowEx, 0, freqIndexDes); //get_excitation_mag_ix(rowEx, 0, 41);
+		forceExcitationPhase[rowEx] = fileInfo.get_excitation_phase_interp(rowEx, 0, freqIndexDes);
 	}
 
-
+	//std::ofstream myfile;
+	//myfile.open("C:\\code\\chrono_hydro_dev\\test_for_chrono_build\\Release\\freqIndex.txt");
+	//myfile << freqIndex << "\n";
+	//myfile.close();
 
 	equil << fileInfo.get_equil_cg().eigen(), 0, 0, 0; // set equilibrium to (cg0, cg1, cg2, 0, 0, 0)
 	prevTime = -1;
@@ -619,7 +649,7 @@ ChVectorN<double, 6> HydroForces::fExcitationRegularFreq() {
 	prevTimeEx = body->GetChTime();
 	for (int rowEx = 0; rowEx < 6; rowEx++) {
 		if (rowEx == 2) {
-			forceExcitation[rowEx] = forceExcitationMag * waveAmplitude * cos(waveOmega * body->GetChTime() + forceExcitationPhase);
+			forceExcitation[rowEx] = forceExcitationMag[rowEx] * waveAmplitude * cos(waveOmega * body->GetChTime() + forceExcitationPhase[rowEx]);
 		}
 		else {
 			forceExcitation[rowEx] = 0.0;
