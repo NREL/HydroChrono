@@ -82,9 +82,20 @@ private:
 class HydroInputs {
 public:
 	HydroInputs();
+	double SetRegularWaveAmplitude(double val) {
+		regular_wave_amplitude = val;
+		return regular_wave_amplitude;
+	}
+	double GetRegularWaveAmplitude() const { return regular_wave_amplitude; }
+	double SetRegularWaveOmega(double val) {
+		regular_wave_omega = val;
+		return regular_wave_omega;
+	}
+	double GetRegularWaveOmega() const { return regular_wave_omega; }
+	
+private:
 	double regular_wave_amplitude;
 	double regular_wave_omega;
-private:
 };
 
 // =============================================================================

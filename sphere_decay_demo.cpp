@@ -91,7 +91,8 @@ int main(int argc, char* argv[]) {
 	body->AddAsset(col_2);
 
 	HydroInputs my_hydro_inputs;
-	my_hydro_inputs.regular_wave_amplitude = 0.022;
+	my_hydro_inputs.SetRegularWaveAmplitude(0.022);
+	//my_hydro_inputs.SetRegularWaveOmega(2.10);
 	LoadAllHydroForces blah(body, "../../HydroChrono/sphere.h5", "body1", my_hydro_inputs);
 
 	// update irrlicht app with body info

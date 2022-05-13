@@ -65,8 +65,10 @@ int main(int argc, char* argv[]) {
 	system.AddLink(spring_1);
 
 	HydroInputs my_hydro_inputs;
-	my_hydro_inputs.regular_wave_amplitude = task10_wave_amps[reg_wave_num-1]; //0.095;
-	my_hydro_inputs.regular_wave_omega = task10_wave_omegas[reg_wave_num-1];//1.427996661;
+	my_hydro_inputs.SetRegularWaveAmplitude(task10_wave_amps[reg_wave_num - 1]); //0.095;
+	my_hydro_inputs.SetRegularWaveOmega(task10_wave_omegas[reg_wave_num - 1]); //1.427996661;
+	//my_hydro_inputs.regular_wave_amplitude = task10_wave_amps[reg_wave_num-1]; //0.095;
+	//my_hydro_inputs.regular_wave_omega = task10_wave_omegas[reg_wave_num-1];//1.427996661;
 	LoadAllHydroForces blah(body, "../../HydroChrono/sphere.h5", "body1", my_hydro_inputs);
 
 	std::string out_file = "regwave_" + std::to_string(reg_wave_num) + ".txt";
@@ -75,8 +77,8 @@ int main(int argc, char* argv[]) {
 	out_stream.precision(10);
 	out_stream.width(12);
 	out_stream << "Wave #: \t" << reg_wave_num << "\n";
-	out_stream << "Wave amplitude (m): \t" << my_hydro_inputs.regular_wave_amplitude << "\n";
-	out_stream << "Wave omega (rad/s): \t" << my_hydro_inputs.regular_wave_omega << "\n";
+	out_stream << "Wave amplitude (m): \t" << my_hydro_inputs.GetRegularWaveAmplitude() << "\n";
+	out_stream << "Wave omega (rad/s): \t" << my_hydro_inputs.GetRegularWaveOmega() << "\n";
 	out_stream << "#Time\tBody Pos\tBody vel (heave)\tforce (heave)\n";
 
 	// Simulation loop

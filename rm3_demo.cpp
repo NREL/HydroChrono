@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) {
 	system.Set_G_acc(ChVector<>(0, 0, -9.81));
 
 	// Create the Irrlicht application for visualizing
-	ChIrrApp application(&system, L"Sphere Decay Test", core::dimension2d<u32>(800, 600), VerticalDir::Z);
+	ChIrrApp application(&system, L"MultiBody Demo", core::dimension2d<u32>(800, 600), VerticalDir::Z);
 	application.AddLogo();
 	application.AddSkyBox();
 	application.AddTypicalLights();
@@ -113,6 +113,8 @@ int main(int argc, char* argv[]) {
 
 	HydroInputs my_hydro_inputs;
 	//my_hydro_inputs.regularWaveAmplitude = 0.022;
+	//my_hydro_inputs.SetRegularWaveAmplitude(0.022);
+	//my_hydro_inputs.SetRegularWaveOmega(2.10);
 	LoadAllHydroForces hydroForcesTorus(torus, "../../HydroChrono/rm3.h5", "body1", my_hydro_inputs);
 	LoadAllHydroForces hydroForcesCylinder(cylinder, "../../HydroChrono/rm3.h5", "body2", my_hydro_inputs);
 
