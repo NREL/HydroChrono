@@ -92,7 +92,7 @@ int main(int argc, char* argv[]) {
 
 	HydroInputs myHydroInputs;
 	myHydroInputs.regularWaveAmplitude = 0.022;
-	LoadAllHydroForces blah(body, "../../HydroChrono/sphere.h5", myHydroInputs);
+	LoadAllHydroForces blah(body, "../../HydroChrono/sphere.h5", "body1", myHydroInputs);
 
 	// update irrlicht app with body info
 	application.AssetBindAll();

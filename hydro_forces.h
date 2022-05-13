@@ -223,5 +223,6 @@ private:
 	std::shared_ptr<ChLoadContainer> my_loadcontainer;
 	std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia;
 public:
-	LoadAllHydroForces(std::shared_ptr<ChBody> object, std::string file, HydroInputs userHydroInputs);
+	LoadAllHydroForces(std::shared_ptr<ChBody> object, std::string file, std::string bodyName, HydroInputs userHydroInputs);
+	//~LoadAllHydroForces();
 };

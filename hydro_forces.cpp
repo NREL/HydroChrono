@@ -371,7 +371,6 @@ double H5FileInfo::get_domega() const {
 *******************************************************************************/
 double H5FileInfo::get_excitation_mag_ix(int i, int j, int k) const {
 	int indexExMag = k + excitation_mag_dims[2] * i;
-	
 	return excitation_mag_matrix[indexExMag] * rho * g;
 }
 
@@ -712,6 +711,11 @@ void HydroForces::SetTorque() {
 ChLoadAddedMass::ChLoadAddedMass(std::shared_ptr<ChBody> body,  ///< object to apply additional inertia to
 	const H5FileInfo& file) : ChLoadCustom(body) {
 	inf_added_mass_J = file.get_inf_added_mass_matrix(); //TODO switch all uses of H5FileInfo object to be like this, instead of copying the object each time?
+
+	std::ofstream myfile;
+	myfile.open("C:\\code\\chrono_hydro_dev\\HydroChrono_build\\Release\\inf_added_mass_J.txt");
+	myfile << inf_added_mass_J << "\n";
+	myfile.close();
 }
 
 /*******************************************************************************
@@ -726,7 +730,15 @@ void ChLoadAddedMass::ComputeJacobian(ChState* state_x,       ///< state positio
 	ChMatrixRef mM          ///< result dQ/da
 ) {
 	//set mass matrix here
+
 	jacobians->M = inf_added_mass_J;
+
+	ChMatrixDynamic<double> massmat = jacobians->M;
+
+	std::ofstream myfile2;
+	myfile2.open("C:\\code\\chrono_hydro_dev\\HydroChrono_build\\Release\\massmat.txt");
+	myfile2 << massmat << "\n";
+	myfile2.close();
 
 	// R gyroscopic damping matrix terms (6x6)
 	// 0 for added mass
@@ -765,8 +777,8 @@ void ChLoadAddedMass::LoadIntLoadResidual_Mv(ChVectorDynamic<>& R, const ChVecto
 /*******************************************************************************
 *
 *******************************************************************************/
-LoadAllHydroForces::LoadAllHydroForces(std::shared_ptr<ChBody> object, std::string file, HydroInputs userHydroInputs) :
-	sysFileInfo(file, "body1"), hydro_force(sysFileInfo, object, userHydroInputs) {
+LoadAllHydroForces::LoadAllHydroForces(std::shared_ptr<ChBody> object, std::string file, std::string bodyName, HydroInputs userHydroInputs) :
+	sysFileInfo(file, bodyName), hydro_force(sysFileInfo, object, userHydroInputs) {
 
 	my_loadcontainer = chrono_types::make_shared<ChLoadContainer>();
 	my_loadbodyinertia = chrono_types::make_shared<ChLoadAddedMass>(object, sysFileInfo);
@@ -777,3 +789,11 @@ LoadAllHydroForces::LoadAllHydroForces(std::shared_ptr<ChBody> object, std::stri
 	hydro_force.SetForce();
 	hydro_force.SetTorque();
 }
+
+//LoadAllHydroForces::~LoadAllHydroForces() {
+//	/*delete sysFileInfo;*/
+//	delete hydro_force;
+//	delete userHydroInputs;
+//	/*delete my_loadcontainer;
+//	delete my_loadbodyinertia;*/
+//}
