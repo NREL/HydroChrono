@@ -75,7 +75,7 @@ int main(int argc, char* argv[]) {
 		nullptr,                                                                                  // no need for contact material
 		0                                                                                         // swept sphere radius
 		);
-	
+
 	// set up body from a mesh
 	std::shared_ptr<ChBody> cylinder = chrono_types::make_shared<ChBodyEasyMesh>(                   //
 		GetChronoDataFile("../../HydroChrono/cylinder.obj").c_str(),                 // file name
@@ -111,10 +111,10 @@ int main(int argc, char* argv[]) {
 	col_2->SetColor(ChColor(0, 0, 0.6f));
 	cylinder->AddAsset(col_2);
 
-	HydroInputs myHydroInputs;
-	//myHydroInputs.regularWaveAmplitude = 0.022;
-	LoadAllHydroForces hydroForcesTorus(torus, "../../HydroChrono/rm3.h5", "body1", myHydroInputs);
-	LoadAllHydroForces hydroForcesCylinder(cylinder, "../../HydroChrono/rm3.h5", "body2", myHydroInputs);
+	HydroInputs my_hydro_inputs;
+	//my_hydro_inputs.regularWaveAmplitude = 0.022;
+	LoadAllHydroForces hydroForcesTorus(torus, "../../HydroChrono/rm3.h5", "body1", my_hydro_inputs);
+	LoadAllHydroForces hydroForcesCylinder(cylinder, "../../HydroChrono/rm3.h5", "body2", my_hydro_inputs);
 
 
 	// update irrlicht app with body info
@@ -136,7 +136,7 @@ int main(int argc, char* argv[]) {
 	// set up output file for body position each step
 	std::string of = "output.txt";                    /// < put name of your output file here
 	std::ofstream zpos(of, std::ofstream::out);
-	if (!zpos.is_open()) { 
+	if (!zpos.is_open()) {
 		std::cout << "Error opening file \"" + of + "\". Please make sure this file path exists then try again\n";
 		return -1;
 	}

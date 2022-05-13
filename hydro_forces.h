@@ -42,7 +42,7 @@ private:
 	hsize_t excitation_im_dims[3];
 	ChVector<double> cg;
 	ChVector<double> cb;
-	std::vector<double> timesteps;
+	std::vector<double> rirf_time_vector;
 	hsize_t freq_dims[3];
 	std::vector<double> freq_list;
 	double omega_min;
@@ -52,48 +52,42 @@ private:
 	double disp_vol;
 	std::string h5_file_name;
 	std::string bodyNum;
-	void read_data();
+	void readH5Data();
 
 public:
 	H5FileInfo();
-	H5FileInfo(std::string file, std::string bodyName); //TODO: systemName
+	H5FileInfo(std::string file, std::string body_name);
 	~H5FileInfo();
-	ChMatrixDynamic<double> get_lin_matrix() const;
-	ChMatrixDynamic<double> get_inf_added_mass_matrix() const;
-	ChVector<> get_equil_cg() const;
-	ChVector<> get_equil_cb() const;
-	double get_rho() const;
-	double get_g() const;
-	double get_disp_vol() const;
-	double get_rirf_val(int i, int n, int m) const;
-	double get_excitation_mag_ix(int m, int n, int w) const;
-	double get_excitation_mag_interp(int i, int j, double freqIndexDes) const;
-	double get_excitation_phase_ix(int m, int n, int w) const;
-	double get_excitation_phase_interp(int i, int j, double freqIndexDes) const;
-	double get_omega_min() const;
-	double get_omega_max() const;
-	double get_domega() const;
-	//double get_excitation_re(int m, int n, int w) const;
-	//double get_excitation_im(int m, int n, int w) const;
-	int get_rirf_dims(int i) const;
-	double get_delta_t() const;
-	std::vector<double> get_times() const;
-	double get_num_freqs() const;
+	ChMatrixDynamic<double> GetHydrostaticStiffnessMatrix() const;
+	ChMatrixDynamic<double> GetInfAddedMassMatrix() const;
+	ChVector<> GetEquilibriumCoG() const;
+	ChVector<> GetEquilibriumCoB() const;
+	double GetRho() const;
+	double GetGravity() const;
+	double GetDisplacementVolume() const;
+	double GetRIRFval(int i, int n, int m) const;
+	int GetRIRFDims(int i) const;
+	double GetExcitationMagValue(int m, int n, int w) const;
+	double GetExcitationMagInterp(int i, int j, double freq_index_des) const;
+	double GetExcitationPhaseValue(int m, int n, int w) const;
+	double GetExcitationPhaseInterp(int i, int j, double freq_index_des) const;
+	double GetOmegaMin() const;
+	double GetOmegaMax() const;
+	double GetOmegaDelta() const;
+	//double GetExcitationReal(int m, int n, int w) const;
+	//double GetExcitationImag(int m, int n, int w) const;
+	double GetRIRFdt() const;
+	std::vector<double> GetRIRFTimeVector() const;
+	double GetNumFreqs() const;
 };
 
 // =============================================================================
 class HydroInputs {
 public:
 	HydroInputs();
-	//~HydroInputs();
-	double regularWaveAmplitude;
-	double regularWaveOmega;
-	int freqIndex;
-	//double regularWavePeriod;
-	//double regularWaveOmega;
-	//double get_regular_wave_omega(double regularWavePeriod);
+	double regular_wave_amplitude;
+	double regular_wave_omega;
 private:
-	
 };
 
 // =============================================================================
@@ -114,66 +108,50 @@ public:
 class HydroForces {
 private:
 	std::shared_ptr<ChBody> body;
-	H5FileInfo fileInfo;
-	HydroInputs hydroInputs;
-	ChVectorN<double, 6> equil;
+	H5FileInfo file_info;
+	HydroInputs hydro_inputs;
+	ChVectorN<double, 6> equilibrium;
 	ForceTorqueFunc forces[6];
 	std::shared_ptr<ForceTorqueFunc> force_ptrs[6];
-	ChVectorN<double, 6> activeDofs;
-	ChVectorN<double, 6> currentForce;
-	ChVectorN<double, 6> forceRadiationDamping;
-	ChVectorN<double, 6> forceRadiationDampingFreq;
-	ChVectorN<double, 6> forceExcitation;
-	double waveAmplitude;
-	double waveOmega;
-	double domega;
-	double freqIndexDes;
-	int freqIndexFloor;
-	double freqInterpVal;
-	ChVectorN<double, 6> forceExcitationMag;
-	ChVectorN<double, 6> forceExcitationPhase;
-	std::vector<ChVectorN<double, 6>> velocityHistory;
-	std::vector<double> timeSteps;
+	// ChVectorN<double, 6> active_dofs;
+	ChVectorN<double, 6> force_hydrostatic;
+	ChVectorN<double, 6> force_radiation_damping;
+	// ChVectorN<double, 6> forceRadiationDampingFreq;
+	ChVectorN<double, 6> force_excitation_freq;
+	double wave_amplitude;
+	double wave_omega;
+	double wave_omega_delta;
+	double freq_index_des;
+	int freq_index_floor;
+	double freq_interp_val;
+	ChVectorN<double, 6> excitation_force_mag;
+	ChVectorN<double, 6> excitation_force_phase;
+	std::vector<ChVectorN<double, 6>> velocity_history;
+	double previous_time;
+	double previous_time_rirf;
+	double previous_time_ex;
+	std::vector<double> rirf_time_vector;
 	int offset;
-	double currentTime;
-	double prevTime;
-	double prevTimeIRF;
-	double prevTimeEx;
-	std::shared_ptr<ChForce> chronoForce;
-	std::shared_ptr<ChForce> chronoTorque;
+	//double current_time;
+	std::shared_ptr<ChForce> chrono_force;
+	std::shared_ptr<ChForce> chrono_torque;
 public:
 	HydroForces();
-	HydroForces(H5FileInfo& sysH5FileInfo, std::shared_ptr<ChBody> object, HydroInputs userHydroInputs);
+	HydroForces(H5FileInfo& h5_file_info, std::shared_ptr<ChBody> object, HydroInputs users_hydro_inputs);
 
 	// ensures these member functions are not given a default definition by compiler
 	// these features don't make sense to have, and break things when they exist
 	HydroForces(const HydroForces& other) = delete;
 	HydroForces operator = (const HydroForces& rhs) = delete;
 
-	ChVectorN<double, 6> fHydrostaticStiffness();
-	ChVectorN<double, 6> fRadDamping();
-	ChVectorN<double, 6> fRadDampingFreq();
-	ChVectorN<double, 6> fExcitationRegularFreq();
+	ChVectorN<double, 6> ComputeForceHydrostatics();
+	ChVectorN<double, 6> ComputeForceRadiationDampingConv();
+	// ChVectorN<double, 6> ComputeForceRadiationDampingFreq();
+	ChVectorN<double, 6> ComputeForceExcitationRegularFreq();
 	double coordinateFunc(int i);
 	void SetForce();
 	void SetTorque();
 };
-// TDO: bring this back!
-//// =============================================================================
-//class BuoyancyForce {
-//private:
-//	H5FileInfo fileInfo;
-//	double buoyancy;
-//	ChFunction_Const fc;
-//	std::shared_ptr<ChFunction_Const> fc_ptr;
-//	ChForce force;
-//	std::shared_ptr<ChForce> force_ptr;
-//
-//public:
-//	BuoyancyForce(H5FileInfo& info);
-//	std::shared_ptr<ChForce> getForce_ptr();
-//};
-// =============================================================================
 
 // =============================================================================
 class ChLoadAddedMass : public ChLoadCustom {
@@ -216,13 +194,13 @@ private:
 // =============================================================================
 class LoadAllHydroForces {
 private:
-	H5FileInfo sysFileInfo;     /// < object to read h5 file info
+	H5FileInfo sys_file_info;     /// < object to read h5 file info
 	HydroForces hydro_force;                     /// < object for linear restoring force
-	HydroInputs userHydroInputs;
+	HydroInputs users_hydro_inputs;
 	//std::shared_ptr<BuoyancyForce> buoyancy_force;
 	std::shared_ptr<ChLoadContainer> my_loadcontainer;
 	std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia;
 public:
-	LoadAllHydroForces(std::shared_ptr<ChBody> object, std::string file, std::string bodyName, HydroInputs userHydroInputs);
+	LoadAllHydroForces(std::shared_ptr<ChBody> object, std::string file, std::string body_name, HydroInputs users_hydro_inputs);
 	//~LoadAllHydroForces();
 };

@@ -7,15 +7,12 @@ int main(int argc, char* argv[]) {
 	GetLog() << "Copyright (c) 2017 projectchrono.org\nChrono version: " << CHRONO_VERSION << "\n\n";
 	GetLog() << "HydroChrono v0.0.1\n\n";
 
-	int regWaveNum = 10;
+	int reg_wave_num = 10;
 
-	double task10WaveAmps[] = { 0.044, 0.078, 0.095, 0.123, 0.177, 0.24, 0.314, 0.397, 0.491, 0.594 };
-	double task10WaveOmegas[] = { 2.094395102, 1.570796327, 1.427996661, 1.256637061, 1.047197551, 0.897597901, 0.785398163, 0.698131701, 0.628318531, 0.571198664 };
+	double task10_wave_amps[] = { 0.044, 0.078, 0.095, 0.123, 0.177, 0.24, 0.314, 0.397, 0.491, 0.594 };
+	double task10_wave_omegas[] = { 2.094395102, 1.570796327, 1.427996661, 1.256637061, 1.047197551, 0.897597901, 0.785398163, 0.698131701, 0.628318531, 0.571198664 };
 	double task10dampings[] = { 398736.034, 118149.758, 90080.857, 161048.558, 322292.419, 479668.979, 633979.761, 784083.286, 932117.647, 1077123.445 };
 	//int waveNum = 0;
-
-	//std::cout << '\n' << "Enter regWaveNum (1-10)...\n";
-	//std::cin >> regWaveNum;
 
 	// define some basic model parameters
 	auto start = std::chrono::high_resolution_clock::now();
@@ -49,7 +46,6 @@ int main(int argc, char* argv[]) {
 	std::filesystem::create_directories(out_dir);
 
 	// S = 0.0005
-	//std::cout << "running wave no. " + std::to_string(regWaveNum) + "\n";
 	// Info about which solver to use - may want to change this later
 	auto gmres_solver = chrono_types::make_shared<ChSolverGMRES>();  // change to mkl or minres?
 	gmres_solver->SetMaxIterations(300);
@@ -60,37 +56,27 @@ int main(int argc, char* argv[]) {
 	// specified in the body relative frames.
 	double rest_length = 3.0;
 	double spring_coef = 0.0;
-	double damping_coef = task10dampings[regWaveNum - 1];
+	double damping_coef = task10dampings[reg_wave_num - 1];
 	auto spring_1 = chrono_types::make_shared<ChLinkTSDA>();
 	spring_1->Initialize(body, ground, true, ChVector<>(0, 0, -2), ChVector<>(0, 0, -5));
 	spring_1->SetRestLength(rest_length);
 	spring_1->SetSpringCoefficient(spring_coef);
 	spring_1->SetDampingCoefficient(damping_coef);
 	system.AddLink(spring_1);
-	//// attach color asset to spring
-	//auto col_1 = chrono_types::make_shared<ChColorAsset>();
-	//col_1->SetColor(ChColor(0, 0, 0));
-	//spring_1->AddAsset(col_1);
-	//// Attach a visualization asset.
-	//spring_1->AddAsset(col_1);
-	//spring_1->AddAsset(chrono_types::make_shared<ChPointPointSpring>(2, 80, 15));
 
-	HydroInputs myHydroInputs;
-	myHydroInputs.regularWaveAmplitude = task10WaveAmps[regWaveNum-1]; //0.095;
-	myHydroInputs.regularWaveOmega = task10WaveOmegas[regWaveNum-1];//1.427996661;
-	LoadAllHydroForces blah(body, "../../HydroChrono/sphere.h5", "body1", myHydroInputs);
+	HydroInputs my_hydro_inputs;
+	my_hydro_inputs.regular_wave_amplitude = task10_wave_amps[reg_wave_num-1]; //0.095;
+	my_hydro_inputs.regular_wave_omega = task10_wave_omegas[reg_wave_num-1];//1.427996661;
+	LoadAllHydroForces blah(body, "../../HydroChrono/sphere.h5", "body1", my_hydro_inputs);
 
-	std::string out_file = "regwave_" + std::to_string(regWaveNum) + ".txt";
+	std::string out_file = "regwave_" + std::to_string(reg_wave_num) + ".txt";
 	std::ofstream out_stream(out_dir + out_file, std::ofstream::out);
-	//if (!out_stream.is_open()) {
-	//	std::cout << "Error opening file \"" + out_file + "\". Please make sure this file path exists then try again\n";
-	//	return -1;
-	//}
+
 	out_stream.precision(10);
 	out_stream.width(12);
-	out_stream << "Wave #: \t" << regWaveNum << "\n";
-	out_stream << "Wave amplitude (m): \t" << myHydroInputs.regularWaveAmplitude << "\n";
-	out_stream << "Wave omega (rad/s): \t" << myHydroInputs.regularWaveOmega << "\n";
+	out_stream << "Wave #: \t" << reg_wave_num << "\n";
+	out_stream << "Wave amplitude (m): \t" << my_hydro_inputs.regular_wave_amplitude << "\n";
+	out_stream << "Wave omega (rad/s): \t" << my_hydro_inputs.regular_wave_omega << "\n";
 	out_stream << "#Time\tBody Pos\tBody vel (heave)\tforce (heave)\n";
 
 	// Simulation loop
@@ -107,9 +93,5 @@ int main(int argc, char* argv[]) {
 	unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 	std::cout << "Duration: " << duration / 1000.0 << " seconds" << std::endl;
 
-	//do
-	//{
-	//	std::cout << '\n' << "Press any key to continue...";
-	//} while (std::cin.get() != '\n');
 	return 0;
 }

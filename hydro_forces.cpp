@@ -5,20 +5,17 @@
 // =============================================================================
 
 /*******************************************************************************
-* H5FileInfo::read_data()
+* H5FileInfo::readH5Data()
 * private member function called from constructor
 * reads h5 file data and stores it in member variables for use with other
 * classes and forces
 *******************************************************************************/
-void H5FileInfo::read_data() {
-	// testing HDF5 compatibility
+void H5FileInfo::readH5Data() {
 	// open file with read only access
-	H5::H5File sphereFile(h5_file_name, H5F_ACC_RDONLY); // "../../test_for_chrono/sphere.h5"
+	H5::H5File sphereFile(h5_file_name, H5F_ACC_RDONLY);
 
-	//
 	// Read linear restoring stiffness file info into matrices
-	// "body1"
-	std::string data_name = bodyNum + "/hydro_coeffs/linear_restoring_stiffness"; // "body1/hydro_coeffs/linear_restoring_stiffness"
+	std::string data_name = bodyNum + "/hydro_coeffs/linear_restoring_stiffness";
 	H5::DataSet dataset = sphereFile.openDataSet(data_name);
 	// Get filespace for rank and dimension
 	H5::DataSpace filespace = dataset.getSpace();
@@ -49,7 +46,7 @@ void H5FileInfo::read_data() {
 	mspace1 = H5::DataSpace(rank, dims);
 	temp = new double[dims[0] * dims[1]];
 	dataset.read(temp, H5::PredType::NATIVE_DOUBLE, mspace1, filespace);
-	// put into equil chvector
+	// put into equilibrium chvector
 	inf_added_mass.resize(dims[0], dims[1]);
 	for (int i = 0; i < dims[0]; i++) {
 		for (int j = 0; j < dims[1]; j++) {
@@ -67,7 +64,7 @@ void H5FileInfo::read_data() {
 	mspace1 = H5::DataSpace(rank, dims);
 	temp = new double[dims[0] * dims[1]];
 	dataset.read(temp, H5::PredType::NATIVE_DOUBLE, mspace1, filespace);
-	// put into equil chvector
+	// put into equilibrium chvector
 	for (int i = 0; i < dims[0]; i++) {
 		cb[i] = temp[i];
 	}
@@ -80,7 +77,7 @@ void H5FileInfo::read_data() {
 	rank = filespace.getSimpleExtentDims(dims);
 	mspace1 = H5::DataSpace(rank, dims);
 	dataset.read(temp, H5::PredType::NATIVE_DOUBLE, mspace1, filespace);
-	// put into equil chvector
+	// put into equilibrium chvector
 	for (int i = 0; i < dims[0]; i++) {
 		cg[i] = temp[i];
 	}
@@ -129,7 +126,7 @@ void H5FileInfo::read_data() {
 	temp = new double[freq_dims[0] * freq_dims[1]];
 	freq_list.resize(freq_dims[0]);
 	dataset.read(temp, H5::PredType::NATIVE_DOUBLE, mspace1, filespace);
-	// put into timesteps chvector
+	// put into rirf_time_vector chvector
 	for (int i = 0; i < freq_dims[0]; i++) {
 		freq_list[i] = temp[i];
 	}
@@ -149,18 +146,18 @@ void H5FileInfo::read_data() {
 	dataset.read(rirf_matrix, H5::PredType::NATIVE_DOUBLE, mspace3, filespace);
 	dataset.close();
 
-	// read timesteps vector
+	// read rirf_time_vector
 	data_name = bodyNum + "/hydro_coeffs/radiation_damping/impulse_response_fun/t";
 	dataset = sphereFile.openDataSet(data_name);
 	filespace = dataset.getSpace();
 	rank = filespace.getSimpleExtentDims(dims);
 	mspace1 = H5::DataSpace(rank, dims);
 	temp = new double[dims[0] * dims[1]];
-	timesteps.resize(dims[0]);
+	rirf_time_vector.resize(dims[0]);
 	dataset.read(temp, H5::PredType::NATIVE_DOUBLE, mspace1, filespace);
-	// put into timesteps chvector
+	// put into rirf_time_vector chvector
 	for (int i = 0; i < dims[0]; i++) {
-		timesteps[i] = temp[i];
+		rirf_time_vector[i] = temp[i];
 	}
 	dataset.close();
 	delete[] temp;
@@ -244,184 +241,184 @@ H5FileInfo::~H5FileInfo() {
 * requires file name (in absolute file name or referenced from executable location)
 * and body name (name of body's section in H5 file, ie "body1" etc)
 * each body in system should have its own H5FileInfo object
-* calls read_data()
+* calls readH5Data()
 *******************************************************************************/
 H5FileInfo::H5FileInfo(std::string file, std::string bodyName) {
 	h5_file_name = file;
 	bodyNum = bodyName;
-	read_data();
+	readH5Data();
 }
 
 /*******************************************************************************
-* H5FileInfo::get_lin_matrix()
+* H5FileInfo::GetHydrostaticStiffnessMatrix()
 * returns the linear restoring stiffness matrix
 *******************************************************************************/
-ChMatrixDynamic<double> H5FileInfo::get_lin_matrix() const {
+ChMatrixDynamic<double> H5FileInfo::GetHydrostaticStiffnessMatrix() const {
 	return lin_matrix;
 }
 
 /*******************************************************************************
-* H5FileInfo::get_inf_added_mass_matrix()
+* H5FileInfo::GetInfAddedMassMatrix()
 * returns the added mass matrix at infinite frequency
 *******************************************************************************/
-ChMatrixDynamic<double> H5FileInfo::get_inf_added_mass_matrix() const {
+ChMatrixDynamic<double> H5FileInfo::GetInfAddedMassMatrix() const {
 	return inf_added_mass * rho;
 }
 
 /*******************************************************************************
-* H5FileInfo::get_equil_cg()
+* H5FileInfo::GetEquilibriumCoG()
 * returns cg, center of gravity of object's body
 *******************************************************************************/
-ChVector<> H5FileInfo::get_equil_cg() const {
+ChVector<> H5FileInfo::GetEquilibriumCoG() const {
 	return cg;
 }
 
 /*******************************************************************************
-* H5FileInfo::get_equil_cb()
+* H5FileInfo::GetEquilibriumCoB()
 * returns cb, the rotational equilibrium
 *******************************************************************************/
-ChVector<> H5FileInfo::get_equil_cb() const {
+ChVector<> H5FileInfo::GetEquilibriumCoB() const {
 	return cb;
 }
 
 /*******************************************************************************
-* H5FileInfo::get_rho()
+* H5FileInfo::GetRho()
 * returns the density of water, rho (kg/m^3 usually)
 *******************************************************************************/
-double H5FileInfo::get_rho() const {
+double H5FileInfo::GetRho() const {
 	return rho;
 }
 
 /*******************************************************************************
-* H5FileInfo::get_g()
+* H5FileInfo::GetGravity()
 * returns g, gravitational acceleration, m/s^2
 *******************************************************************************/
-double H5FileInfo::get_g() const {
+double H5FileInfo::GetGravity() const {
 	return g;
 }
 
 /*******************************************************************************
-* H5FileInfo::get_disp_vol()
+* H5FileInfo::GetDisplacementVolume()
 * returns displaced volume when body at equilibrium, m^3
 *******************************************************************************/
-double H5FileInfo::get_disp_vol() const {
+double H5FileInfo::GetDisplacementVolume() const {
 	return disp_vol;
 }
 
 /*******************************************************************************
-* H5FileInfo::get_impulse_resp_matrix()
+* H5FileInfo::GetRIRFval()
 * returns impulse response coeff for row m, column n, step s
 *******************************************************************************/
-double H5FileInfo::get_rirf_val(int m, int n, int s) const {
+double H5FileInfo::GetRIRFval(int m, int n, int s) const {
 	int index = s + rirf_dims[2] * (n + m * rirf_dims[1]);
 	if (index < 0 || index >= rirf_dims[0] * rirf_dims[1] * rirf_dims[2]) {
 		std::cout << "out of bounds IRF\n";
 		return 0;
 	}
 	else {
-		return rirf_matrix[index] * get_rho(); // scale radiation force by rho
+		return rirf_matrix[index] * GetRho(); // scale radiation force by rho
 	}
 }
 
 /*******************************************************************************
-* H5FileInfo::get_rirf_dims(int i) returns the i-th component of the dimensions of radiation_damping_matrix
+* H5FileInfo::GetRIRFDims(int i) returns the i-th component of the dimensions of radiation_damping_matrix
 * i = [0,1,2] -> [number of rows, number of columns, number of matrices]
 *******************************************************************************/
-int H5FileInfo::get_rirf_dims(int i) const {
+int H5FileInfo::GetRIRFDims(int i) const {
 	return rirf_dims[i];
 }
 
 //TODO: Get B(w)
 
 /*******************************************************************************
-* H5FileInfo::get_num_freqs()
+* H5FileInfo::GetNumFreqs()
 * returns number of frequencies computed
 *******************************************************************************/
-double H5FileInfo::get_num_freqs() const {
+double H5FileInfo::GetNumFreqs() const {
 	return freq_dims[0];
 }
 
 /*******************************************************************************
-* H5FileInfo::get_omega_min()
-* returns min value of omega 
+* H5FileInfo::GetOmegaMin()
+* returns min value of omega
 *******************************************************************************/
-double H5FileInfo::get_omega_min() const {
+double H5FileInfo::GetOmegaMin() const {
 	return freq_list[0];
 }
 
 /*******************************************************************************
-* H5FileInfo::get_omega_max()
+* H5FileInfo::GetOmegaMax()
 * returns max value of omega
 *******************************************************************************/
-double H5FileInfo::get_omega_max() const {
+double H5FileInfo::GetOmegaMax() const {
 	return freq_list[freq_dims[0] - 1];
 }
 
 /*******************************************************************************
-* H5FileInfo::get_domega()
+* H5FileInfo::GetOmegaDelta()
 * returns omega step size
 *******************************************************************************/
-double H5FileInfo::get_domega() const {
-	return get_omega_max() / get_num_freqs();
+double H5FileInfo::GetOmegaDelta() const {
+	return GetOmegaMax() / GetNumFreqs();
 }
 
 /*******************************************************************************
-* H5FileInfo::get_excitation_mag_ix()
+* H5FileInfo::GetExcitationMagValue()
 * returns excitation magnitudes for row i, column j, frequency ix k
 *******************************************************************************/
-double H5FileInfo::get_excitation_mag_ix(int i, int j, int k) const {
+double H5FileInfo::GetExcitationMagValue(int i, int j, int k) const {
 	int indexExMag = k + excitation_mag_dims[2] * i;
 	return excitation_mag_matrix[indexExMag] * rho * g;
 }
 
 /*******************************************************************************
-* H5FileInfo::get_excitation_mag_interp()
+* H5FileInfo::GetExcitationMagInterp()
 * returns excitation magnitudes for row i, column j, frequency ix k
 *******************************************************************************/
-double H5FileInfo::get_excitation_mag_interp(int i, int j, double freqIndexDes) const {
-	double freqInterpVal = freqIndexDes - floor(freqIndexDes);
-	double excitationMagFloor = get_excitation_mag_ix(i, j, floor(freqIndexDes));
-	double excitationMagCeil = get_excitation_mag_ix(i, j, floor(freqIndexDes) +1);
-	double excitationMag = (freqInterpVal * (excitationMagCeil - excitationMagFloor)) + excitationMagFloor;
+double H5FileInfo::GetExcitationMagInterp(int i, int j, double freq_index_des) const {
+	double freq_interp_val = freq_index_des - floor(freq_index_des);
+	double excitationMagFloor = GetExcitationMagValue(i, j, floor(freq_index_des));
+	double excitationMagCeil = GetExcitationMagValue(i, j, floor(freq_index_des) +1);
+	double excitationMag = (freq_interp_val * (excitationMagCeil - excitationMagFloor)) + excitationMagFloor;
 
 	return excitationMag;
 }
 
 /*******************************************************************************
-* H5FileInfo::get_excitation_phase_ix()
+* H5FileInfo::GetExcitationPhaseValue()
 * returns excitation phases for row i, column j, frequency k
 *******************************************************************************/
-double H5FileInfo::get_excitation_phase_ix(int i, int j, int k) const {
+double H5FileInfo::GetExcitationPhaseValue(int i, int j, int k) const {
 	int indexExPhase = k + excitation_phase_dims[2] * i;
 	return excitation_phase_matrix[indexExPhase];
 }
 
 /*******************************************************************************
-* H5FileInfo::get_excitation_phase_interp()
+* H5FileInfo::GetExcitationPhaseInterp()
 * returns excitation phases for row i, column j, frequency ix k
 *******************************************************************************/
-double H5FileInfo::get_excitation_phase_interp(int i, int j, double freqIndexDes) const {
-	double freqInterpVal = freqIndexDes - floor(freqIndexDes);
-	double excitationPhaseFloor = get_excitation_phase_ix(i, j, floor(freqIndexDes));
-	double excitationPhaseCeil = get_excitation_phase_ix(i, j, floor(freqIndexDes) + 1);
-	double excitationPhase = (freqInterpVal * (excitationPhaseCeil - excitationPhaseFloor)) + excitationPhaseFloor;
+double H5FileInfo::GetExcitationPhaseInterp(int i, int j, double freq_index_des) const {
+	double freq_interp_val = freq_index_des - floor(freq_index_des);
+	double excitationPhaseFloor = GetExcitationPhaseValue(i, j, floor(freq_index_des));
+	double excitationPhaseCeil = GetExcitationPhaseValue(i, j, floor(freq_index_des) + 1);
+	double excitationPhase = (freq_interp_val * (excitationPhaseCeil - excitationPhaseFloor)) + excitationPhaseFloor;
 
 	return excitationPhase;
 }
 
 /*******************************************************************************
-* H5FileInfo::get_delta_t() returns the difference in first 2 timesteps
+* H5FileInfo::GetRIRFdt() returns the difference in first 2 rirf_time_vector
 *******************************************************************************/
-double H5FileInfo::get_delta_t() const {
-	return timesteps[1] - timesteps[0];
+double H5FileInfo::GetRIRFdt() const {
+	return rirf_time_vector[1] - rirf_time_vector[0];
 }
 
 /*******************************************************************************
-* H5FileInfo::get_times()
-* returns the vector of timesteps from h5 file
+* H5FileInfo::GetRIRFTimeVector()
+* returns the vector of rirf_time_vector from h5 file
 *******************************************************************************/
-std::vector<double> H5FileInfo::get_times() const {
-	return timesteps;
+std::vector<double> H5FileInfo::GetRIRFTimeVector() const {
+	return rirf_time_vector;
 }
 
 // =============================================================================
@@ -469,25 +466,9 @@ void ForceTorqueFunc::SetIndex(int i) {
 	index = i;
 }
 
-// =============================================================================
-// HydroInputs Class Definitions
-// =============================================================================
-
 HydroInputs::HydroInputs() {
-	
-}
 
-	
-//public:
-//	HydroInputs();
-//	~HydroInputs();
-//	double regularWaveAmplitude;
-//	double regularWavePeriod;
-//	double regularWaveOmega;
-//	double get_regular_wave_omega(double regularWavePeriod);
-//private:
-//	
-//};
+}
 
 // =============================================================================
 // HydroForces Class Definitions
@@ -506,8 +487,8 @@ HydroForces::HydroForces() : forces{ {this, 0}, {this, 1}, {this, 2}, {this, 3},
 		// default deletion logic to do nothing
 		// Also! don't need to worry about deleting this later, because stack arrays are always deleted automatically
 	}
-	chronoForce = chrono_types::make_shared<ChForce>();
-	chronoTorque = chrono_types::make_shared<ChForce>();
+	chrono_force = chrono_types::make_shared<ChForce>();
+	chrono_torque = chrono_types::make_shared<ChForce>();
 }
 
 /*******************************************************************************
@@ -516,85 +497,79 @@ HydroForces::HydroForces() : forces{ {this, 0}, {this, 1}, {this, 2}, {this, 3},
 * from H5FileInfo
 * also initializes ChBody that this force will be applied to
 *******************************************************************************/
-HydroForces::HydroForces(H5FileInfo& sysH5FileInfo, std::shared_ptr<ChBody> object, HydroInputs userHydroInputs) : HydroForces() {
+HydroForces::HydroForces(H5FileInfo& h5_file_info, std::shared_ptr<ChBody> object, HydroInputs user_hydro_inputs) : HydroForces() {
 	body = object;
-	fileInfo = sysH5FileInfo;
-	hydroInputs = userHydroInputs;
+	file_info = h5_file_info;
+	hydro_inputs = user_hydro_inputs;
 	// define wave inputs here
 	// TODO: switch depending on wave option (regular, regularCIC, irregular, noWaveCIC)
-	waveAmplitude = hydroInputs.regularWaveAmplitude;
-	waveOmega = hydroInputs.regularWaveOmega;
-	domega = fileInfo.get_domega();
-	freqIndexDes = (waveOmega / domega) - 1;
-	//int freqIndexFloor = floor(freqIndexDes);
-	//double freqInterpVal = freqIndexDes - freqIndexFloor;
+	wave_amplitude = hydro_inputs.regular_wave_amplitude;
+	wave_omega = hydro_inputs.regular_wave_omega;
+	wave_omega_delta = file_info.GetOmegaDelta();
+	freq_index_des = (wave_omega / wave_omega_delta) - 1;
 
 	for (int rowEx = 0; rowEx < 6; rowEx++) {
-		forceExcitationMag[rowEx] = fileInfo.get_excitation_mag_interp(rowEx, 0, freqIndexDes); //get_excitation_mag_ix(rowEx, 0, 41);
-		forceExcitationPhase[rowEx] = fileInfo.get_excitation_phase_interp(rowEx, 0, freqIndexDes);
+		excitation_force_mag[rowEx] = file_info.GetExcitationMagInterp(rowEx, 0, freq_index_des);
+		excitation_force_phase[rowEx] = file_info.GetExcitationPhaseInterp(rowEx, 0, freq_index_des);
 	}
 
-	//std::ofstream myfile;
-	//myfile.open("C:\\code\\chrono_hydro_dev\\test_for_chrono_build\\Release\\freqIndex.txt");
-	//myfile << freqIndex << "\n";
-	//myfile.close();
-
-	equil << fileInfo.get_equil_cg().eigen(), 0, 0, 0; // set equilibrium to (cg0, cg1, cg2, 0, 0, 0)
-	prevTime = -1;
-	prevTimeIRF = -1;
-	velocityHistory.resize(fileInfo.get_rirf_dims(2));
-	timeSteps = fileInfo.get_times();
+  // set equilibrium to (cg0, cg1, cg2, 0, 0, 0)
+	equilibrium << file_info.GetEquilibriumCoG().eigen(), 0, 0, 0;
+	previous_time = -1;
+	previous_time_rirf = -1;
+	velocity_history.resize(file_info.GetRIRFDims(2));
+	rirf_time_vector = file_info.GetRIRFTimeVector();
 	ChVectorN<double, 6> temp;
 	for (int i = 0; i < 6; i++) {
 		temp[i] = 0;
-		currentForce[i] = 0;
+		force_hydrostatic[i] = 0;
 	}
 	for (int i = 0; i < 1001; i++) {
-		velocityHistory[i] = temp;
+		velocity_history[i] = temp;
 	}
 	offset = 0;
 }
 
 /*******************************************************************************
-* HydroForces::fHydrostaticStiffness()
+* HydroForces::ComputeForceHydrostatics()
 * calculates the matrix multiplication each time step for linear restoring stiffness
 * f = [linear restoring stiffness matrix] [displacement vector]
 *******************************************************************************/
-ChVectorN<double, 6> HydroForces::fHydrostaticStiffness() {
-	if (body->GetChTime() == prevTime) {
-		return currentForce;
+ChVectorN<double, 6> HydroForces::ComputeForceHydrostatics() {
+	if (body->GetChTime() == previous_time) {
+		return force_hydrostatic;
 	}
-	prevTime = body->GetChTime();
-	currentForce << body->GetPos().eigen(), body->GetRot().Q_to_Euler123();// body->GetRot().Q_to_Euler123().eigen();// body->GetWvel_par();
+	previous_time = body->GetChTime();
+	force_hydrostatic << body->GetPos().eigen(), body->GetRot().Q_to_Euler123();
 
-	currentForce = currentForce - equil;
+	force_hydrostatic = force_hydrostatic - equilibrium;
 
-	double rollLeverArm = currentForce[3];
-	double pitchLeverArm = currentForce[4];
-	double yawLeverArm = currentForce[5];
+	double rollLeverArm = force_hydrostatic[3];
+	double pitchLeverArm = force_hydrostatic[4];
+	double yawLeverArm = force_hydrostatic[5];
 
-	currentForce = -1 * fileInfo.get_lin_matrix() * currentForce;
+	force_hydrostatic = -1 * file_info.GetHydrostaticStiffnessMatrix() * force_hydrostatic;
 
-	double buoyancy = fileInfo.get_rho() * fileInfo.get_g() * fileInfo.get_disp_vol();
-	currentForce[2] += buoyancy;
-	currentForce[3] += buoyancy * rollLeverArm;
-	currentForce[4] += buoyancy * pitchLeverArm;
-	currentForce[5] += buoyancy * yawLeverArm;
+	double buoyancy = file_info.GetRho() * file_info.GetGravity() * file_info.GetDisplacementVolume();
+	force_hydrostatic[2] += buoyancy;
+	force_hydrostatic[3] += buoyancy * rollLeverArm;
+	force_hydrostatic[4] += buoyancy * pitchLeverArm;
+	force_hydrostatic[5] += buoyancy * yawLeverArm;
 
-	return currentForce;
+	return force_hydrostatic;
 }
 
 /*******************************************************************************
-* HydroForces::fRadDamping()
+* HydroForces::ComputeForceRadiationDampingConv()
 *******************************************************************************/
-ChVectorN<double, 6> HydroForces::fRadDamping() {
+ChVectorN<double, 6> HydroForces::ComputeForceRadiationDampingConv() {
 	// since convolutionIntegral called for each DoF each timestep, we only want to
-	// calculate the vector force once each timestep. Save the prevTimeIRF
-	if (body->GetChTime() == prevTimeIRF) {
-		return forceRadiationDamping;
+	// calculate the vector force once each timestep. Save the previous_time_rirf
+	if (body->GetChTime() == previous_time_rirf) {
+		return force_radiation_damping;
 	}
-	prevTimeIRF = body->GetChTime();
-	int size = fileInfo.get_rirf_dims(2);
+	previous_time_rirf = body->GetChTime();
+	int size = file_info.GetRIRFDims(2);
 	// "shift" everything left 1
 	offset--;
 	if (offset < -1 * size) {
@@ -608,23 +583,23 @@ ChVectorN<double, 6> HydroForces::fRadDamping() {
 #define TMP_S(row,step) tmp_s[(row)*size + (step)]
 	// set last entry as velocity
 	for (int i = 0; i < 3; i++) {
-		velocityHistory[(((size + offset) % size) + size) % size][i] = body->GetPos_dt()[i];
-		velocityHistory[(((size + offset) % size) + size) % size][i + 3] = body->GetWvel_par()[i];
+		velocity_history[(((size + offset) % size) + size) % size][i] = body->GetPos_dt()[i];
+		velocity_history[(((size + offset) % size) + size) % size][i + 3] = body->GetWvel_par()[i];
 	}
 	int vi;
 	//#pragma omp parallel for
 	for (int row = 0; row < 6; row++) {
-		forceRadiationDamping[row] = 0.0;
+		force_radiation_damping[row] = 0.0;
 		double fDampingCol = 0.0;
 		//#pragma omp parallel for
 		for (int col = 0; col < 6; col++) {
 			for (int st = 0; st < size; st++) {
 				TMP_S(row, st) = 0;
 				vi = (((st + offset) % size) + size) % size; // vi takes care of circshift function from matLab
-				TIMESERIES(row, col, st) = fileInfo.get_rirf_val(row, col, st) * velocityHistory[vi][col];
+				TIMESERIES(row, col, st) = file_info.GetRIRFval(row, col, st) * velocity_history[vi][col];
 				TMP_S(row, st) += TIMESERIES(row, col, st);
 				if (st > 0) {
-					forceRadiationDamping[row] -= (TMP_S(row, st - 1) + TMP_S(row, st)) / 2.0 * (timeSteps[st] - timeSteps[st - 1ull]);
+					force_radiation_damping[row] -= (TMP_S(row, st - 1) + TMP_S(row, st)) / 2.0 * (rirf_time_vector[st] - rirf_time_vector[st - 1ull]);
 				}
 			}
 		}
@@ -634,27 +609,27 @@ ChVectorN<double, 6> HydroForces::fRadDamping() {
 #undef TMP_S
 	delete[] timeseries;
 	delete[] tmp_s;
-	return forceRadiationDamping;
+	return force_radiation_damping;
 }
 
 /*******************************************************************************
-* HydroForces::fExcitationRegularFreq()
+* HydroForces::ComputeForceExcitationRegularFreq()
 *
 *******************************************************************************/
-ChVectorN<double, 6> HydroForces::fExcitationRegularFreq() {
-	if (body->GetChTime() == prevTimeEx) {
-		return forceExcitation;
+ChVectorN<double, 6> HydroForces::ComputeForceExcitationRegularFreq() {
+	if (body->GetChTime() == previous_time_ex) {
+		return force_excitation_freq;
 	}
-	prevTimeEx = body->GetChTime();
+	previous_time_ex = body->GetChTime();
 	for (int rowEx = 0; rowEx < 6; rowEx++) {
 		if (rowEx == 2) {
-			forceExcitation[rowEx] = forceExcitationMag[rowEx] * waveAmplitude * cos(waveOmega * body->GetChTime() + forceExcitationPhase[rowEx]);
+			force_excitation_freq[rowEx] = excitation_force_mag[rowEx] * wave_amplitude * cos(wave_omega * body->GetChTime() + excitation_force_phase[rowEx]);
 		}
 		else {
-			forceExcitation[rowEx] = 0.0;
+			force_excitation_freq[rowEx] = 0.0;
 		}
 	}
-	return forceExcitation;
+	return force_excitation_freq;
 }
 
 /*******************************************************************************
@@ -665,11 +640,11 @@ ChVectorN<double, 6> HydroForces::fExcitationRegularFreq() {
 *******************************************************************************/
 double HydroForces::coordinateFunc(int i) {
 	if (i >= 0 && i < 6) {
-		double forceHs = fHydrostaticStiffness()[i];
-		double forceRad = fRadDamping()[i];
-		double forceExcitation = fExcitationRegularFreq()[i];
-		double totalForce = forceHs + forceRad + forceExcitation;
-		return totalForce;
+		double force_hydrostatic = ComputeForceHydrostatics()[i];
+		double force_radiation_damping = ComputeForceRadiationDampingConv()[i];
+		double force_excitation_freq = ComputeForceExcitationRegularFreq()[i];
+		double total_force = force_hydrostatic + force_radiation_damping + force_excitation_freq;
+		return total_force;
 	}
 	else {
 		std::cout << "wrong index" << std::endl;
@@ -682,10 +657,10 @@ double HydroForces::coordinateFunc(int i) {
 * used to initialize components of force (external ChForce pointer)
 *******************************************************************************/
 void HydroForces::SetForce() {
-	chronoForce->SetF_x(force_ptrs[0]);
-	chronoForce->SetF_y(force_ptrs[1]);
-	chronoForce->SetF_z(force_ptrs[2]);
-	body->AddForce(chronoForce);
+	chrono_force->SetF_x(force_ptrs[0]);
+	chrono_force->SetF_y(force_ptrs[1]);
+	chrono_force->SetF_z(force_ptrs[2]);
+	body->AddForce(chrono_force);
 }
 
 /*******************************************************************************
@@ -693,11 +668,11 @@ void HydroForces::SetForce() {
 * used to initialize components of torque (external ChForce pointer with TORQUE flag set)
 *******************************************************************************/
 void HydroForces::SetTorque() {
-	chronoTorque->SetF_x(force_ptrs[3]);
-	chronoTorque->SetF_y(force_ptrs[4]);
-	chronoTorque->SetF_z(force_ptrs[5]);
-	chronoTorque->SetMode(ChForce::ForceType::TORQUE);
-	body->AddForce(chronoTorque);
+	chrono_torque->SetF_x(force_ptrs[3]);
+	chrono_torque->SetF_y(force_ptrs[4]);
+	chrono_torque->SetF_z(force_ptrs[5]);
+	chrono_torque->SetMode(ChForce::ForceType::TORQUE);
+	body->AddForce(chrono_torque);
 }
 
 // =============================================================================
@@ -710,7 +685,7 @@ void HydroForces::SetTorque() {
 *******************************************************************************/
 ChLoadAddedMass::ChLoadAddedMass(std::shared_ptr<ChBody> body,  ///< object to apply additional inertia to
 	const H5FileInfo& file) : ChLoadCustom(body) {
-	inf_added_mass_J = file.get_inf_added_mass_matrix(); //TODO switch all uses of H5FileInfo object to be like this, instead of copying the object each time?
+	inf_added_mass_J = file.GetInfAddedMassMatrix(); //TODO switch all uses of H5FileInfo object to be like this, instead of copying the object each time?
 
 	std::ofstream myfile;
 	myfile.open("C:\\code\\chrono_hydro_dev\\HydroChrono_build\\Release\\inf_added_mass_J.txt");
@@ -777,11 +752,11 @@ void ChLoadAddedMass::LoadIntLoadResidual_Mv(ChVectorDynamic<>& R, const ChVecto
 /*******************************************************************************
 *
 *******************************************************************************/
-LoadAllHydroForces::LoadAllHydroForces(std::shared_ptr<ChBody> object, std::string file, std::string bodyName, HydroInputs userHydroInputs) :
-	sysFileInfo(file, bodyName), hydro_force(sysFileInfo, object, userHydroInputs) {
+LoadAllHydroForces::LoadAllHydroForces(std::shared_ptr<ChBody> object, std::string file, std::string bodyName, HydroInputs user_hydro_inputs) :
+	sys_file_info(file, bodyName), hydro_force(sys_file_info, object, user_hydro_inputs) {
 
 	my_loadcontainer = chrono_types::make_shared<ChLoadContainer>();
-	my_loadbodyinertia = chrono_types::make_shared<ChLoadAddedMass>(object, sysFileInfo);
+	my_loadbodyinertia = chrono_types::make_shared<ChLoadAddedMass>(object, sys_file_info);
 
 	object->GetSystem()->Add(my_loadcontainer);
 	my_loadcontainer->Add(my_loadbodyinertia);
@@ -789,11 +764,3 @@ LoadAllHydroForces::LoadAllHydroForces(std::shared_ptr<ChBody> object, std::stri
 	hydro_force.SetForce();
 	hydro_force.SetTorque();
 }
-
-//LoadAllHydroForces::~LoadAllHydroForces() {
-//	/*delete sysFileInfo;*/
-//	delete hydro_force;
-//	delete userHydroInputs;
-//	/*delete my_loadcontainer;
-//	delete my_loadbodyinertia;*/
-//}

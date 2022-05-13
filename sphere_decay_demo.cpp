@@ -75,7 +75,7 @@ int main(int argc, char* argv[]) {
 		nullptr,                                                                                  // no need for contact material
 		0                                                                                         // swept sphere radius
 		);
-	
+
 	// old sphere stuff (for when you're not using mesh above)
 	//std::shared_ptr<ChBody> body = chrono_types::make_shared<ChBodyEasySphere>(5, 1);
 	//auto sph = chrono_types::make_shared<ChSphereShape>();
@@ -90,9 +90,9 @@ int main(int argc, char* argv[]) {
 	col_2->SetColor(ChColor(0, 0, 0.6f));
 	body->AddAsset(col_2);
 
-	HydroInputs myHydroInputs;
-	myHydroInputs.regularWaveAmplitude = 0.022;
-	LoadAllHydroForces blah(body, "../../HydroChrono/sphere.h5", "body1", myHydroInputs);
+	HydroInputs my_hydro_inputs;
+	my_hydro_inputs.regular_wave_amplitude = 0.022;
+	LoadAllHydroForces blah(body, "../../HydroChrono/sphere.h5", "body1", my_hydro_inputs);
 
 	// update irrlicht app with body info
 	application.AssetBindAll();
@@ -113,7 +113,7 @@ int main(int argc, char* argv[]) {
 	// set up output file for body position each step
 	std::string of = "output.txt";                    /// < put name of your output file here
 	std::ofstream zpos(of, std::ofstream::out);
-	if (!zpos.is_open()) { 
+	if (!zpos.is_open()) {
 		std::cout << "Error opening file \"" + of + "\". Please make sure this file path exists then try again\n";
 		return -1;
 	}
