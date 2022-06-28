@@ -7,6 +7,7 @@
 #include "chrono/physics/ChForce.h"
 #include "chrono/physics/ChLoadContainer.h"
 #include "chrono/physics/ChLoadsBody.h"
+#include "chrono/physics/ChLoad.h"
 #include "chrono/physics/ChSystemNSC.h"
 #include "chrono/physics/ChBody.h"
 #include "chrono/physics/ChBodyEasy.h"
@@ -154,10 +155,14 @@ private:
 };
 
 // =============================================================================
-class ChLoadAddedMass : public ChLoadCustom {
+class ChLoadAddedMass : public ChLoadCustomMultiple {
 public:
-	ChLoadAddedMass(std::shared_ptr<ChBody> body,  ///< object to apply additional inertia to
-		const H5FileInfo& file );                ///< h5 file to initialize added mass with
+	ChLoadAddedMass(const H5FileInfo& file,   ///< h5 file to initialize added mass with
+		std::vector<std::shared_ptr<ChBody>>& bodies  ///< objects to apply additional inertia to
+		);     
+	ChLoadAddedMass(const ChMatrixDynamic<>& addedMassMatrix,   ///< h5 file to initialize added mass with
+		std::vector<std::shared_ptr<ChBody>>& bodies  ///< objects to apply additional inertia to
+	);
 
 	/// "Virtual" copy constructor (covariant return type).
 	virtual ChLoadAddedMass* Clone() const override { return new ChLoadAddedMass(*this); }
@@ -199,6 +204,6 @@ private:
 	H5FileInfo sys_file_info;
 	HydroForces hydro_force;
 	HydroInputs users_hydro_inputs;
-	std::shared_ptr<ChLoadContainer> my_loadcontainer;
-	std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia;
+	//std::shared_ptr<ChLoadContainer> my_loadcontainer;
+	//std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia;
 };

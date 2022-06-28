@@ -57,17 +57,24 @@ int main(int argc, char* argv[]) {
 
 	ChSystemNSC system;
 	system.Set_G_acc(ChVector<>(0, 0, -9.81));
-
 	// Create the Irrlicht application for visualizing
 	ChIrrApp application(&system, L"MultiBody Demo", core::dimension2d<u32>(800, 600), VerticalDir::Z);
 	application.AddLogo();
 	application.AddSkyBox();
 	application.AddTypicalLights();
-	application.AddCamera(core::vector3df(0, 30, 0), core::vector3df(0, 0, 0)); // arguments are (location, orientation) as vectors
+	application.AddCamera(core::vector3df(0, 70, -10), core::vector3df(0, 0, -10)); // arguments are (location, orientation) as vectors
+
+	// uncomment out lines for xy plane on z=0 to be shown
+	auto ground = chrono_types::make_shared<ChBodyEasyBox>(50, 50, 0.05, 10, true, false);
+	system.AddBody(ground);
+	ground->SetBodyFixed(true);
+	ground->SetCollide(false);
+	ground->SetPos(chrono::ChVector(0, 0, 0));
+
 
 	// set up body from a mesh
-	std::shared_ptr<ChBody> torus = chrono_types::make_shared<ChBodyEasyMesh>(                   //
-		GetChronoDataFile("../../HydroChrono/torus.obj").c_str(),                 // file name
+	std::shared_ptr<ChBody> float_body1 = chrono_types::make_shared<ChBodyEasyMesh>(                   //
+		GetChronoDataFile("../../HydroChrono/meshFiles/float.obj").c_str(),                 // file name
 		1000,                                                                                     // density
 		false,                                                                                    // do not evaluate mass automatically
 		true,                                                                                     // create visualization asset
@@ -77,46 +84,56 @@ int main(int argc, char* argv[]) {
 		);
 
 	// set up body from a mesh
-	std::shared_ptr<ChBody> cylinder = chrono_types::make_shared<ChBodyEasyMesh>(                   //
-		GetChronoDataFile("../../HydroChrono/cylinder.obj").c_str(),                 // file name
+	std::shared_ptr<ChBody> plate_body2 = chrono_types::make_shared<ChBodyEasyMesh>(                   //
+		GetChronoDataFile("../../HydroChrono/meshFiles/plate.obj").c_str(),                 // file name
 		1000,                                                                                     // density
-		false,                                                                                    // do not evaluate mass automatically
+		false,                                                                                                                                                                                // do not evaluate mass automatically
 		true,                                                                                     // create visualization asset
 		false,                                                                                    // do not collide
 		nullptr,                                                                                  // no need for contact material
 		0                                                                                         // swept sphere radius
 		);
-
-
-	// old sphere stuff (for when you're not using mesh above)
-	//std::shared_ptr<ChBody> body = chrono_types::make_shared<ChBodyEasySphere>(5, 1);
-	//auto sph = chrono_types::make_shared<ChSphereShape>();
-	//body->AddAsset(sph);
 
 	// set up body initial conditions
-	system.Add(torus);
-	torus->SetPos(ChVector<>(0, 0, -0.72));
-	torus->SetMass(886.691*1000*9.81);
+	system.Add(float_body1);
+	float_body1->SetNameString("body1"); // TODO do i want this?
+	//float_body1->SetPos(ChVector<>(0, 0, 0));
+	float_body1->SetMass(886.691 * 1000);
+	float_body1->SetCollide(true);
 	// attach color asset to body
 	auto col_1 = chrono_types::make_shared<ChColorAsset>();
 	col_1->SetColor(ChColor(0, 0, 0.6f));
-	torus->AddAsset(col_1);
+	float_body1->AddAsset(col_1);
 
 	// set up body initial conditions
-	system.Add(cylinder);
-	cylinder->SetPos(ChVector<>(0, 0, -21.29));
-	cylinder->SetMass(886.691 * 1000 * 9.81);
+	system.Add(plate_body2);
+	plate_body2->SetNameString("body2");
+	//plate_body2->SetPos(ChVector<>(0, 0, 0));
+	plate_body2->SetMass(886.691 * 1000);
+	plate_body2->SetCollide(true);
 	// attach color asset to body
 	auto col_2 = chrono_types::make_shared<ChColorAsset>();
-	col_2->SetColor(ChColor(0, 0, 0.6f));
-	cylinder->AddAsset(col_2);
+	col_2->SetColor(ChColor(0, 0.7f, 0.8f));
+	plate_body2->AddAsset(col_2);
 
 	HydroInputs my_hydro_inputs;
-	//my_hydro_inputs.regularWaveAmplitude = 0.022;
-	//my_hydro_inputs.SetRegularWaveAmplitude(0.022);
-	//my_hydro_inputs.SetRegularWaveOmega(2.10);
-	LoadAllHydroForces hydroForcesTorus(torus, "../../HydroChrono/rm3.h5", "body1", my_hydro_inputs);
-	LoadAllHydroForces hydroForcesCylinder(cylinder, "../../HydroChrono/rm3.h5", "body2", my_hydro_inputs);
+	my_hydro_inputs.SetRegularWaveAmplitude(0.022);
+	my_hydro_inputs.SetRegularWaveOmega(2.10);
+
+	std::vector<std::shared_ptr<ChBody>> bodies = { float_body1, plate_body2 };
+	//std::shared_ptr<ChLoadContainer> my_loadcontainer;
+	//std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia;
+	//my_loadcontainer = chrono_types::make_shared<ChLoadContainer>();
+	//ChMatrixDynamic<> amMatrix;
+
+	//my_loadbodyinertia = chrono_types::make_shared<ChLoadAddedMass>(amMatrix, bodies);
+
+	//system.Add(my_loadcontainer);
+	//my_loadcontainer->Add(my_loadbodyinertia);
+	// TODO figure out better way for multibody
+	// TODO if body's name is correct, then we dont need the name field here...not sure if thats how we want to do this
+	LoadAllHydroForces hydroForcesTorus(float_body1, "../../HydroChrono/rm3.h5", float_body1->GetNameString(), my_hydro_inputs);
+	LoadAllHydroForces hydroForcesCylinder(plate_body2, "../../HydroChrono/rm3.h5", plate_body2->GetNameString(), my_hydro_inputs);
 
 
 	// update irrlicht app with body info
@@ -148,11 +165,13 @@ int main(int argc, char* argv[]) {
 
 	// Simulation loop
 	int frame = 0;
-	while (application.GetDevice()->run() && system.GetChTime() <= 1) {
+	while (application.GetDevice()->run() && system.GetChTime() < 1) {
 		application.BeginScene();
 		application.DrawAll();
+		tools::drawAllCOGs(system, application.GetVideoDriver(), 15); // draws all cog axis lines, kinda neat
+		//tools::drawGrid(application.GetVideoDriver(), 4, 4);
 		/*if (buttonPressed)*/if(true) {
-			zpos << system.GetChTime() << "\t" << torus->GetPos().z() << "\t" << torus->GetPos_dt().z() << "\t" << torus->GetAppliedForce().z() << "\n";
+			zpos << system.GetChTime() << "\t" << float_body1->GetPos().z() << "\t" << float_body1->GetPos_dt().z() << "\t" << float_body1->GetAppliedForce().z() << "\n";
 			application.DoStep();
 			frame++;
 		}

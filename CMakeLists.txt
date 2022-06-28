@@ -6,6 +6,7 @@
 
 cmake_minimum_required(VERSION 3.18.2)
 
+
 #--------------------------------------------------------------
 # Modify the project name if you want: 
 #--------------------------------------------------------------
@@ -65,6 +66,7 @@ add_executable(sphere_reg_waves_no_viz "sphere_reg_waves_no_viz.cpp")
 add_executable(rm3_demo "rm3_demo.cpp")
 #SWIG_ADD_LIBRARY(py_wec_chrono LANGUAGE python SOURCES hydro_forces_no_viz.i)
 
+target_compile_features(HydroChrono PUBLIC cxx_std_17)
 
 #--------------------------------------------------------------
 # Set properties for your executable target
