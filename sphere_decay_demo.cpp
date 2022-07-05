@@ -67,7 +67,7 @@ int main(int argc, char* argv[]) {
 
 	// set up body from a mesh
 	std::shared_ptr<ChBody> body = chrono_types::make_shared<ChBodyEasyMesh>(                   //
-		GetChronoDataFile("../../HydroChrono/oes_task10_sphere.obj").c_str(),                 // file name
+		GetChronoDataFile("../../HydroChrono/meshFiles/oes_task10_sphere.obj").c_str(),                 // file name
 		1000,                                                                                     // density
 		false,                                                                                    // do not evaluate mass automatically
 		true,                                                                                     // create visualization asset

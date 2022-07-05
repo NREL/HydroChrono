@@ -12,7 +12,7 @@
 * reads h5 file data and stores it in member variables for use with other
 * classes and forces
 *******************************************************************************/
-void H5FileInfo::readH5Data() {
+void H5FileInfo::readH5Data() { // TODO break up this function!
 	// open file with read only access
 	H5::H5File sphereFile(h5_file_name, H5F_ACC_RDONLY);
 
@@ -425,6 +425,18 @@ std::vector<double> H5FileInfo::GetRIRFTimeVector() const {
 }
 
 // =============================================================================
+// HydroInputs Class Definitions
+// =============================================================================
+
+/*******************************************************************************
+* HydroInputs constructor
+* does nothing (yet?)
+*******************************************************************************/
+HydroInputs::HydroInputs() {
+
+}
+
+// =============================================================================
 // ForceTorqueFunc Class Definitions
 // =============================================================================
 
@@ -467,10 +479,6 @@ void ForceTorqueFunc::SetBase(HydroForces* b) {
 *******************************************************************************/
 void ForceTorqueFunc::SetIndex(int i) {
 	index = i;
-}
-
-HydroInputs::HydroInputs() {
-
 }
 
 // =============================================================================
@@ -527,7 +535,8 @@ HydroForces::HydroForces(H5FileInfo& h5_file_info, std::shared_ptr<ChBody> objec
 		temp[i] = 0;
 		force_hydrostatic[i] = 0;
 	}
-	for (int i = 0; i < 1001; i++) {
+	for (int i = 0; i < file_info.GetRIRFDims(2); i++) {
+		// initializes every velocity_history elm to (0,0,0,0,0,0)
 		velocity_history[i] = temp;
 	}
 	offset = 0;
@@ -550,9 +559,6 @@ ChVectorN<double, 6> HydroForces::ComputeForceHydrostatics() {
 	double rollLeverArm = force_hydrostatic[3];
 	double pitchLeverArm = force_hydrostatic[4];
 	double yawLeverArm = force_hydrostatic[5];
-
-	std::cout << "Hydro static stiffness matrix=\n" << file_info.GetHydrostaticStiffnessMatrix() << std::endl;
-	std::cout << "forct_hydrostatic" << force_hydrostatic << std::endl;
 
 	force_hydrostatic = -1 * file_info.GetHydrostaticStiffnessMatrix() * force_hydrostatic;
 
@@ -581,7 +587,8 @@ ChVectorN<double, 6> HydroForces::ComputeForceRadiationDampingConv() {
 	if (offset < -1 * size) {
 		offset += size;
 	}
-	int numRows = 6, numCols = 6;
+	int numRows = file_info.GetRIRFDims(0), numCols = file_info.GetRIRFDims(1);
+	std::cout << "numRows = " << numRows << " numCols = " << numCols << std::endl;
 	double* timeseries = new double[numRows * numCols * size];
 	double* tmp_s = new double[numRows * size];
 	// define shortcuts for accessing 1D arrays as 3D (or 2D) arrays
@@ -594,15 +601,15 @@ ChVectorN<double, 6> HydroForces::ComputeForceRadiationDampingConv() {
 	}
 	int vi;
 	//#pragma omp parallel for
-	for (int row = 0; row < 6; row++) {
+	for (int row = 0; row < numRows; row++) {
 		force_radiation_damping[row] = 0.0;
 		double fDampingCol = 0.0;
 		//#pragma omp parallel for
-		for (int col = 0; col < 6; col++) {
+		for (int col = 0; col < numCols; col++) {
 			for (int st = 0; st < size; st++) {
 				TMP_S(row, st) = 0;
 				vi = (((st + offset) % size) + size) % size; // vi takes care of circshift function from matLab
-				TIMESERIES(row, col, st) = file_info.GetRIRFval(row, col, st) * velocity_history[vi][col];
+				TIMESERIES(row, col, st) = file_info.GetRIRFval(row, col, st) * velocity_history[vi][col]; // TODO: potential issue here, col goes up to 12 now, but velocity_history is vector of 6d vectors ISSUE
 				TMP_S(row, st) += TIMESERIES(row, col, st);
 				if (st > 0) {
 					force_radiation_damping[row] -= (TMP_S(row, st - 1) + TMP_S(row, st)) / 2.0 * (rirf_time_vector[st] - rirf_time_vector[st - 1ull]);
@@ -794,7 +801,7 @@ void ChLoadAddedMass::LoadIntLoadResidual_Mv(ChVectorDynamic<>& R, const ChVecto
 *******************************************************************************/
 LoadAllHydroForces::LoadAllHydroForces(std::shared_ptr<ChBody> object, std::string file, std::string bodyName, HydroInputs user_hydro_inputs) :
 	sys_file_info(file, bodyName), hydro_force(sys_file_info, object, user_hydro_inputs) {
-
+	std::cout << "bodyName = (" << bodyName << ")" << std::endl;
 	hydro_force.SetForce();
 	hydro_force.SetTorque();
 }

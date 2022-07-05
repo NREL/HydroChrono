@@ -99,7 +99,7 @@ int main(int argc, char* argv[]) {
 	float_body1->SetNameString("body1"); // TODO do i want this?
 	//float_body1->SetPos(ChVector<>(0, 0, 0));
 	float_body1->SetMass(886.691 * 1000);
-	float_body1->SetCollide(true);
+	float_body1->SetCollide(false);
 	// attach color asset to body
 	auto col_1 = chrono_types::make_shared<ChColorAsset>();
 	col_1->SetColor(ChColor(0, 0, 0.6f));
@@ -110,7 +110,7 @@ int main(int argc, char* argv[]) {
 	plate_body2->SetNameString("body2");
 	//plate_body2->SetPos(ChVector<>(0, 0, 0));
 	plate_body2->SetMass(886.691 * 1000);
-	plate_body2->SetCollide(true);
+	plate_body2->SetCollide(false);
 	// attach color asset to body
 	auto col_2 = chrono_types::make_shared<ChColorAsset>();
 	col_2->SetColor(ChColor(0, 0.7f, 0.8f));
