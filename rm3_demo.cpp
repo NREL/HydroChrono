@@ -65,11 +65,11 @@ int main(int argc, char* argv[]) {
 	application.AddCamera(core::vector3df(0, 70, -10), core::vector3df(0, 0, -10)); // arguments are (location, orientation) as vectors
 
 	// uncomment out lines for xy plane on z=0 to be shown
-	auto ground = chrono_types::make_shared<ChBodyEasyBox>(50, 50, 0.05, 10, true, false);
-	system.AddBody(ground);
-	ground->SetBodyFixed(true);
-	ground->SetCollide(false);
-	ground->SetPos(chrono::ChVector(0, 0, 0));
+	//auto ground = chrono_types::make_shared<ChBodyEasyBox>(50, 50, 0.05, 10, true, false);
+	//system.AddBody(ground);
+	//ground->SetBodyFixed(true);
+	//ground->SetCollide(false);
+	//ground->SetPos(chrono::ChVector(0, 0, 0));
 
 
 	// set up body from a mesh
@@ -98,7 +98,7 @@ int main(int argc, char* argv[]) {
 	system.Add(float_body1);
 	float_body1->SetNameString("body1"); // TODO do i want this?
 	//float_body1->SetPos(ChVector<>(0, 0, 0));
-	float_body1->SetMass(886.691 * 1000);
+	float_body1->SetMass(886.691);
 	float_body1->SetCollide(false);
 	// attach color asset to body
 	auto col_1 = chrono_types::make_shared<ChColorAsset>();
@@ -109,7 +109,7 @@ int main(int argc, char* argv[]) {
 	system.Add(plate_body2);
 	plate_body2->SetNameString("body2");
 	//plate_body2->SetPos(ChVector<>(0, 0, 0));
-	plate_body2->SetMass(886.691 * 1000);
+	plate_body2->SetMass(886.691);
 	plate_body2->SetCollide(false);
 	// attach color asset to body
 	auto col_2 = chrono_types::make_shared<ChColorAsset>();
@@ -161,17 +161,20 @@ int main(int argc, char* argv[]) {
 	}
 	zpos.precision(10);
 	zpos.width(12);
-	zpos << "#Time\tBody Pos\tBody vel (heave)\tforce (heave)\n";
+	zpos << "#Time\tBody vel\n";
 
 	// Simulation loop
 	int frame = 0;
-	while (application.GetDevice()->run() && system.GetChTime() < 1) {
+	while (application.GetDevice()->run() && system.GetChTime() < 3) {
 		application.BeginScene();
 		application.DrawAll();
 		tools::drawAllCOGs(system, application.GetVideoDriver(), 15); // draws all cog axis lines, kinda neat
 		//tools::drawGrid(application.GetVideoDriver(), 4, 4);
 		/*if (buttonPressed)*/if(true) {
-			zpos << system.GetChTime() << "\t" << float_body1->GetPos().z() << "\t" << float_body1->GetPos_dt().z() << "\t" << float_body1->GetAppliedForce().z() << "\n";
+			zpos << system.GetChTime() << "\t" << float_body1->GetPos_dt().x() << "\t" << float_body1->GetPos_dt().y() << "\t" << float_body1->GetPos_dt().z();
+			zpos << system.GetChTime() << "\t" << float_body1->GetWvel_par().x() << "\t" << float_body1->GetWvel_par().y() << "\t" << float_body1->GetWvel_par().z() << "\n";
+			zpos << system.GetChTime() << "\t" << plate_body2->GetPos_dt().x() << "\t" << plate_body2->GetPos_dt().y() << "\t" << plate_body2->GetPos_dt().z();
+			zpos << system.GetChTime() << "\t" << plate_body2->GetWvel_par().x() << "\t" << plate_body2->GetWvel_par().y() << "\t" << plate_body2->GetWvel_par().z() << "\n";
 			application.DoStep();
 			frame++;
 		}

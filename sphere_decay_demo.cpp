@@ -83,6 +83,7 @@ int main(int argc, char* argv[]) {
 
 	// set up body initial conditions
 	system.Add(body);
+	body->SetNameString("body1"); // must set body name!
 	body->SetPos(ChVector<>(0, 0, -1));
 	body->SetMass(261.8e3);
 	// attach color asset to body
@@ -93,7 +94,9 @@ int main(int argc, char* argv[]) {
 	HydroInputs my_hydro_inputs;
 	my_hydro_inputs.SetRegularWaveAmplitude(0.022);
 	my_hydro_inputs.SetRegularWaveOmega(2.10);
-	LoadAllHydroForces blah(body, "../../HydroChrono/sphere.h5", "body1", my_hydro_inputs);
+	std::vector<std::shared_ptr<ChBody>> bodies;
+	bodies.push_back(body);
+	TestHydro blah(bodies, "../../HydroChrono/sphere.h5", my_hydro_inputs);
 
 	// update irrlicht app with body info
 	application.AssetBindAll();

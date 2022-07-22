@@ -25,7 +25,7 @@ using namespace chrono::irrlicht;
 using namespace chrono::fea;
 
 // =============================================================================
-class H5FileInfo {
+class H5FileInfo { // TODO cut simple setter/getter functions to trim this huge class down
 public:
 	H5FileInfo();
 	H5FileInfo(std::string file, std::string body_name);
@@ -49,6 +49,7 @@ public:
 	double GetRIRFdt() const;
 	std::vector<double> GetRIRFTimeVector() const;
 	double GetNumFreqs() const;
+	int bodyNum;
 private:
 	ChMatrixDynamic<double> lin_matrix;
 	ChMatrixDynamic<double> inf_added_mass;
@@ -75,7 +76,7 @@ private:
 	double g;
 	double disp_vol;
 	std::string h5_file_name;
-	std::string bodyNum;
+	std::string bodyName;
 	void readH5Data();
 };
 
@@ -100,58 +101,80 @@ private:
 };
 
 // =============================================================================
-class HydroForces;
-class ForceTorqueFunc : public ChFunction {
+class ForceFunc6d;
+class TestHydro;
+class ComponentFunc : public ChFunction {
 public:
-	ForceTorqueFunc(HydroForces* b, int i);
-	virtual ForceTorqueFunc* Clone() const override;
+	ComponentFunc(ForceFunc6d* b, int i);
+	virtual ComponentFunc* Clone() const override;
 	virtual double 	Get_y(double x) const override;
-	void SetBase(HydroForces* b);
-	void SetIndex(int i);
 private:
-	HydroForces* base;
+	ForceFunc6d* base; 
 	int index;
 };
 
 // =============================================================================
-class HydroForces {
+// ForceFunc6d organizes the functional (time dependent) forces in each DoF (6 total) for a body
+class ForceFunc6d {
 public:
-	HydroForces();
-	HydroForces(H5FileInfo& h5_file_info, std::shared_ptr<ChBody> object, HydroInputs users_hydro_inputs);
-	HydroForces(const HydroForces& other) = delete;
-	HydroForces operator = (const HydroForces& rhs) = delete;
-	ChVectorN<double, 6> ComputeForceHydrostatics();
-	ChVectorN<double, 6> ComputeForceRadiationDampingConv();
-	ChVectorN<double, 6> ComputeForceExcitationRegularFreq();
+	ForceFunc6d();
+	ForceFunc6d(std::shared_ptr<ChBody> object, TestHydro* all_hydro_forces_user);
+	//ForceFunc6d(const ForceFunc6d& other) = delete;
+	ForceFunc6d operator = (const ForceFunc6d& rhs) = delete;
 	double coordinateFunc(int i);
+private:
 	void SetForce();
 	void SetTorque();
-private:
 	std::shared_ptr<ChBody> body;
-	H5FileInfo file_info;
-	HydroInputs hydro_inputs;
-	ChVectorN<double, 6> equilibrium;
-	ForceTorqueFunc forces[6];
-	std::shared_ptr<ForceTorqueFunc> force_ptrs[6];
-	ChVectorN<double, 6> force_hydrostatic;
-	ChVectorN<double, 6> force_radiation_damping;
-	ChVectorN<double, 6> force_excitation_freq;
-	double wave_amplitude;
-	double wave_omega;
-	double wave_omega_delta;
-	double freq_index_des;
-	int freq_index_floor;
-	double freq_interp_val;
-	ChVectorN<double, 6> excitation_force_mag;
-	ChVectorN<double, 6> excitation_force_phase;
-	std::vector<ChVectorN<double, 6>> velocity_history;
-	double previous_time;
-	double previous_time_rirf;
-	double previous_time_ex;
-	std::vector<double> rirf_time_vector;
-	int offset;
+	int b_num;
+	ComponentFunc forces[6];
+	std::shared_ptr<ComponentFunc> force_ptrs[6];
 	std::shared_ptr<ChForce> chrono_force;
 	std::shared_ptr<ChForce> chrono_torque;
+	TestHydro* all_hydro_forces;
+};
+
+class TestHydro {
+public:
+	TestHydro();
+	TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::string h5_file_name, HydroInputs users_hydro_inputs);
+	TestHydro(const TestHydro& other) = delete;
+	TestHydro operator = (const TestHydro& rhs) = delete;
+	std::vector<double> ComputeForceHydrostatics();
+	std::vector<double> ComputeForceRadiationDampingConv();
+	double GetRIRFval(int row, int col, int st);
+	double coordinateFunc(int b, int i);
+	//ChVectorN<double, 6> ComputeForceExcitationRegularFreq();
+	//double coordinateFunc(int i);
+	//void SetForce();
+	//void SetTorque();
+private:
+	std::vector<std::shared_ptr<ChBody>> bodies;
+	std::vector<H5FileInfo> file_info;
+	std::vector<ForceFunc6d> force_per_body;
+	HydroInputs hydro_inputs;
+	std::vector<double> force_hydrostatic;
+	std::vector<double> force_radiation_damping;
+	std::vector<double> total_force;
+	int num_bodies;
+	std::vector<double> equilibrium;
+	double getVelHistoryAllBodies(int step, int c) const;
+	double setVelHistory(double val, int step, int b_num, int index);
+	//std::vector<double> force_excitation_freq;
+	//double wave_amplitude;
+	//double wave_omega;
+	//double wave_omega_delta;
+	//double freq_index_des;
+	//int freq_index_floor;
+	//double freq_interp_val;
+	//ChVectorN<double, 6> excitation_force_mag;
+	//ChVectorN<double, 6> excitation_force_phase;
+	std::vector<double> velocity_history; // use helper function to access vel_history elments correctly
+	double prev_time;
+	//double prev_time_rirf;
+	//double prev_time_ex;
+	std::vector<double> rirf_time_vector; // (should be the same for each body?)
+	int offset_rirf;
 };
 
 // =============================================================================
@@ -197,13 +220,13 @@ private:
 
 };
 // =============================================================================
-class LoadAllHydroForces {
-public:
-	LoadAllHydroForces(std::shared_ptr<ChBody> object, std::string file, std::string body_name, HydroInputs users_hydro_inputs);
-private:
-	H5FileInfo sys_file_info;
-	HydroForces hydro_force;
-	HydroInputs users_hydro_inputs;
-	//std::shared_ptr<ChLoadContainer> my_loadcontainer;
-	//std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia;
-};
+//class LoadAllHydroForces {
+//public:
+//	LoadAllHydroForces(std::vector<std::shared_ptr<ChBody>> object, std::string file/*, std::string body_name*/, HydroInputs users_hydro_inputs);
+//private:
+//	H5FileInfo sys_file_info;
+//	ForceFunc6d hydro_force;
+//	HydroInputs users_hydro_inputs;
+//	//std::shared_ptr<ChLoadContainer> my_loadcontainer;
+//	//std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia;
+//};
