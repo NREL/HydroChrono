@@ -113,7 +113,7 @@ int main(int argc, char* argv[]) {
 	application.SetTimestep(timestep);
 
 	// set up output file for body position each step
-	std::string of = "output.txt";                    /// < put name of your output file here
+	std::string of = "sphere_decay.txt";                    /// < put name of your output file here
 	std::ofstream zpos(of, std::ofstream::out);
 	if (!zpos.is_open()) {
 		std::cout << "Error opening file \"" + of + "\". Please make sure this file path exists then try again\n";

@@ -687,6 +687,7 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 		yawLeverArm[b] = force_hydrostatic[5 + b * 6]; // init yaw to be third rotation coord
 		buoyancy[b] = file_info[b].GetRho() * file_info[b].GetGravity() * file_info[b].GetDisplacementVolume(); // buoyancy = rho*g*Vdisp
 	}
+	// TODO check buoyancy force is implemented correctly!
 
 	for (int b = 0; b < num_bodies; b++) {
 		force_hydrostatic[2 + 6 * b] += buoyancy[b];
