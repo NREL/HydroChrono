@@ -15,7 +15,8 @@ int main(int argc, char* argv[]) {
 
 	// set up body initial conditions
 	system.Add(body);
-	body->SetPos(ChVector<>(0, 0, -2));
+	body->SetNameString("body1"); // must set body name!
+	body->SetPos(ChVector<>(0, 0, -1));
 	body->SetMass(261.8e3);
 
 	// attach color asset to body
@@ -26,7 +27,9 @@ int main(int argc, char* argv[]) {
 	HydroInputs my_hydro_inputs;
 	my_hydro_inputs.SetRegularWaveAmplitude(0.022);
 	my_hydro_inputs.SetRegularWaveOmega(2.10);
-	LoadAllHydroForces blah(body, "../../HydroChrono/sphere.h5", "body1", my_hydro_inputs);
+	std::vector<std::shared_ptr<ChBody>> bodies;
+	bodies.push_back(body);
+	TestHydro blah(bodies, "../../HydroChrono/sphere.h5", my_hydro_inputs);
 
 	// Info about which solver to use - may want to change this later
 	auto gmres_solver = chrono_types::make_shared<ChSolverGMRES>();  // change to mkl or minres?
@@ -36,7 +39,7 @@ int main(int argc, char* argv[]) {
 	//system.SetTimestep(timestep);
 
 	// set up output file for body position each step
-	std::string of = "output.txt";                    /// < put name of your output file here
+	std::string of = "sphere_decay.txt";                    /// < put name of your output file here
 	std::ofstream zpos(of, std::ofstream::out);
 	if (!zpos.is_open()) {
 		std::cout << "Error opening file \"" + of + "\". Please make sure this file path exists then try again\n";
@@ -44,13 +47,13 @@ int main(int argc, char* argv[]) {
 	}
 	zpos.precision(10);
 	zpos.width(12);
-	zpos << "#Time\tBody Pos\tBody vel (heave)\tforce (heave)\n";
+	zpos << "#Time\tBody Pos\tBody vel (heave)\tforce (heave)" << std::endl;
 
 	// Simulation loop
 	int frame = 0;
-	while (/*application.GetDevice()->run() && */system.GetChTime() <= 400) {
+	while (system.GetChTime() <= 40) {
 		/*if (buttonPressed)*/if(true) {
-			zpos << system.GetChTime() << "\t" << body->GetPos().x() << "\t" << body->GetPos().z() << "\t" << body->GetPos_dt().z() << "\t" << body->GetAppliedForce().z() << "\n";
+			zpos << system.GetChTime() << "\t" << body->GetPos().z() << "\t" << body->GetPos_dt().z() << "\t" << body->GetAppliedForce().z() << std::endl;
 			system.DoStepDynamics(timestep);
 			frame++;
 		}
