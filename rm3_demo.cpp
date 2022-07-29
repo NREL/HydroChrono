@@ -120,7 +120,10 @@ int main(int argc, char* argv[]) {
 	my_hydro_inputs.SetRegularWaveAmplitude(0.022);
 	my_hydro_inputs.SetRegularWaveOmega(2.10);
 
-	std::vector<std::shared_ptr<ChBody>> bodies = { float_body1, plate_body2 };
+	std::vector<std::shared_ptr<ChBody>> bodies;
+	bodies.push_back(float_body1);
+	bodies.push_back(plate_body2);
+	TestHydro blah(bodies, "../../HydroChrono/rm3.h5", my_hydro_inputs);
 	//std::shared_ptr<ChLoadContainer> my_loadcontainer;
 	//std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia;
 	//my_loadcontainer = chrono_types::make_shared<ChLoadContainer>();
@@ -130,10 +133,6 @@ int main(int argc, char* argv[]) {
 
 	//system.Add(my_loadcontainer);
 	//my_loadcontainer->Add(my_loadbodyinertia);
-	// TODO figure out better way for multibody
-	// TODO if body's name is correct, then we dont need the name field here...not sure if thats how we want to do this
-	LoadAllHydroForces hydroForcesTorus(float_body1, "../../HydroChrono/rm3.h5", float_body1->GetNameString(), my_hydro_inputs);
-	LoadAllHydroForces hydroForcesCylinder(plate_body2, "../../HydroChrono/rm3.h5", plate_body2->GetNameString(), my_hydro_inputs);
 
 
 	// update irrlicht app with body info
@@ -161,7 +160,8 @@ int main(int argc, char* argv[]) {
 	}
 	zpos.precision(10);
 	zpos.width(12);
-	zpos << "#Time\tBody vel\n";
+	zpos << "#Time\tBody vel" << std::endl;
+
 
 	// Simulation loop
 	int frame = 0;
@@ -172,9 +172,9 @@ int main(int argc, char* argv[]) {
 		//tools::drawGrid(application.GetVideoDriver(), 4, 4);
 		/*if (buttonPressed)*/if(true) {
 			zpos << system.GetChTime() << "\t" << float_body1->GetPos_dt().x() << "\t" << float_body1->GetPos_dt().y() << "\t" << float_body1->GetPos_dt().z();
-			zpos << system.GetChTime() << "\t" << float_body1->GetWvel_par().x() << "\t" << float_body1->GetWvel_par().y() << "\t" << float_body1->GetWvel_par().z() << "\n";
+			zpos << "\t" << float_body1->GetWvel_par().x() << "\t" << float_body1->GetWvel_par().y() << "\t" << float_body1->GetWvel_par().z() << std::endl;
 			zpos << system.GetChTime() << "\t" << plate_body2->GetPos_dt().x() << "\t" << plate_body2->GetPos_dt().y() << "\t" << plate_body2->GetPos_dt().z();
-			zpos << system.GetChTime() << "\t" << plate_body2->GetWvel_par().x() << "\t" << plate_body2->GetWvel_par().y() << "\t" << plate_body2->GetWvel_par().z() << "\n";
+			zpos << "\t" << plate_body2->GetWvel_par().x() << "\t" << plate_body2->GetWvel_par().y() << "\t" << plate_body2->GetWvel_par().z() << std::endl;
 			application.DoStep();
 			frame++;
 		}

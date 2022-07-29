@@ -54,7 +54,6 @@ private:
 int main(int argc, char* argv[]) {
 	auto start = std::chrono::high_resolution_clock::now();
 	GetLog() << "Copyright (c) 2017 projectchrono.org\nChrono version: " << CHRONO_VERSION << "\n\n";
-
 	ChSystemNSC system;
 	system.Set_G_acc(ChVector<>(0, 0, -9.81));
 
@@ -97,7 +96,6 @@ int main(int argc, char* argv[]) {
 	std::vector<std::shared_ptr<ChBody>> bodies;
 	bodies.push_back(body);
 	TestHydro blah(bodies, "../../HydroChrono/sphere.h5", my_hydro_inputs);
-
 	// update irrlicht app with body info
 	application.AssetBindAll();
 	application.AssetUpdateAll();
@@ -123,7 +121,8 @@ int main(int argc, char* argv[]) {
 	}
 	zpos.precision(10);
 	zpos.width(12);
-	zpos << "#Time\tBody Pos\tBody vel (heave)\tforce (heave)\n";
+	zpos << "#Time\tBody Pos\tBody vel (heave)\tforce (heave)" << std::endl;
+
 
 	// Simulation loop
 	int frame = 0;
@@ -131,7 +130,7 @@ int main(int argc, char* argv[]) {
 		application.BeginScene();
 		application.DrawAll();
 		/*if (buttonPressed)*/if(true) {
-			zpos << system.GetChTime() << "\t" << body->GetPos().z() << "\t" << body->GetPos_dt().z() << "\t" << body->GetAppliedForce().z() << "\n";
+			zpos << system.GetChTime() << "\t" << body->GetPos().z() << "\t" << body->GetPos_dt().z() << "\t" << body->GetAppliedForce().z() << std::endl;
 			application.DoStep();
 			frame++;
 		}
