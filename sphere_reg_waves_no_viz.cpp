@@ -4,20 +4,20 @@
 #include <chrono>
 
 int main(int argc, char* argv[]) {
+	// (start MUST be first for timing)
+	auto start = std::chrono::high_resolution_clock::now();
+
 	GetLog() << "Copyright (c) 2017 projectchrono.org\nChrono version: " << CHRONO_VERSION << "\n\n";
 	GetLog() << "HydroChrono v0.0.1\n\n";
 
-	int reg_wave_num = 10;
+	ChSystemNSC system;
+	system.Set_G_acc(ChVector<>(0, 0, -9.81));
 
+	int reg_wave_num = 10;
 	double task10_wave_amps[] = { 0.044, 0.078, 0.095, 0.123, 0.177, 0.24, 0.314, 0.397, 0.491, 0.594 };
 	double task10_wave_omegas[] = { 2.094395102, 1.570796327, 1.427996661, 1.256637061, 1.047197551, 0.897597901, 0.785398163, 0.698131701, 0.628318531, 0.571198664 };
 	double task10dampings[] = { 398736.034, 118149.758, 90080.857, 161048.558, 322292.419, 479668.979, 633979.761, 784083.286, 932117.647, 1077123.445 };
 	//int waveNum = 0;
-
-	// define some basic model parameters
-	auto start = std::chrono::high_resolution_clock::now();
-	ChSystemNSC system;
-	system.Set_G_acc(ChVector<>(0, 0, -9.81));
 
 	// Setup Ground
 	auto ground = chrono_types::make_shared<ChBody>();
@@ -32,13 +32,14 @@ int main(int argc, char* argv[]) {
 	auto sph = chrono_types::make_shared<ChSphereShape>();
 	body->AddAsset(sph);
 	system.Add(body);
+	body->SetNameString("body1");
 	// set up body initial conditions
 	body->SetPos(ChVector<>(0, 0, -2));
 	body->SetMass(261.8e3);
-	// attach color asset to body
-	auto col_2 = chrono_types::make_shared<ChColorAsset>();
-	col_2->SetColor(ChColor(0, 0, 0.6f));
-	body->AddAsset(col_2);
+	// attach color asset to body (not needed in no viz)
+	//auto col_2 = chrono_types::make_shared<ChColorAsset>();
+	//col_2->SetColor(ChColor(0, 0, 0.6f));
+	//body->AddAsset(col_2);
 
 	// set up output file for body position each step
 	std::string out_dir = "results/regular_waves/";
@@ -69,7 +70,10 @@ int main(int argc, char* argv[]) {
 	my_hydro_inputs.SetRegularWaveOmega(task10_wave_omegas[reg_wave_num - 1]); //1.427996661;
 	//my_hydro_inputs.regular_wave_amplitude = task10_wave_amps[reg_wave_num-1]; //0.095;
 	//my_hydro_inputs.regular_wave_omega = task10_wave_omegas[reg_wave_num-1];//1.427996661;
-	LoadAllHydroForces blah(body, "../../HydroChrono/sphere.h5", "body1", my_hydro_inputs);
+	std::vector<std::shared_ptr<ChBody>> bodies;
+	bodies.push_back(body);
+	TestHydro blah(bodies, "../../HydroChrono/sphere.h5", my_hydro_inputs);
+	//LoadAllHydroForces blah(body, "../../HydroChrono/sphere.h5", "body1", my_hydro_inputs);
 
 	std::string out_file = "regwave_" + std::to_string(reg_wave_num) + ".txt";
 	std::ofstream out_stream(out_dir + out_file, std::ofstream::out);

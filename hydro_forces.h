@@ -221,14 +221,4 @@ private:
 //	virtual bool IsStiff() override { return true; } // this to force the use of the inertial M, R and K matrices
 //
 //};
-// =============================================================================
-//class LoadAllHydroForces {
-//public:
-//	LoadAllHydroForces(std::vector<std::shared_ptr<ChBody>> object, std::string file/*, std::string body_name*/, HydroInputs users_hydro_inputs);
-//private:
-//	H5FileInfo sys_file_info;
-//	ForceFunc6d hydro_force;
-//	HydroInputs users_hydro_inputs;
-//	//std::shared_ptr<ChLoadContainer> my_loadcontainer;
-//	//std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia;
-//};
+
