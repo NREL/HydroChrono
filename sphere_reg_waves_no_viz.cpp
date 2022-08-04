@@ -1,7 +1,11 @@
 #include "hydro_forces.h"
-#include "chrono_irrlicht/ChIrrNodeAsset.h"
+#include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
+#include "chrono_irrlicht/ChIrrMeshTools.h"
 #include <filesystem>
-#include <chrono>
+// Use the namespaces of Chrono
+using namespace chrono;
+using namespace chrono::geometry;
+using namespace chrono::irrlicht;
 
 int main(int argc, char* argv[]) {
 	// (start MUST be first for timing)
@@ -29,8 +33,8 @@ int main(int argc, char* argv[]) {
 
 	// create easy sphere
 	std::shared_ptr<ChBody> body = chrono_types::make_shared<ChBodyEasySphere>(5, 1);
-	auto sph = chrono_types::make_shared<ChSphereShape>();
-	body->AddAsset(sph);
+	//auto sph = chrono_types::make_shared<ChSphereShape>();
+	//body->AddAsset(sph);
 	system.Add(body);
 	body->SetNameString("body1");
 	// set up body initial conditions

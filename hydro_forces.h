@@ -14,8 +14,8 @@
 
 #include "chrono/fea/ChMeshFileLoader.h"
 
-#include "chrono/assets/ChPointPointDrawing.h"
-#include "chrono_irrlicht/ChIrrApp.h"
+//#include "chrono/assets/ChPointPointDrawing.h"
+#include "chrono_irrlicht/ChIrrGUI.h"
 #include "chrono_irrlicht/ChIrrMeshTools.h"
 
 #include "H5Cpp.h"
