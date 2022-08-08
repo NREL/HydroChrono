@@ -20,6 +20,8 @@
 
 #include "H5Cpp.h"
 
+#include <filesystem>
+
 using namespace chrono;
 using namespace chrono::irrlicht;
 using namespace chrono::fea;
@@ -144,19 +146,18 @@ public:
 	TestHydro operator = (const TestHydro& rhs) = delete;
 	std::vector<double> ComputeForceHydrostatics();
 	std::vector<double> ComputeForceRadiationDampingConv();
+	std::vector<double> ComputeForceExcitation();
 	double GetRIRFval(int row, int col, int st);
 	double coordinateFunc(int b, int i);
 	//ChVectorN<double, 6> ComputeForceExcitationRegularFreq();
-	//double coordinateFunc(int i);
-	//void SetForce();
-	//void SetTorque();
 private:
 	std::vector<std::shared_ptr<ChBody>> bodies;
 	std::vector<H5FileInfo> file_info;
 	std::vector<ForceFunc6d> force_per_body;
-	HydroInputs hydro_inputs;
+	//HydroInputs hydro_inputs;
 	std::vector<double> force_hydrostatic;
 	std::vector<double> force_radiation_damping;
+	//std::vector<double> force_excitation;
 	std::vector<double> total_force;
 	int num_bodies;
 	std::vector<double> equilibrium;

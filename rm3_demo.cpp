@@ -73,6 +73,7 @@ int main(int argc, char* argv[]) {
 
 
 	// set up body from a mesh
+	std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/float.obj").c_str()) << std::endl;
 	std::shared_ptr<ChBody> float_body1 = chrono_types::make_shared<ChBodyEasyMesh>(                   //
 		GetChronoDataFile("../../HydroChrono/meshFiles/float.obj").c_str(),                 // file name
 		1000,                                                                                     // density
@@ -84,6 +85,7 @@ int main(int argc, char* argv[]) {
 		);
 
 	// set up body from a mesh
+	std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/plate.obj").c_str()) << std::endl;
 	std::shared_ptr<ChBody> plate_body2 = chrono_types::make_shared<ChBodyEasyMesh>(                   //
 		GetChronoDataFile("../../HydroChrono/meshFiles/plate.obj").c_str(),                 // file name
 		1000,                                                                                     // density
@@ -96,7 +98,7 @@ int main(int argc, char* argv[]) {
 
 	// set up body initial conditions
 	system.Add(float_body1);
-	float_body1->SetNameString("body1"); // TODO do i want this?
+	float_body1->SetNameString("body1"); 
 	//float_body1->SetPos(ChVector<>(0, 0, 0));
 	float_body1->SetMass(886.691);
 	float_body1->SetCollide(false);
@@ -116,6 +118,8 @@ int main(int argc, char* argv[]) {
 	col_2->SetColor(ChColor(0, 0.7f, 0.8f));
 	plate_body2->AddAsset(col_2);
 
+	// add constraint so they only move up and down! TODO
+
 	HydroInputs my_hydro_inputs;
 	my_hydro_inputs.SetRegularWaveAmplitude(0.022);
 	my_hydro_inputs.SetRegularWaveOmega(2.10);
@@ -123,7 +127,8 @@ int main(int argc, char* argv[]) {
 	std::vector<std::shared_ptr<ChBody>> bodies;
 	bodies.push_back(float_body1);
 	bodies.push_back(plate_body2);
-	TestHydro blah(bodies, "../../HydroChrono/rm3.h5", my_hydro_inputs);
+	TestHydro blah(bodies, "C:/Users/ZQUINTON/code/HydroChrono/rm3.h5", my_hydro_inputs);
+	std::cout << "hi" << std::endl;
 	//std::shared_ptr<ChLoadContainer> my_loadcontainer;
 	//std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia;
 	//my_loadcontainer = chrono_types::make_shared<ChLoadContainer>();
@@ -145,6 +150,7 @@ int main(int argc, char* argv[]) {
 	application.SetUserEventReceiver(&receiver);
 
 	// Info about which solver to use - may want to change this later
+	// TODO compare solvers?
 	auto gmres_solver = chrono_types::make_shared<ChSolverGMRES>();  // change to mkl or minres?
 	gmres_solver->SetMaxIterations(300);
 	system.SetSolver(gmres_solver);
@@ -157,10 +163,12 @@ int main(int argc, char* argv[]) {
 	if (!zpos.is_open()) {
 		std::cout << "Error opening file \"" + of + "\". Please make sure this file path exists then try again\n";
 		return -1;
-	}
+	}	
+	std::cout << "Writing positions to file: " << std::filesystem::absolute(of) << std::endl;
 	zpos.precision(10);
 	zpos.width(12);
-	zpos << "#Time\tBody vel" << std::endl;
+	zpos << "#Time\tHeave " << float_body1->GetNameString() << "\t" << plate_body2->GetNameString() << std::endl;
+	//zpos << "#Time\tBody vel" << std::endl;
 
 
 	// Simulation loop
@@ -171,10 +179,12 @@ int main(int argc, char* argv[]) {
 		tools::drawAllCOGs(system, application.GetVideoDriver(), 15); // draws all cog axis lines, kinda neat
 		//tools::drawGrid(application.GetVideoDriver(), 4, 4);
 		/*if (buttonPressed)*/if(true) {
-			zpos << system.GetChTime() << "\t" << float_body1->GetPos_dt().x() << "\t" << float_body1->GetPos_dt().y() << "\t" << float_body1->GetPos_dt().z();
-			zpos << "\t" << float_body1->GetWvel_par().x() << "\t" << float_body1->GetWvel_par().y() << "\t" << float_body1->GetWvel_par().z() << std::endl;
-			zpos << system.GetChTime() << "\t" << plate_body2->GetPos_dt().x() << "\t" << plate_body2->GetPos_dt().y() << "\t" << plate_body2->GetPos_dt().z();
-			zpos << "\t" << plate_body2->GetWvel_par().x() << "\t" << plate_body2->GetWvel_par().y() << "\t" << plate_body2->GetWvel_par().z() << std::endl;
+			// body velocity print
+			//zpos << system.GetChTime() << "\t" << float_body1->GetPos_dt().x() << "\t" << float_body1->GetPos_dt().y() << "\t" << float_body1->GetPos_dt().z();
+			//zpos << "\t" << float_body1->GetWvel_par().x() << "\t" << float_body1->GetWvel_par().y() << "\t" << float_body1->GetWvel_par().z() << std::endl;
+			//zpos << system.GetChTime() << "\t" << plate_body2->GetPos_dt().x() << "\t" << plate_body2->GetPos_dt().y() << "\t" << plate_body2->GetPos_dt().z();
+			//zpos << "\t" << plate_body2->GetWvel_par().x() << "\t" << plate_body2->GetWvel_par().y() << "\t" << plate_body2->GetWvel_par().z() << std::endl;
+			zpos << system.GetChTime() << "\t" << float_body1->GetPos().z() << "\t" << plate_body2->GetPos().z() << std::endl;
 			application.DoStep();
 			frame++;
 		}

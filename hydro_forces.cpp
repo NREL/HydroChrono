@@ -260,6 +260,12 @@ H5FileInfo::~H5FileInfo() {
 H5FileInfo::H5FileInfo(std::string file, std::string Name) {
 	h5_file_name = file;
 	bodyName = Name;
+	std::cout << "searching for file: " << file << " . . ." << std::endl;
+	if (std::filesystem::exists(file)) {
+		std::cout << "found file at: " << std::filesystem::absolute(file) << std::endl;
+	} else {
+		std::cout << "h5 file does not exist, absolute file location: " << std::filesystem::absolute(file) << std::endl;
+	}
 	readH5Data();
 }
 
@@ -456,7 +462,7 @@ HydroInputs::HydroInputs() {
 * sets pointer to ForceFunc6d member object and index for which component
 * this ComponentFunc object refers to
 *******************************************************************************/
-ComponentFunc::ComponentFunc(ForceFunc6d* b, int i) : base(b), index(i) {	}
+ComponentFunc::ComponentFunc(ForceFunc6d* b, int i) : base(b), index(i) { }
 
 /*******************************************************************************
 * ComponentFunc::Clone()
@@ -473,7 +479,7 @@ ComponentFunc* ComponentFunc::Clone() const  {
 * required override function since ComponentFunc inherits from ChFunction
 *******************************************************************************/
 double ComponentFunc::Get_y(double x) const {
-	return base->coordinateFunc(index);
+	return base->coordinateFunc(index); 
 }
 
 // =============================================================================
@@ -507,7 +513,7 @@ ForceFunc6d::ForceFunc6d( std::shared_ptr<ChBody> object, TestHydro* user_all_fo
 	body = object;
 	std::string temp = body->GetNameString(); // remove "body" from "bodyN", convert N to int, get body num
 	b_num = stoi(temp.erase(0, 4));
-	all_hydro_forces = user_all_forces; // TODO switch to smart pointers?
+	all_hydro_forces = user_all_forces; // TODO switch to smart pointers? does this use = ?
 	SetForce();
 	SetTorque();
 	// define wave inputs here
@@ -592,9 +598,9 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::stri
 	bodies = user_bodies; // 0 indexed
 	num_bodies = bodies.size();
 	for (int b = 0; b < num_bodies; b++) {
-		file_info.emplace_back(h5_file_name, bodies[b]->GetNameString()); // set up vector of file infos for each body
+			file_info.emplace_back(h5_file_name, bodies[b]->GetNameString()); // set up vector of file infos for each body
 	}
-	hydro_inputs = user_hydro_inputs;
+	//hydro_inputs = user_hydro_inputs;
 	// set up time vector (should be the same for each body, so just use the first always)
 	rirf_time_vector = file_info[0].GetRIRFTimeVector();
 	// simplify 6* num_bodies to be the system's total number of dofs, makes expressions later easier to read
@@ -606,7 +612,7 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::stri
 	force_radiation_damping.resize(total_dofs, 0);
 	total_force.resize(total_dofs, 0);
 	// set up equilibrium for entire system (each body has position and rotation equilibria 3 indicies apart)
-	equilibrium.resize(total_dofs);
+	equilibrium.resize(total_dofs, 0);
 	for (int b = 0; b < num_bodies; b++) {
 		for (int i = 0; i < 3; i++) {
 			unsigned equilibrium_idx = i + 6 * b;
@@ -622,14 +628,6 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::stri
 // step: [0,1,...,1000] (timesteps from h5 file, one velocity per step
 // c: [0,..,num_bodies-1,...,numbodies*6-1] (in order of bodies, iterates over dof for each body...3 bodies c would be [0,1,...,17])
 double TestHydro::getVelHistoryAllBodies(int step, int c) const {
-	//if (step * c > velocity_history.size() || c < 0 ) {
-	//	// uh oh
-	//	std::cout << "wrong vel_history index somewhere\nreturning 0 for it\n" << std::endl;
-	//	return 0;
-	//}
-	//else {
-
-	//}
 	int index = c % 6;
 	int b = c / 6; // 0 indexed
 	return velocity_history[index + 6 * b + 6 * num_bodies * step];
@@ -639,14 +637,6 @@ double TestHydro::getVelHistoryAllBodies(int step, int c) const {
 // b_num: [1,2,...,total_bodies] (1 indexed!, use body number in h5 file)
 // index: [0,1,2,3,4,5] (0 indexed, always 0-5 for force+torque vector indexing)
 double TestHydro::setVelHistory(double val, int step, int b_num, int index) {
-	//if (step * b_num * index > velocity_history.size() || (b_num > num_bodies || b_num < 1) || (index > 5 || index < 0) ) {
-	//	// uh oh
-	//	std::cout << "wrong vel_history index somewhere\nnot gonna set anything\n" << std::endl;
-	//	return 0;
-	//}
-	//else {
-
-	//}
 	velocity_history[index + 6 * (b_num - 1) + 6 * num_bodies * step] = val;
 	return val;
 }
@@ -701,6 +691,12 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 	delete[] buoyancy;
 	return force_hydrostatic;
 }
+//std::vector<double> TestHydro::ComputeForceExcitation() {
+//	// do math
+//	// return vector for that force
+//	force_excitation.resize(6, 0);
+//	return force_excitation;
+//}
 
 std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 	int size = file_info[0].GetRIRFDims(2);
@@ -777,7 +773,16 @@ double TestHydro::coordinateFunc(int b, int i) { // b_num from ForceFunc6d is 1 
 	prev_time = bodies[0]->GetChTime();
 	// call all compute force functions
 	ComputeForceHydrostatics();
+	//for (int i = 0; i < 6 * num_bodies; i++) {
+	//	std::cout << force_hydrostatic[i] << " " << std::flush;
+	//}
+	//std::cout << std::endl;
 	ComputeForceRadiationDampingConv();
+	//for (int i = 0; i < 6 * num_bodies; i++) {
+	//	std::cout << force_radiation_damping[i] << " " << std::flush;
+	//}
+	//std::cout << std::endl;
+	// ComputeForceExcitation();
 	// sum all forces element by element
 	unsigned total_dofs = 6 * num_bodies;
 	for (int j = 0; j < total_dofs; j++) {

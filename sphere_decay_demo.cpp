@@ -65,6 +65,7 @@ int main(int argc, char* argv[]) {
 	application.AddCamera(core::vector3df(0, 30, 0), core::vector3df(0, 0, 0)); // arguments are (location, orientation) as vectors
 
 	// set up body from a mesh
+	std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/oes_task10_sphere.obj").c_str()) << std::endl;
 	std::shared_ptr<ChBody> body = chrono_types::make_shared<ChBodyEasyMesh>(                   //
 		GetChronoDataFile("../../HydroChrono/meshFiles/oes_task10_sphere.obj").c_str(),                 // file name
 		1000,                                                                                     // density
@@ -116,9 +117,10 @@ int main(int argc, char* argv[]) {
 	std::string of = "sphere_decay.txt";                    /// < put name of your output file here
 	std::ofstream zpos(of, std::ofstream::out);
 	if (!zpos.is_open()) {
-		std::cout << "Error opening file \"" + of + "\". Please make sure this file path exists then try again\n";
+		std::cout << "Error opening file \"" << std::filesystem::absolute(of) << "\". Please make sure this file path exists then try again\n";
 		return -1;
-	}
+	}	
+	std::cout << "Writing positions to file: " << std::filesystem::absolute(of) << std::endl;
 	zpos.precision(10);
 	zpos.width(12);
 	zpos << "#Time\tBody Pos\tBody vel (heave)\tforce (heave)" << std::endl;
