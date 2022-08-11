@@ -7,6 +7,7 @@
 	* Irrlicht Engine (1.8.4)
 	* CMake
 	* GIT client
+
 * Install H5Cpp header file from HDF5Group [Download Link](https://portal.hdfgroup.org/display/support/Downloads) [Instructions](https://portal.hdfgroup.org/display/support/Building+HDF5+with+CMake#BuildingHDF5withCMake-quickins) Note: Version 1.10.8 recommended, other versions may not work as intended. Note 2: This is why Visual Studio 2019 is recommended above, building HDF5 with newer versions of Visual Studio is not as clear Note 3: You may need to unzip 'CMake-hdf5-1.10.8/build/HDF5-1.10.8-win64.zip' manually.
 * Recommended (For use with Python): Install and build PyChrono according to [instructions.](https://api.projectchrono.org/module_python_installation.html) Note, instructions for building PyChrono include installing SWIG to generate python files-this is used again to generate python from HydroChrono C++ code.
 * (optional) Gnuplot [Gnuplot Home](http://www.gnuplot.info/) or other plotting software
