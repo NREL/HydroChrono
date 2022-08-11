@@ -1,4 +1,4 @@
-#include "hydro_forces.h"
+#include "../../src/hydro_forces.h"
 #include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
 #include "chrono_irrlicht/ChIrrMeshTools.h"
 #include "chrono/core/ChRealtimeStep.h"
@@ -74,7 +74,7 @@ int main(int argc, char* argv[]) {
 	system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
 	system.SetStep(timestep);
 	ChRealtimeStepTimer realtime_timer;
-	bool visualizationOn = false;
+	bool visualizationOn = true;
 	double simulationDuration = 40.0;
 	//double simulationStartTime = 0.0;
 

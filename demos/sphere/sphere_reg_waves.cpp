@@ -1,4 +1,4 @@
-#include "hydro_forces.h"
+#include "../../src/hydro_forces.h"
 #include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
 #include "chrono_irrlicht/ChIrrMeshTools.h"
 #include <filesystem>
