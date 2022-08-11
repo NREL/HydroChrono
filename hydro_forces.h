@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <filesystem>
 
 #include "chrono/solver/ChSolverPMINRES.h"
 #include "chrono/solver/ChIterativeSolverLS.h"
@@ -20,6 +21,8 @@
 
 #include "H5Cpp.h"
 
+
+
 using namespace chrono;
 using namespace chrono::irrlicht;
 using namespace chrono::fea;
@@ -29,52 +32,48 @@ class H5FileInfo { // TODO cut simple setter/getter functions to trim this huge 
 public:
 	H5FileInfo();
 	H5FileInfo(std::string file, std::string body_name);
+	void InitScalar(H5::H5File& file, std::string data_name, double& var);
+	void Init1D(H5::H5File& file, std::string data_name, std::vector<double>& var);
+	void Init2D(H5::H5File& file, std::string data_name, ChMatrixDynamic<double>& var); 
+	void Init3D(H5::H5File& file, std::string data_name, std::vector<double>& var, std::vector<int>& dims);
 	~H5FileInfo();
-	ChMatrixDynamic<double> GetHydrostaticStiffnessMatrix() const;
 	ChMatrixDynamic<double> GetInfAddedMassMatrix() const;
-	ChVector<> GetEquilibriumCoG() const;
-	ChVector<> GetEquilibriumCoB() const;
-	double GetRho() const;
-	double GetGravity() const;
-	double GetDisplacementVolume() const;
+	double GetHydrostaticStiffness(int i, int j) const;
 	double GetRIRFval(int i, int n, int m) const;
 	int GetRIRFDims(int i) const;
-	double GetExcitationMagValue(int m, int n, int w) const;
-	double GetExcitationMagInterp(int i, int j, double freq_index_des) const;
-	double GetExcitationPhaseValue(int m, int n, int w) const;
-	double GetExcitationPhaseInterp(int i, int j, double freq_index_des) const;
-	double GetOmegaMin() const;
-	double GetOmegaMax() const;
-	double GetOmegaDelta() const;
-	double GetRIRFdt() const;
-	std::vector<double> GetRIRFTimeVector() const;
-	double GetNumFreqs() const;
+	std::vector<double> GetRIRFTimeVector() const; // TODO
+	//double GetExcitationMagValue(int m, int n, int w) const;
+	//double GetExcitationMagInterp(int i, int j, double freq_index_des) const;
+	//double GetExcitationPhaseValue(int m, int n, int w) const;
+	//double GetExcitationPhaseInterp(int i, int j, double freq_index_des) const;
+	//double GetNumFreqs() const;
+	std::vector<double> cg;
+	std::vector<double> cb;
+	const double& rho = _rho;
+	const double& g = _g;
+	const double& disp_vol = _disp_vol;
 	int bodyNum;
 private:
+	double _rho;
+	double _g;
+	double _disp_vol;
+	std::vector<double> freq_list;
 	ChMatrixDynamic<double> lin_matrix;
 	ChMatrixDynamic<double> inf_added_mass;
-	double* rirf_matrix;
-	hsize_t rirf_dims[3];
-	double* radiation_damping_matrix;
-	hsize_t radiation_damping_dims[3];
-	double* excitation_mag_matrix;
-	hsize_t excitation_mag_dims[3];
-	double* excitation_phase_matrix;
-	hsize_t excitation_phase_dims[3];
-	double* excitation_re_matrix;
-	hsize_t excitation_re_dims[3];
-	double* excitation_im_matrix;
-	hsize_t excitation_im_dims[3];
-	ChVector<double> cg;
-	ChVector<double> cb;
+	std::vector<double> rirf_matrix;
+	std::vector<int> rirf_dims;
 	std::vector<double> rirf_time_vector;
-	hsize_t freq_dims[3];
-	std::vector<double> freq_list;
-	double omega_min;
-	double omega_max;
-	double rho;
-	double g;
-	double disp_vol;
+	std::vector<double> radiation_damping_matrix; // TODO check about names
+	std::vector<int> Bw_dims; // TODO check with dave on name for dimensions of radiation damping matrix
+	std::vector<double> excitation_mag_matrix;
+	std::vector<int> mag_dims;
+	std::vector<double> excitation_re_matrix;
+	std::vector<int> re_dims;
+	std::vector<double> excitation_im_matrix;
+	std::vector<int> im_dims;
+	//std::vector<double> excitation_phase_matrix;
+	//double omega_min;
+	//double omega_max;
 	std::string h5_file_name;
 	std::string bodyName;
 	void readH5Data();
@@ -144,19 +143,18 @@ public:
 	TestHydro operator = (const TestHydro& rhs) = delete;
 	std::vector<double> ComputeForceHydrostatics();
 	std::vector<double> ComputeForceRadiationDampingConv();
+	std::vector<double> ComputeForceExcitation();
 	double GetRIRFval(int row, int col, int st);
 	double coordinateFunc(int b, int i);
 	//ChVectorN<double, 6> ComputeForceExcitationRegularFreq();
-	//double coordinateFunc(int i);
-	//void SetForce();
-	//void SetTorque();
 private:
 	std::vector<std::shared_ptr<ChBody>> bodies;
 	std::vector<H5FileInfo> file_info;
 	std::vector<ForceFunc6d> force_per_body;
-	HydroInputs hydro_inputs;
+	//HydroInputs hydro_inputs;
 	std::vector<double> force_hydrostatic;
 	std::vector<double> force_radiation_damping;
+	//std::vector<double> force_excitation;
 	std::vector<double> total_force;
 	int num_bodies;
 	std::vector<double> equilibrium;
