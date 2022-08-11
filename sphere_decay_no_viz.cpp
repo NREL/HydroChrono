@@ -1,17 +1,28 @@
 #include "hydro_forces.h"
-#include "chrono_irrlicht/ChIrrNodeAsset.h"
-#include <chrono>
+#include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
+#include "chrono_irrlicht/ChIrrMeshTools.h"
+// Use the namespaces of Chrono
+using namespace chrono;
+using namespace chrono::geometry;
+using namespace chrono::irrlicht;
+
+using namespace irr;
+using namespace irr::core;
+using namespace irr::scene;
+using namespace irr::video;
+using namespace irr::io;
+using namespace irr::gui;
 
 int main(int argc, char* argv[]) {
-	auto start = std::chrono::high_resolution_clock::now();
+	//auto start = std::chrono::high_resolution_clock::now();
 	GetLog() << "Copyright (c) 2017 projectchrono.org\nChrono version: " << CHRONO_VERSION << "\n\n";
 
 	ChSystemNSC system;
 	system.Set_G_acc(ChVector<>(0, 0, -9.81));
 
 	std::shared_ptr<ChBody> body = chrono_types::make_shared<ChBodyEasySphere>(5, 1);
-	auto sph = chrono_types::make_shared<ChSphereShape>();
-	body->AddAsset(sph);
+	//auto sph = chrono_types::make_shared<ChSphereShape>();
+	//body->SetShowCollisionMesh(sph);
 
 	// set up body initial conditions
 	system.Add(body);
@@ -20,9 +31,9 @@ int main(int argc, char* argv[]) {
 	body->SetMass(261.8e3);
 
 	// attach color asset to body
-	auto col_2 = chrono_types::make_shared<ChColorAsset>();
-	col_2->SetColor(ChColor(0, 0, 0.6f));
-	body->AddAsset(col_2);
+	//auto col_2 = chrono_types::make_shared<ChColorAsset>();
+	//col_2->SetColor(ChColor(0, 0, 0.6f));
+	//body->AddAsset(col_2);
 
 	HydroInputs my_hydro_inputs;
 	my_hydro_inputs.SetRegularWaveAmplitude(0.022);
@@ -59,8 +70,8 @@ int main(int argc, char* argv[]) {
 		}
 	}
 	zpos.close();
-	auto end = std::chrono::high_resolution_clock::now();
-	unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-	std::cout << "Duration: " << duration/1000.0 << " seconds" << std::endl;
+	//auto end = std::chrono::high_resolution_clock::now();
+	//unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+	//std::cout << "Duration: " << duration/1000.0 << " seconds" << std::endl;
 	return 0;
 }
