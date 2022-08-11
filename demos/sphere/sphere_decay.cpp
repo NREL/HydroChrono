@@ -1,8 +1,9 @@
-#include "../../src/hydro_forces.h"
+//#include "../../src/hydro_forces.h"
+#include "./src/hydro_forces.h"
 #include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
 #include "chrono_irrlicht/ChIrrMeshTools.h"
 #include "chrono/core/ChRealtimeStep.h"
-#include <iomanip>      // std::setprecision
+#include <iomanip> // std::setprecision
 
 // Use the namespaces of Chrono
 using namespace chrono;
@@ -80,7 +81,7 @@ int main(int argc, char* argv[]) {
 
 	// set up body from a mesh
 	std::shared_ptr<ChBody> sphereBody = chrono_types::make_shared<ChBodyEasyMesh>(       //
-		GetChronoDataFile("../../HydroChrono/meshFiles/oes_task10_sphere.obj").c_str(),   // file name
+		GetChronoDataFile("../../HydroChrono/demos/sphere/geometry/oes_task10_sphere.obj").c_str(),   // file name
 		1000,                                                                             // density
 		false,                                                                            // do not evaluate mass automatically
 		true,                                                                             // create visualization asset
@@ -103,7 +104,7 @@ int main(int argc, char* argv[]) {
 	// attach hydrodynamic forces to body
 	std::vector<std::shared_ptr<ChBody>> bodies;
 	bodies.push_back(sphereBody);
-	TestHydro blah(bodies, "../../HydroChrono/sphere.h5", my_hydro_inputs);
+	TestHydro blah(bodies, "../../HydroChrono/demos/sphere/hydroData/sphere.h5", my_hydro_inputs);
 
 	// set up output file
 	std::string outputFileName = "sphere_decay.txt";                    /// < put name of your output file here
@@ -152,7 +153,7 @@ int main(int argc, char* argv[]) {
 					<< std::right << std::setw(18) << std::setprecision(2) << std::fixed << sphereBody->GetAppliedForce().z()
 					<< std::endl;
 				// force playback to be real-time
-				//realtime_timer.Spin(timestep);
+				// realtime_timer.Spin(timestep);
 			}
 		}
 		zPosition.close();
