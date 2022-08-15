@@ -78,7 +78,7 @@ int main(int argc, char* argv[]) {
 	double simulationDuration = 40.0;
 
 	// some io/viz options
-	bool visualizationOn = false;
+	bool visualizationOn = true;
 	bool profilingOn = true;
 	bool saveDataOn = true;
 	std::vector<double> time_vector;

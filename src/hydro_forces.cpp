@@ -611,16 +611,18 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::stri
 	// resize and initialize velocity history vector to all zeros
 	velocity_history.resize(file_info[0].GetRIRFDims(2) * total_dofs, 0); // resize and fill with 0s
 	// resize and initialize all persistent forces to all 0s
-	force_hydrostatic.resize(total_dofs, 0);
-	force_radiation_damping.resize(total_dofs, 0);
-	total_force.resize(total_dofs, 0);
+	force_hydrostatic.resize(total_dofs, 0.0);
+	force_radiation_damping.resize(total_dofs, 0.0);
+	total_force.resize(total_dofs, 0.0);
 	// set up equilibrium for entire system (each body has position and rotation equilibria 3 indicies apart)
-	equilibrium.resize(total_dofs);
+	//equilibrium.resize(total_dofs);
+	equilibrium.resize(total_dofs, 0.0);
+
 	for (int b = 0; b < num_bodies; b++) {
 		for (int i = 0; i < 3; i++) {
 			unsigned equilibrium_idx = i + 6 * b;
 			equilibrium[equilibrium_idx] = file_info[b].GetEquilibriumCoG()[i];
-			equilibrium[equilibrium_idx + 3ul] = file_info[b].GetEquilibriumCoB()[i]; // 3ul is just 3, used to get rid of warning on 32 vs 64 bit types
+			//equilibrium[equilibrium_idx + 3ul] = file_info[b].GetEquilibriumCoB()[i]; // 3ul is just 3, used to get rid of warning on 32 vs 64 bit types
 		}
 	}
 	for (int b = 0; b < num_bodies; b++) {
@@ -781,6 +783,7 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConvolution() {
 #undef TMP_S
 	delete[] timeseries;
 	delete[] tmp_s;
+
 	return force_radiation_damping;
 }
 
@@ -806,7 +809,7 @@ double TestHydro::coordinateFunc(int b, int i) { // b_num from ForceFunc6d is 1 
 	prev_time = bodies[0]->GetChTime();
 	// call all compute force functions
 	ComputeForceHydrostatics();
-	//convTrapz = true; // use trapeziodal rule or assume fixed dt.
+	convTrapz = true; // use trapeziodal rule or assume fixed dt.
 	ComputeForceRadiationDampingConvolution();
 
 	// sum all forces element by element
