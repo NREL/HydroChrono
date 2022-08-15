@@ -711,7 +711,7 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 	return force_hydrostatic;
 }
 
-std::vector<double> TestHydro::ComputeForceRadiationDampingConvolutionTrapz() {
+std::vector<double> TestHydro::ComputeForceRadiationDampingConvolution() {
 	int size = file_info[0].GetRIRFDims(2);
 	// "shift" everything left 1
 	offset_rirf--;
@@ -742,73 +742,39 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConvolutionTrapz() {
 	int vi;
 	std::fill(force_radiation_damping.begin(), force_radiation_damping.end(), 0);
 	//#pragma omp parallel for
-	for (int row = 0; row < numRows; row++) { 
-		// double fDampingCol = 0.0; // what is this?
-		//#pragma omp parallel for
-		for (int col = 0; col < numCols; col++) { 
-			for (int st = 0; st < size; st++) {
-				vi = (((st + offset_rirf) % size) + size) % size; // vi takes care of circshift function from matLab
-				TIMESERIES(row, col, st) = GetRIRFval(row, col, st) * getVelHistoryAllBodies(vi,col); // col now runs thru all bodies (0->11 for 2 bodies...)
-				TMP_S(row, st) = TIMESERIES(row, col, st);
-				if (st > 0) {
-					force_radiation_damping[row] -= (TMP_S(row, st - 1) + TMP_S(row, st)) / 2.0 * (rirf_time_vector[st] - rirf_time_vector[st - 1ull]);
+	if (convTrapz == true){
+		// convolution integral using trapezoidal rule
+		for (int row = 0; row < numRows; row++) {
+			// double fDampingCol = 0.0; // what is this?
+			//#pragma omp parallel for
+			for (int col = 0; col < numCols; col++) {
+				for (int st = 0; st < size; st++) {
+					vi = (((st + offset_rirf) % size) + size) % size; // vi takes care of circshift function from matLab
+					TIMESERIES(row, col, st) = GetRIRFval(row, col, st) * getVelHistoryAllBodies(vi, col); // col now runs thru all bodies (0->11 for 2 bodies...)
+					TMP_S(row, st) = TIMESERIES(row, col, st);
+					if (st > 0) {
+						force_radiation_damping[row] -= (TMP_S(row, st - 1) + TMP_S(row, st)) / 2.0 * (rirf_time_vector[st] - rirf_time_vector[st - 1ull]);
+					}
 				}
 			}
 		}
 	}
-	// Deallocate memory
-#undef TIMESERIES
-#undef TMP_S
-	delete[] timeseries;
-	delete[] tmp_s;
-	return force_radiation_damping;
-}
-
-std::vector<double> TestHydro::ComputeForceRadiationDampingConvolutionFixed() {
-	int size = file_info[0].GetRIRFDims(2);
-	rirf_timestep = file_info[0].GetRIRFTimestep();
-	// "shift" everything left 1
-	offset_rirf--;
-	// keep offset close to 0, avoids small chance of -overflow errors in long simulations
-	if (offset_rirf < -1 * size) {
-		offset_rirf += size;
-	}
-	int numRows = 6, numCols = 6 * num_bodies;
-	//int bodyNum = file_info.bodyNum;
-	double* timeseries = new double[numRows * numCols * size];
-	double* tmp_s = new double[numRows * size];
-	// define shortcuts for accessing 1D arrays as 3D (or 2D) arrays
-	// TIMESERIES is for each row in RIRF, element wise multipy velocity history by RIRF slab
-#define TIMESERIES(row,col,step) timeseries[(row)*numCols*size + (col)*size + (step)]
-	//TMP_S ends up being a sum over the columns of TIMESERIES (total_dofs aka LDOF
-#define TMP_S(row,step) tmp_s[(row)*size + (step)]
-	// set last entry as velocity
-	for (int i = 0; i < 3; i++) {
-		for (int b = 1; b < num_bodies + 1; b++) { // body index sucks but i think this is correct...
-			setVelHistory(bodies[b - 1]->GetPos_dt()[i],
-				(((size + offset_rirf) % size) + size) % size, b, i);
-			setVelHistory(bodies[b - 1]->GetWvel_par()[i],
-				(((size + offset_rirf) % size) + size) % size, b, i + 3);
-			//velocity_history[(((size + offset_rirf) % size) + size) % size][i] = body->GetPos_dt()[i];
-			//velocity_history[(((size + offset_rirf) % size) + size) % size][i + 3] = body->GetWvel_par()[i];
-		}
-	}
-	int vi;
-	std::fill(force_radiation_damping.begin(), force_radiation_damping.end(), 0);
-	//#pragma omp parallel for
-	for (int row = 0; row < numRows; row++) {
-		// double fDampingCol = 0.0; // what is this?
-		//#pragma omp parallel for
-		sumVelHistoryAndRIRF = 0.0;
-		for (int col = 0; col < numCols; col++) {
-			for (int st = 0; st < size; st++) {
-				vi = (((st + offset_rirf) % size) + size) % size; // vi takes care of circshift function from matLab
-				TIMESERIES(row, col, st) = GetRIRFval(row, col, st) * getVelHistoryAllBodies(vi, col); // col now runs thru all bodies (0->11 for 2 bodies...)
-				TMP_S(row, st) = TIMESERIES(row, col, st); //TODO: rename TIMESERIES and TMP_S
-				sumVelHistoryAndRIRF += TMP_S(row, st);
+	else {
+		// convolution integral assuming fixed dt
+		for (int row = 0; row < numRows; row++) {
+			// double fDampingCol = 0.0; // what is this?
+			//#pragma omp parallel for
+			sumVelHistoryAndRIRF = 0.0;
+			for (int col = 0; col < numCols; col++) {
+				for (int st = 0; st < size; st++) {
+					vi = (((st + offset_rirf) % size) + size) % size; // vi takes care of circshift function from matLab
+					TIMESERIES(row, col, st) = GetRIRFval(row, col, st) * getVelHistoryAllBodies(vi, col); // col now runs thru all bodies (0->11 for 2 bodies...)
+					TMP_S(row, st) = TIMESERIES(row, col, st); //TODO: rename TIMESERIES and TMP_S
+					sumVelHistoryAndRIRF += TMP_S(row, st);
+				}
 			}
+			force_radiation_damping[row] -= sumVelHistoryAndRIRF * rirf_timestep;
 		}
-		force_radiation_damping[row] -= sumVelHistoryAndRIRF * rirf_timestep;
 	}
 	// Deallocate memory
 #undef TIMESERIES
@@ -840,8 +806,8 @@ double TestHydro::coordinateFunc(int b, int i) { // b_num from ForceFunc6d is 1 
 	prev_time = bodies[0]->GetChTime();
 	// call all compute force functions
 	ComputeForceHydrostatics();
-	//ComputeForceRadiationDampingConvolutionTrapz();
-	ComputeForceRadiationDampingConvolutionFixed();
+	//convTrapz = true; // use trapeziodal rule or assume fixed dt.
+	ComputeForceRadiationDampingConvolution();
 
 	// sum all forces element by element
 	unsigned total_dofs = 6 * num_bodies;

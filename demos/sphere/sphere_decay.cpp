@@ -64,7 +64,6 @@ class MyActionReceiver : public IEventReceiver {
 };
 
 // the main program to be executed:
-
 int main(int argc, char* argv[]) {
 	GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
@@ -112,7 +111,8 @@ int main(int argc, char* argv[]) {
 	bodies.push_back(sphereBody);
 	TestHydro blah(bodies, "../../HydroChrono/demos/sphere/hydroData/sphere.h5", my_hydro_inputs);
 
-	auto start = std::chrono::high_resolution_clock::now(); // for profiling
+	// for profiling
+	auto start = std::chrono::high_resolution_clock::now(); 
 
 	if (visualizationOn){
 		// create the irrlicht application for visualizing

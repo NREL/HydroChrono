@@ -145,8 +145,9 @@ public:
 	TestHydro(const TestHydro& other) = delete;
 	TestHydro operator = (const TestHydro& rhs) = delete;
 	std::vector<double> ComputeForceHydrostatics();
-	std::vector<double> ComputeForceRadiationDampingConvolutionTrapz();
-	std::vector<double> ComputeForceRadiationDampingConvolutionFixed();
+	std::vector<double> ComputeForceRadiationDampingConvolution();
+	bool convTrapz = false;
+	//std::vector<double> ComputeForceRadiationDampingConvolutionFixed();
 	double GetRIRFval(int row, int col, int st);
 	double coordinateFunc(int b, int i);
 	//ChVectorN<double, 6> ComputeForceExcitationRegularFreq();
