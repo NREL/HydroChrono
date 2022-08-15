@@ -840,8 +840,8 @@ double TestHydro::coordinateFunc(int b, int i) { // b_num from ForceFunc6d is 1 
 	prev_time = bodies[0]->GetChTime();
 	// call all compute force functions
 	ComputeForceHydrostatics();
-	ComputeForceRadiationDampingConvolutionTrapz();
-	//ComputeForceRadiationDampingConvolutionFixed();
+	//ComputeForceRadiationDampingConvolutionTrapz();
+	ComputeForceRadiationDampingConvolutionFixed();
 
 	// sum all forces element by element
 	unsigned total_dofs = 6 * num_bodies;
