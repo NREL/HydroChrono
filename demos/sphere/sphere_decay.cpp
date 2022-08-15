@@ -4,6 +4,7 @@
 #include "chrono_irrlicht/ChIrrMeshTools.h"
 #include "chrono/core/ChRealtimeStep.h"
 #include <iomanip> // std::setprecision
+#include <chrono> // std::chrono::high_resolution_clock::now
 
 // Use the namespaces of Chrono
 using namespace chrono;
@@ -64,18 +65,18 @@ class MyActionReceiver : public IEventReceiver {
 // the main program to be executed:
 
 int main(int argc, char* argv[]) {
-	//auto start = std::chrono::high_resolution_clock::now();
 	GetLog() << "Copyright (c) 2017 projectchrono.org\nChrono version: " << CHRONO_VERSION << "\n\n";
 
 	// system/solver settings
 	ChSystemNSC system;
 	system.Set_G_acc(ChVector<>(0, 0, -9.81));
-	double timestep = 0.06;
+	double timestep = 0.015;
 	system.SetSolverType(ChSolver::Type::GMRES);
 	system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
 	system.SetStep(timestep);
 	ChRealtimeStepTimer realtime_timer;
-	bool visualizationOn = true;
+	bool visualizationOn = false;
+	bool profilingOn = true;
 	double simulationDuration = 40.0;
 	//double simulationStartTime = 0.0;
 
@@ -107,7 +108,7 @@ int main(int argc, char* argv[]) {
 	TestHydro blah(bodies, "../../HydroChrono/demos/sphere/hydroData/sphere.h5", my_hydro_inputs);
 
 	// set up output file
-	std::string outputFileName = "sphere_decay.txt";                    /// < put name of your output file here
+	std::string outputFileName = "./results/decay/sphere_decay.txt";                    /// < put name of your output file here
 	std::ofstream zPosition(outputFileName, std::ofstream::out);
 	if (!zPosition.is_open()) {
 		std::cout << "Error opening file \"" + outputFileName + "\". Please make sure this file path exists then try again\n";
@@ -115,11 +116,14 @@ int main(int argc, char* argv[]) {
 	}
 
 	zPosition << std::left << std::setw(10) << "Time (s)"
-		<< std::right << std::setw(12) << "Heave(m)"
+		<< std::right << std::setw(12) << "Heave (m)"
 		<< std::right << std::setw(18) << "Heave Vel (m/s)" 
-		<< std::right << std::setw(18) << "Heave Force(N)"
+		<< std::right << std::setw(18) << "Heave Force (N)"
 		<< std::endl;
 
+	// for profiling
+	auto start = std::chrono::high_resolution_clock::now();
+	
 	if (visualizationOn){
 		// create the irrlicht application for visualizing
 		auto irrlichtVis = chrono_types::make_shared<ChVisualSystemIrrlicht>();
@@ -157,9 +161,6 @@ int main(int argc, char* argv[]) {
 			}
 		}
 		zPosition.close();
-		//auto end = std::chrono::high_resolution_clock::now();
-		//unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-		//std::cout << "Duration: " << duration/1000.0 << " seconds" << std::endl;
 	}
 	else{
 		int frame = 0;
@@ -175,5 +176,15 @@ int main(int argc, char* argv[]) {
 			frame++;
 		}
 	}
+	auto end = std::chrono::high_resolution_clock::now();
+	unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+	
+	if (profilingOn) {
+		std::ofstream profilingFile;
+		profilingFile.open("./results/decay/duration_ms.txt");
+		profilingFile << duration << "\n";
+		profilingFile.close();
+	}
+
 	return 0;
 }

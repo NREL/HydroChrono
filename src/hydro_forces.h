@@ -47,6 +47,7 @@ public:
 	double GetOmegaMax() const;
 	double GetOmegaDelta() const;
 	double GetRIRFdt() const;
+	double GetRIRFTimestep() const;
 	std::vector<double> GetRIRFTimeVector() const;
 	double GetNumFreqs() const;
 	int bodyNum;
@@ -68,6 +69,7 @@ private:
 	ChVector<double> cg;
 	ChVector<double> cb;
 	std::vector<double> rirf_time_vector;
+	double rirf_timestep;
 	hsize_t freq_dims[3];
 	std::vector<double> freq_list;
 	double omega_min;
@@ -143,7 +145,8 @@ public:
 	TestHydro(const TestHydro& other) = delete;
 	TestHydro operator = (const TestHydro& rhs) = delete;
 	std::vector<double> ComputeForceHydrostatics();
-	std::vector<double> ComputeForceRadiationDampingConv();
+	std::vector<double> ComputeForceRadiationDampingConvolutionTrapz();
+	std::vector<double> ComputeForceRadiationDampingConvolutionFixed();
 	double GetRIRFval(int row, int col, int st);
 	double coordinateFunc(int b, int i);
 	//ChVectorN<double, 6> ComputeForceExcitationRegularFreq();
@@ -154,6 +157,8 @@ private:
 	std::vector<std::shared_ptr<ChBody>> bodies;
 	std::vector<H5FileInfo> file_info;
 	std::vector<ForceFunc6d> force_per_body;
+	double sumVelHistoryAndRIRF;
+	double rirf_timestep;
 	HydroInputs hydro_inputs;
 	std::vector<double> force_hydrostatic;
 	std::vector<double> force_radiation_damping;
