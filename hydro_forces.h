@@ -106,6 +106,8 @@ class TestHydro;
 
 class ComponentFunc : public ChFunction {
 public:
+	ComponentFunc();
+	ComponentFunc(const ComponentFunc& old);
 	ComponentFunc(ForceFunc6d* b, int i);
 	virtual ComponentFunc* Clone() const override;
 	virtual double 	Get_y(double x) const override;
@@ -120,8 +122,7 @@ class ForceFunc6d {
 public:
 	ForceFunc6d();
 	ForceFunc6d(std::shared_ptr<ChBody> object, TestHydro* all_hydro_forces_user);
-	//ForceFunc6d(const ForceFunc6d& other) = delete;
-	ForceFunc6d operator = (const ForceFunc6d& rhs) = delete;
+	ForceFunc6d(const ForceFunc6d& old);
 	double coordinateFunc(int i);
 private:
 	void SetForce();
@@ -139,11 +140,11 @@ class TestHydro {
 public:
 	TestHydro();
 	TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::string h5_file_name, HydroInputs users_hydro_inputs);
-	TestHydro(const TestHydro& other) = delete;
+	TestHydro(const TestHydro& old) = delete;
 	TestHydro operator = (const TestHydro& rhs) = delete;
 	std::vector<double> ComputeForceHydrostatics();
 	std::vector<double> ComputeForceRadiationDampingConv();
-	std::vector<double> ComputeForceExcitation();
+	//std::vector<double> ComputeForceExcitation();
 	double GetRIRFval(int row, int col, int st);
 	double coordinateFunc(int b, int i);
 	//ChVectorN<double, 6> ComputeForceExcitationRegularFreq();
@@ -158,6 +159,7 @@ private:
 	std::vector<double> total_force;
 	int num_bodies;
 	std::vector<double> equilibrium;
+	std::vector<double> cb_minus_cg;
 	double getVelHistoryAllBodies(int step, int c) const;
 	double setVelHistory(double val, int step, int b_num, int index);
 	//std::vector<double> force_excitation_freq;

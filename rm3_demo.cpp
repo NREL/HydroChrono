@@ -73,7 +73,11 @@ int main(int argc, char* argv[]) {
 
 
 	// set up body from a mesh
-	std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/float.obj").c_str()) << std::endl;
+	if (!std::filesystem::exists("../../HydroChrono/meshFiles/float.obj")) {
+		std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/float.obj").c_str()) << " does not exist" << std::endl;
+		return 0;
+	}
+	//std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/float.obj").c_str()) << std::endl;
 	std::shared_ptr<ChBody> float_body1 = chrono_types::make_shared<ChBodyEasyMesh>(                   //
 		GetChronoDataFile("../../HydroChrono/meshFiles/float.obj").c_str(),                 // file name
 		1000,                                                                                     // density
@@ -85,7 +89,11 @@ int main(int argc, char* argv[]) {
 		);
 
 	// set up body from a mesh
-	std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/plate.obj").c_str()) << std::endl;
+	if (!std::filesystem::exists("../../HydroChrono/meshFiles/plate.obj")) {
+		std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/plate.obj").c_str()) << " does not exist" << std::endl;
+		return 0;
+	}
+	//std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/plate.obj").c_str()) << std::endl;
 	std::shared_ptr<ChBody> plate_body2 = chrono_types::make_shared<ChBodyEasyMesh>(                   //
 		GetChronoDataFile("../../HydroChrono/meshFiles/plate.obj").c_str(),                 // file name
 		1000,                                                                                     // density
@@ -128,7 +136,6 @@ int main(int argc, char* argv[]) {
 	bodies.push_back(float_body1);
 	bodies.push_back(plate_body2);
 	TestHydro blah(bodies, "C:/Users/ZQUINTON/code/HydroChrono/rm3.h5", my_hydro_inputs);
-	std::cout << "hi" << std::endl;
 	//std::shared_ptr<ChLoadContainer> my_loadcontainer;
 	//std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia;
 	//my_loadcontainer = chrono_types::make_shared<ChLoadContainer>();
@@ -173,7 +180,7 @@ int main(int argc, char* argv[]) {
 
 	// Simulation loop
 	int frame = 0;
-	while (application.GetDevice()->run() && system.GetChTime() < 3) {
+	while (application.GetDevice()->run() && system.GetChTime() < 20) {
 		application.BeginScene();
 		application.DrawAll();
 		tools::drawAllCOGs(system, application.GetVideoDriver(), 15); // draws all cog axis lines, kinda neat
