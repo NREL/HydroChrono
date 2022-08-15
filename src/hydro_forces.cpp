@@ -50,10 +50,10 @@ void H5FileInfo::readH5Data() { // TODO break up this function!
 	temp = new double[dims[0] * dims[1]];
 	dataset.read(temp, H5::PredType::NATIVE_DOUBLE, mspace1, filespace);
 	// put into equilibrium chvector
-	inf_added_mass.resize(dims[0], dims[1]);
+	infinite_added_mass.resize(dims[0], dims[1]);
 	for (int i = 0; i < dims[0]; i++) {
 		for (int j = 0; j < dims[1]; j++) {
-			inf_added_mass(i, j) = temp[i * dims[1] + j];
+			infinite_added_mass(i, j) = temp[i * dims[1] + j];
 		}
 	}
 	dataset.close();
@@ -277,8 +277,8 @@ ChMatrixDynamic<double> H5FileInfo::GetHydrostaticStiffnessMatrix() const { //TO
 * H5FileInfo::GetInfAddedMassMatrix()
 * returns the added mass matrix at infinite frequency
 *******************************************************************************/
-ChMatrixDynamic<double> H5FileInfo::GetInfAddedMassMatrix() const {
-	return inf_added_mass * rho;
+ChMatrixDynamic<double> H5FileInfo::GetInfiniteAddedMassMatrix() const {
+	return infinite_added_mass * rho;
 }
 
 /*******************************************************************************
@@ -628,6 +628,11 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::stri
 	for (int b = 0; b < num_bodies; b++) {
 		force_per_body.emplace_back(bodies[b], this);
 	}
+
+	my_loadcontainer = chrono_types::make_shared<ChLoadContainer>();
+	my_loadbodyinertia = chrono_types::make_shared<ChLoadAddedMass>(file_info, bodies);
+	bodies[0]->GetSystem()->Add(my_loadcontainer);
+	my_loadcontainer->Add(my_loadbodyinertia);
 }
 
 // step: [0,1,...,1000] (timesteps from h5 file, one velocity per step
@@ -826,34 +831,47 @@ double TestHydro::coordinateFunc(int b, int i) { // b_num from ForceFunc6d is 1 
 
 /*******************************************************************************
 * constructorHelper
-* for use in ChLoadAddedMass constructor, to conver a vector of shared_ptrs to 
+* for use in ChLoadAddedMass constructor, to convert a vector of shared_ptrs to 
 * ChBody type objects to a vector of shared_ptrs to ChLoadable type objects
 * in order to use ChLoadCustomMultiple's constructor for a vector of ChLoadable
 * shared_ptrs
 *******************************************************************************/
-//std::vector<std::shared_ptr<ChLoadable>> constructorHelper(std::vector<std::shared_ptr<ChBody>>& bodies) {
-//	std::vector<std::shared_ptr<ChLoadable>> re(bodies.size());
-//
-//	std::transform(bodies.begin(), bodies.end(), re.begin(), [](const std::shared_ptr<ChBody>& p) { return std::static_pointer_cast<ChLoadable>(p); });
-//
-//	return re;
-//}
+std::vector<std::shared_ptr<ChLoadable>> constructorHelper(std::vector<std::shared_ptr<ChBody>>& bodies) {
+	std::vector<std::shared_ptr<ChLoadable>> re(bodies.size());
+	std::transform(bodies.begin(), bodies.end(), re.begin(), [](const std::shared_ptr<ChBody>& p) { return std::static_pointer_cast<ChLoadable>(p); });
 
+	return re;
+}
+
+void ChLoadAddedMass::AssembleSystemAddedMassMat() {
+	for (int i = 0; i < nBodies; i++) {
+		infinite_added_mass = h5_body_data[i].GetInfiniteAddedMassMatrix();
+		//TODO: append multiple matrices
+	}
+}
 /*******************************************************************************
 * ChLoadAddedMass constructor
 * initializes body to have load applied to and added mass matrix from h5 file object
 *******************************************************************************/
-//ChLoadAddedMass::ChLoadAddedMass(const H5FileInfo& file, 
-//	std::vector<std::shared_ptr<ChBody>>& bodies) 
-//	: ChLoadCustomMultiple(constructorHelper(bodies)) { ///< calls ChLoadCustomMultiple to link loads to bodies
-//	inf_added_mass_J = file.GetInfAddedMassMatrix(); //TODO switch all uses of H5FileInfo object to be like this, instead of copying the object each time?
-//
-//	std::ofstream myfile;
-//	//myfile.open("C:\\code\\chrono_hydro_dev\\HydroChrono_build\\Release\\inf_added_mass_J.txt");
-//	myfile.open("inf_added_mass_J_txt");
-//	myfile << inf_added_mass_J << "\n";
-//	myfile.close();
-//}
+ChLoadAddedMass::ChLoadAddedMass(const std::vector<H5FileInfo>& user_h5_body_data,
+								 std::vector<std::shared_ptr<ChBody>>& bodies)
+								     : ChLoadCustomMultiple(constructorHelper(bodies)) { ///< calls ChLoadCustomMultiple to link loads to bodies
+	//infinite_added_mass = file.GetInfiniteAddedMassMatrix(); //TODO switch all uses of H5FileInfo object to be like this, instead of copying the object each time?
+	nBodies = bodies.size();
+	h5_body_data = user_h5_body_data;
+	AssembleSystemAddedMassMat();
+
+	ChMatrixDynamic<double> massmat = infinite_added_mass;
+	std::ofstream myfile2;
+	myfile2.open("C:\\code\\HydroChrono_build\\Release\\debugging\\massmat1.txt");
+	myfile2 << massmat << "\n";
+	myfile2.close();
+
+	/*std::ofstream myfile;
+	myfile.open("C:\\code\\chrono_hydro_dev\\HydroChrono_build\\Release\\infinite_added_mass.txt");
+	myfile << infinite_added_mass << "\n";
+	myfile.close();*/
+}
 /*******************************************************************************
 * ChLoadAddedMass constructor
 * initializes body to have load applied to and added mass matrix from h5 file object
@@ -861,67 +879,60 @@ double TestHydro::coordinateFunc(int b, int i) { // b_num from ForceFunc6d is 1 
 //ChLoadAddedMass::ChLoadAddedMass(const ChMatrixDynamic<>& addedMassMatrix,
 //	std::vector<std::shared_ptr<ChBody>>& bodies)
 //	: ChLoadCustomMultiple(constructorHelper(bodies)) { ///< calls ChLoadCustomMultiple to link loads to bodies
-//	inf_added_mass_J = addedMassMatrix; //TODO switch all uses of H5FileInfo object to be like this, instead of copying the object each time?
+//	infinite_added_mass = addedMassMatrix; //TODO switch all uses of H5FileInfo object to be like this, instead of copying the object each time?
 //
-//	std::ofstream myfile;
-//	//myfile.open("C:\\code\\chrono_hydro_dev\\HydroChrono_build\\Release\\inf_added_mass_J.txt");
-//	myfile.open("inf_added_mass_J_txt");
-//	myfile << inf_added_mass_J << "\n";
-//	myfile.close();
 //}
+
 /*******************************************************************************
 * ChLoadAddedMass::ComputeJacobian()
 * Computes Jacobian for load, in this case just the mass matrix is initialized
 * as the added mass matrix
 *******************************************************************************/
-//void ChLoadAddedMass::ComputeJacobian(ChState* state_x,       ///< state position to evaluate jacobians
-//	ChStateDelta* state_w,  ///< state speed to evaluate jacobians
-//	ChMatrixRef mK,         ///< result dQ/dx
-//	ChMatrixRef mR,         ///< result dQ/dv
-//	ChMatrixRef mM          ///< result dQ/da
-//) {
-//	//set mass matrix here
-//
-//	jacobians->M = inf_added_mass_J;
-//
-//	ChMatrixDynamic<double> massmat = jacobians->M;
-//
-//	std::ofstream myfile2;
-//	//myfile2.open("C:\\code\\chrono_hydro_dev\\HydroChrono_build\\Release\\massmat.txt");
-//	myfile2.open("massmat.txt");
-//	myfile2 << massmat << "\n";
-//	myfile2.close();
-//
-//	// R gyroscopic damping matrix terms (6x6)
-//	// 0 for added mass
-//	jacobians->R.setZero();
-//
-//	// K inertial stiffness matrix terms (6x6)
-//	// 0 for added mass
-//	jacobians->K.setZero();
-//}
+void ChLoadAddedMass::ComputeJacobian(ChState* state_x,       ///< state position to evaluate jacobians
+	ChStateDelta* state_w,  ///< state speed to evaluate jacobians
+	ChMatrixRef mK,         ///< result dQ/dx
+	ChMatrixRef mR,         ///< result dQ/dv
+	ChMatrixRef mM          ///< result dQ/da
+) {
+	//set mass matrix here
+	jacobians->M = infinite_added_mass;
+
+	ChMatrixDynamic<double> massmat = jacobians->M;
+	std::ofstream myfile2;
+	myfile2.open("C:\\code\\HydroChrono_build\\Release\\debugging\\massmat.txt");
+	myfile2 << massmat << "\n";
+	myfile2.close();
+
+	// R gyroscopic damping matrix terms (6x6)
+	// 0 for added mass
+	jacobians->R.setZero();
+
+	// K inertial stiffness matrix terms (6x6)
+	// 0 for added mass
+	jacobians->K.setZero();
+}
 
 /*******************************************************************************
 * ChLoadAddedMass::LoadIntLoadResidual_Mv()
 * Computes LoadIntLoadResidual_Mv for vector w, const c, and vector R
 * Note R here is vector, and is not R gyroscopic damping matrix from ComputeJacobian
 *******************************************************************************/
-//void ChLoadAddedMass::LoadIntLoadResidual_Mv(ChVectorDynamic<>& R, const ChVectorDynamic<>& w, const double c) {
-//	if (!this->jacobians)
-//		return;
-//
-//	//if (!loadable->IsSubBlockActive(0))
-//	//	return;
-//
-//	// R+=c*M*a
-//	// segment gives the chunk of vector starting at the first argument, and going for as many elements as the second argument...
-//	// in this case, segment gets the 3vector starting at the 0th DOF's offset (ie 0)
-//	//R.segment(loadable->GetSubBlockOffset(0), 3) += c * (this->mass * (a_x + chrono::Vcross(a_w, this->c_m))).eigen();
-//	// in this case, segment gets the 3vector starting at the 0th DOF's + 3 offset (ie 3)
-//	//R.segment(loadable->GetSubBlockOffset(0) + 3, 3) += c * (this->mass * chrono::Vcross(this->c_m, a_x) + this->I * a_w).eigen();
-//	// since R is a vector, we can probably just do R += C*M*a with no need to separate w into a_x and a_w above
-//	R += c * jacobians->M * w;
-//}
+void ChLoadAddedMass::LoadIntLoadResidual_Mv(ChVectorDynamic<>& R, const ChVectorDynamic<>& w, const double c) {
+	if (!this->jacobians)
+		return;
+
+	//if (!loadable->IsSubBlockActive(0))
+	//	return;
+
+	// R+=c*M*a
+	// segment gives the chunk of vector starting at the first argument, and going for as many elements as the second argument...
+	// in this case, segment gets the 3vector starting at the 0th DOF's offset (ie 0)
+	//R.segment(loadable->GetSubBlockOffset(0), 3) += c * (this->mass * (a_x + chrono::Vcross(a_w, this->c_m))).eigen();
+	// in this case, segment gets the 3vector starting at the 0th DOF's + 3 offset (ie 3)
+	//R.segment(loadable->GetSubBlockOffset(0) + 3, 3) += c * (this->mass * chrono::Vcross(this->c_m, a_x) + this->I * a_w).eigen();
+	// since R is a vector, we can probably just do R += C*M*a with no need to separate w into a_x and a_w above
+	R += c * jacobians->M * w;
+}
 
 // =============================================================================
 // LoadAllHydroForces Class Definitions
