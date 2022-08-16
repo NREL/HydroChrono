@@ -90,6 +90,11 @@ int main(int argc, char* argv[]) {
 
 
 	// set up body from a mesh
+	if (!std::filesystem::exists("../../HydroChrono/meshFiles/float.obj")) {
+		std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/float.obj").c_str()) << " does not exist" << std::endl;
+		return 0;
+	}
+	//std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/float.obj").c_str()) << std::endl;
 	std::shared_ptr<ChBody> float_body1 = chrono_types::make_shared<ChBodyEasyMesh>(                   //
 		GetChronoDataFile("../../HydroChrono/meshFiles/float.obj").c_str(),                 // file name
 		1000,                                                                                     // density
@@ -101,6 +106,11 @@ int main(int argc, char* argv[]) {
 		);
 
 	// set up body from a mesh
+	if (!std::filesystem::exists("../../HydroChrono/meshFiles/plate.obj")) {
+		std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/plate.obj").c_str()) << " does not exist" << std::endl;
+		return 0;
+	}
+	//std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/plate.obj").c_str()) << std::endl;
 	std::shared_ptr<ChBody> plate_body2 = chrono_types::make_shared<ChBodyEasyMesh>(                   //
 		GetChronoDataFile("../../HydroChrono/meshFiles/plate.obj").c_str(),                 // file name
 		1000,                                                                                     // density
@@ -113,7 +123,7 @@ int main(int argc, char* argv[]) {
 
 	// set up body initial conditions
 	system.Add(float_body1);
-	float_body1->SetNameString("body1"); // TODO do i want this?
+	float_body1->SetNameString("body1"); 
 	//float_body1->SetPos(ChVector<>(0, 0, 0));
 	float_body1->SetMass(886.691);
 	float_body1->SetCollide(false);
@@ -133,6 +143,8 @@ int main(int argc, char* argv[]) {
 	//col_2->SetColor(ChColor(0, 0.7f, 0.8f));
 	//plate_body2->AddAsset(col_2);
 
+	// add constraint so they only move up and down! TODO
+
 	HydroInputs my_hydro_inputs;
 	my_hydro_inputs.SetRegularWaveAmplitude(0.022);
 	my_hydro_inputs.SetRegularWaveOmega(2.10);
@@ -140,7 +152,7 @@ int main(int argc, char* argv[]) {
 	std::vector<std::shared_ptr<ChBody>> bodies;
 	bodies.push_back(float_body1);
 	bodies.push_back(plate_body2);
-	TestHydro blah(bodies, "../../HydroChrono/rm3.h5", my_hydro_inputs);
+	TestHydro blah(bodies, "C:/Users/ZQUINTON/code/HydroChrono/rm3.h5", my_hydro_inputs);
 	//std::shared_ptr<ChLoadContainer> my_loadcontainer;
 	//std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia;
 	//my_loadcontainer = chrono_types::make_shared<ChLoadContainer>();
@@ -162,6 +174,7 @@ int main(int argc, char* argv[]) {
 	//application.SetUserEventReceiver(&receiver);
 
 	// Info about which solver to use - may want to change this later
+
 	//auto gmres_solver = chrono_types::make_shared<ChSolverGMRES>();  // change to mkl or minres?
 	//gmres_solver->SetMaxIterations(300);
 	//system.SetSolver(gmres_solver);
@@ -191,20 +204,31 @@ int main(int argc, char* argv[]) {
 		//realtime_timer.Spin(timestep);
 	}
 
+	// TODO compare solvers?
+	//auto gmres_solver = chrono_types::make_shared<ChSolverGMRES>();  // change to mkl or minres?
+	//gmres_solver->SetMaxIterations(300);
+	//system.SetSolver(gmres_solver);
+	//double timestep = 0.06; // also sets the timesteps in chrono system
+	//application.SetTimestep(timestep);
+
+
 	// set up output file for body position each step
 	std::string of = "output.txt";                    /// < put name of your output file here
 	std::ofstream zpos(of, std::ofstream::out);
 	if (!zpos.is_open()) {
 		std::cout << "Error opening file \"" + of + "\". Please make sure this file path exists then try again\n";
 		return -1;
-	}
+	}	
+	std::cout << "Writing positions to file: " << std::filesystem::absolute(of) << std::endl;
 	zpos.precision(10);
 	zpos.width(12);
-	zpos << "#Time\tBody vel" << std::endl;
+	zpos << "#Time\tHeave " << float_body1->GetNameString() << "\t" << plate_body2->GetNameString() << std::endl;
+	//zpos << "#Time\tBody vel" << std::endl;
 
 
 	// Simulation loop
 	int frame = 0;
+
 	while (application->Run() && system.GetChTime() < 3) {
 		application->BeginScene();
 		application->Render();
@@ -216,6 +240,7 @@ int main(int argc, char* argv[]) {
 			zpos << system.GetChTime() << "\t" << plate_body2->GetPos_dt().x() << "\t" << plate_body2->GetPos_dt().y() << "\t" << plate_body2->GetPos_dt().z();
 			zpos << "\t" << plate_body2->GetWvel_par().x() << "\t" << plate_body2->GetWvel_par().y() << "\t" << plate_body2->GetWvel_par().z() << std::endl;
 			system.DoStepDynamics(timestep);
+
 			frame++;
 		}
 		application->EndScene();
