@@ -870,12 +870,9 @@ std::vector<std::shared_ptr<ChLoadable>> constructorHelper(std::vector<std::shar
 * initializes infinite_added_mass matrix by 
 *******************************************************************************/
 void ChLoadAddedMass::AssembleSystemAddedMassMat() {
-	int nDofs = nBodies * 6;
-	infinite_added_mass.resize(nDofs, nDofs);
-	infinite_added_mass.setZero();
+	infinite_added_mass.setZero(6 * nBodies, 6 * nBodies);
 	for (int i = 0; i < nBodies; i++) {
-		infinite_added_mass = h5_body_data[i].GetInfAddedMassMatrix();
-		//TODO: append multiple matrices
+		infinite_added_mass.block(i * 6, 0, 6, nBodies * 6) = h5_body_data[i].GetInfAddedMassMatrix();
 	}
 }
 
@@ -893,7 +890,7 @@ ChLoadAddedMass::ChLoadAddedMass(const std::vector<H5FileInfo>& user_h5_body_dat
 
 	ChMatrixDynamic<double> massmat = infinite_added_mass;
 	std::ofstream myfile2;
-	myfile2.open("C:\\code\\HydroChrono_build\\Release\\debugging\\massmat1.txt");
+	myfile2.open("C:\\code\\HydroChrono_build\\Release\\results\\rm3\\debugging\\massmat1.txt");
 	myfile2 << massmat << "\n";
 	myfile2.close();
 
@@ -919,7 +916,7 @@ void ChLoadAddedMass::ComputeJacobian(ChState* state_x,       ///< state positio
 
 	ChMatrixDynamic<double> massmat = jacobians->M;
 	std::ofstream myfile2;
-	myfile2.open("C:\\code\\HydroChrono_build\\Release\\debugging\\massmat.txt");
+	myfile2.open("C:\\code\\HydroChrono_build\\Release\\results\\rm3\\debugging\\massmat1.txt");
 	myfile2 << massmat << "\n";
 	myfile2.close();
 

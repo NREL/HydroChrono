@@ -62,7 +62,7 @@ endif()
 add_library(HydroChrono STATIC "src/hydro_forces.cpp" "src/hydro_forces.h")
 add_executable(sphere_decay "demos/sphere/sphere_decay.cpp")
 add_executable(sphere_reg_waves "demos/sphere/sphere_reg_waves.cpp")
-add_executable(rm3_demo "demos/rm3/rm3_demo.cpp")
+add_executable(rm3_decay "demos/rm3/rm3_decay.cpp")
 #SWIG_ADD_LIBRARY(py_wec_chrono LANGUAGE python SOURCES hydro_forces_no_viz.i)
 
 target_compile_features(HydroChrono PUBLIC cxx_std_17)
@@ -91,7 +91,7 @@ set_target_properties(sphere_reg_waves PROPERTIES
 	    COMPILE_DEFINITIONS "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
 	    LINK_FLAGS "${CHRONO_LINKER_FLAGS}")
 
-set_target_properties(rm3_demo PROPERTIES 
+set_target_properties(rm3_decay PROPERTIES 
 	    COMPILE_FLAGS "${CHRONO_CXX_FLAGS} ${EXTRA_COMPILE_FLAGS}"
 	    COMPILE_DEFINITIONS "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
 	    LINK_FLAGS "${CHRONO_LINKER_FLAGS}")
@@ -103,7 +103,7 @@ set_target_properties(rm3_demo PROPERTIES
 target_link_libraries(HydroChrono ${LINK_LIBS})
 target_link_libraries(sphere_decay HydroChrono)
 target_link_libraries(sphere_reg_waves HydroChrono)
-target_link_libraries(rm3_demo HydroChrono)
+target_link_libraries(rm3_decay HydroChrono)
 #SWIG_LINK_LIBRARIES(py_wec_chrono wec_chrono ${PYTHON_LIBRARIES})
 
 #--------------------------------------------------------------
