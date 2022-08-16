@@ -1,4 +1,4 @@
-#include "hydro_forces.h"
+#include "../../src/hydro_forces.h"
 #include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
 #include "chrono_irrlicht/ChIrrMeshTools.h"
 #include <filesystem>
@@ -76,7 +76,7 @@ int main(int argc, char* argv[]) {
 	//my_hydro_inputs.regular_wave_omega = task10_wave_omegas[reg_wave_num-1];//1.427996661;
 	std::vector<std::shared_ptr<ChBody>> bodies;
 	bodies.push_back(body);
-	TestHydro blah(bodies, "../../HydroChrono/sphere.h5", my_hydro_inputs);
+	TestHydro blah(bodies, "../../HydroChrono/demos/sphere/hydroData/sphere.h5", my_hydro_inputs);
 	//LoadAllHydroForces blah(body, "../../HydroChrono/sphere.h5", "body1", my_hydro_inputs);
 
 	std::string out_file = "regwave_" + std::to_string(reg_wave_num) + ".txt";

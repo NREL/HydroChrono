@@ -136,6 +136,8 @@ private:
 	TestHydro* all_hydro_forces;
 };
 
+class ChLoadAddedMass;
+
 class TestHydro {
 public:
 	TestHydro();
@@ -152,7 +154,9 @@ private:
 	std::vector<std::shared_ptr<ChBody>> bodies;
 	std::vector<H5FileInfo> file_info;
 	std::vector<ForceFunc6d> force_per_body;
-	//HydroInputs hydro_inputs;
+	double sumVelHistoryAndRIRF;
+	double rirf_timestep;
+	HydroInputs hydro_inputs;
 	std::vector<double> force_hydrostatic;
 	std::vector<double> force_radiation_damping;
 	//std::vector<double> force_excitation;
@@ -177,48 +181,51 @@ private:
 	//double prev_time_ex;
 	std::vector<double> rirf_time_vector; // (should be the same for each body?)
 	int offset_rirf;
+	std::shared_ptr<ChLoadContainer> my_loadcontainer;
+	std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia;
 };
 
 // =============================================================================
-//class ChLoadAddedMass : public ChLoadCustomMultiple {
-//public:
-//	ChLoadAddedMass(const H5FileInfo& file,   ///< h5 file to initialize added mass with
-//		std::vector<std::shared_ptr<ChBody>>& bodies  ///< objects to apply additional inertia to
-//		);     
-//	ChLoadAddedMass(const ChMatrixDynamic<>& addedMassMatrix,   ///< h5 file to initialize added mass with
-//		std::vector<std::shared_ptr<ChBody>>& bodies  ///< objects to apply additional inertia to
-//	);
+class ChLoadAddedMass : public ChLoadCustomMultiple {
+public:
+	ChLoadAddedMass(const std::vector<H5FileInfo>& file,   ///< h5 file to initialize added mass with
+					std::vector<std::shared_ptr<ChBody>>& bodies  ///< objects to apply additional inertia to
+					);     
+	//ChLoadAddedMass(const ChMatrixDynamic<>& addedMassMatrix,   ///< h5 file to initialize added mass with
+	//				std::vector<std::shared_ptr<ChBody>>& bodies  ///< objects to apply additional inertia to
+	//				);
 //
 //	/// "Virtual" copy constructor (covariant return type).
-//	virtual ChLoadAddedMass* Clone() const override { return new ChLoadAddedMass(*this); }
+	virtual ChLoadAddedMass* Clone() const override { return new ChLoadAddedMass(*this); }
 //
 //	/// Compute Q, the generalized load.
 //	/// In this case, it computes the quadratic (centrifugal, gyroscopic) terms.
 //	/// Signs are negative as Q assumed at right hand side, so Q= -Fgyro -Fcentrifugal
 //	/// Called automatically at each Update().
 //	/// The M*a term is not added: to this end one could use LoadIntLoadResidual_Mv afterward.
-//	virtual void ComputeQ(ChState* state_x,      ///< state position to evaluate Q
-//		ChStateDelta* state_w  ///< state speed to evaluate Q
-//	) override {}
-//
-//	/// For efficiency reasons, do not let the parent class do automatic differentiation
-//	/// to compute the R, K matrices. Use analytic expressions instead. For example, R is
-//	/// the well known gyroscopic damping matrix. Also, compute the M matrix.
-//	virtual void ComputeJacobian(ChState* state_x,       ///< state position to evaluate jacobians
-//		ChStateDelta* state_w,  ///< state speed to evaluate jacobians
-//		ChMatrixRef mK,         ///< result -dQ/dx
-//		ChMatrixRef mR,         ///< result -dQ/dv
-//		ChMatrixRef mM          ///< result -dQ/da
-//	) override;
-//
-//	/// Just for efficiency, override the default LoadIntLoadResidual_Mv, because we can do this in a simplified way.
-//	virtual void LoadIntLoadResidual_Mv(ChVectorDynamic<>& R,           ///< result: the R residual, R += c*M*w
-//		const ChVectorDynamic<>& w,     ///< the w vector
-//		const double c) override;       ///< a scaling factor
-//private:
-//	ChMatrixDynamic<double> inf_added_mass_J;       ///< added mass at infinite frequency in global coordinates
-//
-//	virtual bool IsStiff() override { return true; } // this to force the use of the inertial M, R and K matrices
-//
-//};
+	virtual void ComputeQ(ChState* state_x,      ///< state position to evaluate Q
+		ChStateDelta* state_w  ///< state speed to evaluate Q
+	) override {}
 
+	/// For efficiency reasons, do not let the parent class do automatic differentiation
+	/// to compute the R, K matrices. Use analytic expressions instead. For example, R is
+	/// the well known gyroscopic damping matrix. Also, compute the M matrix.
+	virtual void ComputeJacobian(ChState* state_x,       ///< state position to evaluate jacobians
+		ChStateDelta* state_w,  ///< state speed to evaluate jacobians
+		ChMatrixRef mK,         ///< result -dQ/dx
+		ChMatrixRef mR,         ///< result -dQ/dv
+		ChMatrixRef mM          ///< result -dQ/da
+	) override;
+
+	/// Just for efficiency, override the default LoadIntLoadResidual_Mv, because we can do this in a simplified way.
+	virtual void LoadIntLoadResidual_Mv(ChVectorDynamic<>& R,           ///< result: the R residual, R += c*M*w
+		const ChVectorDynamic<>& w,     ///< the w vector
+		const double c) override;       ///< a scaling factor
+	void AssembleSystemAddedMassMat();
+	int nBodies;
+	std::vector<H5FileInfo> h5_body_data;
+private:
+	ChMatrixDynamic<double> infinite_added_mass;       ///< added mass at infinite frequency in global coordinates
+
+	virtual bool IsStiff() override { return true; } // this to force the use of the inertial M, R and K matrices
+};
