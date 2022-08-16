@@ -30,6 +30,37 @@ H5FileInfo::H5FileInfo(std::string file, std::string Name) {
 }
 
 /*******************************************************************************
+* H5FileInfo::operator = (H5FileInfo& rhs) 
+* defines = operator, sets the left object = to right object (*this = rhs)
+* returns *this
+*******************************************************************************/
+H5FileInfo H5FileInfo::operator = (H5FileInfo& rhs) {
+	cg = rhs.cg;
+	cb = rhs.cb;
+	bodyNum = rhs.bodyNum;
+	_rho = rhs.rho;
+	_g = rhs.g;
+	_disp_vol = rhs.disp_vol;
+	freq_list = rhs.freq_list;
+	lin_matrix = rhs.lin_matrix;
+	inf_added_mass = rhs.lin_matrix;
+	rirf_matrix = rhs.rirf_matrix;
+	rirf_dims = rhs.rirf_dims;
+	rirf_time_vector = rhs.rirf_time_vector;
+	radiation_damping_matrix = rhs.radiation_damping_matrix;
+	Bw_dims = rhs.Bw_dims;
+	excitation_mag_matrix = rhs.excitation_mag_matrix;
+	mag_dims = rhs.mag_dims;
+	excitation_re_matrix = rhs.excitation_re_matrix;
+	re_dims = rhs.re_dims;
+	excitation_im_matrix = rhs.excitation_im_matrix;
+	im_dims = rhs.im_dims;
+	h5_file_name = rhs.h5_file_name;
+	bodyName = rhs.bodyName;
+	return *this;
+}
+
+/*******************************************************************************
 * H5FileInfo::readH5Data()
 * private member function called from constructor
 * calls Initialize functions to read h5 file information into  member variables
@@ -58,6 +89,8 @@ void H5FileInfo::readH5Data() { // TODO break up this function!
 	double temp;
 	InitScalar(sphereFile, bodyName + "/properties/body_number", temp);
 	bodyNum = (int)temp;
+
+	//_rirf_timestep = rirf_time_vector[1] - rirf_time_vector[0]; //N.B. assumes RIRF has fixed timestep.
 
 	sphereFile.close();
 }
@@ -171,10 +204,6 @@ void H5FileInfo::Init3D(H5::H5File& file, std::string data_name, std::vector<dou
 	for (int i = 0; i < dims[0] * dims[1] * dims[2]; i++) {
 		var[i] = temp[i];
 	}
-	for (int i = 0; i < dims[0] * dims[1] * dims[2]; i++) {
-		var[i] = temp[i];
-	}
-	rirf_timestep = rirf_time_vector[1] - rirf_time_vector[0]; //N.B. assumes RIRF has fixed timestep.
 	dataset.close();
 	delete[] temp;
 }
@@ -217,20 +246,17 @@ double H5FileInfo::GetRIRFval(int m, int n, int s) const {
 }
 
 /*******************************************************************************
-* H5FileInfo::GetExcitationMagInterp()
-* returns excitation magnitudes for row i, column j, frequency ix k
-*******************************************************************************/
-int H5FileInfo::GetRIRFDims(int i) const { 
-	return rirf_dims[i];
-}
-
-/*******************************************************************************
 * H5FileInfo::GetRIRFTimeVector()
 * returns the std::vector of rirf_time_vector from h5 file
 *******************************************************************************/
 std::vector<double> H5FileInfo::GetRIRFTimeVector() const { 
 	return rirf_time_vector;
 }
+
+ChMatrixDynamic<double> H5FileInfo::GetInfAddedMassMatrix() const { 
+	return inf_added_mass * rho;
+}
+
 
 /*******************************************************************************
 * H5FileInfo::GetNumFreqs()
@@ -550,6 +576,7 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::stri
 	//hydro_inputs = user_hydro_inputs;
 	// set up time vector (should be the same for each body, so just use the first always)
 	rirf_time_vector = file_info[0].GetRIRFTimeVector();
+	rirf_timestep = rirf_time_vector[1] - rirf_time_vector[0]; // TODO is this the same for all bodies?
 	// simplify 6* num_bodies to be the system's total number of dofs, makes expressions later easier to read
 	unsigned total_dofs = 6 * num_bodies;
 	// resize and initialize velocity history vector to all zeros
@@ -679,7 +706,7 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 * TestHydro::ComputeForceRadiationDampingConv()
 * computes the 6N dimensional Radiation Damping force with convolution history
 *******************************************************************************/
-std::vector<double> TestHydro::ComputeForceRadiationDampingConvolution() {
+std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 	int size = 0, numRows = 0, numCols = 0;
 	size = file_info[0].GetRIRFDims(2);
 	// "shift" everything left 1
@@ -806,7 +833,7 @@ double TestHydro::coordinateFunc(int b, int i) { // b_num from ForceFunc6d is 1 
 	// call all compute force functions
 	ComputeForceHydrostatics();
 	convTrapz = true; // use trapeziodal rule or assume fixed dt.
-	ComputeForceRadiationDampingConvolution();
+	ComputeForceRadiationDampingConv();
 
 	// sum all forces element by element
 	unsigned total_dofs = 6 * num_bodies;
@@ -830,13 +857,27 @@ double TestHydro::coordinateFunc(int b, int i) { // b_num from ForceFunc6d is 1 
 * in order to use ChLoadCustomMultiple's constructor for a vector of ChLoadable
 * shared_ptrs
 *******************************************************************************/
-//std::vector<std::shared_ptr<ChLoadable>> constructorHelper(std::vector<std::shared_ptr<ChBody>>& bodies) {
-//	std::vector<std::shared_ptr<ChLoadable>> re(bodies.size());
-//
-//	std::transform(bodies.begin(), bodies.end(), re.begin(), [](const std::shared_ptr<ChBody>& p) { return std::static_pointer_cast<ChLoadable>(p); });
-//
-//	return re;
-//}
+std::vector<std::shared_ptr<ChLoadable>> constructorHelper(std::vector<std::shared_ptr<ChBody>>& bodies) {
+	std::vector<std::shared_ptr<ChLoadable>> re(bodies.size());
+
+	std::transform(bodies.begin(), bodies.end(), re.begin(), [](const std::shared_ptr<ChBody>& p) { return std::static_pointer_cast<ChLoadable>(p); });
+
+	return re;
+}
+
+/*******************************************************************************
+* ChLoadAddedMass::AssembleSystemAddedMassMat()
+* initializes infinite_added_mass matrix by 
+*******************************************************************************/
+void ChLoadAddedMass::AssembleSystemAddedMassMat() {
+	int nDofs = nBodies * 6;
+	infinite_added_mass.resize(nDofs, nDofs);
+	infinite_added_mass.setZero();
+	for (int i = 0; i < nBodies; i++) {
+		infinite_added_mass = h5_body_data[i].GetInfAddedMassMatrix();
+		//TODO: append multiple matrices
+	}
+}
 
 /*******************************************************************************
 * ChLoadAddedMass constructor
@@ -861,16 +902,6 @@ ChLoadAddedMass::ChLoadAddedMass(const std::vector<H5FileInfo>& user_h5_body_dat
 	myfile << infinite_added_mass << "\n";
 	myfile.close();*/
 }
-/*******************************************************************************
-* ChLoadAddedMass constructor
-* initializes body to have load applied to and added mass matrix from h5 file object
-*******************************************************************************/
-//ChLoadAddedMass::ChLoadAddedMass(const ChMatrixDynamic<>& addedMassMatrix,
-//	std::vector<std::shared_ptr<ChBody>>& bodies)
-//	: ChLoadCustomMultiple(constructorHelper(bodies)) { ///< calls ChLoadCustomMultiple to link loads to bodies
-//	infinite_added_mass = addedMassMatrix; //TODO switch all uses of H5FileInfo object to be like this, instead of copying the object each time?
-//
-//}
 
 /*******************************************************************************
 * ChLoadAddedMass::ComputeJacobian()
@@ -922,21 +953,3 @@ void ChLoadAddedMass::LoadIntLoadResidual_Mv(ChVectorDynamic<>& R, const ChVecto
 	// since R is a vector, we can probably just do R += C*M*a with no need to separate w into a_x and a_w above
 	R += c * jacobians->M * w;
 }
-
-// =============================================================================
-// LoadAllHydroForces Class Definitions
-// =============================================================================
-/*******************************************************************************
-*
-*******************************************************************************/
-//LoadAllHydroForces::LoadAllHydroForces(std::vector<std::shared_ptr<ChBody>> objects, std::string file/*, std::string bodyName*/, HydroInputs user_hydro_inputs)/* :
-//	sys_file_info(file, bodyName), hydro_force(sys_file_info, object, user_hydro_inputs)*/ {
-//	
-//	//TestHydro(std::vector<ForceFunc6d>&fpb, HydroInputs users_hydro_inputs);
-//
-//	for (int i = 0; i < objects.size(); i++) { 
-//		
-//	}
-//	//hydro_force.SetForce();
-//	//hydro_force.SetTorque(); // called in constructor for 6d class now
-//}
