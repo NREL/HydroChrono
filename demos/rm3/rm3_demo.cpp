@@ -193,7 +193,7 @@ int main(int argc, char* argv[]) {
 	// Simulation loop
 	double timestep = 0.03;
 	//ChRealtimeStepTimer realtime_timer;
-	while (application->Run()) {
+	while (application->Run() && system.GetChTime() <= 40) {
 		application->BeginScene();
 		application->Render();
 		tools::drawGrid(application.get(), 2, 2, 30, 30, ChCoordsys<>(ChVector<>(0, 0.01, 0), Q_from_AngX(CH_C_PI_2)),

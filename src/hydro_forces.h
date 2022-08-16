@@ -28,10 +28,11 @@ using namespace chrono::irrlicht;
 using namespace chrono::fea;
 
 // =============================================================================
-class H5FileInfo { // TODO cut simple setter/getter functions to trim this huge class down
+class H5FileInfo {
 public:
 	H5FileInfo();
 	H5FileInfo(std::string file, std::string body_name);
+	H5FileInfo operator = (H5FileInfo& rhs);
 	void InitScalar(H5::H5File& file, std::string data_name, double& var);
 	void Init1D(H5::H5File& file, std::string data_name, std::vector<double>& var);
 	void Init2D(H5::H5File& file, std::string data_name, ChMatrixDynamic<double>& var); 
@@ -52,11 +53,13 @@ public:
 	const double& rho = _rho;
 	const double& g = _g;
 	const double& disp_vol = _disp_vol;
+	//const double& rirf_timestep = _rirf_timestep;
 	int bodyNum;
 private:
 	double _rho;
 	double _g;
 	double _disp_vol;
+	//double _rirf_timestep;
 	std::vector<double> freq_list;
 	ChMatrixDynamic<double> lin_matrix;
 	ChMatrixDynamic<double> inf_added_mass;
@@ -145,17 +148,17 @@ public:
 	TestHydro(const TestHydro& old) = delete;
 	TestHydro operator = (const TestHydro& rhs) = delete;
 	std::vector<double> ComputeForceHydrostatics();
-	std::vector<double> ComputeForceRadiationDampingConv();
+	std::vector<double> ComputeForceRadiationDampingConv(); 
 	//std::vector<double> ComputeForceExcitation();
 	double GetRIRFval(int row, int col, int st);
 	double coordinateFunc(int b, int i);
 	//ChVectorN<double, 6> ComputeForceExcitationRegularFreq();
+	bool convTrapz;
 private:
 	std::vector<std::shared_ptr<ChBody>> bodies;
 	std::vector<H5FileInfo> file_info;
 	std::vector<ForceFunc6d> force_per_body;
 	double sumVelHistoryAndRIRF;
-	double rirf_timestep;
 	HydroInputs hydro_inputs;
 	std::vector<double> force_hydrostatic;
 	std::vector<double> force_radiation_damping;
@@ -164,6 +167,7 @@ private:
 	int num_bodies;
 	std::vector<double> equilibrium;
 	std::vector<double> cb_minus_cg;
+	double rirf_timestep;
 	double getVelHistoryAllBodies(int step, int c) const;
 	double setVelHistory(double val, int step, int b_num, int index);
 	//std::vector<double> force_excitation_freq;
@@ -191,10 +195,6 @@ public:
 	ChLoadAddedMass(const std::vector<H5FileInfo>& file,   ///< h5 file to initialize added mass with
 					std::vector<std::shared_ptr<ChBody>>& bodies  ///< objects to apply additional inertia to
 					);     
-	//ChLoadAddedMass(const ChMatrixDynamic<>& addedMassMatrix,   ///< h5 file to initialize added mass with
-	//				std::vector<std::shared_ptr<ChBody>>& bodies  ///< objects to apply additional inertia to
-	//				);
-//
 //	/// "Virtual" copy constructor (covariant return type).
 	virtual ChLoadAddedMass* Clone() const override { return new ChLoadAddedMass(*this); }
 //
@@ -222,10 +222,9 @@ public:
 		const ChVectorDynamic<>& w,     ///< the w vector
 		const double c) override;       ///< a scaling factor
 	void AssembleSystemAddedMassMat();
-	int nBodies;
-	std::vector<H5FileInfo> h5_body_data;
 private:
 	ChMatrixDynamic<double> infinite_added_mass;       ///< added mass at infinite frequency in global coordinates
-
+	int nBodies;
+	std::vector<H5FileInfo> h5_body_data;
 	virtual bool IsStiff() override { return true; } // this to force the use of the inertial M, R and K matrices
 };

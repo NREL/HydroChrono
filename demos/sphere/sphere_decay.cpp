@@ -85,8 +85,9 @@ int main(int argc, char* argv[]) {
 	std::vector<double> heave_position;
 
 	// set up body from a mesh
+	std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/sphere/geometry/oes_task10_sphere.obj").c_str()) << std::endl;
 	std::shared_ptr<ChBody> sphereBody = chrono_types::make_shared<ChBodyEasyMesh>(       //
-		GetChronoDataFile("../../HydroChrono/demos/sphere/geometry/oes_task10_sphere.obj").c_str(),   // file name
+		GetChronoDataFile("../../HydroChrono/demos/sphere/geometry/oes_task10_sphere.obj").c_str(),    // file name
 		1000,                                                                             // density
 		false,                                                                            // do not evaluate mass automatically
 		true,                                                                             // create visualization asset
@@ -174,6 +175,9 @@ int main(int argc, char* argv[]) {
 	if (saveDataOn) {
 		std::ofstream outputFile;
 		outputFile.open("./results/decay/sphere_decay.txt");
+		if (!outputFile.is_open()) {
+			std::cout << "Cannot open file " << std::filesystem::absolute("./results/decay/sphere_decay.txt") << std::endl;
+		}
 		outputFile << std::left << std::setw(10) << "Time (s)"
 		<< std::right << std::setw(12) << "Heave (m)"
 		//<< std::right << std::setw(18) << "Heave Vel (m/s)" 
