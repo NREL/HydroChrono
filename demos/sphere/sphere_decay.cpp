@@ -1,8 +1,11 @@
-#include "hydro_forces.h"
+//#include "../../src/hydro_forces.h"
+#include "./src/hydro_forces.h"
 #include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
 #include "chrono_irrlicht/ChIrrMeshTools.h"
 #include "chrono/core/ChRealtimeStep.h"
-#include <iomanip>      // std::setprecision
+#include <iomanip> // std::setprecision
+#include <chrono> // std::chrono::high_resolution_clock::now
+#include <vector> // std::vector<double>
 
 // Use the namespaces of Chrono
 using namespace chrono;
@@ -61,26 +64,29 @@ class MyActionReceiver : public IEventReceiver {
 };
 
 // the main program to be executed:
-
 int main(int argc, char* argv[]) {
-	//auto start = std::chrono::high_resolution_clock::now();
-	GetLog() << "Copyright (c) 2017 projectchrono.org\nChrono version: " << CHRONO_VERSION << "\n\n";
+	GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
 	// system/solver settings
 	ChSystemNSC system;
 	system.Set_G_acc(ChVector<>(0, 0, -9.81));
-	double timestep = 0.06;
+	double timestep = 0.015;
 	system.SetSolverType(ChSolver::Type::GMRES);
 	system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
 	system.SetStep(timestep);
 	ChRealtimeStepTimer realtime_timer;
-	bool visualizationOn = false;
 	double simulationDuration = 40.0;
-	//double simulationStartTime = 0.0;
+
+	// some io/viz options
+	bool visualizationOn = true;
+	bool profilingOn = true;
+	bool saveDataOn = true;
+	std::vector<double> time_vector;
+	std::vector<double> heave_position;
 
 	// set up body from a mesh
 	std::shared_ptr<ChBody> sphereBody = chrono_types::make_shared<ChBodyEasyMesh>(       //
-		GetChronoDataFile("../../HydroChrono/meshFiles/oes_task10_sphere.obj").c_str(),   // file name
+		GetChronoDataFile("../../HydroChrono/demos/sphere/geometry/oes_task10_sphere.obj").c_str(),   // file name
 		1000,                                                                             // density
 		false,                                                                            // do not evaluate mass automatically
 		true,                                                                             // create visualization asset
@@ -103,21 +109,10 @@ int main(int argc, char* argv[]) {
 	// attach hydrodynamic forces to body
 	std::vector<std::shared_ptr<ChBody>> bodies;
 	bodies.push_back(sphereBody);
-	TestHydro blah(bodies, "../../HydroChrono/sphere.h5", my_hydro_inputs);
+	TestHydro blah(bodies, "../../HydroChrono/demos/sphere/hydroData/sphere.h5", my_hydro_inputs);
 
-	// set up output file
-	std::string outputFileName = "sphere_decay.txt";                    /// < put name of your output file here
-	std::ofstream zPosition(outputFileName, std::ofstream::out);
-	if (!zPosition.is_open()) {
-		std::cout << "Error opening file \"" + outputFileName + "\". Please make sure this file path exists then try again\n";
-		return -1;
-	}
-
-	zPosition << std::left << std::setw(10) << "Time (s)"
-		<< std::right << std::setw(12) << "Heave(m)"
-		<< std::right << std::setw(18) << "Heave Vel (m/s)" 
-		<< std::right << std::setw(18) << "Heave Force(N)"
-		<< std::endl;
+	// for profiling
+	auto start = std::chrono::high_resolution_clock::now(); 
 
 	if (visualizationOn){
 		// create the irrlicht application for visualizing
@@ -145,34 +140,51 @@ int main(int argc, char* argv[]) {
 			if (buttonPressed) {
 				// step the simulation forwards
 				system.DoStepDynamics(timestep);
-				// append data to output file
-				zPosition << std::left << std::setw(10) << std::setprecision(2) << std::fixed << system.GetChTime()
-					<< std::right << std::setw(12) << std::setprecision(4) << std::fixed << sphereBody->GetPos().z()
-					<< std::right << std::setw(18) << std::setprecision(4) << std::fixed << sphereBody->GetPos_dt().z()
-					<< std::right << std::setw(18) << std::setprecision(2) << std::fixed << sphereBody->GetAppliedForce().z()
-					<< std::endl;
+				// append data to std vector
+				time_vector.push_back(system.GetChTime());
+				heave_position.push_back(sphereBody->GetPos().z());
 				// force playback to be real-time
-				//realtime_timer.Spin(timestep);
+				// realtime_timer.Spin(timestep);
 			}
 		}
-		zPosition.close();
-		//auto end = std::chrono::high_resolution_clock::now();
-		//unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-		//std::cout << "Duration: " << duration/1000.0 << " seconds" << std::endl;
 	}
 	else{
 		int frame = 0;
 		while (system.GetChTime() <= simulationDuration) {
+			// step the simulation forwards
 			system.DoStepDynamics(timestep);
-			// append data to output file
-			zPosition << std::left << std::setw(10) << std::setprecision(2) << std::fixed << system.GetChTime()
-				<< std::right << std::setw(12) << std::setprecision(4) << std::fixed << sphereBody->GetPos().z()
-				<< std::right << std::setw(18) << std::setprecision(4) << std::fixed << sphereBody->GetPos_dt().z()
-				<< std::right << std::setw(18) << std::setprecision(2) << std::fixed << sphereBody->GetAppliedForce().z()
-				<< std::endl;
-			zPosition.close();
+			// append data to std vector
+			time_vector.push_back(system.GetChTime());
+			heave_position.push_back(sphereBody->GetPos().z());
 			frame++;
 		}
 	}
+
+	// for profiling
+	auto end = std::chrono::high_resolution_clock::now();
+	unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+	if (profilingOn) {
+		std::ofstream profilingFile;
+		profilingFile.open("./results/decay/duration_ms.txt");
+		profilingFile << duration << "\n";
+		profilingFile.close();
+	}
+
+	if (saveDataOn) {
+		std::ofstream outputFile;
+		outputFile.open("./results/decay/sphere_decay.txt");
+		outputFile << std::left << std::setw(10) << "Time (s)"
+		<< std::right << std::setw(12) << "Heave (m)"
+		//<< std::right << std::setw(18) << "Heave Vel (m/s)" 
+		//<< std::right << std::setw(18) << "Heave Force (N)"
+		<< std::endl;
+		for (int i = 0; i < time_vector.size(); ++i)
+			outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
+			<< std::right << std::setw(12) << std::setprecision(4) << std::fixed << heave_position[i]
+			<< std::endl;
+		outputFile.close();
+	}
+
 	return 0;
 }
