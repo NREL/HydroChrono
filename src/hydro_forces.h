@@ -28,6 +28,7 @@ using namespace chrono::fea;
 // =============================================================================
 class H5FileInfo {
 public:
+	bool printed = false;
 	H5FileInfo();
 	H5FileInfo(std::string file, std::string body_name);
 	H5FileInfo operator = (H5FileInfo& rhs);
