@@ -27,6 +27,15 @@ H5FileInfo::H5FileInfo(std::string file, std::string Name) {
 		std::cout << "h5 file does not exist, absolute file location: " << std::filesystem::absolute(file) << std::endl;
 	}
 	readH5Data();
+
+	if (printed == false) {
+		std::ofstream H5FileOut;
+		H5FileOut.open("C:\\code\\HydroChrono_build\\Release\\results\\rm3\\debugging\\H5FileOut.txt");
+		H5FileOut << Name << "\n";
+		H5FileOut << bodyName << "\n";
+		printed = true;
+	}
+
 }
 
 /*******************************************************************************
@@ -710,7 +719,6 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 		buoyancyOut << file_info[1].g << "\n";
 		buoyancyOut << file_info[1].disp_vol << "\n";
 		buoyancyOut << buoyancy[1] << "\n";
-		printed = true;
 	}
 
 	// add vertical buoyancy for each body, and add (0,0,buoyancy)x(cb-cg) to torque for each body (simplified)
