@@ -43,13 +43,13 @@ H5FileInfo::H5FileInfo(std::string file, std::string Name) {
 * defines = operator, sets the left object = to right object (*this = rhs)
 * returns *this
 *******************************************************************************/
-H5FileInfo H5FileInfo::operator = (H5FileInfo& rhs) {
+H5FileInfo& H5FileInfo::operator = (H5FileInfo& rhs) {
 	cg = rhs.cg;
 	cb = rhs.cb;
 	bodyNum = rhs.bodyNum;
-	_rho = rhs.rho;
-	_g = rhs.g;
-	_disp_vol = rhs.disp_vol;
+	_rho = rhs._rho;
+	_g = rhs._g;
+	_disp_vol = rhs._disp_vol;
 	freq_list = rhs.freq_list;
 	lin_matrix = rhs.lin_matrix;
 	inf_added_mass = rhs.lin_matrix;
@@ -67,6 +67,10 @@ H5FileInfo H5FileInfo::operator = (H5FileInfo& rhs) {
 	h5_file_name = rhs.h5_file_name;
 	bodyName = rhs.bodyName;
 	return *this;
+}
+
+H5FileInfo::H5FileInfo(H5FileInfo& old) {
+	*this = old;
 }
 
 /*******************************************************************************
@@ -580,7 +584,6 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::stri
 	bodies = user_bodies; // 0 indexed
 	num_bodies = bodies.size();
 	for (int b = 0; b < num_bodies; b++) {
-		std::cout << "file_info set up for body num: " << b << std::endl;
 		file_info.emplace_back(h5_file_name, bodies[b]->GetNameString()); // set up vector of file infos for each body
 	}
 	//hydro_inputs = user_hydro_inputs;
@@ -710,7 +713,7 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 		buoyancy[b] = file_info[b].rho * file_info[b].g * file_info[b].disp_vol; // buoyancy = rho*g*Vdisp
 
 		std::ofstream buoyancyOut;
-		buoyancyOut.open("C:\\code\\HydroChrono_build\\Release\\results\\rm3\\debugging\\buoyancy.txt");
+		buoyancyOut.open("results/rm3/debugging/buoyancy.txt");
 		buoyancyOut << file_info[0].rho << "\n";
 		buoyancyOut << file_info[0].g << "\n";
 		buoyancyOut << file_info[0].disp_vol << "\n";
