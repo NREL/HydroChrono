@@ -21,8 +21,6 @@
 
 #include "H5Cpp.h"
 
-
-
 using namespace chrono;
 using namespace chrono::irrlicht;
 using namespace chrono::fea;
@@ -143,6 +141,7 @@ class ChLoadAddedMass;
 
 class TestHydro {
 public:
+	bool printed = false;
 	TestHydro();
 	TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::string h5_file_name, HydroInputs users_hydro_inputs);
 	TestHydro(const TestHydro& old) = delete;
