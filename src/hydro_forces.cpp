@@ -656,10 +656,11 @@ double TestHydro::setVelHistory(double val, int step, int b_num, int index) {
 * computes the 6N dimensional Hydrostatic stiffness force
 *******************************************************************************/
 std::vector<double> TestHydro::ComputeForceHydrostatics() {
-	std::vector<double> orientation, displacement;
+	std::vector<double> position, displacement;
 	unsigned total_dofs = 6 * num_bodies;
-	orientation.resize(total_dofs,0);
+	position.resize(total_dofs,0);
 	displacement.resize(total_dofs, 0);
+
 	// orientation initialized to system current pos/rot vectors
 	for (int b = 0; b < num_bodies; b++) { 
 		for (int i = 0; i < 3; i++) {
@@ -667,16 +668,22 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 			if (b_offset + i + 3 > total_dofs || b_offset + i < 0) {
 				std::cout << "temp index in hydrostatic force is bad " << std::endl;
 			}
-			orientation[i + b_offset] = bodies[b]->GetPos().eigen()[i];
-			orientation[i + 3 + b_offset] = bodies[b]->GetRot().Q_to_Euler123()[i];
+
+			double linearPosition = bodies[b]->GetPos().eigen()[i];
+			double rotationalPosition = bodies[b]->GetRot().Q_to_Euler123()[i];
+			position[i + b_offset] = linearPosition;
+			position[i + 3 + b_offset] = rotationalPosition;
 		}
 	}
+
 	// make displacement vector for system
 	for (int i = 0; i < total_dofs; i++) {
-		displacement[i] = orientation[i] - equilibrium[i];
+		displacement[i] = position[i] - equilibrium[i];
 	}
+
 	// reset force_hydrostatic to 0
 	std::fill(force_hydrostatic.begin(), force_hydrostatic.end(), 0);
+
 	// re invent matrix vector multiplication
 	for (int b = 0; b < num_bodies; b++) {
 		for (int i = 0; i < 6; i++) {
@@ -685,12 +692,26 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 			}
 		}
 	}
+
 	// now handle buoyancy force....
 	assert(num_bodies > 0);
 	double* buoyancy = new double[num_bodies];
 	for (int b = 0; b < num_bodies; b++) { // for each body...
 		buoyancy[b] = file_info[b].rho * file_info[b].g * file_info[b].disp_vol; // buoyancy = rho*g*Vdisp
+
+		std::ofstream buoyancyOut;
+		buoyancyOut.open("C:\\code\\HydroChrono_build\\Release\\results\\rm3\\debugging\\buoyancy.txt");
+		buoyancyOut << file_info[0].rho << "\n";
+		buoyancyOut << file_info[0].g << "\n";
+		buoyancyOut << file_info[0].disp_vol << "\n";
+		buoyancyOut << buoyancy[0] << "\n\n";
+		buoyancyOut << file_info[1].rho << "\n";
+		buoyancyOut << file_info[1].g << "\n";
+		buoyancyOut << file_info[1].disp_vol << "\n";
+		buoyancyOut << buoyancy[1] << "\n";
+		printed = true;
 	}
+
 	// add vertical buoyancy for each body, and add (0,0,buoyancy)x(cb-cg) to torque for each body (simplified)
 	for (int b = 0; b < num_bodies; b++) {
 		unsigned b_offset = 6 * b;
@@ -698,6 +719,17 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 		force_hydrostatic[3 + b_offset] += -1 * buoyancy[b] * cb_minus_cg[1]; // roll part of cross product simplified
 		force_hydrostatic[4 + b_offset] += buoyancy[b] * cb_minus_cg[0]; // pitch part of cross product simplified
 	}
+
+	//if (printed == false) {
+	//	std::ofstream force_hydrostaticOut;
+	//	force_hydrostaticOut.open("C:\\code\\HydroChrono_build\\Release\\results\\rm3\\debugging\\force_hydrostatic.txt");
+	//	for (int i = 0; i < total_dofs; i++) {
+	//		force_hydrostaticOut << force_hydrostatic[i] << "\n";
+	//	}
+	//	force_hydrostaticOut << "\n";
+	//	printed = true;
+	//}
+
 	delete[] buoyancy;
 	return force_hydrostatic;
 }
@@ -835,10 +867,20 @@ double TestHydro::coordinateFunc(int b, int i) { // b_num from ForceFunc6d is 1 
 	convTrapz = true; // use trapeziodal rule or assume fixed dt.
 	ComputeForceRadiationDampingConv();
 
-	// sum all forces element by element
 	unsigned total_dofs = 6 * num_bodies;
+
+	std::ofstream hsdebug;
+	hsdebug.open("C:\\code\\HydroChrono_build\\Release\\results\\rm3\\debugging\\hsdebug.txt");
 	for (int j = 0; j < total_dofs; j++) {
-		total_force[j] = force_hydrostatic[j] + force_radiation_damping[j];
+		hsdebug << force_hydrostatic[j] << "\n";
+	}
+	hsdebug << "\n";
+	//hsdebug.close();
+
+
+	// sum all forces element by element
+	for (int j = 0; j < total_dofs; j++) {
+		total_force[j] = force_hydrostatic[j];// +force_radiation_damping[j];
 	}
 	if (body_num_offset + i < 0 || body_num_offset >= total_dofs) {
 		std::cout << "total force accessing out of bounds" << std::endl;
@@ -871,9 +913,9 @@ std::vector<std::shared_ptr<ChLoadable>> constructorHelper(std::vector<std::shar
 *******************************************************************************/
 void ChLoadAddedMass::AssembleSystemAddedMassMat() {
 	infinite_added_mass.setZero(6 * nBodies, 6 * nBodies);
-	for (int i = 0; i < nBodies; i++) {
-		infinite_added_mass.block(i * 6, 0, 6, nBodies * 6) = h5_body_data[i].GetInfAddedMassMatrix();
-	}
+	//for (int i = 0; i < nBodies; i++) {
+	//	infinite_added_mass.block(i * 6, 0, 6, nBodies * 6) = h5_body_data[i].GetInfAddedMassMatrix();
+	//}
 }
 
 /*******************************************************************************
