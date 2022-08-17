@@ -168,6 +168,18 @@ int main(int argc, char* argv[]) {
 	if (profilingOn) {
 		std::ofstream profilingFile;
 		profilingFile.open("./results/decay/duration_ms.txt");
+		if (!profilingFile.is_open()) {
+			if (!std::filesystem::exists("./results/decay")) {
+				std::cout << "Path " << std::filesystem::absolute("./results/decay") << " does not exist, creating it now..." << std::endl;
+				std::filesystem::create_directory("./results");
+				std::filesystem::create_directory("./results/decay");
+				profilingFile.open("./results/decay/duration_ms.txt");
+				if (!profilingFile.is_open()) {
+					std::cout << "Still cannot open file, ending program" << std::endl;
+					return 0;
+				}
+			}
+		}
 		profilingFile << duration << "\n";
 		profilingFile.close();
 	}
@@ -176,7 +188,16 @@ int main(int argc, char* argv[]) {
 		std::ofstream outputFile;
 		outputFile.open("./results/decay/sphere_decay.txt");
 		if (!outputFile.is_open()) {
-			std::cout << "Cannot open file " << std::filesystem::absolute("./results/decay/sphere_decay.txt") << std::endl;
+			if (!std::filesystem::exists("./results/decay")) {
+				std::cout << "Path " << std::filesystem::absolute("./results/decay") << " does not exist, creating it now..." << std::endl;
+				std::filesystem::create_directory("./results");
+				std::filesystem::create_directory("./results/decay");
+				outputFile.open("./results/decay/sphere_decay.txt");
+				if (!outputFile.is_open()) {
+					std::cout << "Still cannot open file, ending program" << std::endl;
+					return 0;
+				}
+			}
 		}
 		outputFile << std::left << std::setw(10) << "Time (s)"
 		<< std::right << std::setw(12) << "Heave (m)"
