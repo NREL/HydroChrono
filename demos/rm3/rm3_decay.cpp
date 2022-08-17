@@ -150,12 +150,12 @@ int main(int argc, char* argv[]) {
 		auto irrlichtVis = chrono_types::make_shared<ChVisualSystemIrrlicht>();
 		irrlichtVis->AttachSystem(&system);
 		irrlichtVis->SetWindowSize(1280, 720);
-		irrlichtVis->SetWindowTitle("Sphere - Decay Test");
+		irrlichtVis->SetWindowTitle("RM3 - Decay Test");
 		irrlichtVis->SetCameraVertical(CameraVerticalDir::Z);
 		irrlichtVis->Initialize();
 		irrlichtVis->AddLogo();
 		irrlichtVis->AddSkyBox();
-		irrlichtVis->AddCamera(ChVector<>(0, -30, 0), ChVector<>(0, 0, 0));
+		irrlichtVis->AddCamera(ChVector<>(0, -50, -10), ChVector<>(0, 0, -10)); // camera position and where it points
 		irrlichtVis->AddTypicalLights();
 
 		// add play/pause button
@@ -200,6 +200,19 @@ int main(int argc, char* argv[]) {
 	if (profilingOn) {
 		std::ofstream profilingFile;
 		profilingFile.open("./results/rm3/decay/duration_ms.txt");
+		if (!profilingFile.is_open()) {
+			if (!std::filesystem::exists("./results/rm3/decay")) {
+				std::cout << "Path " << std::filesystem::absolute("./results/rm3/decay") << " does not exist, creating it now..." << std::endl;
+				std::filesystem::create_directory("./results");
+				std::filesystem::create_directory("./results/rm3");
+				std::filesystem::create_directory("./results/rm3/decay");
+				profilingFile.open("./results/rm3/decay/duration_ms.txt");
+				if (!profilingFile.is_open()) {
+					std::cout << "Still cannot open file, ending program" << std::endl;
+					return 0;
+				}
+			}
+		}
 		profilingFile << duration << "\n";
 		profilingFile.close();
 	}
@@ -208,7 +221,17 @@ int main(int argc, char* argv[]) {
 		std::ofstream outputFile;
 		outputFile.open("./results/rm3/decay/rm3_decay.txt");
 		if (!outputFile.is_open()) {
-			std::cout << "Cannot open file " << std::filesystem::absolute("./results/rm3/decay/rm3_decay.txt") << std::endl;
+			if (!std::filesystem::exists("./results/rm3/decay")) {
+				std::cout << "Path " << std::filesystem::absolute("./results/rm3/decay") << " does not exist, creating it now..." << std::endl;
+				std::filesystem::create_directory("./results");
+				std::filesystem::create_directory("./results/rm3");
+				std::filesystem::create_directory("./results/rm3/decay");
+				outputFile.open("./results/rm3/decay/rm3_decay.txt");
+				if (!outputFile.is_open()) {
+					std::cout << "Still cannot open file, ending program" << std::endl;
+					return 0;
+				}
+			}
 		}
 		outputFile << std::left << std::setw(10) << "Time (s)"
 			<< std::right << std::setw(16) << "Float Heave (m)"
@@ -221,104 +244,5 @@ int main(int argc, char* argv[]) {
 			<< std::endl;
 		outputFile.close();
 	}
-
-
-
-	//std::shared_ptr<ChLoadContainer> my_loadcontainer;
-	//std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia;
-	//my_loadcontainer = chrono_types::make_shared<ChLoadContainer>();
-	//ChMatrixDynamic<> amMatrix;
-
-	//my_loadbodyinertia = chrono_types::make_shared<ChLoadAddedMass>(amMatrix, bodies);
-
-	//system.Add(my_loadcontainer);
-	//my_loadcontainer->Add(my_loadbodyinertia);
-
-
-	//// update irrlicht app with body info
-	//application.AssetBindAll();
-	//application.AssetUpdateAll();
-
-	//// some tools to handle the pause button
-	//bool buttonPressed = false;
-	//MyEventReceiver receiver(&application, buttonPressed);
-	//application.SetUserEventReceiver(&receiver);
-
-	// Info about which solver to use - may want to change this later
-
-	//auto gmres_solver = chrono_types::make_shared<ChSolverGMRES>();  // change to mkl or minres?
-	//gmres_solver->SetMaxIterations(300);
-	//system.SetSolver(gmres_solver);
-	//double timestep = 0.06; // also sets the timesteps in chrono system
-	//application.SetTimestep(timestep);
-
-	//MyEventReceiver receiver(application.get());
-	// note how to add the custom event receiver to the default interface:
-	//application->AddUserEventReceiver(&receiver);
-
-	//// Solver settings
-	//system.SetSolverType(ChSolver::Type::GMRES);
-	//system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
-	//system.SetStep(0.06);
-
-	//// Simulation loop
-	//double timestep = 0.03;
-	////ChRealtimeStepTimer realtime_timer;
-	//while (application->Run() && system.GetChTime() <= 40) {
-	//	application->BeginScene();
-	//	application->Render();
-	//	tools::drawGrid(application.get(), 2, 2, 30, 30, ChCoordsys<>(ChVector<>(0, 0.01, 0), Q_from_AngX(CH_C_PI_2)),
-	//		ChColor(0.3f, 0.3f, 0.3f), true);
-
-	//	application->EndScene();
-	//	system.DoStepDynamics(timestep);
-	//	//realtime_timer.Spin(timestep);
-	//}
-
-	//// TODO compare solvers?
-	////auto gmres_solver = chrono_types::make_shared<ChSolverGMRES>();  // change to mkl or minres?
-	////gmres_solver->SetMaxIterations(300);
-	////system.SetSolver(gmres_solver);
-	////double timestep = 0.06; // also sets the timesteps in chrono system
-	////application.SetTimestep(timestep);
-
-
-	//// set up output file for body position each step
-	//std::string of = "output.txt";                    /// < put name of your output file here
-	//std::ofstream zpos(of, std::ofstream::out);
-	//if (!zpos.is_open()) {
-	//	std::cout << "Error opening file \"" + of + "\". Please make sure this file path exists then try again\n";
-	//	return -1;
-	//}	
-	//std::cout << "Writing positions to file: " << std::filesystem::absolute(of) << std::endl;
-	//zpos.precision(10);
-	//zpos.width(12);
-	//zpos << "#Time\tHeave " << float_body1->GetNameString() << "\t" << plate_body2->GetNameString() << std::endl;
-	////zpos << "#Time\tBody vel" << std::endl;
-
-
-	//// Simulation loop
-	//int frame = 0;
-
-	//while (application->Run() && system.GetChTime() < 3) {
-	//	application->BeginScene();
-	//	application->Render();
-	//	tools::drawAllCOGs(application.get(), 15); // draws all cog axis lines, kinda neat
-	//	//tools::drawGrid(application.GetVideoDriver(), 4, 4);
-	//	/*if (buttonPressed)*/if(true) {
-	//		zpos << system.GetChTime() << "\t" << float_body1->GetPos_dt().x() << "\t" << float_body1->GetPos_dt().y() << "\t" << float_body1->GetPos_dt().z();
-	//		zpos << "\t" << float_body1->GetWvel_par().x() << "\t" << float_body1->GetWvel_par().y() << "\t" << float_body1->GetWvel_par().z() << std::endl;
-	//		zpos << system.GetChTime() << "\t" << plate_body2->GetPos_dt().x() << "\t" << plate_body2->GetPos_dt().y() << "\t" << plate_body2->GetPos_dt().z();
-	//		zpos << "\t" << plate_body2->GetWvel_par().x() << "\t" << plate_body2->GetWvel_par().y() << "\t" << plate_body2->GetWvel_par().z() << std::endl;
-	//		system.DoStepDynamics(timestep);
-
-	//		frame++;
-	//	}
-	//	application->EndScene();
-	//}
-	//zpos.close();
-	//auto end = std::chrono::high_resolution_clock::now();
-	//unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-	//std::cout << "Duration: " << duration/1000.0 << " seconds" << std::endl;
 	return 0;
 }
