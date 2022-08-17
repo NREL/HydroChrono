@@ -67,32 +67,33 @@ H5FileInfo H5FileInfo::operator = (H5FileInfo& rhs) {
 *******************************************************************************/
 void H5FileInfo::readH5Data() { // TODO break up this function!
 	// open file with read only access
-	H5::H5File sphereFile(h5_file_name, H5F_ACC_RDONLY);
+	H5::H5File userH5File(h5_file_name, H5F_ACC_RDONLY);
 
-	InitScalar(sphereFile, "simulation_parameters/rho", _rho);
-	InitScalar(sphereFile, "simulation_parameters/g", _g);
-	InitScalar(sphereFile, bodyName + "/properties/disp_vol", _disp_vol);
-	Init1D(sphereFile, bodyName + "/hydro_coeffs/radiation_damping/impulse_response_fun/t", rirf_time_vector);
-	Init1D(sphereFile, bodyName + "/properties/cb", cb);
-	Init1D(sphereFile, bodyName + "/properties/cg", cg);
-	Init1D(sphereFile, "simulation_parameters/w", freq_list);
+	InitScalar(userH5File, "simulation_parameters/rho", _rho);
+	InitScalar(userH5File, "simulation_parameters/g", _g);
+	InitScalar(userH5File, bodyName + "/properties/disp_vol", _disp_vol);
 
-	Init2D(sphereFile, bodyName + "/hydro_coeffs/linear_restoring_stiffness", lin_matrix);
-	Init2D(sphereFile, bodyName + "/hydro_coeffs/added_mass/inf_freq", inf_added_mass);
+	Init1D(userH5File, bodyName + "/hydro_coeffs/radiation_damping/impulse_response_fun/t", rirf_time_vector);
+	Init1D(userH5File, bodyName + "/properties/cb", cb);
+	Init1D(userH5File, bodyName + "/properties/cg", cg);
+	Init1D(userH5File, "simulation_parameters/w", freq_list);
 
-	Init3D(sphereFile, bodyName + "/hydro_coeffs/excitation/mag", excitation_mag_matrix, mag_dims);
-	Init3D(sphereFile, bodyName + "/hydro_coeffs/excitation/re", excitation_re_matrix, re_dims);
-	Init3D(sphereFile, bodyName + "/hydro_coeffs/excitation/im", excitation_im_matrix, im_dims); 
-	Init3D(sphereFile, bodyName + "/hydro_coeffs/radiation_damping/impulse_response_fun/K", rirf_matrix, rirf_dims);
-	Init3D(sphereFile, bodyName + "/hydro_coeffs/radiation_damping/all", radiation_damping_matrix, Bw_dims);
+	Init2D(userH5File, bodyName + "/hydro_coeffs/linear_restoring_stiffness", lin_matrix);
+	Init2D(userH5File, bodyName + "/hydro_coeffs/added_mass/inf_freq", inf_added_mass);
+
+	Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/mag", excitation_mag_matrix, mag_dims);
+	Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/re", excitation_re_matrix, re_dims);
+	Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/im", excitation_im_matrix, im_dims);
+	Init3D(userH5File, bodyName + "/hydro_coeffs/radiation_damping/impulse_response_fun/K", rirf_matrix, rirf_dims);
+	Init3D(userH5File, bodyName + "/hydro_coeffs/radiation_damping/all", radiation_damping_matrix, Bw_dims);
+	
 	// use same scalar function to set the int valued body number
 	double temp;
-	InitScalar(sphereFile, bodyName + "/properties/body_number", temp);
+	InitScalar(userH5File, bodyName + "/properties/body_number", temp);
 	bodyNum = (int)temp;
 
 	//_rirf_timestep = rirf_time_vector[1] - rirf_time_vector[0]; //N.B. assumes RIRF has fixed timestep.
-
-	sphereFile.close();
+	userH5File.close();
 }
 
 /*******************************************************************************
