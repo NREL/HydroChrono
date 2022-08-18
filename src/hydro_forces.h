@@ -32,7 +32,8 @@ class H5FileInfo {
 public:
 	H5FileInfo();
 	H5FileInfo(std::string file, std::string body_name);
-	H5FileInfo operator = (H5FileInfo& rhs);
+	H5FileInfo::H5FileInfo(H5FileInfo& old);
+	H5FileInfo& operator = (H5FileInfo& rhs);
 	void InitScalar(H5::H5File& file, std::string data_name, double& var);
 	void Init1D(H5::H5File& file, std::string data_name, std::vector<double>& var);
 	void Init2D(H5::H5File& file, std::string data_name, ChMatrixDynamic<double>& var); 
