@@ -103,6 +103,7 @@ int main(int argc, char* argv[]) {
 	sphereBody->SetMass(261.8e3);
 
 	// define wave parameters (not used in this demo)
+	// Todo define a way to use TestHydro without hydro_inputs/waves
 	HydroInputs my_hydro_inputs;
 	my_hydro_inputs.SetRegularWaveAmplitude(0.022);
 	my_hydro_inputs.SetRegularWaveOmega(2.10);
