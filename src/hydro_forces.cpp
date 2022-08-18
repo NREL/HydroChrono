@@ -53,7 +53,7 @@ H5FileInfo& H5FileInfo::operator = (H5FileInfo& rhs) {
 	_disp_vol = rhs._disp_vol;
 	freq_list = rhs.freq_list;
 	lin_matrix = rhs.lin_matrix;
-	inf_added_mass = rhs.lin_matrix;
+	inf_added_mass = rhs.inf_added_mass;
 	rirf_matrix = rhs.rirf_matrix;
 	rirf_dims = rhs.rirf_dims;
 	rirf_time_vector = rhs.rirf_time_vector;
@@ -83,7 +83,7 @@ H5FileInfo::H5FileInfo(H5FileInfo& old) {
 * private member function called from constructor
 * calls Initialize functions to read h5 file information into  member variables
 *******************************************************************************/
-void H5FileInfo::readH5Data() { // TODO break up this function!
+void H5FileInfo::readH5Data() {
 	// open file with read only access
 	H5::H5File userH5File(h5_file_name, H5F_ACC_RDONLY);
 
@@ -718,20 +718,16 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 	// now handle buoyancy force....
 	assert(num_bodies > 0);
 	double* buoyancy = new double[num_bodies];
-	for (int b = 0; b < num_bodies; b++) { // for each body...
-		buoyancy[b] = file_info[b].rho * file_info[b].g * file_info[b].disp_vol; // buoyancy = rho*g*Vdisp
-	}
-
 	std::ofstream buoyancyOut;
 	buoyancyOut.open("results/rm3/debugging/buoyancy.txt");
-	buoyancyOut << file_info[0].rho << "\n";
-	buoyancyOut << file_info[0].g << "\n";
-	buoyancyOut << file_info[0].disp_vol << "\n";
-	buoyancyOut << buoyancy[0] << "\n\n";
-	buoyancyOut << file_info[1].rho << "\n";
-	buoyancyOut << file_info[1].g << "\n";
-	buoyancyOut << file_info[1].disp_vol << "\n";
-	buoyancyOut << buoyancy[1] << "\n";
+	for (int b = 0; b < num_bodies; b++) { // for each body...
+		buoyancy[b] = file_info[b].rho * file_info[b].g * file_info[b].disp_vol; // buoyancy = rho*g*Vdisp
+		buoyancyOut << file_info[b].rho << "\n";
+		buoyancyOut << file_info[b].g << "\n";
+		buoyancyOut << file_info[b].disp_vol << "\n";
+		buoyancyOut << buoyancy[b] << "\n\n";
+
+	}
 	buoyancyOut.close();
 
 	// add vertical buoyancy for each body, and add (0,0,buoyancy)x(cb-cg) to torque for each body (simplified)
@@ -903,7 +899,7 @@ double TestHydro::coordinateFunc(int b, int i) { // b_num from ForceFunc6d is 1 
 
 	// sum all forces element by element
 	for (int j = 0; j < total_dofs; j++) {
-		total_force[j] = force_hydrostatic[j];// +force_radiation_damping[j];
+		total_force[j] = force_hydrostatic[j] +force_radiation_damping[j];
 	}
 	if (body_num_offset + i < 0 || body_num_offset >= total_dofs) {
 		std::cout << "total force accessing out of bounds" << std::endl;
@@ -921,6 +917,13 @@ double TestHydro::coordinateFunc(int b, int i) { // b_num from ForceFunc6d is 1 
 * ChBody type objects to a vector of shared_ptrs to ChLoadable type objects
 * in order to use ChLoadCustomMultiple's constructor for a vector of ChLoadable
 * shared_ptrs
+* TLDR: this function manually casts std::vector<std::shared_ptr<ChBody>> to a 
+* std::vector<std::shared_ptr<ChLoadable>> so the ChLoadCustomMultiple constructor 
+* can attach the load to the body automatically...since ChBody is a ChLoadable
+* object, this cast is usually implicitly defined-the reason it isn't here is 
+* because of the vector and shared_ptr parts making it a bit too complicated
+* 
+* re is just the object to be returned
 *******************************************************************************/
 std::vector<std::shared_ptr<ChLoadable>> constructorHelper(std::vector<std::shared_ptr<ChBody>>& bodies) {
 	std::vector<std::shared_ptr<ChLoadable>> re(bodies.size());
@@ -936,9 +939,9 @@ std::vector<std::shared_ptr<ChLoadable>> constructorHelper(std::vector<std::shar
 *******************************************************************************/
 void ChLoadAddedMass::AssembleSystemAddedMassMat() {
 	infinite_added_mass.setZero(6 * nBodies, 6 * nBodies);
-	//for (int i = 0; i < nBodies; i++) {
-	//	infinite_added_mass.block(i * 6, 0, 6, nBodies * 6) = h5_body_data[i].GetInfAddedMassMatrix();
-	//}
+	for (int i = 0; i < nBodies; i++) {
+		infinite_added_mass.block(i * 6, 0, 6, nBodies * 6) = h5_body_data[i].GetInfAddedMassMatrix();
+	}
 }
 
 /*******************************************************************************
@@ -948,7 +951,6 @@ void ChLoadAddedMass::AssembleSystemAddedMassMat() {
 ChLoadAddedMass::ChLoadAddedMass(const std::vector<H5FileInfo>& user_h5_body_data,
 								 std::vector<std::shared_ptr<ChBody>>& bodies)
 								     : ChLoadCustomMultiple(constructorHelper(bodies)) { ///< calls ChLoadCustomMultiple to link loads to bodies
-	//infinite_added_mass = file.GetInfiniteAddedMassMatrix(); //TODO switch all uses of H5FileInfo object to be like this, instead of copying the object each time?
 	nBodies = bodies.size();
 	h5_body_data = user_h5_body_data;
 	AssembleSystemAddedMassMat();
@@ -958,11 +960,6 @@ ChLoadAddedMass::ChLoadAddedMass(const std::vector<H5FileInfo>& user_h5_body_dat
 	myfile2.open("results/rm3/debugging/massmat1.txt");
 	myfile2 << massmat << std::endl;
 	myfile2.close();
-
-	/*std::ofstream myfile;
-	myfile.open("C:\\code\\chrono_hydro_dev\\HydroChrono_build\\Release\\infinite_added_mass.txt");
-	myfile << infinite_added_mass << "\n";
-	myfile.close();*/
 }
 
 /*******************************************************************************
