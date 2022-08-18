@@ -34,6 +34,7 @@ H5FileInfo::H5FileInfo(std::string file, std::string Name) {
 		H5FileOut << Name << "\n";
 		H5FileOut << bodyName << "\n";
 		printed = true;
+		H5FileOut.close();
 	}
 
 }
@@ -69,6 +70,10 @@ H5FileInfo& H5FileInfo::operator = (H5FileInfo& rhs) {
 	return *this;
 }
 
+/*******************************************************************************
+* H5FileInfo copy constructor (H5FileInfo& rhs)
+* defines basic copy constructor using the = operator
+*******************************************************************************/
 H5FileInfo::H5FileInfo(H5FileInfo& old) {
 	*this = old;
 }
@@ -267,6 +272,10 @@ std::vector<double> H5FileInfo::GetRIRFTimeVector() const {
 	return rirf_time_vector;
 }
 
+/*******************************************************************************
+* H5FileInfo::GetInfAddedMassMatrix()
+* returns the matrix for added mass at infinite frequency scaled by rho
+*******************************************************************************/
 ChMatrixDynamic<double> H5FileInfo::GetInfAddedMassMatrix() const { 
 	return inf_added_mass * rho;
 }
@@ -711,18 +720,19 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 	double* buoyancy = new double[num_bodies];
 	for (int b = 0; b < num_bodies; b++) { // for each body...
 		buoyancy[b] = file_info[b].rho * file_info[b].g * file_info[b].disp_vol; // buoyancy = rho*g*Vdisp
-
-		std::ofstream buoyancyOut;
-		buoyancyOut.open("results/rm3/debugging/buoyancy.txt");
-		buoyancyOut << file_info[0].rho << "\n";
-		buoyancyOut << file_info[0].g << "\n";
-		buoyancyOut << file_info[0].disp_vol << "\n";
-		buoyancyOut << buoyancy[0] << "\n\n";
-		buoyancyOut << file_info[1].rho << "\n";
-		buoyancyOut << file_info[1].g << "\n";
-		buoyancyOut << file_info[1].disp_vol << "\n";
-		buoyancyOut << buoyancy[1] << "\n";
 	}
+
+	std::ofstream buoyancyOut;
+	buoyancyOut.open("results/rm3/debugging/buoyancy.txt");
+	buoyancyOut << file_info[0].rho << "\n";
+	buoyancyOut << file_info[0].g << "\n";
+	buoyancyOut << file_info[0].disp_vol << "\n";
+	buoyancyOut << buoyancy[0] << "\n\n";
+	buoyancyOut << file_info[1].rho << "\n";
+	buoyancyOut << file_info[1].g << "\n";
+	buoyancyOut << file_info[1].disp_vol << "\n";
+	buoyancyOut << buoyancy[1] << "\n";
+	buoyancyOut.close();
 
 	// add vertical buoyancy for each body, and add (0,0,buoyancy)x(cb-cg) to torque for each body (simplified)
 	for (int b = 0; b < num_bodies; b++) {
@@ -740,6 +750,7 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 	//	}
 	//	force_hydrostaticOut << "\n";
 	//	printed = true;
+	//  force_hydrostaticOut.close();
 	//}
 
 	delete[] buoyancy;
@@ -882,12 +893,12 @@ double TestHydro::coordinateFunc(int b, int i) { // b_num from ForceFunc6d is 1 
 	unsigned total_dofs = 6 * num_bodies;
 
 	std::ofstream hsdebug;
-	hsdebug.open("C:\\code\\HydroChrono_build\\Release\\results\\rm3\\debugging\\hsdebug.txt");
+	hsdebug.open("results/rm3/debugging/hsdebug.txt");
 	for (int j = 0; j < total_dofs; j++) {
 		hsdebug << force_hydrostatic[j] << "\n";
 	}
 	hsdebug << "\n";
-	//hsdebug.close();
+	hsdebug.close();
 
 
 	// sum all forces element by element
@@ -944,8 +955,8 @@ ChLoadAddedMass::ChLoadAddedMass(const std::vector<H5FileInfo>& user_h5_body_dat
 
 	ChMatrixDynamic<double> massmat = infinite_added_mass;
 	std::ofstream myfile2;
-	myfile2.open("C:\\code\\HydroChrono_build\\Release\\results\\rm3\\debugging\\massmat1.txt");
-	myfile2 << massmat << "\n";
+	myfile2.open("results/rm3/debugging/massmat1.txt");
+	myfile2 << massmat << std::endl;
 	myfile2.close();
 
 	/*std::ofstream myfile;
@@ -970,8 +981,8 @@ void ChLoadAddedMass::ComputeJacobian(ChState* state_x,       ///< state positio
 
 	ChMatrixDynamic<double> massmat = jacobians->M;
 	std::ofstream myfile2;
-	myfile2.open("C:\\code\\HydroChrono_build\\Release\\results\\rm3\\debugging\\massmat1.txt");
-	myfile2 << massmat << "\n";
+	myfile2.open("results/rm3/debugging/massmat1.txt");
+	myfile2 << massmat << std::endl;
 	myfile2.close();
 
 	// R gyroscopic damping matrix terms (6x6)
