@@ -730,7 +730,6 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 	// reset force_hydrostatic to 0
 	std::fill(force_hydrostatic.begin(), force_hydrostatic.end(), 0.0);
 
-	// re invent matrix vector multiplication
 	std::ofstream dispOut;
 	dispOut.open("results/rm3/debugging/dispOut.txt");
 	for (int i = 0; i < total_dofs; i++) {
@@ -750,6 +749,7 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 	std::ofstream KHS1Out;
 	KHS1Out.open("results/rm3/debugging/KHS1Out.txt");
 	KHS1Out << file_info[1].lin_matrix << "\n";
+	// re invent matrix vector multiplication
 	for (int b = 0; b < num_bodies; b++) {
 		for (int i = 0; i < 6; i++) {
 			for (int j = 0; j < 6; j++) {
@@ -824,6 +824,7 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 	}
 
 	delete[] buoyancy;
+	delete[] weight;
 	return force_hydrostatic;
 }
 
@@ -841,7 +842,6 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 		offset_rirf += size;
 	}
 	numRows = 6, numCols = 6*num_bodies;
-	//int bodyNum = file_info.bodyNum;
 	assert(numRows * size > 0 && numCols > 0);
 	double* timeseries = new double[numRows * numCols * size];
 	double* tmp_s = new double[numRows * size];
@@ -872,13 +872,13 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 					TIMESERIES(row, col, st) = GetRIRFval(row, col, st) * getVelHistoryAllBodies(vi, col); // col now runs thru all bodies (0->11 for 2 bodies...)
 					TMP_S(row, st) = TIMESERIES(row, col, st);
 					if (st > 0) {
-						force_radiation_damping[row] -= (TMP_S(row, st - 1) + TMP_S(row, st)) / 2.0 * (rirf_time_vector[st] - rirf_time_vector[st - 1ull]);
+						force_radiation_damping[col] -= (TMP_S(row, st - 1) + TMP_S(row, st)) / 2.0 * (rirf_time_vector[st] - rirf_time_vector[st - 1ull]);
 					}
 				}
 			}
 		}
 	}
-	else {
+	else { // TODO fix this for force_radiation_damping to go over col not row!
 		// convolution integral assuming fixed dt
 		for (int row = 0; row < numRows; row++) {
 			//#pragma omp parallel for
@@ -899,6 +899,12 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 #undef TMP_S
 	delete[] timeseries;
 	delete[] tmp_s;
+
+	std::ofstream fRadOut("results/rm3/debugging/fRadOut.txt");
+	for (int i = 0; i < numCols; i++) {
+		fRadOut << force_radiation_damping[i] << std::endl;
+	}
+	fRadOut.close();
 
 	return force_radiation_damping;
 }
@@ -964,7 +970,7 @@ double TestHydro::coordinateFunc(int b, int i) { // b_num from ForceFunc6d is 1 
 
 	// sum all forces element by element
 	for (int j = 0; j < total_dofs; j++) {
-		total_force[j] = force_hydrostatic[j];// +force_radiation_damping[j];
+		total_force[j] = force_hydrostatic[j] + force_radiation_damping[j];
 	}
 	if (body_num_offset + i < 0 || body_num_offset >= total_dofs) {
 		std::cout << "total force accessing out of bounds" << std::endl;
