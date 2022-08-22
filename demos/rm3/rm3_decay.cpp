@@ -67,7 +67,7 @@ int main(int argc, char* argv[]) {
 
 	// system/solver settings
 	ChSystemNSC system;
-	system.Set_G_acc(ChVector<>(0, 0, -9.81));
+	system.Set_G_acc(ChVector<>(0.0, 0.0, 0.0));
 	double timestep = 0.06;
 	system.SetSolverType(ChSolver::Type::GMRES);
 	system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
@@ -84,33 +84,33 @@ int main(int argc, char* argv[]) {
 	std::vector<double> plate_heave_position;
 
 	// set up body from a mesh
-	if (!std::filesystem::exists("../../HydroChrono/demos/rm3/geometry/float.obj")) {
+	if (!std::filesystem::exists("../../HydroChrono/demos/rm3/geometry/float_cog.obj")) {
 		std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/rm3/geometry/float.obj").c_str()) << " does not exist" << std::endl;
 		return 0;
 	}
 	//std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/float.obj").c_str()) << std::endl;
 	std::shared_ptr<ChBody> float_body1 = chrono_types::make_shared<ChBodyEasyMesh>(                   //
-		GetChronoDataFile("../../HydroChrono/demos/rm3/geometry/float.obj").c_str(),                 // file name
-		1000,                                                                                     // density
+		GetChronoDataFile("../../HydroChrono/demos/rm3/geometry/float_cog.obj").c_str(),                 // file name
+		0,                                                                                        // density
 		false,                                                                                    // do not evaluate mass automatically
 		true,                                                                                     // create visualization asset
-		false,                                                                                    // do not collide
+		false,                                                                                    // collisions
 		nullptr,                                                                                  // no need for contact material
 		0                                                                                         // swept sphere radius
 		);
 
 	// set up body from a mesh
-	if (!std::filesystem::exists("../../HydroChrono/demos/rm3/geometry/plate.obj")) {
+	if (!std::filesystem::exists("../../HydroChrono/demos/rm3/geometry/plate_cog.obj")) {
 		std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/rm3/geometry/plate.obj").c_str()) << " does not exist" << std::endl;
 		return 0;
 	}
 	//std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/plate.obj").c_str()) << std::endl;
 	std::shared_ptr<ChBody> plate_body2 = chrono_types::make_shared<ChBodyEasyMesh>(                   //
-		GetChronoDataFile("../../HydroChrono/demos/rm3/geometry/plate.obj").c_str(),                 // file name
-		1000,                                                                                     // density
-		false,                                                                                                                                                                                // do not evaluate mass automatically
+		GetChronoDataFile("../../HydroChrono/demos/rm3/geometry/plate_cog.obj").c_str(),                 // file name
+		0,                                                                                        // density
+		false,                                                                                    // do not evaluate mass automatically
 		true,                                                                                     // create visualization asset
-		false,                                                                                    // do not collide
+		false,                                                                                    // collisions
 		nullptr,                                                                                  // no need for contact material
 		0                                                                                         // swept sphere radius
 		);
@@ -118,16 +118,30 @@ int main(int argc, char* argv[]) {
 	// define the float's initial conditions
 	system.Add(float_body1);
 	float_body1->SetNameString("body1"); 
-	float_body1->SetPos(ChVector<>(0, 0, -0.72));
-	float_body1->SetMass(725.834);
-	float_body1->SetCollide(false);
+	float_body1->SetPos(ChVector<>(0, 0, (-0.72+0.1)));
+	float_body1->SetMass(725834);
+	//ChMatrix33<> float_I;
+	//float_I(0, 0) = 20907301;
+	//float_I(1, 1) = 21306090.66;
+	//float_I(2, 2) = 37085481.11;
+	//float_body1->SetInertia(float_I);
+
+	
+	//float_body1->SetCollide(false);
 
 	// define the plate's initial conditions
 	system.Add(plate_body2);
 	plate_body2->SetNameString("body2");
-	plate_body2->SetPos(ChVector<>(0, 0, -21.29));
-	plate_body2->SetMass(886.691);
-	plate_body2->SetCollide(false);
+	plate_body2->SetPos(ChVector<>(0, 0, (-21.29+0.1)));
+	plate_body2->SetMass(886691);
+	//ChMatrix33<> plate_I;
+	//plate_I(0, 0) = 94419614.57;
+	//plate_I(1, 1) = 94407091.24;
+	//plate_I(2, 2) = 28542224.82;
+	//plate_body2->SetInertia(plate_I);
+
+	
+	//plate_body2->SetCollide(false);
 
 	// TODO: add constraint so they only move up and down!
 
@@ -176,19 +190,21 @@ int main(int argc, char* argv[]) {
 				float_heave_position.push_back(float_body1->GetPos().z());
 				plate_heave_position.push_back(plate_body2->GetPos().z());
 				// force playback to be real-time
-				// realtime_timer.Spin(timestep);
+				realtime_timer.Spin(timestep);
 			}
 		}
 	}
 	else {
 		int frame = 0;
 		while (system.GetChTime() <= simulationDuration) {
-			// step the simulation forwards
-			system.DoStepDynamics(timestep);
 			// append data to std vector
 			time_vector.push_back(system.GetChTime());
 			float_heave_position.push_back(float_body1->GetPos().z());
 			plate_heave_position.push_back(plate_body2->GetPos().z());
+
+			// step the simulation forwards
+			system.DoStepDynamics(timestep);
+
 			frame++;
 		}
 	}
