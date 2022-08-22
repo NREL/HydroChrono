@@ -6,7 +6,7 @@ decayTestFile = '../../../../HydroChrono_build/Release/results/decay/sphere_deca
 decayTestData = np.loadtxt(decayTestFile, skiprows=1)
 
 refFile = './sphere_decay_comparison.xlsx'
-refData = pd.read_excel(refFile, '1m (2)')
+refData = pd.read_excel(refFile, 'sphere_decay_comparison')
 
 plt.plot(refData['Time (s)'], refData['NREL (CFD)'], '-')
 plt.plot(decayTestData[:,0], decayTestData[:,1]+2, '--')
