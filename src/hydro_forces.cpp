@@ -250,11 +250,11 @@ double H5FileInfo::GetHydrostaticStiffness(int i, int j) const {
 }
 
 /*******************************************************************************
-* H5FileInfo::GetExcitationMagValue()
-* returns excitation magnitudes for row i, column j, frequency ix k
+* H5FileInfo::GetRIRFval()
+* returns rirf val for DoF: 0,...,5; col: 0,...,6N-1; s: 0,...,1001 rirfdims[2]
 *******************************************************************************/
-double H5FileInfo::GetRIRFval(int m, int n, int s) const {
-	int index = s + rirf_dims[2] * (n + m * rirf_dims[1]);
+double H5FileInfo::GetRIRFval(int dof, int col, int s) const {
+	int index = s + rirf_dims[2] * (col + dof * rirf_dims[1]); // TODO check index
 	if (index < 0 || index >= rirf_dims[0] * rirf_dims[1] * rirf_dims[2]) {
 		std::cout << "out of bounds IRF\n";
 		return 0;
@@ -833,15 +833,16 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 * computes the 6N dimensional Radiation Damping force with convolution history
 *******************************************************************************/
 std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
-	int size = 0, numRows = 0, numCols = 0;
-	size = file_info[0].GetRIRFDims(2);
+	int size = file_info[0].GetRIRFDims(2);
+	int nDoF = 6;
 	// "shift" everything left 1
 	offset_rirf--;
 	// keep offset close to 0, avoids small chance of -overflow errors in long simulations
 	if (offset_rirf < -1 * size) {
 		offset_rirf += size;
 	}
-	numRows = 6, numCols = 6*num_bodies;
+	int numRows = nDoF * num_bodies;
+	int numCols = nDoF * num_bodies;
 	assert(numRows * size > 0 && numCols > 0);
 	double* timeseries = new double[numRows * numCols * size];
 	double* tmp_s = new double[numRows * size];
@@ -863,17 +864,20 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 	std::fill(force_radiation_damping.begin(), force_radiation_damping.end(), 0);
 	//#pragma omp parallel for
 	if (convTrapz == true){
-		// convolution integral using trapezoidal rule
-		for (int row = 0; row < numRows; row++) {
-			//#pragma omp parallel for
-			for (int col = 0; col < numCols; col++) {
-				for (int st = 0; st < size; st++) {
-					vi = (((st + offset_rirf) % size) + size) % size; // vi takes care of circshift function from matLab
-					TIMESERIES(row, col, st) = GetRIRFval(row, col, st) * getVelHistoryAllBodies(vi, col); // col now runs thru all bodies (0->11 for 2 bodies...)
-					TMP_S(row, st) = TIMESERIES(row, col, st);
-					if (st > 0) {
-						force_radiation_damping[col] -= (TMP_S(row, st - 1) + TMP_S(row, st)) / 2.0 * (rirf_time_vector[st] - rirf_time_vector[st - 1ull]);
-					}
+	// convolution integral using trapezoidal rule
+		for (int row = 0; row < numRows; row++) { // row goes to 6N
+			for (int st = 0; st < size; st++) {
+				vi = (((st + offset_rirf) % size) + size) % size; // vi takes care of circshift function from matLab
+				TMP_S(row, st) = 0;
+				for (int col = 0; col < numCols; col++) { // numCols goes to 6N
+					// multiply rirf by velocity history for each step and row (0,...,6N), store product in TIMESERIES
+					TIMESERIES(row, col, st) = GetRIRFval(row, col, st) * getVelHistoryAllBodies(vi, col); 
+					// TMP_S is the sum over col (sum the effects of all radiating dofs (LDOF) for each time and motion dof)
+					TMP_S(row, st) += TIMESERIES(row, col, st);
+				}
+				if (st > 0) {
+					// integrate TMP_S
+					force_radiation_damping[row] += (TMP_S(row, st - 1) + TMP_S(row, st)) / 2.0 * (rirf_time_vector[st] - rirf_time_vector[st - 1]);
 				}
 			}
 		}
@@ -919,20 +923,21 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 /*******************************************************************************
 * TestHydro::GetRIRFval(int row, int col, int st)
 * returns the rirf value from the correct body given the row, step, and index 
-* row: which row in rirf object
-* col: encodes the body number and dof index [0,...,5,...6N-1]
+* row: encodes the body number and dof index [0,...,5,...6N-1] for rows of RIRF
+* col: col in RIRF matrix [0,...,5,...6N-1]
 * st: which step in rirf ranges usually [0,...1000]
 * c: gets just the index aka dof from col
 * b: gets body num from col
 *******************************************************************************/
 double TestHydro::GetRIRFval(int row, int col, int st) {
-	if (row < 0 || row >= 6 || col < 0 || col >= 6 * num_bodies || st < 0 || st >= file_info[0].GetRIRFDims(2)) {
+	if (row < 0 || row >= 6 * num_bodies || col < 0 || col >= 6 * num_bodies || st < 0 || st >= file_info[0].GetRIRFDims(2)) {
 		std::cout << "rirfval index bad from testhydro" << std::endl;
 		return 0;
 	}
-	int b = col / 6; // 0 indexed
-	int c = col % 6;
-	return file_info[b].GetRIRFval(row, c, st);
+	int b = row / 6; // 0 indexed, which body to get matrix info from
+	int c = col % 6; // which dof across column, 0,..,11 for 2 bodies, 0,...,6N-1 for N
+	int r = row % 6; // which dof 0,..,5 in individual body RIRF matrix
+	return file_info[b].GetRIRFval(r, col, st);
 }
 
 /*******************************************************************************
@@ -970,7 +975,7 @@ double TestHydro::coordinateFunc(int b, int i) { // b_num from ForceFunc6d is 1 
 
 	// sum all forces element by element
 	for (int j = 0; j < total_dofs; j++) {
-		total_force[j] = force_hydrostatic[j] + force_radiation_damping[j];
+		total_force[j] = force_hydrostatic[j] - force_radiation_damping[j];
 	}
 	if (body_num_offset + i < 0 || body_num_offset >= total_dofs) {
 		std::cout << "total force accessing out of bounds" << std::endl;
@@ -1022,9 +1027,9 @@ std::vector<std::shared_ptr<ChLoadable>> constructorHelper(std::vector<std::shar
 *******************************************************************************/
 void ChLoadAddedMass::AssembleSystemAddedMassMat() {
 	infinite_added_mass.setZero(6 * nBodies, 6 * nBodies);
-	//for (int i = 0; i < nBodies; i++) {
-	//	infinite_added_mass.block(i * 6, 0, 6, nBodies * 6) = h5_body_data[i].GetInfAddedMassMatrix();
-	//}
+	for (int i = 0; i < nBodies; i++) {
+		infinite_added_mass.block(i * 6, 0, 6, nBodies * 6) = h5_body_data[i].GetInfAddedMassMatrix();
+	}
 }
 
 /*******************************************************************************
