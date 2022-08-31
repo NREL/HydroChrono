@@ -127,12 +127,12 @@ int main(int argc, char* argv[]) {
 	//float_body1->SetInertia(float_I);
 
 	
-	//float_body1->SetCollide(false);
+	float_body1->SetCollide(true);
 
 	// define the plate's initial conditions
 	system.Add(plate_body2);
 	plate_body2->SetNameString("body2");
-	plate_body2->SetPos(ChVector<>(0, 0, (-21.29+0.1)));
+	plate_body2->SetPos(ChVector<>(0, 0, (-21.29)));
 	plate_body2->SetMass(886691);
 	//ChMatrix33<> plate_I;
 	//plate_I(0, 0) = 94419614.57;
@@ -141,7 +141,7 @@ int main(int argc, char* argv[]) {
 	//plate_body2->SetInertia(plate_I);
 
 	
-	//plate_body2->SetCollide(false);
+	plate_body2->SetCollide(true);
 
 	// TODO: add constraint so they only move up and down!
 
@@ -155,6 +155,11 @@ int main(int argc, char* argv[]) {
 	bodies.push_back(float_body1);
 	bodies.push_back(plate_body2);
 	TestHydro blah(bodies, "../../HydroChrono/demos/rm3/hydroData/rm3.h5", my_hydro_inputs);
+
+	// Debug printing added mass matrix and system mass matrix
+	ChSparseMatrix M;
+	system.GetMassMatrix(&M);
+	std::cout << M << std::endl;
 
 	// for profiling
 	auto start = std::chrono::high_resolution_clock::now();
@@ -183,6 +188,8 @@ int main(int argc, char* argv[]) {
 			irrlichtVis->Render();
 			irrlichtVis->EndScene();
 			if (buttonPressed) {
+				system.GetMassMatrix(&M);
+				std::cout << M << std::endl;
 				// step the simulation forwards
 				system.DoStepDynamics(timestep);
 				// append data to std vector
