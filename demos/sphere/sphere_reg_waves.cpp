@@ -67,7 +67,7 @@ int main(int argc, char* argv[]) {
 
 	// system/solver settings
 	ChSystemNSC system;
-	system.Set_G_acc(ChVector<>(0, 0, -9.81));
+	system.Set_G_acc(ChVector<>(0, 0, 0));
 	double timestep = 0.015;
 	system.SetSolverType(ChSolver::Type::GMRES);
 	system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
@@ -105,7 +105,7 @@ int main(int argc, char* argv[]) {
 	// define the body's initial conditions
 	system.Add(sphereBody);
 	sphereBody->SetNameString("body1"); // must set body name correctly! (must match .h5 file)
-	sphereBody->SetPos(ChVector<>(0, 0, -2));
+	sphereBody->SetPos(ChVector<>(0, 0, -1));
 	sphereBody->SetMass(261.8e3);
 
 	int reg_wave_num = 10;

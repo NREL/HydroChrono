@@ -73,7 +73,7 @@ int main(int argc, char* argv[]) {
 	system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
 	system.SetStep(timestep);
 	ChRealtimeStepTimer realtime_timer;
-	double simulationDuration = 300.0;
+	double simulationDuration = 40.0;
 
 	// some io/viz options
 	bool visualizationOn = true;
