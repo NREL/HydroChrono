@@ -21,8 +21,6 @@
 
 #include "H5Cpp.h"
 
-
-
 using namespace chrono;
 using namespace chrono::irrlicht;
 using namespace chrono::fea;
@@ -30,9 +28,10 @@ using namespace chrono::fea;
 // =============================================================================
 class H5FileInfo {
 public:
+	bool printed = false;
 	H5FileInfo();
 	H5FileInfo(std::string file, std::string body_name);
-	H5FileInfo::H5FileInfo(H5FileInfo& old);
+	H5FileInfo(H5FileInfo& old);
 	H5FileInfo& operator = (H5FileInfo& rhs);
 	void InitScalar(H5::H5File& file, std::string data_name, double& var);
 	void Init1D(H5::H5File& file, std::string data_name, std::vector<double>& var);
@@ -56,13 +55,14 @@ public:
 	const double& disp_vol = _disp_vol;
 	//const double& rirf_timestep = _rirf_timestep;
 	int bodyNum;
+	ChMatrixDynamic<double> lin_matrix;
 private:
 	double _rho;
 	double _g;
 	double _disp_vol;
 	//double _rirf_timestep;
 	std::vector<double> freq_list;
-	ChMatrixDynamic<double> lin_matrix;
+	
 	ChMatrixDynamic<double> inf_added_mass;
 	std::vector<double> rirf_matrix;
 	std::vector<int> rirf_dims;
@@ -144,6 +144,7 @@ class ChLoadAddedMass;
 
 class TestHydro {
 public:
+	bool printed = false;
 	TestHydro();
 	TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::string h5_file_name, HydroInputs users_hydro_inputs);
 	TestHydro(const TestHydro& old) = delete;
