@@ -27,6 +27,16 @@ H5FileInfo::H5FileInfo(std::string file, std::string Name) {
 		std::cout << "h5 file does not exist, absolute file location: " << std::filesystem::absolute(file) << std::endl;
 	}
 	readH5Data();
+
+	//if (printed == false) {
+	//	std::ofstream H5FileOut;
+	//	H5FileOut.open("C:\\code\\HydroChrono_build\\Release\\results\\rm3\\debugging\\H5FileOut.txt");
+	//	H5FileOut << Name << "\n";
+	//	H5FileOut << bodyName << "\n";
+	//	printed = true;
+	//	H5FileOut.close();
+	//}
+
 }
 
 /*******************************************************************************
@@ -46,9 +56,9 @@ H5FileInfo& H5FileInfo::operator = (H5FileInfo& rhs) {
 	cg = rhs.cg;
 	cb = rhs.cb;
 	bodyNum = rhs.bodyNum;
-	_rho = rhs.rho;
-	_g = rhs.g;
-	_disp_vol = rhs.disp_vol;
+	_rho = rhs._rho;
+	_g = rhs._g;
+	_disp_vol = rhs._disp_vol;
 	freq_list = rhs.freq_list;
 	lin_matrix = rhs.lin_matrix;
 	inf_added_mass = rhs.inf_added_mass;
@@ -69,38 +79,47 @@ H5FileInfo& H5FileInfo::operator = (H5FileInfo& rhs) {
 }
 
 /*******************************************************************************
+* H5FileInfo copy constructor (H5FileInfo& rhs)
+* defines basic copy constructor using the = operator
+*******************************************************************************/
+H5FileInfo::H5FileInfo(H5FileInfo& old) {
+	*this = old;
+}
+
+/*******************************************************************************
 * H5FileInfo::readH5Data()
 * private member function called from constructor
 * calls Initialize functions to read h5 file information into  member variables
 *******************************************************************************/
-void H5FileInfo::readH5Data() { // TODO break up this function!
+void H5FileInfo::readH5Data() {
 	// open file with read only access
-	H5::H5File sphereFile(h5_file_name, H5F_ACC_RDONLY);
+	H5::H5File userH5File(h5_file_name, H5F_ACC_RDONLY);
 
-	InitScalar(sphereFile, "simulation_parameters/rho", _rho);
-	InitScalar(sphereFile, "simulation_parameters/g", _g);
-	InitScalar(sphereFile, bodyName + "/properties/disp_vol", _disp_vol);
-	Init1D(sphereFile, bodyName + "/hydro_coeffs/radiation_damping/impulse_response_fun/t", rirf_time_vector);
-	Init1D(sphereFile, bodyName + "/properties/cb", cb);
-	Init1D(sphereFile, bodyName + "/properties/cg", cg);
-	Init1D(sphereFile, "simulation_parameters/w", freq_list);
+	InitScalar(userH5File, "simulation_parameters/rho", _rho);
+	InitScalar(userH5File, "simulation_parameters/g", _g);
+	InitScalar(userH5File, bodyName + "/properties/disp_vol", _disp_vol);
 
-	Init2D(sphereFile, bodyName + "/hydro_coeffs/linear_restoring_stiffness", lin_matrix);
-	Init2D(sphereFile, bodyName + "/hydro_coeffs/added_mass/inf_freq", inf_added_mass);
+	Init1D(userH5File, bodyName + "/hydro_coeffs/radiation_damping/impulse_response_fun/t", rirf_time_vector);
+	Init1D(userH5File, bodyName + "/properties/cb", cb);
+	Init1D(userH5File, bodyName + "/properties/cg", cg);
+	Init1D(userH5File, "simulation_parameters/w", freq_list);
 
-	Init3D(sphereFile, bodyName + "/hydro_coeffs/excitation/mag", excitation_mag_matrix, mag_dims);
-	Init3D(sphereFile, bodyName + "/hydro_coeffs/excitation/re", excitation_re_matrix, re_dims);
-	Init3D(sphereFile, bodyName + "/hydro_coeffs/excitation/im", excitation_im_matrix, im_dims); 
-	Init3D(sphereFile, bodyName + "/hydro_coeffs/radiation_damping/impulse_response_fun/K", rirf_matrix, rirf_dims);
-	Init3D(sphereFile, bodyName + "/hydro_coeffs/radiation_damping/all", radiation_damping_matrix, Bw_dims);
+	Init2D(userH5File, bodyName + "/hydro_coeffs/linear_restoring_stiffness", lin_matrix);
+	Init2D(userH5File, bodyName + "/hydro_coeffs/added_mass/inf_freq", inf_added_mass);
+
+	Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/mag", excitation_mag_matrix, mag_dims);
+	Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/re", excitation_re_matrix, re_dims);
+	Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/im", excitation_im_matrix, im_dims);
+	Init3D(userH5File, bodyName + "/hydro_coeffs/radiation_damping/impulse_response_fun/K", rirf_matrix, rirf_dims);
+	Init3D(userH5File, bodyName + "/hydro_coeffs/radiation_damping/all", radiation_damping_matrix, Bw_dims);
+	
 	// use same scalar function to set the int valued body number
 	double temp;
-	InitScalar(sphereFile, bodyName + "/properties/body_number", temp);
+	InitScalar(userH5File, bodyName + "/properties/body_number", temp);
 	bodyNum = (int)temp;
 
 	//_rirf_timestep = rirf_time_vector[1] - rirf_time_vector[0]; //N.B. assumes RIRF has fixed timestep.
-
-	sphereFile.close();
+	userH5File.close();
 }
 
 /*******************************************************************************
@@ -239,11 +258,11 @@ double H5FileInfo::GetHydrostaticStiffness(int i, int j) const {
 }
 
 /*******************************************************************************
-* H5FileInfo::GetExcitationMagValue()
-* returns excitation magnitudes for row i, column j, frequency ix k
+* H5FileInfo::GetRIRFval()
+* returns rirf val for DoF: 0,...,5; col: 0,...,6N-1; s: 0,...,1001 rirfdims[2]
 *******************************************************************************/
-double H5FileInfo::GetRIRFval(int m, int n, int s) const {
-	int index = s + rirf_dims[2] * (n + m * rirf_dims[1]);
+double H5FileInfo::GetRIRFval(int dof, int col, int s) const {
+	int index = s + rirf_dims[2] * (col + dof * rirf_dims[1]); // TODO check index
 	if (index < 0 || index >= rirf_dims[0] * rirf_dims[1] * rirf_dims[2]) {
 		std::cout << "out of bounds IRF\n";
 		return 0;
@@ -261,6 +280,10 @@ std::vector<double> H5FileInfo::GetRIRFTimeVector() const {
 	return rirf_time_vector;
 }
 
+/*******************************************************************************
+* H5FileInfo::GetInfAddedMassMatrix()
+* returns the matrix for added mass at infinite frequency scaled by rho
+*******************************************************************************/
 ChMatrixDynamic<double> H5FileInfo::GetInfAddedMassMatrix() const { 
 	return inf_added_mass * rho;
 }
@@ -578,7 +601,6 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::stri
 	bodies = user_bodies; // 0 indexed
 	num_bodies = bodies.size();
 	for (int b = 0; b < num_bodies; b++) {
-		std::cout << "file_info set up for body num: " << b << std::endl;
 		file_info.emplace_back(h5_file_name, bodies[b]->GetNameString()); // set up vector of file infos for each body
 	}
 	//hydro_inputs = user_hydro_inputs;
@@ -604,6 +626,7 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::stri
 			cb_minus_cg[c_idx] = file_info[b].cb[i] - file_info[b].cg[i];
 		}
 	}
+
 	for (int b = 0; b < num_bodies; b++) {
 		if (this == NULL) {
 			std::cout << "woops" << std::endl;
@@ -664,10 +687,13 @@ double TestHydro::setVelHistory(double val, int step, int b_num, int index) {
 * computes the 6N dimensional Hydrostatic stiffness force
 *******************************************************************************/
 std::vector<double> TestHydro::ComputeForceHydrostatics() {
-	std::vector<double> orientation, displacement;
+	std::vector<double> position, displacement;
 	unsigned total_dofs = 6 * num_bodies;
-	orientation.resize(total_dofs,0);
+	position.resize(total_dofs,0);
 	displacement.resize(total_dofs, 0);
+
+	std::ofstream GetPosOut;
+	GetPosOut.open("results/rm3/debugging/GetPosOut.txt");
 	// orientation initialized to system current pos/rot vectors
 	for (int b = 0; b < num_bodies; b++) { 
 		for (int i = 0; i < 3; i++) {
@@ -675,38 +701,136 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 			if (b_offset + i + 3 > total_dofs || b_offset + i < 0) {
 				std::cout << "temp index in hydrostatic force is bad " << std::endl;
 			}
-			orientation[i + b_offset] = bodies[b]->GetPos().eigen()[i];
-			orientation[i + 3 + b_offset] = bodies[b]->GetRot().Q_to_Euler123()[i];
+
+			GetPosOut << b << "\t" << i << "\t" << bodies[b]->GetPos().eigen()[i] << "\t\t" << equilibrium[i + (6 * b)] << "\t\t" << bodies[b]->GetPos().eigen()[i] - equilibrium[i + (6 * b)] << "\n";
+			
+			//double linearPosition = bodies[b]->GetPos().eigen()[i];
+			//double rotationalPosition = bodies[b]->GetRot().Q_to_Euler123()[i];
+			position[i + b_offset] = bodies[b]->GetPos().eigen()[i];
+			//position[i + 3 + b_offset] = rotationalPosition;
 		}
 	}
+	GetPosOut.close();
+
+	//std::ofstream positionOut;
+	//positionOut.open("results/rm3/debugging/position.txt");
+	//for (int b = 0; b < num_bodies; b++) { // for each body...
+	//	for (int i = 0; i < 6; i++) {
+	//		positionOut << position[i + (6 * b)] << "\n";
+	//	}
+	//}
+	//positionOut.close();
+
+	//std::ofstream equilibriumOut;
+	//equilibriumOut.open("results/rm3/debugging/equilibrium.txt");
+	//for (int b = 0; b < num_bodies; b++) { // for each body...
+	//	for (int i = 0; i < 6; i++) {
+	//		equilibriumOut << equilibrium[i + (6 * b)] << "\n";
+	//	}
+	//}
+	//equilibriumOut.close();
+
 	// make displacement vector for system
 	for (int i = 0; i < total_dofs; i++) {
-		displacement[i] = orientation[i] - equilibrium[i];
+		displacement[i] = position[i] - equilibrium[i];
 	}
-	// reset force_hydrostatic to 0
-	std::fill(force_hydrostatic.begin(), force_hydrostatic.end(), 0);
+
+
+	std::ofstream dispOut;
+	dispOut.open("results/rm3/debugging/dispOut.txt");
+	for (int i = 0; i < total_dofs; i++) {
+		dispOut << displacement[i] << "\n";
+	}
+
+	std::ofstream fHSOut0;
+	fHSOut0.open("results/rm3/debugging/fHSOut0.txt");
+	for (int i = 0; i < total_dofs; i++) {
+		fHSOut0 << force_hydrostatic[i] << "\n";
+	}
+
+	std::ofstream KHS0Out;
+	KHS0Out.open("results/rm3/debugging/KHS0Out.txt");
+	KHS0Out << file_info[0].lin_matrix << "\n";
+
+	std::ofstream KHS1Out;
+	KHS1Out.open("results/rm3/debugging/KHS1Out.txt");
+	KHS1Out << file_info[1].lin_matrix << "\n";
 	// re invent matrix vector multiplication
 	for (int b = 0; b < num_bodies; b++) {
 		for (int i = 0; i < 6; i++) {
-			for (int j = 0; j < total_dofs; j++) { // one of i or j needs to go to total_dofs....depends on h5 hydro matrix
-				force_hydrostatic[i + 6 * b] -= ((file_info[b].GetHydrostaticStiffness(i,j)) * displacement[j]);
+			for (int j = 0; j < 6; j++) {
+	//			//KHSOut << i << " " << j << " " << file_info[b].GetHydrostaticStiffness(i, j) << "\n";
+				force_hydrostatic[i + (6 * b)] -= ((file_info[b].GetHydrostaticStiffness(i, j)) * displacement[i + (6 * b)]);
 			}
 		}
 	}
+
+	std::ofstream fHSOut1;
+	fHSOut1.open("results/rm3/debugging/fHSOut1.txt");
+	for (int b = 0; b < num_bodies; b++) {
+		for (int i = 0; i < 6; i++) {
+			fHSOut1 << force_hydrostatic[i + (6*b)] << "\t\t" << (1000 * 9.81 * file_info[b].disp_vol) << "\t\t" << -(bodies[b]->GetMass() * 9.81) << "\n";
+		}
+	}
+
+
+	////// now handle buoyancy force....
+	//std::ofstream displacementOut;
+	//displacementOut.open("results/rm3/debugging/displacement.txt");
+	//for (int b = 0; b < num_bodies; b++) { // for each body...
+	//	for (int i = 0; i < 6; i++) {
+	//		displacementOut << displacement[i + (6 * b)] << "\n";
+	//	}
+	//}
+	//displacementOut.close();
+
+	////// now handle buoyancy force....
+	//std::ofstream force_hydrostaticOut;
+	//force_hydrostaticOut.open("results/rm3/debugging/force_hydrostatic.txt");
+	//for (int b = 0; b < num_bodies; b++) { // for each body...
+	//	for (int i = 0; i < 6; i++) {
+	//		force_hydrostaticOut << force_hydrostatic[i + (6 * b)] << "\n";
+	//	}
+	//}
+	//force_hydrostaticOut.close();
+
+	
+	
+	//std::ofstream buoyancyOut;
+	//buoyancyOut.open("results/rm3/debugging/buoyancy.txt");
+	//for (int b = 0; b < num_bodies; b++) { // for each body...
+	//	buoyancy[b] = file_info[b].rho * file_info[b].g * file_info[b].disp_vol; // buoyancy = rho*g*Vdisp
+	//	buoyancyOut << file_info[b].rho << "\n";
+	//	buoyancyOut << file_info[b].g << "\n";
+	//	buoyancyOut << file_info[b].disp_vol << "\n";
+	//	buoyancyOut << buoyancy[b] << "\n\n";
+	//}
+	//buoyancyOut.close();
+	// 
+	
 	// now handle buoyancy force....
 	assert(num_bodies > 0);
 	double* buoyancy = new double[num_bodies];
-	for (int b = 0; b < num_bodies; b++) { // for each body...
-		buoyancy[b] = file_info[b].rho * file_info[b].g * file_info[b].disp_vol; // buoyancy = rho*g*Vdisp
-	}
+	double* weight = new double[num_bodies];
 	// add vertical buoyancy for each body, and add (0,0,buoyancy)x(cb-cg) to torque for each body (simplified)
 	for (int b = 0; b < num_bodies; b++) {
+		buoyancy[b] = 1000.0 * 9.81 * file_info[b].disp_vol; // buoyancy = rho*g*Vdisp
+		weight[b] = (bodies[b]->GetMass() * 9.81);
 		unsigned b_offset = 6 * b;
-		force_hydrostatic[2 + b_offset] += buoyancy[b]; // add regular z direction buoyancy force
-		force_hydrostatic[3 + b_offset] += -1 * buoyancy[b] * cb_minus_cg[1]; // roll part of cross product simplified
-		force_hydrostatic[4 + b_offset] += buoyancy[b] * cb_minus_cg[0]; // pitch part of cross product simplified
+		force_hydrostatic[2 + b_offset] += buoyancy[b];// -weight[b];////buoyancy[b];// ; // add regular z direction buoyancy force
+		force_hydrostatic[2 + b_offset] -= weight[b];
+		//force_hydrostatic[3 + b_offset] += -1 * buoyancy[b] * cb_minus_cg[1]; // roll part of cross product simplified
+		//force_hydrostatic[4 + b_offset] += buoyancy[b] * cb_minus_cg[0]; // pitch part of cross product simplified
 	}
+
+	std::ofstream fHSOut2;
+	fHSOut2.open("results/rm3/debugging/fHSOut2.txt");
+	for (int i = 0; i < total_dofs; i++) {
+		fHSOut2 << force_hydrostatic[i] << "\n";
+	}
+
 	delete[] buoyancy;
+	delete[] weight;
 	return force_hydrostatic;
 }
 
@@ -715,16 +839,16 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 * computes the 6N dimensional Radiation Damping force with convolution history
 *******************************************************************************/
 std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
-	int size = 0, numRows = 0, numCols = 0;
-	size = file_info[0].GetRIRFDims(2);
+	int size = file_info[0].GetRIRFDims(2);
+	int nDoF = 6;
 	// "shift" everything left 1
 	offset_rirf--;
 	// keep offset close to 0, avoids small chance of -overflow errors in long simulations
 	if (offset_rirf < -1 * size) {
 		offset_rirf += size;
 	}
-	numRows = 6, numCols = 6*num_bodies;
-	//int bodyNum = file_info.bodyNum;
+	int numRows = nDoF * num_bodies;
+	int numCols = nDoF * num_bodies;
 	assert(numRows * size > 0 && numCols > 0);
 	double* timeseries = new double[numRows * numCols * size];
 	double* tmp_s = new double[numRows * size];
@@ -743,25 +867,27 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 		}
 	}
 	int vi;
-	std::fill(force_radiation_damping.begin(), force_radiation_damping.end(), 0);
 	//#pragma omp parallel for
 	if (convTrapz == true){
-		// convolution integral using trapezoidal rule
-		for (int row = 0; row < numRows; row++) {
-			//#pragma omp parallel for
-			for (int col = 0; col < numCols; col++) {
-				for (int st = 0; st < size; st++) {
-					vi = (((st + offset_rirf) % size) + size) % size; // vi takes care of circshift function from matLab
-					TIMESERIES(row, col, st) = GetRIRFval(row, col, st) * getVelHistoryAllBodies(vi, col); // col now runs thru all bodies (0->11 for 2 bodies...)
-					TMP_S(row, st) = TIMESERIES(row, col, st);
-					if (st > 0) {
-						force_radiation_damping[row] -= (TMP_S(row, st - 1) + TMP_S(row, st)) / 2.0 * (rirf_time_vector[st] - rirf_time_vector[st - 1ull]);
-					}
+	// convolution integral using trapezoidal rule
+		for (int row = 0; row < numRows; row++) { // row goes to 6N
+			for (int st = 0; st < size; st++) {
+				vi = (((st + offset_rirf) % size) + size) % size; // vi takes care of circshift function from matLab
+				TMP_S(row, st) = 0;
+				for (int col = 0; col < numCols; col++) { // numCols goes to 6N
+					// multiply rirf by velocity history for each step and row (0,...,6N), store product in TIMESERIES
+					TIMESERIES(row, col, st) = GetRIRFval(row, col, st) * getVelHistoryAllBodies(vi, col); 
+					// TMP_S is the sum over col (sum the effects of all radiating dofs (LDOF) for each time and motion dof)
+					TMP_S(row, st) += TIMESERIES(row, col, st);
+				}
+				if (st > 0) {
+					// integrate TMP_S
+					force_radiation_damping[row] += (TMP_S(row, st - 1) + TMP_S(row, st)) / 2.0 * (rirf_time_vector[st] - rirf_time_vector[st - 1]);
 				}
 			}
 		}
 	}
-	else {
+	else { // TODO fix this for force_radiation_damping to go over col not row!
 		// convolution integral assuming fixed dt
 		for (int row = 0; row < numRows; row++) {
 			//#pragma omp parallel for
@@ -770,7 +896,7 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 				for (int st = 0; st < size; st++) {
 					vi = (((st + offset_rirf) % size) + size) % size; // vi takes care of circshift function from matLab
 					TIMESERIES(row, col, st) = GetRIRFval(row, col, st) * getVelHistoryAllBodies(vi, col); // col now runs thru all bodies (0->11 for 2 bodies...)
-					TMP_S(row, st) = TIMESERIES(row, col, st); //TODO: rename TIMESERIES and TMP_S
+					TMP_S(row, st) = TIMESERIES(row, col, st);
 					sumVelHistoryAndRIRF += TMP_S(row, st);
 				}
 			}
@@ -782,6 +908,12 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 #undef TMP_S
 	delete[] timeseries;
 	delete[] tmp_s;
+
+	std::ofstream fRadOut("results/rm3/debugging/fRadOut.txt");
+	for (int i = 0; i < numCols; i++) {
+		fRadOut << force_radiation_damping[i] << std::endl;
+	}
+	fRadOut.close();
 
 	return force_radiation_damping;
 }
@@ -796,20 +928,21 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 /*******************************************************************************
 * TestHydro::GetRIRFval(int row, int col, int st)
 * returns the rirf value from the correct body given the row, step, and index 
-* row: which row in rirf object
-* col: encodes the body number and dof index [0,...,5,...6N-1]
+* row: encodes the body number and dof index [0,...,5,...6N-1] for rows of RIRF
+* col: col in RIRF matrix [0,...,5,...6N-1]
 * st: which step in rirf ranges usually [0,...1000]
 * c: gets just the index aka dof from col
 * b: gets body num from col
 *******************************************************************************/
 double TestHydro::GetRIRFval(int row, int col, int st) {
-	if (row < 0 || row >= 6 || col < 0 || col >= 6 * num_bodies || st < 0 || st >= file_info[0].GetRIRFDims(2)) {
+	if (row < 0 || row >= 6 * num_bodies || col < 0 || col >= 6 * num_bodies || st < 0 || st >= file_info[0].GetRIRFDims(2)) {
 		std::cout << "rirfval index bad from testhydro" << std::endl;
 		return 0;
 	}
-	int b = col / 6; // 0 indexed
-	int c = col % 6;
-	return file_info[b].GetRIRFval(row, c, st);
+	int b = row / 6; // 0 indexed, which body to get matrix info from
+	int c = col % 6; // which dof across column, 0,..,11 for 2 bodies, 0,...,6N-1 for N
+	int r = row % 6; // which dof 0,..,5 in individual body RIRF matrix
+	return file_info[b].GetRIRFval(r, col, st);
 }
 
 /*******************************************************************************
@@ -838,19 +971,35 @@ double TestHydro::coordinateFunc(int b, int i) { // b_num from ForceFunc6d is 1 
 	}
 	// update current time and total_force for this step
 	prev_time = bodies[0]->GetChTime();
-	// call all compute force functions
+	// reset forces to 0
+	std::fill(force_hydrostatic.begin(), force_hydrostatic.end(), 0.0);
+	std::fill(force_radiation_damping.begin(), force_radiation_damping.end(), 0);
+	//call compute forces
 	ComputeForceHydrostatics();
 	convTrapz = true; // use trapeziodal rule or assume fixed dt.
 	ComputeForceRadiationDampingConv();
 
-	// sum all forces element by element
 	unsigned total_dofs = 6 * num_bodies;
+
+	// sum all forces element by element
 	for (int j = 0; j < total_dofs; j++) {
-		total_force[j] = force_hydrostatic[j] + force_radiation_damping[j];
+		total_force[j] = force_hydrostatic[j] /*- force_radiation_damping[j]*/;
 	}
 	if (body_num_offset + i < 0 || body_num_offset >= total_dofs) {
 		std::cout << "total force accessing out of bounds" << std::endl;
 	}
+
+	//if (printed == false) {
+	//	std::ofstream hsdebug;
+	//	hsdebug.open("results/rm3/debugging/force_hydrostatic.txt");
+	//	for (int j = 0; j < total_dofs; j++) {
+	//		hsdebug << total_force[j] << "\n";
+	//	}
+	//	hsdebug << "\n";
+	//	printed = true;
+	//	hsdebug.close();
+	//}
+
 	return total_force[body_num_offset + i];
 }
 
@@ -864,6 +1013,13 @@ double TestHydro::coordinateFunc(int b, int i) { // b_num from ForceFunc6d is 1 
 * ChBody type objects to a vector of shared_ptrs to ChLoadable type objects
 * in order to use ChLoadCustomMultiple's constructor for a vector of ChLoadable
 * shared_ptrs
+* TLDR: this function manually casts std::vector<std::shared_ptr<ChBody>> to a 
+* std::vector<std::shared_ptr<ChLoadable>> so the ChLoadCustomMultiple constructor 
+* can attach the load to the body automatically...since ChBody is a ChLoadable
+* object, this cast is usually implicitly defined-the reason it isn't here is 
+* because of the vector and shared_ptr parts making it a bit too complicated
+* 
+* re is just the object to be returned
 *******************************************************************************/
 std::vector<std::shared_ptr<ChLoadable>> constructorHelper(std::vector<std::shared_ptr<ChBody>>& bodies) {
 	std::vector<std::shared_ptr<ChLoadable>> re(bodies.size());
@@ -891,21 +1047,15 @@ void ChLoadAddedMass::AssembleSystemAddedMassMat() {
 ChLoadAddedMass::ChLoadAddedMass(const std::vector<H5FileInfo>& user_h5_body_data,
 								 std::vector<std::shared_ptr<ChBody>>& bodies)
 								     : ChLoadCustomMultiple(constructorHelper(bodies)) { ///< calls ChLoadCustomMultiple to link loads to bodies
-	//infinite_added_mass = file.GetInfiniteAddedMassMatrix(); //TODO switch all uses of H5FileInfo object to be like this, instead of copying the object each time?
 	nBodies = bodies.size();
 	h5_body_data = user_h5_body_data;
 	AssembleSystemAddedMassMat();
 
-	ChMatrixDynamic<double> massmat = infinite_added_mass;
-	std::ofstream myfile2;
-	myfile2.open("C:\\code\\HydroChrono_build\\Release\\results\\rm3\\debugging\\massmat1.txt");
-	myfile2 << massmat << "\n";
-	myfile2.close();
-
-	/*std::ofstream myfile;
-	myfile.open("C:\\code\\chrono_hydro_dev\\HydroChrono_build\\Release\\infinite_added_mass.txt");
-	myfile << infinite_added_mass << "\n";
-	myfile.close();*/
+	//ChMatrixDynamic<double> massmat = infinite_added_mass;
+	//std::ofstream myfile2;
+	//myfile2.open("results/rm3/debugging/massmat1.txt");
+	//myfile2 << massmat << std::endl;
+	//myfile2.close();
 }
 
 /*******************************************************************************
@@ -922,11 +1072,11 @@ void ChLoadAddedMass::ComputeJacobian(ChState* state_x,       ///< state positio
 	//set mass matrix here
 	jacobians->M = infinite_added_mass;
 
-	ChMatrixDynamic<double> massmat = jacobians->M;
-	std::ofstream myfile2;
-	myfile2.open("C:\\code\\HydroChrono_build\\Release\\results\\rm3\\debugging\\massmat1.txt");
-	myfile2 << massmat << "\n";
-	myfile2.close();
+	//ChMatrixDynamic<double> massmat = jacobians->M;
+	//std::ofstream myfile2;
+	//myfile2.open("results/rm3/debugging/massmat1.txt");
+	//myfile2 << massmat << std::endl;
+	//myfile2.close();
 
 	// R gyroscopic damping matrix terms (6x6)
 	// 0 for added mass
