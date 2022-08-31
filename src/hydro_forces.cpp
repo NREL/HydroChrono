@@ -727,8 +727,6 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 		displacement[i] = position[i] - equilibrium[i];
 	}
 
-	// reset force_hydrostatic to 0
-	std::fill(force_hydrostatic.begin(), force_hydrostatic.end(), 0.0);
 
 	std::ofstream dispOut;
 	dispOut.open("results/rm3/debugging/dispOut.txt");
@@ -861,7 +859,6 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 		}
 	}
 	int vi;
-	std::fill(force_radiation_damping.begin(), force_radiation_damping.end(), 0);
 	//#pragma omp parallel for
 	if (convTrapz == true){
 	// convolution integral using trapezoidal rule
@@ -891,7 +888,7 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 				for (int st = 0; st < size; st++) {
 					vi = (((st + offset_rirf) % size) + size) % size; // vi takes care of circshift function from matLab
 					TIMESERIES(row, col, st) = GetRIRFval(row, col, st) * getVelHistoryAllBodies(vi, col); // col now runs thru all bodies (0->11 for 2 bodies...)
-					TMP_S(row, st) = TIMESERIES(row, col, st); //TODO: rename TIMESERIES and TMP_S
+					TMP_S(row, st) = TIMESERIES(row, col, st);
 					sumVelHistoryAndRIRF += TMP_S(row, st);
 				}
 			}
@@ -966,7 +963,10 @@ double TestHydro::coordinateFunc(int b, int i) { // b_num from ForceFunc6d is 1 
 	}
 	// update current time and total_force for this step
 	prev_time = bodies[0]->GetChTime();
-	// call all compute force functions
+	// reset forces to 0
+	std::fill(force_hydrostatic.begin(), force_hydrostatic.end(), 0.0);
+	std::fill(force_radiation_damping.begin(), force_radiation_damping.end(), 0);
+	//call compute forces
 	ComputeForceHydrostatics();
 	convTrapz = true; // use trapeziodal rule or assume fixed dt.
 	ComputeForceRadiationDampingConv();
@@ -975,7 +975,7 @@ double TestHydro::coordinateFunc(int b, int i) { // b_num from ForceFunc6d is 1 
 
 	// sum all forces element by element
 	for (int j = 0; j < total_dofs; j++) {
-		total_force[j] = force_hydrostatic[j] - force_radiation_damping[j];
+		total_force[j] = force_hydrostatic[j] /*- force_radiation_damping[j]*/;
 	}
 	if (body_num_offset + i < 0 || body_num_offset >= total_dofs) {
 		std::cout << "total force accessing out of bounds" << std::endl;
