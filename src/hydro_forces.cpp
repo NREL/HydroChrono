@@ -915,6 +915,8 @@ void ChLoadAddedMass::AssembleSystemAddedMassMat() {
 	for (int i = 0; i < nBodies; i++) {
 		infinite_added_mass.block(i * 6, 0, 6, nBodies * 6) = h5_body_data[i].GetInfAddedMassMatrix();
 	}
+	/*infinite_added_mass(2, 2) += ((2 * 92.72929) * 9.81 * 1000);*/
+	//infinite_added_mass(8, 8) += ((2 * 749.6824) * 9.81 * 1000);
 }
 
 /*******************************************************************************
