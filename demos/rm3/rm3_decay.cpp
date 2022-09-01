@@ -69,6 +69,7 @@ int main(int argc, char* argv[]) {
 	ChSystemNSC system;
 	system.Set_G_acc(ChVector<>(0.0, 0.0, 0.0));
 	double timestep = 0.06;
+	system.SetTimestepperType(ChTimestepper::Type::HHT);
 	system.SetSolverType(ChSolver::Type::GMRES);
 	system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
 	system.SetStep(timestep);
@@ -125,8 +126,6 @@ int main(int argc, char* argv[]) {
 	//float_I(1, 1) = 21306090.66;
 	//float_I(2, 2) = 37085481.11;
 	//float_body1->SetInertia(float_I);
-
-	
 	float_body1->SetCollide(true);
 
 	// define the plate's initial conditions
@@ -139,11 +138,12 @@ int main(int argc, char* argv[]) {
 	//plate_I(1, 1) = 94407091.24;
 	//plate_I(2, 2) = 28542224.82;
 	//plate_body2->SetInertia(plate_I);
-
-	
 	plate_body2->SetCollide(true);
 
-	// TODO: add constraint so they only move up and down!
+	// add prismatic joint between the two bodies
+	auto prismatic = chrono_types::make_shared<ChLinkLockPrismatic>();
+	prismatic->Initialize(float_body1, plate_body2, false, ChCoordsys<>(ChVector<>(0, 0, -0.72)), ChCoordsys<>(ChVector<>(0, 0, -21.29)));
+	system.AddLink(prismatic);
 
 	// define wave parameters (not used in this demo)
 	HydroInputs my_hydro_inputs;
