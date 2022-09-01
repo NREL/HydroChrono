@@ -68,7 +68,7 @@ int main(int argc, char* argv[]) {
 	// system/solver settings
 	ChSystemNSC system;
 	system.Set_G_acc(ChVector<>(0.0, 0.0, 0.0));
-	double timestep = 0.06;
+	double timestep = 0.01;
 	system.SetTimestepperType(ChTimestepper::Type::HHT);
 	system.SetSolverType(ChSolver::Type::GMRES);
 	system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
