@@ -275,9 +275,9 @@ ChMatrixDynamic<double> H5FileInfo::GetInfAddedMassMatrix() const {
 * H5FileInfo::GetNumFreqs()
 * returns number of frequencies computed
 *******************************************************************************/
-//double H5FileInfo::GetNumFreqs() const { //TODO cut this func????
-//	return freq_dims[0];
-//}
+double H5FileInfo::GetNumFreqs() const { 
+	return freq_dims[0];
+}
 
 /*******************************************************************************
 * H5FileInfo::GetOmegaMin()
@@ -291,39 +291,39 @@ ChMatrixDynamic<double> H5FileInfo::GetInfAddedMassMatrix() const {
 * H5FileInfo::GetOmegaMax()
 * returns max value of omega
 *******************************************************************************/
-//double H5FileInfo::GetOmegaMax() const {
-//	return freq_list[freq_dims[0] - 1];
-//}
+double H5FileInfo::GetOmegaMax() const {
+	return freq_list[freq_dims[0] - 1];
+}
 
 /*******************************************************************************
 * H5FileInfo::GetOmegaDelta()
 * returns omega step size
 *******************************************************************************/
-//double H5FileInfo::GetOmegaDelta() const {
-//	return GetOmegaMax() / GetNumFreqs();
-//}
+double H5FileInfo::GetOmegaDelta() const {
+	return GetOmegaMax() / GetNumFreqs();
+}
 
 /*******************************************************************************
 * H5FileInfo::GetExcitationMagValue()
 * returns excitation magnitudes for row i, column j, frequency ix k
 *******************************************************************************/
-//double H5FileInfo::GetExcitationMagValue(int i, int j, int k) const {
-//	int indexExMag = k + excitation_mag_dims[2] * i;
-//	return excitation_mag_matrix[indexExMag] * rho * g;
-//}
+double H5FileInfo::GetExcitationMagValue(int i, int j, int k) const {
+	int indexExMag = k + excitation_mag_dims[2] * i;
+	return excitation_mag_matrix[indexExMag] * rho * g;
+}
 
 /*******************************************************************************
 * H5FileInfo::GetExcitationMagInterp()
 * returns excitation magnitudes for row i, column j, frequency ix k
 *******************************************************************************/
-//double H5FileInfo::GetExcitationMagInterp(int i, int j, double freq_index_des) const {
-//	double freq_interp_val = freq_index_des - floor(freq_index_des);
-//	double excitationMagFloor = GetExcitationMagValue(i, j, floor(freq_index_des));
-//	double excitationMagCeil = GetExcitationMagValue(i, j, floor(freq_index_des) +1);
-//	double excitationMag = (freq_interp_val * (excitationMagCeil - excitationMagFloor)) + excitationMagFloor;
-//
-//	return excitationMag;
-//}
+double H5FileInfo::GetExcitationMagInterp(int i, int j, double freq_index_des) const {
+	double freq_interp_val = freq_index_des - floor(freq_index_des);
+	double excitationMagFloor = GetExcitationMagValue(i, j, floor(freq_index_des));
+	double excitationMagCeil = GetExcitationMagValue(i, j, floor(freq_index_des) +1);
+	double excitationMag = (freq_interp_val * (excitationMagCeil - excitationMagFloor)) + excitationMagFloor;
+
+	return excitationMag;
+}
 
 /*******************************************************************************
 * H5FileInfo::GetExcitationPhaseValue()
@@ -455,17 +455,6 @@ ForceFunc6d::ForceFunc6d( std::shared_ptr<ChBody> object, TestHydro* user_all_fo
 	}
 	SetForce();
 	SetTorque();
-	// define wave inputs here
-	// TODO: switch depending on wave option (regular, regularCIC, irregular, noWaveCIC)
-	//wave_amplitude = hydro_inputs.GetRegularWaveAmplitude();
-	//wave_omega = hydro_inputs.GetRegularWaveOmega();
-	//wave_omega_delta = file_info.GetOmegaDelta();
-	//freq_index_des = (wave_omega / wave_omega_delta) - 1;
-
-	//for (int rowEx = 0; rowEx < 6; rowEx++) {
-	//	excitation_force_mag[rowEx] = file_info.GetExcitationMagInterp(rowEx, 0, freq_index_des);
-	//	excitation_force_phase[rowEx] = file_info.GetExcitationPhaseInterp(rowEx, 0, freq_index_des);
-	//}
 }
 
 /*******************************************************************************
@@ -491,27 +480,7 @@ forces{ {this, 0}, {this, 1}, {this, 2}, {this, 3}, {this, 4}, {this, 5} } {
 	SetTorque();
 }
 
-///*******************************************************************************
-//* ForceFunc6d::ComputeForceExcitationRegularFreq()
-//*
-//*******************************************************************************/
-//ChVectorN<double, 6> ForceFunc6d::ComputeForceExcitationRegularFreq() {
-//	// TODO move this check for all ComputForce type functions to just before they are called?
-//	if (body->GetChTime() == previous_time_ex) {
-//		return force_excitation_freq;
-//	}
-//	previous_time_ex = body->GetChTime();
-//	for (int rowEx = 0; rowEx < 6; rowEx++) {
-//		if (rowEx == 2) {
-//			force_excitation_freq[rowEx] = excitation_force_mag[rowEx] * wave_amplitude * cos(wave_omega * body->GetChTime() + excitation_force_phase[rowEx]);
-//		}
-//		else {
-//			force_excitation_freq[rowEx] = 0.0;
-//		}
-//	}
-//	return force_excitation_freq;
-//}
-//
+
 /*******************************************************************************
 * ForceFunc6d::coordinateFunc
 * if index is in [0,6] the corresponding vector component of the force vector
@@ -615,10 +584,20 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::stri
 		force_per_body.emplace_back(bodies[b], this);
 	}
 
+	// added mass info
 	my_loadcontainer = chrono_types::make_shared<ChLoadContainer>();
 	my_loadbodyinertia = chrono_types::make_shared<ChLoadAddedMass>(file_info, bodies);
 	bodies[0]->GetSystem()->Add(my_loadcontainer);
 	my_loadcontainer->Add(my_loadbodyinertia);
+
+	// set up hydro inputs stuff 
+	// TODO per body?
+	for (int rowEx = 0; rowEx < 6; rowEx++) {
+		hydro_inputs.excitation_force_mag[rowEx] = file_info[0].GetExcitationMagInterp(rowEx, 0, freq_index_des);
+		hydro_inputs.excitation_force_phase[rowEx] = file_info[0].GetExcitationPhaseInterp(rowEx, 0, freq_index_des);
+	}
+	hydro_inputs.wave_omega_delta = file_info[0].GetOmegaDelta();
+	hydro_inputs.freq_index_des = (hydro_inputs.regular_wave_omega / hydro_inputs.regular_wave_omega_delta) - 1;
 }
 
 /*******************************************************************************
@@ -844,13 +823,6 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 	return force_radiation_damping;
 }
 
-//std::vector<double> TestHydro::ComputeForceExcitation() {
-//	// do math
-//	// return vector for that force
-//	force_excitation.resize(6, 0);
-//	return force_excitation;
-//}
-
 /*******************************************************************************
 * TestHydro::GetRIRFval(int row, int col, int st)
 * returns the rirf value from the correct body given the row, step, and index 
@@ -869,6 +841,27 @@ double TestHydro::GetRIRFval(int row, int col, int st) {
 	int c = col % 6; // which dof across column, 0,..,11 for 2 bodies, 0,...,6N-1 for N
 	int r = row % 6; // which dof 0,..,5 in individual body RIRF matrix
 	return file_info[b].GetRIRFval(r, col, st);
+}
+
+/*******************************************************************************
+* TestHydro::ComputeForceExcitationRegularFreq()
+* computes the 6N dimensional excitation force
+*******************************************************************************/
+std::vector<double> TestHydro::ComputeForceExcitationRegularFreq() {
+	for (int b = 0; b < num_bodies; b++) {
+		int body_offset = 6 * b;
+		for (int rowEx = 0; rowEx < 6; rowEx++) {
+			if (rowEx == 2) {
+				force_excitation_freq[body_offset + rowEx] = excitation_force_mag[rowEx]
+					* hydro_inputs.regular_wave_amplitude * cos(hydro_inputs.regular_wave_omega * bodies[0]->GetChTime()
+						+ excitation_force_phase[rowEx]);
+			}
+			else {
+				force_excitation_freq[rowEx] = 0.0;
+			}
+		}
+	}
+	return force_excitation_freq;
 }
 
 /*******************************************************************************
@@ -902,15 +895,18 @@ double TestHydro::coordinateFunc(int b, int i) {
 	// reset forces to 0
 	std::fill(force_hydrostatic.begin(), force_hydrostatic.end(), 0.0);
 	std::fill(force_radiation_damping.begin(), force_radiation_damping.end(), 0);
+	std::fill(force_excitation.begin(), force_excitation.end(), 0);
 
 	//call compute forces
-	ComputeForceHydrostatics();
 	convTrapz = true; // use trapeziodal rule or assume fixed dt.
+
+	ComputeForceHydrostatics();
 	ComputeForceRadiationDampingConv();
+	ComputeForceExcitation();
 
 	// sum all forces element by element
 	for (int j = 0; j < total_dofs; j++) {
-		total_force[j] = force_hydrostatic[j] - force_radiation_damping[j];
+		total_force[j] = force_hydrostatic[j] - force_radiation_damping[j] + force_excitation[j];
 	}
 	if (body_num_offset + i < 0 || body_num_offset >= total_dofs) {
 		std::cout << "total force accessing out of bounds" << std::endl;
