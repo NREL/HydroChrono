@@ -74,7 +74,7 @@ int main(int argc, char* argv[]) {
 	system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
 	system.SetStep(timestep);
 	ChRealtimeStepTimer realtime_timer;
-	double simulationDuration = 40.0;
+	double simulationDuration = 30.0;
 
 	// some io/viz options
 	bool visualizationOn = true;
@@ -105,6 +105,7 @@ int main(int argc, char* argv[]) {
 		std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/rm3/geometry/plate.obj").c_str()) << " does not exist" << std::endl;
 		return 0;
 	}
+
 	//std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/plate.obj").c_str()) << std::endl;
 	std::shared_ptr<ChBody> plate_body2 = chrono_types::make_shared<ChBodyEasyMesh>(                   //
 		GetChronoDataFile("../../HydroChrono/demos/rm3/geometry/plate_cog.obj").c_str(),                 // file name
@@ -126,7 +127,7 @@ int main(int argc, char* argv[]) {
 	//float_I(1, 1) = 21306090.66;
 	//float_I(2, 2) = 37085481.11;
 	//float_body1->SetInertia(float_I);
-	float_body1->SetCollide(true);
+	//float_body1->SetCollide(false);
 
 	// define the plate's initial conditions
 	system.Add(plate_body2);
@@ -138,12 +139,17 @@ int main(int argc, char* argv[]) {
 	//plate_I(1, 1) = 94407091.24;
 	//plate_I(2, 2) = 28542224.82;
 	//plate_body2->SetInertia(plate_I);
-	plate_body2->SetCollide(true);
+	plate_body2->SetCollide(false);
 
 	// add prismatic joint between the two bodies
 	auto prismatic = chrono_types::make_shared<ChLinkLockPrismatic>();
 	prismatic->Initialize(float_body1, plate_body2, false, ChCoordsys<>(ChVector<>(0, 0, -0.72)), ChCoordsys<>(ChVector<>(0, 0, -21.29)));
 	system.AddLink(prismatic);
+
+	auto prismatic_pto = chrono_types::make_shared<ChLinkTSDA>();
+	prismatic_pto->Initialize(float_body1, plate_body2, false, ChVector<>(0, 0, -0.72), ChVector<>(0, 0, -21.29));
+	prismatic_pto->SetDampingCoefficient(0.0);
+	system.AddLink(prismatic_pto);
 
 	// define wave parameters (not used in this demo)
 	HydroInputs my_hydro_inputs;
@@ -156,10 +162,10 @@ int main(int argc, char* argv[]) {
 	bodies.push_back(plate_body2);
 	TestHydro blah(bodies, "../../HydroChrono/demos/rm3/hydroData/rm3.h5", my_hydro_inputs);
 
-	// Debug printing added mass matrix and system mass matrix
-	ChSparseMatrix M;
-	system.GetMassMatrix(&M);
-	std::cout << M << std::endl;
+	//// Debug printing added mass matrix and system mass matrix
+	//ChSparseMatrix M;
+	//system.GetMassMatrix(&M);
+	//std::cout << M << std::endl;
 
 	// for profiling
 	auto start = std::chrono::high_resolution_clock::now();
@@ -188,8 +194,8 @@ int main(int argc, char* argv[]) {
 			irrlichtVis->Render();
 			irrlichtVis->EndScene();
 			if (buttonPressed) {
-				system.GetMassMatrix(&M);
-				std::cout << M << std::endl;
+				//system.GetMassMatrix(&M);
+				//std::cout << M << std::endl;
 				// step the simulation forwards
 				system.DoStepDynamics(timestep);
 				// append data to std vector

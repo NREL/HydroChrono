@@ -673,8 +673,6 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 	position.resize(total_dofs,0);
 	displacement.resize(total_dofs, 0);
 
-	//std::ofstream GetPosOut;
-	//GetPosOut.open("results/rm3/debugging/GetPosOut.txt");
 	// orientation initialized to system current pos/rot vectors
 	for (int b = 0; b < num_bodies; b++) { 
 		for (int i = 0; i < 3; i++) {
@@ -683,38 +681,17 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 				std::cout << "temp index in hydrostatic force is bad " << std::endl;
 			}
 
-			//GetPosOut << b << "\t" << i << "\t" << bodies[b]->GetPos().eigen()[i] << "\t\t" << equilibrium[i + (6 * b)] << "\t\t" << bodies[b]->GetPos().eigen()[i] - equilibrium[i + (6 * b)] << "\n";
-			
 			//double linearPosition = bodies[b]->GetPos().eigen()[i];
 			//double rotationalPosition = bodies[b]->GetRot().Q_to_Euler123()[i];
 			position[i + b_offset] = bodies[b]->GetPos().eigen()[i];
 			//position[i + 3 + b_offset] = rotationalPosition;
 		}
 	}
-	//GetPosOut.close();
 
 	// make displacement vector for system
 	for (int i = 0; i < total_dofs; i++) {
 		displacement[i] = position[i] - equilibrium[i];
 	}
-
-	// print many things
-	//std::ofstream dispOut;
-	//dispOut.open("results/rm3/debugging/dispOut.txt");
-	//for (int i = 0; i < total_dofs; i++) {
-	//	dispOut << displacement[i] << "\n";
-	//}
-	//std::ofstream fHSOut0;
-	//fHSOut0.open("results/rm3/debugging/fHSOut0.txt");
-	//for (int i = 0; i < total_dofs; i++) {
-	//	fHSOut0 << force_hydrostatic[i] << "\n";
-	//}
-	//std::ofstream KHS0Out;
-	//KHS0Out.open("results/rm3/debugging/KHS0Out.txt");
-	//KHS0Out << file_info[0].lin_matrix << "\n";
-	//std::ofstream KHS1Out;
-	//KHS1Out.open("results/rm3/debugging/KHS1Out.txt");
-	//KHS1Out << file_info[1].lin_matrix << "\n";
 
 	// re invent matrix vector multiplication
 	for (int b = 0; b < num_bodies; b++) {
@@ -725,14 +702,6 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 			}
 		}
 	}
-
-	//std::ofstream fHSOut1;
-	//fHSOut1.open("results/rm3/debugging/fHSOut1.txt");
-	//for (int b = 0; b < num_bodies; b++) {
-	//	for (int i = 0; i < 6; i++) {
-	//		fHSOut1 << force_hydrostatic[i + (6*b)] << "\t\t" << (1000 * 9.81 * file_info[b].disp_vol) << "\t\t" << -(bodies[b]->GetMass() * 9.81) << "\n";
-	//	}
-	//}
 
 	// now handle buoyancy force....
 	assert(num_bodies > 0);
@@ -748,12 +717,6 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 		//force_hydrostatic[3 + b_offset] += -1 * buoyancy[b] * cb_minus_cg[1]; // roll part of cross product simplified
 		//force_hydrostatic[4 + b_offset] += buoyancy[b] * cb_minus_cg[0]; // pitch part of cross product simplified
 	}
-
-	//std::ofstream fHSOut2;
-	//fHSOut2.open("results/rm3/debugging/fHSOut2.txt");
-	//for (int i = 0; i < total_dofs; i++) {
-	//	fHSOut2 << force_hydrostatic[i] << "\n";
-	//}
 
 	delete[] buoyancy;
 	delete[] weight;
