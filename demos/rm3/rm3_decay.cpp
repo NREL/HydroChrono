@@ -122,11 +122,7 @@ int main(int argc, char* argv[]) {
 	float_body1->SetNameString("body1"); 
 	float_body1->SetPos(ChVector<>(0, 0, (-0.72+0.1)));
 	float_body1->SetMass(725834);
-	//ChMatrix33<> float_I;
-	//float_I(0, 0) = 20907301;
-	//float_I(1, 1) = 21306090.66;
-	//float_I(2, 2) = 37085481.11;
-	//float_body1->SetInertia(float_I);
+	float_body1->SetInertiaXX(ChVector<>(20907301.0, 21306090.66, 37085481.11));
 	//float_body1->SetCollide(false);
 
 	// define the plate's initial conditions
@@ -134,12 +130,8 @@ int main(int argc, char* argv[]) {
 	plate_body2->SetNameString("body2");
 	plate_body2->SetPos(ChVector<>(0, 0, (-21.29)));
 	plate_body2->SetMass(886691);
-	//ChMatrix33<> plate_I;
-	//plate_I(0, 0) = 94419614.57;
-	//plate_I(1, 1) = 94407091.24;
-	//plate_I(2, 2) = 28542224.82;
-	//plate_body2->SetInertia(plate_I);
-	plate_body2->SetCollide(false);
+	plate_body2->SetInertiaXX(ChVector<>(94419614.57, 94407091.24, 28542224.82));
+	//plate_body2->SetCollide(false);
 
 	// add prismatic joint between the two bodies
 	auto prismatic = chrono_types::make_shared<ChLinkLockPrismatic>();
