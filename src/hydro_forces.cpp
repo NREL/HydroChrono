@@ -364,9 +364,10 @@ double H5FileInfo::GetExcitationPhaseInterp(int i, int j, double freq_index_des)
 *******************************************************************************/
 HydroInputs::HydroInputs() {
 	// TODO: switch depending on wave option (regular, regularCIC, irregular, noWaveCIC) enum?
+	mode = NONE;
 	regular_wave_amplitude = 0;
-	excitation_force_phase.resize(6,0);
-	excitation_force_mag.resize(6,0);
+	//excitation_force_phase.resize(6,0);
+	//excitation_force_mag.resize(6,0);
 }
 
 /*******************************************************************************
@@ -386,6 +387,7 @@ HydroInputs& HydroInputs::operator = (HydroInputs& rhs) {
 	wave_omega_delta = rhs.wave_omega_delta;
 	excitation_force_mag = rhs.excitation_force_mag;
 	excitation_force_phase = rhs.excitation_force_phase;
+	mode = rhs.mode;
 	return *this;
 }
 
@@ -576,7 +578,6 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::stri
 	for (int b = 0; b < num_bodies; b++) {
 		file_info.emplace_back(h5_file_name, bodies[b]->GetNameString()); // set up vector of file infos for each body
 	}
-	hydro_inputs = user_hydro_inputs;
 	// set up time vector (should be the same for each body, so just use the first always)
 	rirf_time_vector = file_info[0].GetRIRFTimeVector();
 	rirf_timestep = rirf_time_vector[1] - rirf_time_vector[0]; // TODO is this the same for all bodies?
@@ -585,11 +586,8 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::stri
 	// resize and initialize velocity history vector to all zeros
 	velocity_history.resize(file_info[0].GetRIRFDims(2) * total_dofs, 0); // resize and fill with 0s
 	// resize and initialize all persistent forces to all 0s
-	hydro_inputs.excitation_force_mag.resize(6 * num_bodies, 0);
-	hydro_inputs.excitation_force_phase.resize(6 * num_bodies, 0);
 	force_hydrostatic.resize(total_dofs, 0.0);
 	force_radiation_damping.resize(total_dofs, 0.0);
-	force_excitation_freq.resize(total_dofs, 0.0);
 	total_force.resize(total_dofs, 0.0);
 	// set up equilibrium for entire system (each body has position and rotation equilibria 3 indicies apart)
 	equilibrium.resize(total_dofs, 0);
@@ -617,15 +615,31 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::stri
 	my_loadcontainer->Add(my_loadbodyinertia);
 
 	// set up hydro inputs stuff 
-	// TODO per body?
-	hydro_inputs.wave_omega_delta = file_info[0].GetOmegaDelta();
-	hydro_inputs.freq_index_des = (hydro_inputs.regular_wave_omega / hydro_inputs.wave_omega_delta) - 1;
-	for (int b = 0; b < num_bodies; b++) {
-		for (int rowEx = 0; rowEx < 6; rowEx++) {
-			int body_offset = 6 * b;
-			hydro_inputs.excitation_force_mag[body_offset + rowEx] = file_info[b].GetExcitationMagInterp(rowEx, 0, hydro_inputs.freq_index_des);
-			hydro_inputs.excitation_force_phase[body_offset + rowEx] = file_info[b].GetExcitationPhaseInterp(rowEx, 0, hydro_inputs.freq_index_des);
+	hydro_inputs = user_hydro_inputs;
+	WaveSetUp();
+}
+
+void TestHydro::WaveSetUp() {
+	int total_dofs = 6 * num_bodies;
+	switch (hydro_inputs.mode) {
+	case NONE:
+
+		break;
+	case REGULAR:
+		hydro_inputs.excitation_force_mag.resize(total_dofs, 0);
+		hydro_inputs.excitation_force_phase.resize(total_dofs, 0);
+		force_excitation_freq.resize(total_dofs, 0.0);
+		hydro_inputs.wave_omega_delta = file_info[0].GetOmegaDelta();
+		hydro_inputs.freq_index_des = (hydro_inputs.regular_wave_omega / hydro_inputs.wave_omega_delta) - 1;
+		for (int b = 0; b < num_bodies; b++) {
+			for (int rowEx = 0; rowEx < 6; rowEx++) {
+				int body_offset = 6 * b;
+				hydro_inputs.excitation_force_mag[body_offset + rowEx] = file_info[b].GetExcitationMagInterp(rowEx, 0, hydro_inputs.freq_index_des);
+				hydro_inputs.excitation_force_phase[body_offset + rowEx] = file_info[b].GetExcitationPhaseInterp(rowEx, 0, hydro_inputs.freq_index_des);
+			}
 		}
+		break;
+		// add case: IRREGULAR here TODO
 	}
 }
 
@@ -688,7 +702,6 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 			if (b_offset + i + 3 > total_dofs || b_offset + i < 0) {
 				std::cout << "temp index in hydrostatic force is bad " << std::endl;
 			}
-
 			//double linearPosition = bodies[b]->GetPos().eigen()[i];
 			//double rotationalPosition = bodies[b]->GetRot().Q_to_Euler123()[i];
 			position[i + b_offset] = bodies[b]->GetPos().eigen()[i];
@@ -878,7 +891,7 @@ std::vector<double> TestHydro::ComputeForceExcitationRegularFreq() {
 //}
 
 /*******************************************************************************
-* TestHydro::GetRIRFval(int row, int col, int st)
+* TestHydro::TODO
 * ****IMPORTANT b is 1 indexed here
 * computes all forces or returns saved force if it's already been calculated this
 * timestep
@@ -915,11 +928,17 @@ double TestHydro::coordinateFunc(int b, int i) {
 
 	ComputeForceHydrostatics();
 	ComputeForceRadiationDampingConv();
-	ComputeForceExcitationRegularFreq();
 
 	// sum all forces element by element
 	for (int j = 0; j < total_dofs; j++) {
-		total_force[j] = force_hydrostatic[j] - force_radiation_damping[j] + force_excitation_freq[j];
+		total_force[j] = force_hydrostatic[j] - force_radiation_damping[j];
+	}
+
+	if (hydro_inputs.mode == REGULAR) {
+		ComputeForceExcitationRegularFreq();
+		for (int j = 0; j < total_dofs; j++) {
+			total_force[j] += force_excitation_freq[j];
+		}
 	}
 	if (body_num_offset + i < 0 || body_num_offset >= total_dofs) {
 		std::cout << "total force accessing out of bounds" << std::endl;

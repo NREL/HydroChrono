@@ -84,10 +84,11 @@ private:
 	std::string bodyName;
 	void readH5Data();
 };
-
+enum WaveMode {NONE, REGULAR}; // eventually add irregular waves mode
 // =============================================================================
 class HydroInputs {
 public:
+	WaveMode mode;
 	HydroInputs();
 	double freq_index_des;
 	double regular_wave_amplitude;
@@ -146,6 +147,7 @@ public:
 	TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::string h5_file_name, HydroInputs& users_hydro_inputs);
 	TestHydro(const TestHydro& old) = delete;
 	TestHydro operator = (const TestHydro& rhs) = delete;
+	void WaveSetUp();
 	std::vector<double> ComputeForceHydrostatics();
 	std::vector<double> ComputeForceRadiationDampingConv(); 
 	std::vector<double> ComputeForceExcitationRegularFreq();
