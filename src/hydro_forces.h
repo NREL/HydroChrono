@@ -149,6 +149,7 @@ public:
 	std::vector<double> ComputeForceHydrostatics();
 	std::vector<double> ComputeForceRadiationDampingConv(); 
 	std::vector<double> ComputeForceExcitationRegularFreq();
+	std::vector<double> ComputeForceRegularWaves();
 	double GetRIRFval(int row, int col, int st);
 	double coordinateFunc(int b, int i);
 	bool convTrapz;
@@ -161,6 +162,7 @@ private:
 	std::vector<double> force_hydrostatic;
 	std::vector<double> force_radiation_damping;
 	std::vector<double> force_excitation_freq;
+	std::vector<double> force_reg_waves;
 	std::vector<double> total_force;
 	int num_bodies;
 	std::vector<double> equilibrium;
@@ -168,15 +170,10 @@ private:
 	double rirf_timestep;
 	double getVelHistoryAllBodies(int step, int c) const;
 	double setVelHistory(double val, int step, int b_num, int index);
-	//std::vector<double> force_excitation_freq;
-	//double wave_amplitude;
-	//double wave_omega;
-	double wave_omega_delta;
+
 	//double freq_index_des;
 	//int freq_index_floor;
 	//double freq_interp_val;
-	ChVectorN<double, 6> excitation_force_mag;
-	ChVectorN<double, 6> excitation_force_phase;
 	std::vector<double> velocity_history; // use helper function to access vel_history elements correctly
 	double prev_time;
 	std::vector<double> rirf_time_vector; // (should be the same for each body?)
