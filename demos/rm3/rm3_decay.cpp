@@ -147,8 +147,8 @@ int main(int argc, char* argv[]) {
 
 	// define wave parameters (not used in this demo)
 	HydroInputs my_hydro_inputs;
-	my_hydro_inputs.SetRegularWaveAmplitude(0.022);
-	my_hydro_inputs.SetRegularWaveOmega(2.10);
+	my_hydro_inputs.regular_wave_amplitude = 0.022;
+	my_hydro_inputs.regular_wave_omega = 2.10;
 
 	// attach hydrodynamic forces to body
 	std::vector<std::shared_ptr<ChBody>> bodies;
@@ -157,9 +157,9 @@ int main(int argc, char* argv[]) {
 	TestHydro blah(bodies, "../../HydroChrono/demos/rm3/hydroData/rm3.h5", my_hydro_inputs);
 
 	// Debug printing added mass matrix and system mass matrix
-	ChSparseMatrix M;
-	system.GetMassMatrix(&M);
-	std::cout << M << std::endl;
+	//ChSparseMatrix M;
+	//system.GetMassMatrix(&M);
+	//std::cout << M << std::endl;
 
 	// for profiling
 	auto start = std::chrono::high_resolution_clock::now();
@@ -188,8 +188,8 @@ int main(int argc, char* argv[]) {
 			irrlichtVis->Render();
 			irrlichtVis->EndScene();
 			if (buttonPressed) {
-				system.GetMassMatrix(&M);
-				std::cout << M << std::endl;
+				//system.GetMassMatrix(&M);
+				//std::cout << M << std::endl;
 				// step the simulation forwards
 				system.DoStepDynamics(timestep);
 				// append data to std vector

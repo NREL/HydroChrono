@@ -364,9 +364,10 @@ double H5FileInfo::GetExcitationPhaseInterp(int i, int j, double freq_index_des)
 *******************************************************************************/
 HydroInputs::HydroInputs() {
 	// TODO: switch depending on wave option (regular, regularCIC, irregular, noWaveCIC) enum?
+	mode = NONE;
 	regular_wave_amplitude = 0;
-	excitation_force_phase.resize(6,0);
-	excitation_force_mag.resize(6,0);
+	//excitation_force_phase.resize(6,0);
+	//excitation_force_mag.resize(6,0);
 }
 
 /*******************************************************************************
@@ -386,6 +387,7 @@ HydroInputs& HydroInputs::operator = (HydroInputs& rhs) {
 	wave_omega_delta = rhs.wave_omega_delta;
 	excitation_force_mag = rhs.excitation_force_mag;
 	excitation_force_phase = rhs.excitation_force_phase;
+	mode = rhs.mode;
 	return *this;
 }
 
@@ -576,7 +578,6 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::stri
 	for (int b = 0; b < num_bodies; b++) {
 		file_info.emplace_back(h5_file_name, bodies[b]->GetNameString()); // set up vector of file infos for each body
 	}
-	hydro_inputs = user_hydro_inputs;
 	// set up time vector (should be the same for each body, so just use the first always)
 	rirf_time_vector = file_info[0].GetRIRFTimeVector();
 	rirf_timestep = rirf_time_vector[1] - rirf_time_vector[0]; // TODO is this the same for all bodies?
@@ -585,11 +586,8 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::stri
 	// resize and initialize velocity history vector to all zeros
 	velocity_history.resize(file_info[0].GetRIRFDims(2) * total_dofs, 0); // resize and fill with 0s
 	// resize and initialize all persistent forces to all 0s
-	hydro_inputs.excitation_force_mag.resize(6 * num_bodies, 0);
-	hydro_inputs.excitation_force_phase.resize(6 * num_bodies, 0);
 	force_hydrostatic.resize(total_dofs, 0.0);
 	force_radiation_damping.resize(total_dofs, 0.0);
-	force_excitation_freq.resize(total_dofs, 0.0);
 	total_force.resize(total_dofs, 0.0);
 	// set up equilibrium for entire system (each body has position and rotation equilibria 3 indicies apart)
 	equilibrium.resize(total_dofs, 0);
@@ -617,15 +615,31 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::stri
 	my_loadcontainer->Add(my_loadbodyinertia);
 
 	// set up hydro inputs stuff 
-	// TODO per body?
-	hydro_inputs.wave_omega_delta = file_info[0].GetOmegaDelta();
-	hydro_inputs.freq_index_des = (hydro_inputs.regular_wave_omega / hydro_inputs.wave_omega_delta) - 1;
-	for (int b = 0; b < num_bodies; b++) {
-		for (int rowEx = 0; rowEx < 6; rowEx++) {
-			int body_offset = 6 * b;
-			hydro_inputs.excitation_force_mag[body_offset + rowEx] = file_info[b].GetExcitationMagInterp(rowEx, 0, hydro_inputs.freq_index_des);
-			hydro_inputs.excitation_force_phase[body_offset + rowEx] = file_info[b].GetExcitationPhaseInterp(rowEx, 0, hydro_inputs.freq_index_des);
+	hydro_inputs = user_hydro_inputs;
+	WaveSetUp();
+}
+
+void TestHydro::WaveSetUp() {
+	int total_dofs = 6 * num_bodies;
+	switch (hydro_inputs.mode) {
+	case NONE:
+
+		break;
+	case REGULAR:
+		hydro_inputs.excitation_force_mag.resize(total_dofs, 0);
+		hydro_inputs.excitation_force_phase.resize(total_dofs, 0);
+		force_excitation_freq.resize(total_dofs, 0.0);
+		hydro_inputs.wave_omega_delta = file_info[0].GetOmegaDelta();
+		hydro_inputs.freq_index_des = (hydro_inputs.regular_wave_omega / hydro_inputs.wave_omega_delta) - 1;
+		for (int b = 0; b < num_bodies; b++) {
+			for (int rowEx = 0; rowEx < 6; rowEx++) {
+				int body_offset = 6 * b;
+				hydro_inputs.excitation_force_mag[body_offset + rowEx] = file_info[b].GetExcitationMagInterp(rowEx, 0, hydro_inputs.freq_index_des);
+				hydro_inputs.excitation_force_phase[body_offset + rowEx] = file_info[b].GetExcitationPhaseInterp(rowEx, 0, hydro_inputs.freq_index_des);
+			}
 		}
+		break;
+		// add case: IRREGULAR here TODO
 	}
 }
 
@@ -681,8 +695,6 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 	position.resize(total_dofs,0);
 	displacement.resize(total_dofs, 0);
 
-	//std::ofstream GetPosOut;
-	//GetPosOut.open("results/rm3/debugging/GetPosOut.txt");
 	// orientation initialized to system current pos/rot vectors
 	for (int b = 0; b < num_bodies; b++) { 
 		for (int i = 0; i < 3; i++) {
@@ -690,39 +702,17 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 			if (b_offset + i + 3 > total_dofs || b_offset + i < 0) {
 				std::cout << "temp index in hydrostatic force is bad " << std::endl;
 			}
-
-			//GetPosOut << b << "\t" << i << "\t" << bodies[b]->GetPos().eigen()[i] << "\t\t" << equilibrium[i + (6 * b)] << "\t\t" << bodies[b]->GetPos().eigen()[i] - equilibrium[i + (6 * b)] << "\n";
-			
 			//double linearPosition = bodies[b]->GetPos().eigen()[i];
 			//double rotationalPosition = bodies[b]->GetRot().Q_to_Euler123()[i];
 			position[i + b_offset] = bodies[b]->GetPos().eigen()[i];
 			//position[i + 3 + b_offset] = rotationalPosition;
 		}
 	}
-	//GetPosOut.close();
 
 	// make displacement vector for system
 	for (int i = 0; i < total_dofs; i++) {
 		displacement[i] = position[i] - equilibrium[i];
 	}
-
-	// print many things
-	//std::ofstream dispOut;
-	//dispOut.open("results/rm3/debugging/dispOut.txt");
-	//for (int i = 0; i < total_dofs; i++) {
-	//	dispOut << displacement[i] << "\n";
-	//}
-	//std::ofstream fHSOut0;
-	//fHSOut0.open("results/rm3/debugging/fHSOut0.txt");
-	//for (int i = 0; i < total_dofs; i++) {
-	//	fHSOut0 << force_hydrostatic[i] << "\n";
-	//}
-	//std::ofstream KHS0Out;
-	//KHS0Out.open("results/rm3/debugging/KHS0Out.txt");
-	//KHS0Out << file_info[0].lin_matrix << "\n";
-	//std::ofstream KHS1Out;
-	//KHS1Out.open("results/rm3/debugging/KHS1Out.txt");
-	//KHS1Out << file_info[1].lin_matrix << "\n";
 
 	// re invent matrix vector multiplication
 	for (int b = 0; b < num_bodies; b++) {
@@ -733,14 +723,6 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 			}
 		}
 	}
-
-	//std::ofstream fHSOut1;
-	//fHSOut1.open("results/rm3/debugging/fHSOut1.txt");
-	//for (int b = 0; b < num_bodies; b++) {
-	//	for (int i = 0; i < 6; i++) {
-	//		fHSOut1 << force_hydrostatic[i + (6*b)] << "\t\t" << (1000 * 9.81 * file_info[b].disp_vol) << "\t\t" << -(bodies[b]->GetMass() * 9.81) << "\n";
-	//	}
-	//}
 
 	// now handle buoyancy force....
 	assert(num_bodies > 0);
@@ -756,12 +738,6 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 		//force_hydrostatic[3 + b_offset] += -1 * buoyancy[b] * cb_minus_cg[1]; // roll part of cross product simplified
 		//force_hydrostatic[4 + b_offset] += buoyancy[b] * cb_minus_cg[0]; // pitch part of cross product simplified
 	}
-
-	//std::ofstream fHSOut2;
-	//fHSOut2.open("results/rm3/debugging/fHSOut2.txt");
-	//for (int i = 0; i < total_dofs; i++) {
-	//	fHSOut2 << force_hydrostatic[i] << "\n";
-	//}
 
 	delete[] buoyancy;
 	delete[] weight;
@@ -915,7 +891,7 @@ std::vector<double> TestHydro::ComputeForceExcitationRegularFreq() {
 //}
 
 /*******************************************************************************
-* TestHydro::GetRIRFval(int row, int col, int st)
+* TestHydro::TODO
 * ****IMPORTANT b is 1 indexed here
 * computes all forces or returns saved force if it's already been calculated this
 * timestep
@@ -952,11 +928,17 @@ double TestHydro::coordinateFunc(int b, int i) {
 
 	ComputeForceHydrostatics();
 	ComputeForceRadiationDampingConv();
-	ComputeForceExcitationRegularFreq();
 
 	// sum all forces element by element
 	for (int j = 0; j < total_dofs; j++) {
-		total_force[j] = force_hydrostatic[j] - force_radiation_damping[j] + force_excitation_freq[j];
+		total_force[j] = force_hydrostatic[j] - force_radiation_damping[j];
+	}
+
+	if (hydro_inputs.mode == REGULAR) {
+		ComputeForceExcitationRegularFreq();
+		for (int j = 0; j < total_dofs; j++) {
+			total_force[j] += force_excitation_freq[j];
+		}
 	}
 	if (body_num_offset + i < 0 || body_num_offset >= total_dofs) {
 		std::cout << "total force accessing out of bounds" << std::endl;
