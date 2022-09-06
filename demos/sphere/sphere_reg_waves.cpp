@@ -105,7 +105,7 @@ int main(int argc, char* argv[]) {
 	// define the body's initial conditions
 	system.Add(sphereBody);
 	sphereBody->SetNameString("body1"); // must set body name correctly! (must match .h5 file)
-	sphereBody->SetPos(ChVector<>(0, 0, -1));
+	sphereBody->SetPos(ChVector<>(0, 0, -2));
 	sphereBody->SetMass(261.8e3);
 
 	int reg_wave_num = 10;
