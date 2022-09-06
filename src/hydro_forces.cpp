@@ -577,8 +577,6 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::stri
 		file_info.emplace_back(h5_file_name, bodies[b]->GetNameString()); // set up vector of file infos for each body
 	}
 	hydro_inputs = user_hydro_inputs;
-	hydro_inputs.excitation_force_mag.resize(6 * num_bodies, 0);
-	hydro_inputs.excitation_force_phase.resize(6 * num_bodies, 0);
 	// set up time vector (should be the same for each body, so just use the first always)
 	rirf_time_vector = file_info[0].GetRIRFTimeVector();
 	rirf_timestep = rirf_time_vector[1] - rirf_time_vector[0]; // TODO is this the same for all bodies?
@@ -587,6 +585,8 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::stri
 	// resize and initialize velocity history vector to all zeros
 	velocity_history.resize(file_info[0].GetRIRFDims(2) * total_dofs, 0); // resize and fill with 0s
 	// resize and initialize all persistent forces to all 0s
+	hydro_inputs.excitation_force_mag.resize(6 * num_bodies, 0);
+	hydro_inputs.excitation_force_phase.resize(6 * num_bodies, 0);
 	force_hydrostatic.resize(total_dofs, 0.0);
 	force_radiation_damping.resize(total_dofs, 0.0);
 	force_excitation_freq.resize(total_dofs, 0.0);
@@ -893,26 +893,26 @@ std::vector<double> TestHydro::ComputeForceExcitationRegularFreq() {
 	return force_excitation_freq;
 }
 
-/*******************************************************************************
-* TestHydro::ComputeForceExcitationRegularFreq()
-* computes the 6N dimensional excitation force
-*******************************************************************************/
-std::vector<double> TestHydro::ComputeForceRegularWaves() {
-	//for (int b = 0; b < num_bodies; b++) {
-	//	int body_offset = 6 * b;
-	//	for (int rowEx = 0; rowEx < 6; rowEx++) {
-	//		if (rowEx == 2) {
-	//			force_excitation_freq[body_offset + rowEx] = hydro_inputs.excitation_force_mag[rowEx]
-	//				* hydro_inputs.regular_wave_amplitude * cos(hydro_inputs.regular_wave_omega * bodies[0]->GetChTime()
-	//					+ excitation_force_phase[rowEx]);
-	//		}
-	//		else {
-	//			force_excitation_freq[rowEx] = 0.0;
-	//		}
-	//	}
-	//}
-	return force_reg_waves;
-}
+///*******************************************************************************
+//* TestHydro::ComputeForceExcitationRegularFreq()
+//* computes the 6N dimensional excitation force
+//*******************************************************************************/
+//std::vector<double> TestHydro::ComputeForceRegularWaves() {
+//	//for (int b = 0; b < num_bodies; b++) {
+//	//	int body_offset = 6 * b;
+//	//	for (int rowEx = 0; rowEx < 6; rowEx++) {
+//	//		if (rowEx == 2) {
+//	//			force_excitation_freq[body_offset + rowEx] = hydro_inputs.excitation_force_mag[rowEx]
+//	//				* hydro_inputs.regular_wave_amplitude * cos(hydro_inputs.regular_wave_omega * bodies[0]->GetChTime()
+//	//					+ excitation_force_phase[rowEx]);
+//	//		}
+//	//		else {
+//	//			force_excitation_freq[rowEx] = 0.0;
+//	//		}
+//	//	}
+//	//}
+//	return force_reg_waves;
+//}
 
 /*******************************************************************************
 * TestHydro::GetRIRFval(int row, int col, int st)

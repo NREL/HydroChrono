@@ -149,7 +149,7 @@ public:
 	std::vector<double> ComputeForceHydrostatics();
 	std::vector<double> ComputeForceRadiationDampingConv(); 
 	std::vector<double> ComputeForceExcitationRegularFreq();
-	std::vector<double> ComputeForceRegularWaves();
+	//std::vector<double> ComputeForceRegularWaves();
 	double GetRIRFval(int row, int col, int st);
 	double coordinateFunc(int b, int i);
 	bool convTrapz;
@@ -162,7 +162,7 @@ private:
 	std::vector<double> force_hydrostatic;
 	std::vector<double> force_radiation_damping;
 	std::vector<double> force_excitation_freq;
-	std::vector<double> force_reg_waves;
+	//std::vector<double> force_reg_waves;
 	std::vector<double> total_force;
 	int num_bodies;
 	std::vector<double> equilibrium;
