@@ -145,8 +145,8 @@ int main(int argc, char* argv[]) {
 
 	// define wave parameters (not used in this demo)
 	HydroInputs my_hydro_inputs;
-	my_hydro_inputs.SetRegularWaveAmplitude(0.022);
-	my_hydro_inputs.SetRegularWaveOmega(2.10);
+	my_hydro_inputs.regular_wave_amplitude = 0.022;
+	my_hydro_inputs.regular_wave_omega = 2.10;
 
 	// attach hydrodynamic forces to body
 	std::vector<std::shared_ptr<ChBody>> bodies;
