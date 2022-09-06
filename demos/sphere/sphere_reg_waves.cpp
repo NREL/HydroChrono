@@ -226,8 +226,8 @@ int main(int argc, char* argv[]) {
 		outputFile.precision(10);
 		outputFile.width(12);
 		outputFile << "Wave #: \t" << reg_wave_num << "\n";
-		outputFile << "Wave amplitude (m): \t" << my_hydro_inputs.GetRegularWaveAmplitude() << "\n";
-		outputFile << "Wave omega (rad/s): \t" << my_hydro_inputs.GetRegularWaveOmega() << "\n";
+		outputFile << "Wave amplitude (m): \t" << my_hydro_inputs.regular_wave_amplitude << "\n";
+		outputFile << "Wave omega (rad/s): \t" << my_hydro_inputs.regular_wave_omega << "\n";
 		outputFile << std::left << std::setw(10) << "Time (s)"
 			<< std::right << std::setw(12) << "Heave (m)"
 			//<< std::right << std::setw(18) << "Heave Vel (m/s)" 
