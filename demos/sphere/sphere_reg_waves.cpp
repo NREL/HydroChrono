@@ -105,7 +105,7 @@ int main(int argc, char* argv[]) {
 	// define the body's initial conditions
 	system.Add(sphereBody);
 	sphereBody->SetNameString("body1"); // must set body name correctly! (must match .h5 file)
-	sphereBody->SetPos(ChVector<>(0, 0, -1));
+	sphereBody->SetPos(ChVector<>(0, 0, -2));
 	sphereBody->SetMass(261.8e3);
 
 	int reg_wave_num = 10;
@@ -127,10 +127,10 @@ int main(int argc, char* argv[]) {
 	system.AddLink(spring_1);
 
 	HydroInputs my_hydro_inputs;
-	my_hydro_inputs.SetRegularWaveAmplitude(task10_wave_amps[reg_wave_num - 1]); //0.594 (for wave 10)
-	my_hydro_inputs.SetRegularWaveOmega(task10_wave_omegas[reg_wave_num - 1]); //0.571198664 (for wave 10)
-	//my_hydro_inputs.regular_wave_amplitude = task10_wave_amps[reg_wave_num-1]; //0.095;
-	//my_hydro_inputs.regular_wave_omega = task10_wave_omegas[reg_wave_num-1];//1.427996661;
+	//my_hydro_inputs.SetRegularWaveAmplitude(task10_wave_amps[reg_wave_num - 1]); //0.594 (for wave 10)
+	//my_hydro_inputs.SetRegularWaveOmega(task10_wave_omegas[reg_wave_num - 1]); //0.571198664 (for wave 10)
+	my_hydro_inputs.regular_wave_amplitude = task10_wave_amps[reg_wave_num-1]; //0.095;
+	my_hydro_inputs.regular_wave_omega = task10_wave_omegas[reg_wave_num-1];//1.427996661;
 
 	std::vector<std::shared_ptr<ChBody>> bodies;
 	bodies.push_back(sphereBody);
@@ -226,8 +226,8 @@ int main(int argc, char* argv[]) {
 		outputFile.precision(10);
 		outputFile.width(12);
 		outputFile << "Wave #: \t" << reg_wave_num << "\n";
-		outputFile << "Wave amplitude (m): \t" << my_hydro_inputs.GetRegularWaveAmplitude() << "\n";
-		outputFile << "Wave omega (rad/s): \t" << my_hydro_inputs.GetRegularWaveOmega() << "\n";
+		outputFile << "Wave amplitude (m): \t" << my_hydro_inputs.regular_wave_amplitude << "\n";
+		outputFile << "Wave omega (rad/s): \t" << my_hydro_inputs.regular_wave_omega << "\n";
 		outputFile << std::left << std::setw(10) << "Time (s)"
 			<< std::right << std::setw(12) << "Heave (m)"
 			//<< std::right << std::setw(18) << "Heave Vel (m/s)" 
