@@ -38,16 +38,20 @@ public:
 	void Init2D(H5::H5File& file, std::string data_name, ChMatrixDynamic<double>& var); 
 	void Init3D(H5::H5File& file, std::string data_name, std::vector<double>& var, std::vector<int>& dims);
 	~H5FileInfo();
+
 	ChMatrixDynamic<double> GetInfAddedMassMatrix() const;
 	double GetHydrostaticStiffness(int i, int j) const;
 	double GetRIRFval(int i, int n, int m) const;
 	int GetRIRFDims(int i) const;
 	std::vector<double> GetRIRFTimeVector() const; // TODO
-	//double GetExcitationMagValue(int m, int n, int w) const;
-	//double GetExcitationMagInterp(int i, int j, double freq_index_des) const;
-	//double GetExcitationPhaseValue(int m, int n, int w) const;
-	//double GetExcitationPhaseInterp(int i, int j, double freq_index_des) const;
-	//double GetNumFreqs() const;
+	double GetExcitationMagValue(int m, int n, int w) const;
+	double GetExcitationMagInterp(int i, int j, double freq_index_des) const;
+	double GetOmegaDelta() const;
+	double GetOmegaMax() const;
+	double GetExcitationPhaseValue(int m, int n, int w) const;
+	double GetExcitationPhaseInterp(int i, int j, double freq_index_des) const;
+	double GetNumFreqs() const;
+
 	std::vector<double> cg;
 	std::vector<double> cb;
 	const double& rho = _rho;
@@ -55,14 +59,13 @@ public:
 	const double& disp_vol = _disp_vol;
 	//const double& rirf_timestep = _rirf_timestep;
 	int bodyNum;
-	ChMatrixDynamic<double> lin_matrix;
 private:
 	double _rho;
 	double _g;
 	double _disp_vol;
-	//double _rirf_timestep;
+	double _rirf_timestep;
 	std::vector<double> freq_list;
-	
+	ChMatrixDynamic<double> lin_matrix;
 	ChMatrixDynamic<double> inf_added_mass;
 	std::vector<double> rirf_matrix;
 	std::vector<int> rirf_dims;
@@ -70,14 +73,13 @@ private:
 	std::vector<double> radiation_damping_matrix; // TODO check about names
 	std::vector<int> Bw_dims; // TODO check with dave on name for dimensions of radiation damping matrix
 	std::vector<double> excitation_mag_matrix;
-	std::vector<int> mag_dims;
+	std::vector<int> excitation_mag_dims;
 	std::vector<double> excitation_re_matrix;
 	std::vector<int> re_dims;
 	std::vector<double> excitation_im_matrix;
 	std::vector<int> im_dims;
-	//std::vector<double> excitation_phase_matrix;
-	//double omega_min;
-	//double omega_max;
+	std::vector<double> excitation_phase_matrix;
+	std::vector<int> excitation_phase_dims;
 	std::string h5_file_name;
 	std::string bodyName;
 	void readH5Data();
@@ -87,20 +89,15 @@ private:
 class HydroInputs {
 public:
 	HydroInputs();
-	double SetRegularWaveAmplitude(double val) {
-		regular_wave_amplitude = val;
-		return regular_wave_amplitude;
-	}
-	double GetRegularWaveAmplitude() const { return regular_wave_amplitude; }
-	double SetRegularWaveOmega(double val) {
-		regular_wave_omega = val;
-		return regular_wave_omega;
-	}
-	double GetRegularWaveOmega() const { return regular_wave_omega; }
-	
-private:
+	double freq_index_des;
 	double regular_wave_amplitude;
 	double regular_wave_omega;
+	double wave_omega_delta;
+	std::vector<double> excitation_force_mag;
+	std::vector<double> excitation_force_phase;
+	HydroInputs(HydroInputs& old);
+	HydroInputs& operator = (HydroInputs& rhs);
+private:
 };
 
 // =============================================================================
@@ -146,15 +143,15 @@ class TestHydro {
 public:
 	bool printed = false;
 	TestHydro();
-	TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::string h5_file_name, HydroInputs users_hydro_inputs);
+	TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::string h5_file_name, HydroInputs& users_hydro_inputs);
 	TestHydro(const TestHydro& old) = delete;
 	TestHydro operator = (const TestHydro& rhs) = delete;
 	std::vector<double> ComputeForceHydrostatics();
 	std::vector<double> ComputeForceRadiationDampingConv(); 
-	//std::vector<double> ComputeForceExcitation();
+	std::vector<double> ComputeForceExcitationRegularFreq();
+	//std::vector<double> ComputeForceRegularWaves();
 	double GetRIRFval(int row, int col, int st);
 	double coordinateFunc(int b, int i);
-	//ChVectorN<double, 6> ComputeForceExcitationRegularFreq();
 	bool convTrapz;
 private:
 	std::vector<std::shared_ptr<ChBody>> bodies;
@@ -164,7 +161,8 @@ private:
 	HydroInputs hydro_inputs;
 	std::vector<double> force_hydrostatic;
 	std::vector<double> force_radiation_damping;
-	//std::vector<double> force_excitation;
+	std::vector<double> force_excitation_freq;
+	//std::vector<double> force_reg_waves;
 	std::vector<double> total_force;
 	int num_bodies;
 	std::vector<double> equilibrium;
@@ -172,19 +170,12 @@ private:
 	double rirf_timestep;
 	double getVelHistoryAllBodies(int step, int c) const;
 	double setVelHistory(double val, int step, int b_num, int index);
-	//std::vector<double> force_excitation_freq;
-	//double wave_amplitude;
-	//double wave_omega;
-	//double wave_omega_delta;
+
 	//double freq_index_des;
 	//int freq_index_floor;
 	//double freq_interp_val;
-	//ChVectorN<double, 6> excitation_force_mag;
-	//ChVectorN<double, 6> excitation_force_phase;
-	std::vector<double> velocity_history; // use helper function to access vel_history elments correctly
+	std::vector<double> velocity_history; // use helper function to access vel_history elements correctly
 	double prev_time;
-	//double prev_time_rirf;
-	//double prev_time_ex;
 	std::vector<double> rirf_time_vector; // (should be the same for each body?)
 	int offset_rirf;
 	std::shared_ptr<ChLoadContainer> my_loadcontainer;
