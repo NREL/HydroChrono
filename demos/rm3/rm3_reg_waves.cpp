@@ -74,7 +74,7 @@ int main(int argc, char* argv[]) {
 	system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
 	system.SetStep(timestep);
 	ChRealtimeStepTimer realtime_timer;
-	double simulationDuration = 30.0;
+	double simulationDuration = 300.0;
 
 	// some io/viz options
 	bool visualizationOn = true;
@@ -120,7 +120,7 @@ int main(int argc, char* argv[]) {
 	// define the float's initial conditions
 	system.Add(float_body1);
 	float_body1->SetNameString("body1"); 
-	float_body1->SetPos(ChVector<>(0, 0, (-0.72+0.1)));
+	float_body1->SetPos(ChVector<>(0, 0, -0.72));
 	float_body1->SetMass(725834);
 	float_body1->SetInertiaXX(ChVector<>(20907301.0, 21306090.66, 37085481.11));
 	//float_body1->SetCollide(false);
@@ -168,7 +168,7 @@ int main(int argc, char* argv[]) {
 		auto irrlichtVis = chrono_types::make_shared<ChVisualSystemIrrlicht>();
 		irrlichtVis->AttachSystem(&system);
 		irrlichtVis->SetWindowSize(1280, 720);
-		irrlichtVis->SetWindowTitle("RM3 - Decay Test");
+		irrlichtVis->SetWindowTitle("RM3 - Regular Wave Test");
 		irrlichtVis->SetCameraVertical(CameraVerticalDir::Z);
 		irrlichtVis->Initialize();
 		irrlichtVis->AddLogo();
@@ -221,14 +221,14 @@ int main(int argc, char* argv[]) {
 
 	if (profilingOn) {
 		std::ofstream profilingFile;
-		profilingFile.open("./results/rm3/decay/duration_ms.txt");
+		profilingFile.open("./results/rm3/reg_waves/duration_ms.txt");
 		if (!profilingFile.is_open()) {
-			if (!std::filesystem::exists("./results/rm3/decay")) {
-				std::cout << "Path " << std::filesystem::absolute("./results/rm3/decay") << " does not exist, creating it now..." << std::endl;
+			if (!std::filesystem::exists("./results/rm3/reg_waves")) {
+				std::cout << "Path " << std::filesystem::absolute("./results/rm3/reg_waves") << " does not exist, creating it now..." << std::endl;
 				std::filesystem::create_directory("./results");
 				std::filesystem::create_directory("./results/rm3");
-				std::filesystem::create_directory("./results/rm3/decay");
-				profilingFile.open("./results/rm3/decay/duration_ms.txt");
+				std::filesystem::create_directory("./results/rm3/reg_waves");
+				profilingFile.open("./results/rm3/reg_waves/duration_ms.txt");
 				if (!profilingFile.is_open()) {
 					std::cout << "Still cannot open file, ending program" << std::endl;
 					return 0;
@@ -241,14 +241,14 @@ int main(int argc, char* argv[]) {
 
 	if (saveDataOn) {
 		std::ofstream outputFile;
-		outputFile.open("./results/rm3/decay/rm3_decay.txt");
+		outputFile.open("./results/rm3/reg_waves/rm3_reg_waves.txt");
 		if (!outputFile.is_open()) {
-			if (!std::filesystem::exists("./results/rm3/decay")) {
-				std::cout << "Path " << std::filesystem::absolute("./results/rm3/decay") << " does not exist, creating it now..." << std::endl;
+			if (!std::filesystem::exists("./results/rm3/reg_waves")) {
+				std::cout << "Path " << std::filesystem::absolute("./results/rm3/reg_waves") << " does not exist, creating it now..." << std::endl;
 				std::filesystem::create_directory("./results");
 				std::filesystem::create_directory("./results/rm3");
-				std::filesystem::create_directory("./results/rm3/decay");
-				outputFile.open("./results/rm3/decay/rm3_decay.txt");
+				std::filesystem::create_directory("./results/rm3/reg_waves");
+				outputFile.open("./results/rm3/reg_waves/rm3_decay.txt");
 				if (!outputFile.is_open()) {
 					std::cout << "Still cannot open file, ending program" << std::endl;
 					return 0;

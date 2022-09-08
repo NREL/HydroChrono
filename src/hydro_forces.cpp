@@ -43,6 +43,7 @@ H5FileInfo::H5FileInfo(H5FileInfo& old) {
 * returns *this
 *******************************************************************************/
 H5FileInfo& H5FileInfo::operator = (H5FileInfo& rhs) {
+	printed = rhs.printed;
 	cg = rhs.cg;
 	cb = rhs.cb;
 	bodyNum = rhs.bodyNum;
@@ -63,6 +64,8 @@ H5FileInfo& H5FileInfo::operator = (H5FileInfo& rhs) {
 	re_dims = rhs.re_dims;
 	excitation_im_matrix = rhs.excitation_im_matrix;
 	im_dims = rhs.im_dims;
+	excitation_phase_matrix = rhs.excitation_phase_matrix;
+	excitation_phase_dims = rhs.excitation_phase_dims;
 	h5_file_name = rhs.h5_file_name;
 	bodyName = rhs.bodyName;
 	return *this;
