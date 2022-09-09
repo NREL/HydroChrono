@@ -82,6 +82,7 @@ int main(int argc, char* argv[]) {
 	bool saveDataOn = true;
 	std::vector<double> time_vector;
 	std::vector<double> float_heave_position;
+	std::vector<double> float_drift_position;
 	std::vector<double> plate_heave_position;
 
 	// set up body from a mesh
@@ -194,6 +195,7 @@ int main(int argc, char* argv[]) {
 				// append data to std vector
 				time_vector.push_back(system.GetChTime());
 				float_heave_position.push_back(float_body1->GetPos().z());
+				float_drift_position.push_back(float_body1->GetPos().x());
 				plate_heave_position.push_back(plate_body2->GetPos().z());
 				// force playback to be real-time
 				realtime_timer.Spin(timestep);
@@ -206,6 +208,7 @@ int main(int argc, char* argv[]) {
 			// append data to std vector
 			time_vector.push_back(system.GetChTime());
 			float_heave_position.push_back(float_body1->GetPos().z());
+			float_drift_position.push_back(float_body1->GetPos().x());
 			plate_heave_position.push_back(plate_body2->GetPos().z());
 
 			// step the simulation forwards
@@ -258,11 +261,13 @@ int main(int argc, char* argv[]) {
 		outputFile << std::left << std::setw(10) << "Time (s)"
 			<< std::right << std::setw(16) << "Float Heave (m)"
 			<< std::right << std::setw(16) << "Plate Heave (m)"
+			<< std::right << std::setw(16) << "Float Drift (x) (m)"
 			<< std::endl;
 		for (int i = 0; i < time_vector.size(); ++i)
 			outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
 			<< std::right << std::setw(16) << std::setprecision(4) << std::fixed << float_heave_position[i]
 			<< std::right << std::setw(16) << std::setprecision(4) << std::fixed << plate_heave_position[i]
+			<< std::right << std::setw(16) << std::setprecision(4) << std::fixed << float_drift_position[i]
 			<< std::endl;
 		outputFile.close();
 	}

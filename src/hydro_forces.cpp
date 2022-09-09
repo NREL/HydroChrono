@@ -859,14 +859,9 @@ std::vector<double> TestHydro::ComputeForceExcitationRegularFreq() {
 	for (int b = 0; b < num_bodies; b++) {
 		int body_offset = 6 * b;
 		for (int rowEx = 0; rowEx < 6; rowEx++) {
-			if (rowEx == 2) {
-				force_excitation_freq[body_offset + rowEx] = hydro_inputs.excitation_force_mag[body_offset + rowEx]
-					* hydro_inputs.regular_wave_amplitude * cos(hydro_inputs.regular_wave_omega * bodies[0]->GetChTime()
-						+ hydro_inputs.excitation_force_phase[rowEx]);
-			}
-			else {
-				force_excitation_freq[rowEx] = 0.0;
-			}
+			force_excitation_freq[body_offset + rowEx] = hydro_inputs.excitation_force_mag[body_offset + rowEx]
+				* hydro_inputs.regular_wave_amplitude * cos(hydro_inputs.regular_wave_omega * bodies[0]->GetChTime()
+					+ hydro_inputs.excitation_force_phase[rowEx]);
 		}
 	}
 	return force_excitation_freq;
