@@ -29,8 +29,8 @@
 	1. Clone this project into a directory, and set up a build folder (i.e. clone project into HydroChrono directory and set up HydroChrono_build adjacent directory). 
 	2. Just like when building Project Chrono, open CMake GUI specifying the location of the source files and built binaries for HydroChrono (HydroChrono and HydroChrono_build respectively). Configure and generate the solution, specifying `Chrono_DIR` as Chrono Build location (`../chrono_build/cmake`) and HDF5_DIR as (`../CMake-hdf5-1.10.8/CMake-hdf5-1.10.8/build/HDF5-1.10.8-win64/HDF5-1.10.8-win64/share/cmake` or similar path to find the cmake file at the end of this path). Note: version 1.10.8 of HDF5 works best with Visual Studio 2019.
 	3. Navigate to the build folder and open the solution in Visual Studio. Build the solution for HydroChrono in RelWithDebInfo mode (The `ALL_BUILD` project is the best for building and linking everything. It will build the library and all demos).
-3. From Project Chrono build directory copy `chrono_build/bin/data` file into `HydroChrono_build/data` for shaders and logos
-4. Navigate to `chrono_build/bin/RelWithDebInfo` folder and copy all .dll and .pdb files (not for demos) and paste them into `HydroChrono_build/RelWithDebInfo` file. List of all files to copy:
+3. From Project Chrono build directory copy `chrono_build/bin/data` file into `HydroChrono_build/demos/data` for shaders and logos
+4. Navigate to `chrono_build/bin/RelWithDebInfo` folder and copy all .dll and .pdb files (not for demos) and paste them into `HydroChrono_build/demos/RelWithDebInfo` file. List of all files to copy:
 	* ChronoEngine.dll
 	* ChronoEngine.pdb
 	* ChronoEngine_irrlicht.dll
@@ -39,12 +39,15 @@
 	* ChronoEngine_postprocess.pdb
 	* Irrlicht.dll (no pdb for Irrlicht)
 	* and any other chrono module ChronoEngine_moduleName.dll and ChronoEngine_moduleName.pdb
-5. Navigate to `HydroChrono_build/RelWithDebInfo` and run executables. You may need to set up some output files to catch output/debug data. Optionally copy plot files into results files and generate plots. (TODO: have cmake copy these over automatically)
+5. Navigate to `HydroChrono_build/demos/RelWithDebInfo` and run executables. You may need to set up some output files to catch output/debug data. Optionally copy plot files into results files and generate plots. (TODO: have cmake copy these over automatically)
 
 ## Files
 * src - contains source code for HydroChrono library
-	* hydro_forces.h and hydro_forces.cpp
-		* header and implementation files for hydro forces initialized through H5 files
+	* hydro_forces.cpp
+		* implementation files for hydro forces initialized through H5 files
+* include - contains header files for HydroChrono library
+	* hydro_forces.h
+		* header  files for hydro forces initialized through H5 files
 * demos - contains information for various demos
 	* demos/rm3 - contains required files for rm3 demos (decay test and regular wave test)
 		* rm3_decay.cpp and rm3_reg_waves.cpp - demos showing rm3 decay and regular wave test respectively

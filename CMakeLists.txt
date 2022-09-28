@@ -8,18 +8,12 @@ cmake_minimum_required(VERSION 3.18.2)
 
 # set_property(GLOBAL PROPERTY USE_FOLDERS Off)
 
-
-#--------------------------------------------------------------
-# Modify the project name if you want: 
-#--------------------------------------------------------------
-
 project(HydroChrono LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 
 #-----------------------------------------------------------------------------
 # Fix for VS 2017 15.8 and newer to handle alignment specification with Eigen
 #-----------------------------------------------------------------------------
-
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
   if(MSVC AND ${MSVC_VERSION} GREATER_EQUAL 1915)
     add_definitions( "-D_ENABLE_EXTENDED_ALIGNED_STORAGE" )
@@ -40,31 +34,13 @@ else()
 endif()
 
 #-----------------------------------------------------------------------------
-# Specify locations of executables and libraries
+# Specify locations of subdirectories
 #-----------------------------------------------------------------------------
-
-
-# set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
-# set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
-
-# target_include_directories(Application PRIVATE 
-# 	${CMAKE_SOURCE_DIR}/src
-# 	${CMAKE_SOURCE_DIR}/include
-# )
-
 add_subdirectory(${CMAKE_SOURCE_DIR}/src)
-set_target_properties(system PROPERTIES 
-    COMPILE_FLAGS "${CHRONO_CXX_FLAGS} ${EXTRA_COMPILE_FLAGS}"
-    COMPILE_DEFINITIONS "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
-    LINK_FLAGS "${CHRONO_LINKER_FLAGS}")
+
 
 option(BUILD_DEMOS "Build demo programs" ON)
 # if option for demos on:
 if(BUILD_DEMOS AND IS_DIRECTORY ${CMAKE_SOURCE_DIR}/demos)
 	add_subdirectory(${CMAKE_SOURCE_DIR}/demos)
-	target_link_libraries(sphere_decay PUBLIC system)
-	set_target_properties(sphere_decay PROPERTIES 
-	    COMPILE_FLAGS "${CHRONO_CXX_FLAGS} ${EXTRA_COMPILE_FLAGS}"
-	    COMPILE_DEFINITIONS "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
-	    LINK_FLAGS "${CHRONO_LINKER_FLAGS}")
 endif()
