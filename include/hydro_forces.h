@@ -1,3 +1,6 @@
+#ifndef _HYDRO_FORCES_
+#define _HYDRO_FORCES_
+
 #include <cstdio>
 #include <filesystem>
 
@@ -223,3 +226,4 @@ private:
 	std::vector<H5FileInfo> h5_body_data;
 	virtual bool IsStiff() override { return true; } // this to force the use of the inertial M, R and K matrices
 };
+#endif

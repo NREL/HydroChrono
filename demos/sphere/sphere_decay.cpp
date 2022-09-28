@@ -1,5 +1,5 @@
 //#include "../../src/hydro_forces.h"
-#include "./src/hydro_forces.h"
+#include "hydro_forces.h"
 #include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
 #include "chrono_irrlicht/ChIrrMeshTools.h"
 #include "chrono/core/ChRealtimeStep.h"
@@ -85,9 +85,9 @@ int main(int argc, char* argv[]) {
 	std::vector<double> heave_position;
 
 	// set up body from a mesh
-	std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/sphere/geometry/oes_task10_sphere.obj").c_str()) << std::endl;
+	std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../../HydroChrono/demos/sphere/geometry/oes_task10_sphere.obj").c_str()) << std::endl;
 	std::shared_ptr<ChBody> sphereBody = chrono_types::make_shared<ChBodyEasyMesh>(       //
-		GetChronoDataFile("../../HydroChrono/demos/sphere/geometry/oes_task10_sphere.obj").c_str(),    // file name
+		GetChronoDataFile("../../../HydroChrono/demos/sphere/geometry/oes_task10_sphere.obj").c_str(),    // file name
 		1000,                                                                             // density
 		false,                                                                            // do not evaluate mass automatically
 		true,                                                                             // create visualization asset
@@ -105,13 +105,13 @@ int main(int argc, char* argv[]) {
 	// define wave parameters (not used in this demo)
 	// Todo define a way to use TestHydro without hydro_inputs/waves
 	HydroInputs my_hydro_inputs;
-	my_hydro_inputs.SetRegularWaveAmplitude(0.022);
-	my_hydro_inputs.SetRegularWaveOmega(2.10);
+	my_hydro_inputs.regular_wave_amplitude = 0.022;
+	my_hydro_inputs.regular_wave_omega = 2.10;
 
 	// attach hydrodynamic forces to body
 	std::vector<std::shared_ptr<ChBody>> bodies;
 	bodies.push_back(sphereBody);
-	TestHydro blah(bodies, "../../HydroChrono/demos/sphere/hydroData/sphere.h5", my_hydro_inputs);
+	TestHydro blah(bodies, "../../../HydroChrono/demos/sphere/hydroData/sphere.h5", my_hydro_inputs);
 
 	// for profiling
 	auto start = std::chrono::high_resolution_clock::now(); 
