@@ -1,0 +1,19 @@
+Body1 Flap1
+Body2 Flap2
+Body3 Base
+
+Period in s
+Period -1 <=> infinite period
+Period 0. <=> period null
+
+B1ij.dat B(1,1) B(1,2) ... B(1,18) B(2,1) B(2,2) ... B(6,18) listed by period
+B2ij.dat B(1,1) B(7,2) ... B(7,18) B(8,1) B(8,2) ... B(12,18) listed by period
+B3ij.dat B(1,1) B(13,2) ... B(13,18) B(14,1) B(14,2) ... B(18,18) listed by period
+
+Ma1ij.dat Ma(1,1) Ma(1,2) ... Ma(1,18) Ma(2,1) Ma(2,2) ... Ma(6,18) listed by period
+Ma2ij.dat Ma(1,1) Ma(7,2) ... Ma(7,18) Ma(8,1) Ma(8,2) ... Ma(12,18) listed by period
+Ma3ij.dat Ma(1,1) Ma(13,2) ... Ma(13,18) Ma(14,1) Ma(14,2) ... Ma(18,18) listed by period
+
+Ma_inf1ij.dat Ma_inf(1,1) Ma(1,2_inf) ... Ma_inf(1,18) Ma_inf(2,1) Ma_inf(2,2) ... Ma_inf(6,18)
+Ma_inf2ij.dat Ma_inf_inf(1,1) Ma_inf(7,2) ... Ma_inf(7,18) Ma_inf(8,1) Ma_inf(8,2) ... Ma_inf(12,18)
+Ma_inf3ij.dat Ma_inf_inf(1,1) Ma_inf(13,2) ... Ma_inf(13,18) Ma_inf(14,1) Ma_inf(14,2) ... Ma_inf(18,18)

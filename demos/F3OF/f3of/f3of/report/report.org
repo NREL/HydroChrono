@@ -1,0 +1,1346 @@
+#+TITLE: F3OF Modelling Results
+#+EXCLUDE_TAGS: noexport
+
+#+LATEX: \clearpage
+#+LaTeX_HEADER: \usepackage[T1]{fontenc}
+#+LaTeX_HEADER: \usepackage{mathpazo}
+#+LaTeX_HEADER: \linespread{1.05}
+#+LaTeX_HEADER: \usepackage[scaled]{helvet}
+#+LaTeX_HEADER: \usepackage{courier}
+
+* F3OF System Overview
+
+#+NAME:f3of_fig
+#+CAPTION: Schematic of the F3OF device.
+[[file:images/system/f3of.jpg]]
+
+Key parameters are taken from cite:Combourieu2015  \footnote{N.B. Some parameters given in `InWave - Validation Manual v1.0.0-beta2' differ to the paper.}
+
+#+tblname: f3of-data
+#+CAPTION: F3OF System - Key Parameters
+| Parameter                              |     Base |  Flap 1 |  Flap 2 |
+|---------------------------------------+----------+---------+---------|
+| Mass (kg)                             |  1089825 |  179250 |  179250 |
+| COG - x (m)                           |        0 |   -12.5 |    12.5 |
+| COG - y (m)                           |        0 |       0 |       0 |
+| COG - z (m)                           |       -9 |    -5.5 |    -5.5 |
+| Pitch inertia around body COG (kg.m2) | 76300000 | 1300000 | 1300000 |
+| Mooring stiffness (N/m)               |   100000 |     n/a |     n/a |
+
+#+LATEX: \clearpage
+* HDB
+#+BEGIN_SRC python :exports none
+  import numpy as np
+  import matplotlib.pyplot as plt
+
+  ### read inwave hdb
+  inw_hdb_B = np.loadtxt('./data/hdb/inw/inw_f3of_hdb_B.txt')
+  inw_hdb_Ma = np.loadtxt('./data/hdb/inw/inw_f3of_hdb_Ma.txt')
+  inw_w = np.loadtxt('./data/hdb/inw/inw_w.txt')
+
+  pds_hdb_loc = '../ref/PDS/HDB'
+  file_stem = 'PDS_F3OF_HDB'
+  hdb_param = 'Bij'
+  headers = 2
+
+  def read_pds_raw(num0, num1, hdb_param):
+      filepath = (pds_hdb_loc + '/' + file_stem + '_' + hdb_param + '_'
+                  + ('Body%d' % num0) + ('Body%d' % num1) + '.dat')
+      data = np.loadtxt(filepath, skiprows=headers)
+      freqs = data[:,0]
+      data = np.delete(data, 0, 1)
+      md_array = np.zeros((6, 6, len(freqs)))
+      for i in range(len(freqs)):
+          for j in range(6):
+              for k in range(6):
+                  md_array[j, k, i] = data[i, (j*6 + k)]
+      return(freqs, md_array)
+
+
+  def convert_pds_hdb(hdb_param):
+      # get number of freqs to create empty array
+      freqs, dat = read_pds_raw(0, 0, hdb_param)
+      big_array = np.zeros((18, 18, len(freqs)))
+      temp = []
+      for i in range(3):
+          for j in range(3):
+              freqs, sub_array = read_pds_raw(i, j, hdb_param)
+              temp.append(sub_array)
+      top_row = np.hstack((temp[0], temp[1], temp[2]))
+      mid_row = np.hstack((temp[3], temp[4], temp[5]))
+      bottom_row = np.hstack((temp[6], temp[7], temp[8]))
+      mdmat = np.vstack((top_row, mid_row, bottom_row))
+      return(freqs, mdmat)
+
+  def get_surge(data):
+      return (data[0, 0, :] + data[0, 6, :] + data[0, 12, :]
+              + data[6, 0, :] + data[6, 6, :] + data[6, 12, :]
+              + data[12, 0, :] + data[12, 6, :] + data[12, 12, :])
+
+  def get_heave(data):
+      return (data[2, 2, :] + data[2, 8, :] + data[2, 14, :]
+              + data[8, 2, :] + data[8, 8, :] + data[8, 14, :]
+              + data[14, 2, :] + data[14, 8, :] + data[14, 14, :])
+
+  hdb_dict = {0: 'surge',
+              1: 'heave',
+              2: 'pitch',
+              3: 'flap1_pitch',
+              4: 'flap2_pitch'}
+
+  pds_B_freqs, pds_B_dataset = convert_pds_hdb('Bij')
+  pds_Ma_freqs, pds_Ma_dataset = convert_pds_hdb('Maij')
+
+  # nemoh
+  nemoh_freqs = np.loadtxt('./data/hdb/zcog8-5/w.txt')
+  nemoh_B_dataset = np.load('./data/hdb/zcog8-5/Bw.npy')
+  nemoh_Ma_dataset = np.load('./data/hdb/zcog8-5/Ma.npy')
+  # wdn
+  wdn_B_dataset = np.load('./data/hdb/wdn_B.npy')
+  wdn_Ma_dataset = np.load('./data/hdb/wdn_Ma.npy')
+  wdn_freqs = np.linspace(0,6,298)
+
+  #fig = plt.figure(figsize=None)
+  #plt.plot(pds_B_freqs, pds_B_dataset[0, 17, :], 'r', label='WDN')
+  #plt.plot(pds_B_freqs, wdn_B_dataset[0, 17, :], 'r', label='WDN')
+  #plt.plot(nemoh_freqs, nemoh_B_dataset[0, 17, :], 'g', label='HOT')
+  #plt.legend(loc=0)
+  #plt.show()
+
+  # pds_B_data = [get_surge(pds_B_dataset),
+  #               get_heave(pds_B_dataset),
+  #               pds_B_dataset[4, 4, :],
+  #               pds_B_dataset[10, 10, :],
+  #               pds_B_dataset[16, 16, :]] 
+  # wdn_B_data = [get_surge(wdn_B_dataset),
+  #               get_heave(wdn_B_dataset),
+  #               wdn_B_dataset[4, 4, :],
+  #               wdn_B_dataset[10, 10, :],
+  #               wdn_B_dataset[16, 16, :]] 
+  # nemoh_B_data = [get_surge(nemoh_B_dataset),
+  #                 get_heave(nemoh_B_dataset),
+  #                 nemoh_B_dataset[4, 4, :],
+  #                 nemoh_B_dataset[10, 10, :],
+  #                 nemoh_B_dataset[16, 16, :]]
+
+  # pds_Ma_data = [get_surge(pds_Ma_dataset),
+  #               get_heave(pds_Ma_dataset),
+  #               pds_Ma_dataset[4, 4, :],
+  #               pds_Ma_dataset[10, 10, :],
+  #               pds_Ma_dataset[16, 16, :]] 
+  # wdn_Ma_data = [get_surge(wdn_Ma_dataset),
+  #                 get_heave(wdn_Ma_dataset),
+  #                 wdn_Ma_dataset[4, 4, :],
+  #                 wdn_Ma_dataset[10, 10, :],
+  #                 wdn_Ma_dataset[16, 16, :]]
+  # nemoh_Ma_data = [get_surge(nemoh_Ma_dataset),
+  #                   get_heave(nemoh_Ma_dataset),
+  #                   nemoh_Ma_dataset[4, 4, :],
+  #                   nemoh_Ma_dataset[10, 10, :],
+  #                   nemoh_Ma_dataset[16, 16, :]]
+
+  # for i in range(len(hdb_dict)):
+  #     fig = plt.figure(figsize=None)
+  #     #plt.plot(pds_B_freqs, pds_B_data[i], 'k', label="PDS")
+  #     plt.plot(wdn_freqs, wdn_B_data[i], 'r', label="WDN")
+  #     plt.plot(nemoh_freqs, nemoh_B_data[i], 'g', label="NEMOH")
+  #     plt.legend(loc=0)
+  #     #plt.xlabel('Wave Period (s)')
+  #     plt.ylabel('B_%s' %(hdb_dict[i]))
+  #     fig.tight_layout()
+  #     plt.savefig('images/hdb/' + 'wB_' + hdb_dict[i] + '.jpg')
+
+  # for i in range(len(hdb_dict)):
+  #     fig = plt.figure(figsize=None)
+  #     plt.plot(wdn_Ma_data[i], 'r', label="WDN")
+  #     plt.plot(pds_Ma_data[i], 'k', label="PDS")
+  #     plt.plot(nemoh_Ma_data[i], 'g', label="NEMOH")
+  #     plt.legend(loc=0)
+  #     #plt.xlabel('Wave Period (s)')
+  #     plt.ylabel('Ma_%s' %(hdb_dict[i]))
+  #     fig.tight_layout()
+  #     #plt.savefig('images/hdb/' + '1Ma_' + hdb_dict[i] + '.jpg')
+
+  def skew(x):
+      return np.array([[0, -x[2], x[1]],
+                      [x[2], 0, -x[0]],
+                      [-x[1], x[0], 0]])
+
+  R = np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]])
+
+  Pb = np.array([0, 0, 0.0])
+  P1 = np.array([-12.5, 0, -3.5])
+  P2 = np.array([12.5, 0, -3.5])
+
+  Pbskew = skew(Pb)
+  P1skew = skew(P1)
+  P2skew = skew(P2)
+
+  Xbfor = np.vstack((np.hstack((R, np.dot(R, Pbskew.transpose()))), np.hstack((np.zeros((3, 3)), R))))
+  Xbback = np.vstack((np.hstack((R, np.zeros((3, 3)))), np.hstack((np.dot(Pbskew, R), R))))
+
+  X1for = np.vstack((np.hstack((R, np.dot(R, P1skew.transpose()))), np.hstack((np.zeros((3, 3)), R))))
+  X1back = np.vstack((np.hstack((R, np.zeros((3, 3)))), np.hstack((np.dot(P1skew, R), R))))
+
+  X2for = np.vstack((np.hstack((R, np.dot(R, P2skew.transpose()))), np.hstack((np.zeros((3, 3)), R))))
+  X2back = np.vstack((np.hstack((R, np.zeros((3, 3)))), np.hstack((np.dot(P2skew, R), R))))
+
+  nm11 = nemoh_Ma_dataset[0:6, 0:6, :]
+  nm12 = nemoh_Ma_dataset[0:6, 6:12, :]
+  nm13 = nemoh_Ma_dataset[0:6, 12:18, :]
+  nm21 = nemoh_Ma_dataset[6:12, 0:6, :]
+  nm22 = nemoh_Ma_dataset[6:12, 6:12, :]
+  nm23 = nemoh_Ma_dataset[6:12, 12:18, :]
+  nm31 = nemoh_Ma_dataset[12:18, 0:6, :]
+  nm32 = nemoh_Ma_dataset[12:18, 6:12, :]
+  nm33 = nemoh_Ma_dataset[12:18, 12:18, :]
+
+  nb11 = nemoh_B_dataset[0:6, 0:6, :]
+  nb12 = nemoh_B_dataset[0:6, 6:12, :]
+  nb13 = nemoh_B_dataset[0:6, 12:18, :]
+  nb21 = nemoh_B_dataset[6:12, 0:6, :]
+  nb22 = nemoh_B_dataset[6:12, 6:12, :]
+  nb23 = nemoh_B_dataset[6:12, 12:18, :]
+  nb31 = nemoh_B_dataset[12:18, 0:6, :]
+  nb32 = nemoh_B_dataset[12:18, 6:12, :]
+  nb33 = nemoh_B_dataset[12:18, 12:18, :]
+
+  nm11c = np.zeros((6, 6, len(nemoh_freqs)))
+  nm12c = np.zeros((6, 6, len(nemoh_freqs)))
+  nm13c = np.zeros((6, 6, len(nemoh_freqs)))
+  nm21c = np.zeros((6, 6, len(nemoh_freqs)))
+  nm22c = np.zeros((6, 6, len(nemoh_freqs)))
+  nm23c = np.zeros((6, 6, len(nemoh_freqs)))
+  nm31c = np.zeros((6, 6, len(nemoh_freqs)))
+  nm32c = np.zeros((6, 6, len(nemoh_freqs)))
+  nm33c = np.zeros((6, 6, len(nemoh_freqs)))
+  nb11c = np.zeros((6, 6, len(nemoh_freqs)))
+  nb12c = np.zeros((6, 6, len(nemoh_freqs)))
+  nb13c = np.zeros((6, 6, len(nemoh_freqs)))
+  nb21c = np.zeros((6, 6, len(nemoh_freqs)))
+  nb22c = np.zeros((6, 6, len(nemoh_freqs)))
+  nb23c = np.zeros((6, 6, len(nemoh_freqs)))
+  nb31c = np.zeros((6, 6, len(nemoh_freqs)))
+  nb32c = np.zeros((6, 6, len(nemoh_freqs)))
+  nb33c = np.zeros((6, 6, len(nemoh_freqs)))
+
+  for i in range(len(nemoh_freqs)):
+      nm11c[:, :, i] = np.linalg.multi_dot([Xbback, nm11[:, :, i], Xbfor])
+      nm12c[:, :, i] = np.linalg.multi_dot([Xbback, nm12[:, :, i], X1for])
+      nm13c[:, :, i] = np.linalg.multi_dot([Xbback, nm13[:, :, i], X2for])
+      nm21c[:, :, i] = np.linalg.multi_dot([X1back, nm21[:, :, i], Xbfor])
+      nm22c[:, :, i] = np.linalg.multi_dot([X1back, nm22[:, :, i], X1for])
+      nm23c[:, :, i] = np.linalg.multi_dot([X1back, nm23[:, :, i], X2for])
+      nm31c[:, :, i] = np.linalg.multi_dot([X2back, nm31[:, :, i], Xbfor])
+      nm32c[:, :, i] = np.linalg.multi_dot([X2back, nm32[:, :, i], X1for])
+      nm33c[:, :, i] = np.linalg.multi_dot([X2back, nm33[:, :, i], X2for])
+
+  for i in range(len(nemoh_freqs)):
+      nb11c[:, :, i] = np.linalg.multi_dot([Xbback, nb11[:, :, i], Xbfor])
+      nb12c[:, :, i] = np.linalg.multi_dot([Xbback, nb12[:, :, i], X1for])
+      nb13c[:, :, i] = np.linalg.multi_dot([Xbback, nb13[:, :, i], X2for])
+      nb21c[:, :, i] = np.linalg.multi_dot([X1back, nb21[:, :, i], Xbfor])
+      nb22c[:, :, i] = np.linalg.multi_dot([X1back, nb22[:, :, i], X1for])
+      nb23c[:, :, i] = np.linalg.multi_dot([X1back, nb23[:, :, i], X2for])
+      nb31c[:, :, i] = np.linalg.multi_dot([X2back, nb31[:, :, i], Xbfor])
+      nb32c[:, :, i] = np.linalg.multi_dot([X2back, nb32[:, :, i], X1for])
+      nb33c[:, :, i] = np.linalg.multi_dot([X2back, nb33[:, :, i], X2for])
+
+  nemPitchB = np.zeros([300])
+  nemPitchMa = np.zeros([300])
+  x = 4
+  y = 4
+  #### Compare with InWave hdb results
+  for i in range(len(nemoh_freqs)):
+      nemPitchB[i] = 0
+      nemPitchB[i] += nb11c[x,y,i] + nb22c[x,y,i] + nb33c[x,y,i]
+      nemPitchB[i] += nb12c[x,y,i] + nb13c[x,y,i] + nb21c[x,y,i] + nb23c[x,y,i] + nb31c[x,y,i] + nb32c[x,y,i]
+  for i in range(len(nemoh_freqs)):
+      nemPitchMa[i] = 0
+      nemPitchMa[i] += nm11c[x,y,i] + nm22c[x,y,i] + nm33c[x,y,i]
+      nemPitchMa[i] += nm12c[x,y,i] + nm13c[x,y,i] + nm21c[x,y,i] + nm23c[x,y,i] + nm31c[x,y,i] + nm32c[x,y,i]
+
+  # fig = plt.figure(figsize=None)
+  # plt.plot(nemoh_freqs, nemPitchB)
+  # #plt.show()
+  # np.savetxt('nemPitchB', nemPitchB)
+
+  # pds_B_data = [get_surge(pds_B_dataset),
+  #               get_heave(pds_B_dataset),
+  #               pds_B_dataset[4, 4, :],
+  #               pds_B_dataset[10, 10, :],
+  #               pds_B_dataset[16, 16, :]]
+  nemoh_B_data = [get_surge(nemoh_B_dataset),
+                  get_heave(nemoh_B_dataset),
+                  nemPitchB,
+                  #nemoh_B_dataset[4, 4, :],
+                  #nemoh_B_dataset[10, 10, :],
+                  nb22c[4, 4, :],
+                  #nemoh_B_dataset[16, 16, :]]
+                  nb33c[4, 4, :]]
+
+  # pds_Ma_data = [get_surge(pds_Ma_dataset),
+  #                 get_heave(pds_Ma_dataset),
+  #                 pds_Ma_dataset[4, 4, :],
+  #                 pds_Ma_dataset[10, 10, :],
+  #                pds_Ma_dataset[16, 16, :]]
+  nemoh_Ma_data = [get_surge(nemoh_Ma_dataset),
+                    get_heave(nemoh_Ma_dataset),
+                    nemPitchMa,
+                    #nemoh_Ma_dataset[4, 4, :],
+                    #nemoh_Ma_dataset[10, 10, :],
+                    nm22c[4, 4, :],
+                    #nemoh_Ma_dataset[16, 16, :]]
+                    nm33c[4, 4, :]]
+
+  # plt.plot(nm22c[4, 4, :])
+  # plt.show()
+
+  for i in range(len(hdb_dict)):
+      fig = plt.figure(figsize=None)
+      #plt.plot(pds_B_freqs, pds_B_data[i], 'k', label="PDS")
+      #plt.plot(wdn_freqs, wdn_B_data[i], 'r', label="WDN")
+      plt.plot(inw_w, inw_hdb_B[:,i], 'b', label="InWave")
+      plt.plot(nemoh_freqs, nemoh_B_data[i], 'r--', label="Nemoh")
+      plt.legend(loc=0)
+      plt.xlabel('Frequency (rad/s)')
+      plt.ylabel('B_%s' %(hdb_dict[i]))
+      fig.tight_layout()
+      plt.savefig('images/hdb/' + 'B_' + hdb_dict[i] + '.eps', dpi=1000)
+
+  for i in range(len(hdb_dict)):
+      fig = plt.figure(figsize=None)
+      #plt.plot(pds_Ma_freqs, pds_Ma_data[i], 'k', label="PDS")
+      #plt.plot(nemoh_freqs, nemoh_Ma_data[i], 'g', label="NEMOH")
+      plt.plot(inw_w, inw_hdb_Ma[:,i], 'b', label="InWave")
+      plt.plot(nemoh_freqs, nemoh_Ma_data[i], 'r--', label="Nemoh")
+      plt.legend(loc=0)
+      plt.xlabel('Frequency (rad/s)')
+      plt.ylabel('Ma_%s' %(hdb_dict[i]))
+      fig.tight_layout()
+      plt.savefig('images/hdb/' + 'Ma_' + hdb_dict[i] + '.eps', dpi=1000)
+
+  # for i in range(len(hdb_dict)):
+  #     fig = plt.figure(figsize=None)
+  #     #plt.plot(pds_B_freqs, pds_B_data[i], 'k', label="PDS")
+  #     plt.plot(wdn_freqs, wdn_B_data[i], 'r', label="WDN")
+  #     plt.plot(nemoh_freqs, nemoh_B_data[i], 'g', label="NEMOH")
+  #     plt.legend(loc=0)
+  #     #plt.xlabel('Wave Period (s)')
+  #     plt.ylabel('B_%s' %(hdb_dict[i]))
+  #     fig.tight_layout()
+  #     plt.savefig('images/hdb/' + 'wB_' + hdb_dict[i] + '.jpg')
+
+
+#+END_SRC
+
+#+RESULTS:
+: None
+
+
+
+** Added Mass
+
+    #+CAPTION: HDB Comparison: Added Mass in Surge Comparison.
+    [[file:images/hdb/Ma_surge.eps]]
+
+    #+CAPTION: HDB Comparison: Added Mass in Heave Comparison.
+    [[file:images/hdb/Ma_heave.eps]]
+
+    #+CAPTION: HDB Comparison: Added Mass in Pitch Comparison.
+    [[file:images/hdb/Ma_pitch.eps]]
+
+# #+LATEX: \clearpage
+# *** Pitch for Individual Bodies
+#     #+CAPTION: HDB: Base Pitch Comparison.
+#     [[file:images/hdb/Ma_base_pitch.jpg]]
+    
+#     #+CAPTION: HDB: Flap 1 Pitch Comparison.
+#     [[file:images/hdb/Ma_flap1_pitch.jpg]]
+
+#     #+CAPTION: HDB: Flap 2 Pitch Comparison
+#     [[file:images/hdb/Ma_flap2_pitch.jpg]]
+
+#+LATEX: \clearpage
+** Damping
+
+# *** Surge & Heave
+    #+CAPTION: HDB Comparison: Radiation Damping in Surge.
+    [[file:images/hdb/B_surge.eps]]
+
+    #+CAPTION: HDB Comparison: Radiation Damping in Heave.
+    [[file:images/hdb/B_heave.eps]]
+
+    #+CAPTION: HDB Comparison: Radiation Damping in Pitch.
+    [[file:images/hdb/B_pitch.eps]]
+
+
+# #+LATEX: \clearpage
+# *** Pitch for Individual Bodies
+#     #+CAPTION: HDB: Base Pitch Comparison.
+#     [[file:images/hdb/B_base_pitch.jpg]]
+    
+#     #+CAPTION: HDB: Flap 1 Pitch Comparison.
+#     [[file:images/hdb/B_flap1_pitch.jpg]]
+
+#     #+CAPTION: HDB: Flap 2 Pitch Comparison
+#     [[file:images/hdb/B_flap2_pitch.jpg]]
+
+
+
+
+#+LATEX: \clearpage
+#+LATEX: \clearpage
+* Decay Tests
+** Initial Position Calculations 
+*** DT1
+
+Linear translation:
+
+\begin{equation}
+\overrightarrow{p}_{new} = \overrightarrow{p}_{eq} + \overrightarrow{offset}
+\end{equation}
+
+Where,
+
+\begin{equation}
+\overrightarrow{offset} = \begin{bmatrix} 
+                              5\\ 
+                              0\\
+                              0 
+                          \end{bmatrix} m
+\end{equation}
+
+#+BEGIN_SRC python :var tbl=f3of-data :results output :exports results
+import numpy as np
+
+offset = np.array([5, 0, 0])
+
+base_eq = np.array([tbl[1][1], tbl[2][1], tbl[3][1]])
+base_pos = base_eq + offset
+
+flap1_eq = np.array([tbl[1][2], tbl[2][2], tbl[3][2]])
+flap1_pos = flap1_eq + offset
+
+flap2_eq = np.array([tbl[1][3], tbl[2][3], tbl[3][3]])
+flap2_pos = flap2_eq + offset
+
+print("DT1 Base Position : ", base_pos.tolist())
+print("DT1 Flap 1 Position : ", flap1_pos.tolist())
+print("DT1 Flap 2 Position : ", flap2_pos.tolist())
+#+END_SRC
+#+CAPTION: DT1 Initial Position Vectors
+#+RESULTS:
+: ('Base Position : ', [5, 0, -9])
+: ('Flap 1 Position : ', [-7.5, 0.0, -5.5])
+: ('Flap 2 Position : ', [17.5, 0.0, -5.5])
+
+#+CAPTION: DT1: Initial position.
+#+NAME:   fig:SED-HR4049
+#+ATTR_HTML: width="100px"
+#+ATTR_ORG: :width 100
+[[file:images/system/dt1.png]]
+
+#+LATEX: \newpage
+*** DT2
+
+ Rotate whole system by 10 degrees (about the y axis of the base).
+
+ #+BEGIN_SRC python :var tbl=f3of-data :results output :exports results
+ import numpy as np
+
+ rot = np.radians(1.0)
+ rotmat = np.array([[np.cos(rot), 0, np.sin(rot)], [0, 1, 0], [-np.sin(rot), 0, np.cos(rot)]])
+
+ base_eq_loc = np.array([0, 0, 0])
+ base_eq_glo = np.array([0, 0, -9])
+ #base_eq = np.array([tbl[1][1], tbl[2][1], tbl[3][1]])
+ base_pos = rotmat.dot(base_eq_loc) + base_eq_glo
+
+ flap1_eq_glo = np.array([tbl[1][2], tbl[2][2], tbl[3][2]])
+ flap1_eq_loc = flap1_eq_glo - base_eq_glo
+ flap1_pos = rotmat.dot(flap1_eq_loc) + base_eq_glo
+
+ flap2_eq_glo = np.array([tbl[1][3], tbl[2][3], tbl[3][3]])
+ flap2_eq_loc = flap2_eq_glo - base_eq_glo
+ flap2_pos = rotmat.dot(flap2_eq_loc) + base_eq_glo
+
+ print("DT2 Base Position : ", base_pos.tolist())
+ print("DT2 Flap 1 Position : ", flap1_pos.round(decimals=3).tolist())
+ print("DT2 Flap 2 Position : ", flap2_pos.round(decimals=3).tolist())
+ #+END_SRC
+
+ #+RESULTS:
+ : ('DT2 Base Position : ', [0.0, 0.0, -9.0])
+ : ('DT2 Flap 1 Position : ', [-12.437, 0.0, -5.282])
+ : ('DT2 Flap 2 Position : ', [12.559, 0.0, -5.719])
+
+ #+CAPTION: DT2: Initial position. 
+ #+NAME:   fig:SED-HR4049
+ #+ATTR_HTML: width="100px"
+ #+ATTR_ORG: :width 100
+ [[file:images/system/dt2.png]]
+
+
+ #+LATEX: \newpage
+*** DT3
+
+ Rotate flap 1 by 10 degrees.
+
+ #+BEGIN_SRC python :var tbl=f3of-data :results output :exports results
+ import numpy as np
+
+ rot = np.radians(10.0)
+ rotmat = np.array([[np.cos(rot), 0, np.sin(rot)], [0, 1, 0], [-np.sin(rot), 0, np.cos(rot)]])
+
+ base_eq = np.array([tbl[1][1], tbl[2][1], tbl[3][1]])
+ base_hinge1 = np.array([-12.5, 0, 0])
+
+ flap1_eq = np.array([tbl[1][2], tbl[2][2], tbl[3][2]])
+ hinge1 = base_eq + base_hinge1
+ hinge_flap1 = hinge1 - flap1_eq
+ flap1_pos = base_hinge1 + base_eq - rotmat.dot(hinge_flap1) #hinge_flap1 - flap1_eq - rotmat.dot(hinge_flap1)
+
+ flap2_eq = np.array([tbl[1][3], tbl[2][3], tbl[3][3]])
+
+ print("DT2 Base Position : ", base_eq.tolist())
+ print("DT2 Flap 1 Position : ", flap1_pos.round(decimals=3).tolist())
+ print("DT2 Flap 2 Position : ", flap2_eq.tolist())
+ #+END_SRC
+
+ #+RESULTS:
+ : ('DT2 Base Position : ', [0, 0, -9])
+ : ('DT2 Flap 1 Position : ', [-11.892, 0.0, -5.553])
+ : ('DT2 Flap 2 Position : ', [12.5, 0.0, -5.5])
+
+
+ #+CAPTION: DT3: Initial position. 
+ #+NAME:   fig:SED-HR4049
+ #+ATTR_HTML: width="100px"
+ #+ATTR_ORG: :width 100
+ [[file:images/system/dt3.png]]
+
+
+
+ #+LATEX: \newpage
+
+
+
+
+
+#+LATEX: \clearpage
+#+LATEX: \clearpage
+* Time Domain Comparison
+** Decay Tests
+    # decay test time domain comparison
+#+BEGIN_SRC python :exports none
+import numpy as np
+import matplotlib.pyplot as plt
+from collections import OrderedDict
+from latexify import latexify
+
+def read_dec_ref(code):
+    # define the reference data location and filenames
+    ref_loc = '../ref/'
+    dat_path = ref_loc + code + '/DT1-3/'
+    filenames = [code + '_F3OF_DT1_HEAVE.dat',
+                code + '_F3OF_DT1_PITCH.dat',
+                code + '_F3OF_DT1_SURGE.dat',
+                code + '_F3OF_DT2_HEAVE.dat',
+                code + '_F3OF_DT2_PITCH.dat',
+                code + '_F3OF_DT2_SURGE.dat',
+                code + '_F3OF_DT3_FLAP1.dat',
+                code + '_F3OF_DT3_FLAP2.dat']
+    ## define sim lengths and create empty array
+    #num_dec_files = len(filenames)
+    #dec_dat = np.zeros((len(t_vec), num_dec_files))
+    # read the data
+    if code == 'PDS':
+        headers = 1
+    else:
+        headers = 5
+    num_lines = sum(1 for line in open(dat_path + filenames[0])) - headers
+    dec_dat = np.zeros((num_lines, 2, len(filenames)))
+    for i, name in enumerate(filenames):
+        data = np.loadtxt(dat_path + name, skiprows=headers)
+        for j in range(num_lines):
+            dec_dat[j,0,i] = data[j,0]
+            dec_dat[j,1,i] = data[j,1]
+    return(dec_dat)
+
+def get_hot(path):
+    hot_raw_files = [path + 'dt1.txt', path + 'dt2.txt', path + 'dt3.txt']
+    headers = 3
+    dofs = OrderedDict([('HEAVE', 4), ('PITCH', 6), ('SURGE', 2), ('FLAP1', 12), ('FLAP2', 18)])
+    num_lines = sum(1 for line in open(hot_raw_files[0])) - headers
+    dec_dat = np.zeros((num_lines, 2, len(hot_raw_files)*len(dofs)))
+    for i, file in enumerate(hot_raw_files):
+        data = np.loadtxt(file, skiprows=headers)
+        for j, dof in enumerate(dofs):
+            for k in range(num_lines):
+                dec_dat[k, 0, (i*len(dofs) + j)] = data[k, 0]
+                if ((dof == 'PITCH') or (dof=='FLAP1') or (dof=='FLAP2')):
+                    dec_dat[k, 1, (i*len(dofs) + j)] = np.rad2deg(data[k, (dofs[dof])])
+                else:
+                    dec_dat[k, 1, (i*len(dofs) + j)] = data[k, (dofs[dof])]
+    return(dec_dat)
+
+hot_dat = get_hot('../data/DT/')
+# remove superfluous arrays from hotint data
+hot_dat = np.delete(hot_dat, [3,4,8,9,10,11,12], 2)
+
+inw_dat = read_dec_ref('INW')
+pds_dat = read_dec_ref('PDS')
+wdn_dat = read_dec_ref('WDN')
+
+#matplotlib.use('Agg')
+test_list = ['DT1_HEAVE',
+            'DT1_PITCH',
+            'DT1_SURGE',
+            'DT2_HEAVE',
+            'DT2_PITCH',
+            'DT2_SURGE',
+            'DT3_FLAP1',
+            'DT3_FLAP2']
+
+y_axis_labels = ['Base Heave (m)',
+                 'Base Pitch (deg)',
+                 'Base Surge (m)',
+                 'Base Heave (m)',
+                 'Base Pitch (deg)',
+                 'Base Surge (m)',
+                 'Flap 1 Pitch (deg)',
+                 'Flap 2 Pitch (deg)']
+
+ltx = latexify.Latexify()
+ltx.latexify()
+
+for i in range(hot_dat.shape[2]):
+    fig = plt.figure(figsize=None)
+    plt.plot(wdn_dat[:,0,i], wdn_dat[:,1,i], '-', label="WaveDyn", color='#872b22', linewidth=0.5)
+    plt.plot(pds_dat[:,0,i], pds_dat[:,1,i], '-', label="ProteusDS", color='#ff905f', linewidth=0.5)
+    plt.plot(inw_dat[:,0,i], inw_dat[:,1,i], '-', label="InWave", color='#3a93c9', linewidth=0.5)
+    plt.plot(hot_dat[:,0,i], hot_dat[:,1,i], '-', label="InWave-HOTINT", color='#212121', linewidth=0.5)
+    #plt.legend(loc=0)
+    #handles, labels = ax.get_legend_handles_labels()
+    #ax.legend(handles[::-1], labels[::-1], loc=0)
+    handles, labels = plt.gca().get_legend_handles_labels()
+    order = [3,2,1,0]
+    plt.legend([handles[idx] for idx in order],[labels[idx] for idx in order])
+    plt.grid(0)
+    plt.xlim(0,500)
+    plt.xlabel('Time (s)')
+    plt.ylabel('%s' %(y_axis_labels[i]))
+    fig.tight_layout() 
+    plt.savefig('images/dt/' + test_list[i] + '.pdf', dpi=1000)
+    #plt.show()
+
+for i in range(hot_dat.shape[2]):
+    fig = plt.figure(figsize=None)
+    plt.plot(wdn_dat[:,0,i], wdn_dat[:,1,i], '-', label="WaveDyn", color='#872b22', linewidth=0.5)
+    plt.plot(pds_dat[:,0,i], pds_dat[:,1,i], '-', label="ProteusDS", color='#ff905f', linewidth=0.5)
+    plt.plot(inw_dat[:,0,i], inw_dat[:,1,i], '-', label="InWave", color='#3a93c9', linewidth=0.5)
+    plt.plot(hot_dat[:,0,i], hot_dat[:,1,i], '-', label="InWave-HOTINT", color='#212121', linewidth=0.5)
+    #plt.legend(loc=0)
+    #handles, labels = ax.get_legend_handles_labels()
+    #ax.legend(handles[::-1], labels[::-1], loc=0)
+    handles, labels = plt.gca().get_legend_handles_labels()
+    order = [3,2,1,0]
+    plt.legend([handles[idx] for idx in order],[labels[idx] for idx in order])
+    plt.grid(0)
+    plt.xlabel('Time (s)')
+    plt.xlim(0,80)
+    plt.ylabel('%s' %(y_axis_labels[i]))
+    fig.tight_layout()
+    plt.savefig('images/dtzoom/' + test_list[i] + '.pdf', dpi=1000)
+    #plt.show()
+
+
+#fig=plt.figure(figsize=(6,4))
+#plt.plot(inw_dat[:,2], 'b', label="INW")
+#fig.tight_layout()
+#plt.savefig('images/myfig.jpg')
+#return 'images/myfig.jpg' # return this to org-mode
+#+END_SRC
+
+#+RESULTS:
+: None
+
+
+# separate script to reproduce same decay test 1 plot but for 125s rirf200s
+#+BEGIN_SRC python :exports none
+import numpy as np
+import matplotlib.pyplot as plt
+from collections import OrderedDict
+from latexify import latexify
+
+def read_dec_ref(code):
+    # define the reference data location and filenames
+    ref_loc = '../ref/'
+    dat_path = ref_loc + code + '/DT1-3/'
+    filenames = [code + '_F3OF_DT1_HEAVE.dat',
+                code + '_F3OF_DT1_PITCH.dat',
+                code + '_F3OF_DT1_SURGE.dat',
+                code + '_F3OF_DT2_HEAVE.dat',
+                code + '_F3OF_DT2_PITCH.dat',
+                code + '_F3OF_DT2_SURGE.dat',
+                code + '_F3OF_DT3_FLAP1.dat',
+                code + '_F3OF_DT3_FLAP2.dat']
+    ## define sim lengths and create empty array
+    #num_dec_files = len(filenames)
+    #dec_dat = np.zeros((len(t_vec), num_dec_files))
+    # read the data
+    if code == 'PDS':
+        headers = 1
+    else:
+        headers = 5
+    num_lines = sum(1 for line in open(dat_path + filenames[0])) - headers
+    dec_dat = np.zeros((num_lines, 2, len(filenames)))
+    for i, name in enumerate(filenames):
+        data = np.loadtxt(dat_path + name, skiprows=headers)
+        for j in range(num_lines):
+            dec_dat[j,0,i] = data[j,0]
+            dec_dat[j,1,i] = data[j,1]
+    return(dec_dat)
+
+def get_hot(path):
+    hot_raw_files = [path + 'dt1.txt', path + 'dt2.txt', path + 'dt3.txt']
+    headers = 3
+    dofs = OrderedDict([('HEAVE', 4), ('PITCH', 6), ('SURGE', 2), ('FLAP1', 12), ('FLAP2', 18)])
+    num_lines = sum(1 for line in open(hot_raw_files[0])) - headers
+    dec_dat = np.zeros((num_lines, 2, len(hot_raw_files)*len(dofs)))
+    for i, file in enumerate(hot_raw_files):
+        data = np.loadtxt(file, skiprows=headers)
+        for j, dof in enumerate(dofs):
+            for k in range(num_lines):
+                dec_dat[k, 0, (i*len(dofs) + j)] = data[k, 0]
+                if ((dof == 'PITCH') or (dof=='FLAP1') or (dof=='FLAP2')):
+                    dec_dat[k, 1, (i*len(dofs) + j)] = np.rad2deg(data[k, (dofs[dof])])
+                else:
+                    dec_dat[k, 1, (i*len(dofs) + j)] = data[k, (dofs[dof])]
+    return(dec_dat)
+
+#hot_dat = get_hot('../data/DT/')
+# remove superfluous arrays from hotint data
+#hot_dat = np.delete(hot_dat, [3,4,8,9,10,11,12], 2)
+
+hot_dt1 = np.loadtxt('../results/decays/rirf125s/surge_decay.txt')
+hot_surge = hot_dt1[:, 2]
+
+inw_dat = read_dec_ref('INW')
+pds_dat = read_dec_ref('PDS')
+wdn_dat = read_dec_ref('WDN')
+
+#matplotlib.use('Agg')
+test_list = ['DT1_HEAVE',
+            'DT1_PITCH',
+            'DT1_SURGE',
+            'DT2_HEAVE',
+            'DT2_PITCH',
+            'DT2_SURGE',
+            'DT3_FLAP1',
+            'DT3_FLAP2']
+
+y_axis_labels = ['Base Heave (m)',
+                  'Base Pitch (deg)',
+                  'Base Surge (m)',
+                  'Base Heave (m)',
+                  'Base Pitch (deg)',
+                  'Base Surge (m)',
+                  'Flap 1 Pitch (deg)',
+                  'Flap 2 Pitch (deg)']
+
+ltx = latexify.Latexify()
+ltx.latexify()
+
+fig = plt.figure(figsize=None)
+plt.plot(wdn_dat[:,0,2], wdn_dat[:,1,2], '-', label="WaveDyn", color='#872b22', linewidth=0.5)
+plt.plot(pds_dat[:,0,2], pds_dat[:,1,2], '-', label="ProteusDS", color='#ff905f', linewidth=0.5)
+plt.plot(inw_dat[:,0,2], inw_dat[:,1,2], '-', label="InWave", color='#3a93c9', linewidth=0.5)
+plt.plot(hot_dt1[:,0], hot_dt1[:,2], '-', label="InWave-HOTINT", color='#212121', linewidth=0.5)
+#plt.legend(loc='lower left')
+handles, labels = plt.gca().get_legend_handles_labels()
+order = [3,2,1,0]
+plt.legend([handles[idx] for idx in order],[labels[idx] for idx in order], loc='lower left')
+#plt.grid(1)
+plt.xlim(0,500)
+plt.xlabel('Time (s)')
+plt.ylabel('%s' %(y_axis_labels[2]))
+fig.tight_layout()
+plt.savefig('images/dt/DT1_SURGE_RIRF125s.pdf', dpi=1000)
+
+# for i in range(hot_dat.shape[2]):
+#     fig = plt.figure(figsize=None)
+#     plt.plot(wdn_dat[:,0,i], wdn_dat[:,1,i], '-', label="WaveDyn", color='#2ca02c', linewidth=0.8)
+#     plt.plot(pds_dat[:,0,i], pds_dat[:,1,i], '-', label="ProteusDS", color='#9467bd', linewidth=0.8)
+#     plt.plot(inw_dat[:,0,i], inw_dat[:,1,i], '-', label="InWave", color='#d62728', linewidth=0.8)
+#     plt.plot(hot_dat[:,0,i], hot_dat[:,1,i], '-', label="InWave+H", color='#1f77b4', linewidth=0.8)
+#     plt.legend(loc=0)
+#     plt.grid(1)
+#     plt.xlim(0,500)
+#     plt.xlabel('Time (s)')
+#     plt.ylabel('%s' %(y_axis_labels[i]))
+#     fig.tight_layout()
+#     plt.savefig('images/dt/' + test_list[i] + '.pdf', dpi=1000)
+#     #plt.show()
+
+# for i in range(hot_dat.shape[2]):
+#     fig = plt.figure(figsize=None)
+#     plt.plot(wdn_dat[:,0,i], wdn_dat[:,1,i], '-', label="WaveDyn", color='#2ca02c', linewidth=0.8)
+#     plt.plot(pds_dat[:,0,i], pds_dat[:,1,i], '-', label="ProteusDS", color='#9467bd', linewidth=0.8)
+#     plt.plot(inw_dat[:,0,i], inw_dat[:,1,i], '-', label="InWave", color='#d62728', linewidth=0.8)
+#     plt.plot(hot_dat[:,0,i], hot_dat[:,1,i], '-', label="InWave+H", color='#1f77b4', linewidth=0.8)
+#     plt.legend(loc=0)
+#     plt.grid(1)
+#     plt.xlabel('Time (s)')
+#     plt.xlim(0,80)
+#     plt.ylabel('%s' %(y_axis_labels[i]))
+#     fig.tight_layout()
+#     plt.savefig('images/dtzoom/' + test_list[i] + '.pdf', dpi=1000)
+#     #plt.show()
+
+#fig=plt.figure(figsize=(6,4))
+#plt.plot(inw_dat[:,2], 'b', label="INW")
+#fig.tight_layout()
+#plt.savefig('images/myfig.jpg')
+#return 'images/myfig.jpg' # return this to org-mode
+#+END_SRC
+ 
+    #+RESULTS:
+    : None
+
+*** DT1
+    #+CAPTION: Decay Tests: DT1 Surge Comparison.
+    [[file:images/dt/DT1_SURGE.pdf]]
+
+Clear problem in surge decay results arising from the radiation impulse response function (RIRF).
+
+#+BEGIN_SRC python :exports none
+  import numpy as np
+  import matplotlib.pyplot as plt
+  from latexify import latexify
+  import matplotlib
+  from math import sqrt
+  SPINE_COLOR = 'gray'
+
+  rirf200s = np.loadtxt('../results/decays/rirf200s/krad.txt')
+  rirf125s = np.loadtxt('../results/decays/rirf125s/krad.txt')
+
+  f_rirf200s = np.loadtxt('../results/decays/rirf200s/f_bod_heave.txt')
+  f_rirf125s = np.loadtxt('../results/decays/rirf125s/f_bod_heave.txt')
+
+  dt = 0.05
+
+  f_rad_rirf200s = f_rirf200s[:, 1]
+  f_rad_rirf125s = f_rirf125s[:, 1]
+
+  tvec_500 = np.arange(0, len(f_rad_rirf200s)*dt, dt)
+  tvec_200 = np.arange(0, len(rirf200s[:,0])*dt, dt)
+  tvec_125 = np.arange(0, len(rirf125s[:,0])*dt, dt)
+
+  ltx = latexify.Latexify()
+  ltx.latexify()
+
+  plt.plot(tvec_500, f_rad_rirf200s, '-', label="InWave-HOTINT (200s RIRF)", color='#212121', linewidth=0.5)
+  plt.xlim(0.0, 500.0)
+  plt.xlabel('Time (s)')
+  plt.ylabel(r'$\vec{f}_{rad}$' '(N)')
+  plt.legend(loc=0)
+  #plt.grid(1)
+  plt.tight_layout()
+  plt.savefig('images/frad/f_rad_rirf200s.pdf', dpi=1000)
+  plt.close()
+
+  plt.plot(tvec_500, f_rad_rirf125s, '-', label="InWave-HOTINT (125s RIRF)", color='#212121', linewidth=0.5)
+  plt.xlim(0.0, 500.0)
+  plt.xlabel('Time (s)')
+  plt.ylabel(r'$\vec{f}_{rad}$' '(N)')
+  plt.legend(loc=0)
+  #plt.grid(1)
+  plt.tight_layout()
+  plt.savefig('images/frad/f_rad_rirf125s.pdf', dpi=1000)
+
+  # hack: just reproduced and recalled functions here to get 1.5*figure height for 3x1 subplots figure...
+
+  def nlatexify(fig_width=None, fig_height=None, columns=1):
+      #if fig_width is None:
+      #    fig_width = 3.39 if columns==1 else 6.9 # width in inches
+
+      #if fig_height is None:
+      #    golden_mean = (sqrt(5)-1.0)/2.0    # Aesthetic ratio
+
+      #fig_width = (3.39*1.25)
+      #fig_height = 2.618919027 #2.095135222 #fig_width*golden_mean # height in inches
+
+      fig_width = 3.39
+      fig_height = 2.095135222*1.5 #fig_width*golden_mean # height in inches
+
+      MAX_HEIGHT_INCHES = 8.0
+      if fig_height > MAX_HEIGHT_INCHES:
+          print("WARNING: fig_height too large:" + fig_height + 
+              "so will reduce to" + MAX_HEIGHT_INCHES + "inches.")
+          fig_height = MAX_HEIGHT_INCHES
+
+      params = {'backend': 'ps',
+              'text.latex.preamble': ['\usepackage{gensymb}'],
+              'axes.labelsize': 6, # fontsize for x and y labels (was 10)
+              'axes.titlesize': 8,
+              'font.size': 8, # was 10
+              'legend.fontsize': 5, # was 10
+              'xtick.labelsize': 6,
+              'ytick.labelsize': 6,
+              'text.usetex': True,
+              'figure.figsize': [fig_width,fig_height],
+              'font.family': 'serif',
+              'font.sans-serif': 'Palatino'
+      }
+
+      matplotlib.rcParams.update(params)
+
+
+  def nformat_axes(ax):
+
+      for spine in ['top', 'right']:
+          ax.spines[spine].set_visible(False)
+
+      for spine in ['left', 'bottom']:
+          ax.spines[spine].set_color(SPINE_COLOR)
+          ax.spines[spine].set_linewidth(0.5)
+
+      ax.xaxis.set_ticks_position('bottom')
+      ax.yaxis.set_ticks_position('left')
+
+      for axis in [ax.xaxis, ax.yaxis]:
+          axis.set_tick_params(direction='out', color=SPINE_COLOR)
+
+      return ax
+
+  #nlatexify()
+
+  golden_mean = (sqrt(5)-1.0)/2.0
+  fig_width = 3.39
+  fig_height = fig_width*golden_mean*1.5 # height in inches
+
+  params = {'backend': 'ps',
+          'text.latex.preamble': ['\usepackage{gensymb}'],
+          'text.latex.preamble': ['\usepackage{amsmath}'],
+          'text.latex.preamble': ['\usepackage{xfrac}'],
+          'axes.labelsize': 8, # fontsize for x and y labels (was 10)
+          'axes.titlesize': 8,
+          'font.size': 8, # was 10
+          'legend.fontsize': 5, # was 10
+          'xtick.labelsize': 6,
+          'ytick.labelsize': 6,
+          'text.usetex': True,
+          'figure.figsize': [fig_width,fig_height],
+          'font.family': 'serif',
+          'font.sans-serif': 'Palatino'
+          }
+  matplotlib.rcParams.update(params)
+
+  fig, (ax1, ax2, ax3) = plt.subplots(3, 1, sharex=True)
+  ax1.plot(tvec_200, rirf200s[:,0], '-', label="Base", color='#212121', linewidth=0.5)
+  #ax1.set_ylabel(r'($kg\cdot s^{-1}$)')
+  ax1.legend(loc=0)
+  ax1.set_ylabel('$\sfrac{N}{m}$')
+  ax2.plot(tvec_200, rirf200s[:,1], '-', label="Flap 1", color='#212121', linewidth=0.5)
+  #ax2.set_ylabel(r'($kg\cdot s^{-1}$)')
+  ax2.legend(loc=0)
+  ax2.set_ylabel('$\sfrac{N}{m}$')
+  ax3.plot(tvec_200, rirf200s[:,2], '-', label="Flap 2", color='#212121', linewidth=0.5)
+  ax3.set_ylabel('$\sfrac{N}{m}$')
+  ax3.set_xlabel('Time (s)')
+  #ax3.set_ylabel(r'($kg\cdot s^{-1}$)')
+  plt.xlim(0.0, 200.0)
+  plt.legend(loc=0)
+  plt.grid(0)
+  fig.text(0.002, 0.5, 'RIRF', va='center', rotation='vertical')
+  plt.tight_layout()
+  plt.savefig('images/rirfs/rirfs_200s.pdf', dpi=1000)
+
+  # fig, (ax1, ax2, ax3) = plt.subplots(3, 1, sharex=True)
+  # plt.subplot(3,1,1)
+  # plt.plot(tvec_125, rirf125s[:,0], '-', label="Base", color='#212121', linewidth=0.5)
+  # #plt.ylabel('RIRF ' r'($kg\cdot s^{-1}$)')
+  # plt.legend(loc=0)
+  # plt.grid(0)
+  # plt.subplot(3,1,2)
+  # plt.plot(tvec_125, rirf125s[:,1], '-', label="Flap 1", color='#212121', linewidth=0.5)
+  # #plt.ylabel('RIRF ' r'($kg\cdot s^{-1}$)')
+  # plt.legend(loc=0)
+  # plt.grid(0)
+  # plt.subplot(3,1,3)
+  # plt.plot(tvec_125, rirf125s[:,2], '-', label="Flap 2", color='#212121', linewidth=0.5)
+  # plt.xlim(0.0, 125.0)
+  # plt.xlabel('Time (s)')
+  # #plt.ylabel('RIRF ' r'($kg\cdot s^{-1}$)')
+  # plt.legend(loc=0)
+  # plt.grid(0)
+  # fig.text(0.002, 0.5, 'RIRF', va='center', rotation='vertical')
+  # plt.tight_layout()
+  # plt.savefig('images/rirfs/rirfs_125s.pdf', dpi=1000)
+
+  fig, (ax1, ax2, ax3) = plt.subplots(3, 1, sharex=True)
+  ax1.plot(tvec_125, rirf125s[:,0], '-', label="Base", color='#212121', linewidth=0.5)
+  #ax1.set_ylabel(r'($kg\cdot s^{-1}$)')
+  ax1.set_ylabel('$\sfrac{N}{m}$')
+  ax1.legend(loc=0)
+  ax2.plot(tvec_125, rirf125s[:,1], '-', label="Flap 1", color='#212121', linewidth=0.5)
+  #ax2.set_ylabel(r'($kg\cdot s^{-1}$)')
+  ax2.set_ylabel('$\sfrac{N}{m}$')
+  ax2.legend(loc=0)
+  ax3.plot(tvec_125, rirf125s[:,2], '-', label="Flap 2", color='#212121', linewidth=0.5)
+  ax3.set_xlabel('Time (s)')
+  ax3.set_ylabel('$\sfrac{N}{m}$')
+  #ax3.set_ylabel(r'($kg\cdot s^{-1}$)')
+  plt.xlim(0.0, 125.0)
+  plt.legend(loc=0)
+  plt.grid(0)
+  fig.text(0.002, 0.5, 'RIRF', va='center', rotation='vertical')
+  plt.tight_layout()
+  plt.savefig('images/rirfs/rirfs_125s.pdf', dpi=1000)
+
+
+
+
+
+#+END_SRC
+
+#+RESULTS:
+: None
+
+
+
+  #+LATEX: \clearpage
+*** DT2
+    #+CAPTION: Decay Tests: DT2 Pitch Comparison. 
+    [[file:images/dt/DT2_PITCH.pdf]]
+
+    #+CAPTION: Decay Tests: DT2 Pitch Comparison (zoomed). 
+    [[file:images/dtzoom/DT2_PITCH.pdf]]
+
+
+  #+LATEX: \clearpage
+*** DT3
+    #+CAPTION: Decay Tests: DT3 Flap 1 Pitch Comparison. 
+    [[file:images/dt/DT3_FLAP1.pdf]]
+
+    #+CAPTION: Decay Tests: DT3 Flap 1 Pitch Comparison (zoomed). 
+    [[file:images/dtzoom/DT3_FLAP1.pdf]]
+
+    #+CAPTION: Decay Tests: DT3 Flap 2 Pitch Comparison. 
+    [[file:images/dt/DT3_FLAP2.pdf]]
+
+    #+CAPTION: Decay Tests: DT3 Flap 2 Pitch Comparison (zoomed). 
+    [[file:images/dtzoom/DT3_FLAP2.pdf]]
+
+
+
+    #+LATEX: \clearpage
+* RAOs 
+#+BEGIN_SRC python :exports none
+    # import numpy as np
+    # import math
+    # import matplotlib.pyplot as plt
+    # from inwavepp.processing.FromTimeDomainToFrequencyDomain import getRAO_ndof
+    # from collections import OrderedDict
+
+    # hot_reg_loc = '../data/REG/'
+    # regs = np.arange(5, 16)
+    # reg_amps = np.zeros(11)
+    # reg_amps.fill(0.1)
+    # hot_reg_tests = []
+    # for i in range(len(regs)):
+    #     hot_reg_tests.append(('reg_')+str(regs[i]))
+    # hot_reg_time = 1500
+    # hot_reg_dt = 0.05
+    # hot_dofs = OrderedDict([('SURGE', 2), ('HEAVE', 4), ('PITCH', 6), ('FLAP1', 18), ('FLAP2', 12)])
+    # hot_reg_tvec = np.linspace(0, hot_reg_time, (hot_reg_time / hot_reg_dt))
+    # hot_reg_dat = np.zeros((len(hot_reg_tvec), len(hot_dofs), len(hot_reg_tests)))
+
+    # for i, test_name in enumerate(hot_reg_tests):
+    #     hot_temp_dat = np.loadtxt(hot_reg_loc + '\\' + test_name + '.txt', skiprows=3)
+    #     np.squeeze(hot_temp_dat)
+    #     for j in range(len(hot_dofs)):
+    #         for k in range(len(hot_reg_tvec)):
+    #             hot_reg_dat[k, j, i] = hot_temp_dat[k, j+2]
+
+    # wWaves = 2*math.pi/reg_amps
+    # Xwmodules, Xwphases, meanvalue = getRAO_ndof(wWaves, reg_amps, hot_reg_tvec, (0.9*hot_reg_tvec[-1]), hot_reg_tvec[-1], hot_reg_dat)
+
+    # nw = np.size(hot_reg_dat, 2)
+
+    # for i in range(5):
+    #     r = 1000*Xwmodules[:,i]
+    #     #if (i != 0) or (i != 1):
+    #     #    r = np.degrees(r)
+    #     plt.plot(regs, r, label='hotint')
+    #     plt.legend(loc=0)
+    #     plt.xlabel('Period (s)')
+    #     plt.ylabel('RAO)')
+    #     plt.suptitle('RAO (1000s, A=0.1m)')
+    #     plt.show()
+
+  import numpy as np
+  import math
+  import matplotlib.pyplot as plt
+  from ipl.inwavepp.processing.FromTimeDomainToFrequencyDomain import getRAO_ndof
+  from collections import OrderedDict
+  from latexify import latexify
+
+  # periods_dict = OrderedDict([(1, 2.0), (2, 3.0), (3, 4.0), (4, 5.0), (5, 5.25), (6, 5.5), (7, 5.75),
+  #                             (8, 6.0), (9, 6.25), (10, 6.5), (11, 6.75), (12, 7.0), (13, 7.25),
+  #                             (14, 7.5), (15, 7.75), (16, 8.0), (17, 8.25), (18, 8.5), (19, 8.75),
+  #                             (20, 9.0), (21, 10.0), (22, 11.0) , (23, 12.0), (24, 13.0), (25, 14.0),
+  #                             (26, 15.0), (27, 16.0), (28, 17.0), (29, 18.0), (30, 19.0), (31, 20.0)])
+
+  reg_loc =  '../data/REG/0.01m/'
+  #regs = np.arange(5, 16)
+  #regs = np.array([5.0, 6.0, 6.25, 6.50, 6.75, 7.0, 7.25, 7.50, 7.75, 8.0, 8.25, 8.50, 8.75, 9.0, 9.25, 9.50, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0])
+  #regs = np.array([5.0, 6.0, 6.50, 7.0, 7.50, 8.0, 8.50, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0])
+  regs = np.array([5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0])
+  regs_ih = np.array([5.0, 6.0, 6.25, 6.5, 6.75, 7.0, 7.25, 7.5, 7.75, 8.0, 8.25, 8.5, 8.75, 9.0, 9.25, 9.5, 9.75, 10.0, 10.25, 10.5, 10.75, 11.0, 12.0, 13.0, 14.0, 15.0])
+  # periods = [6.25, 6.5, 6.75, 7.25, 7.5, 7.75, 8.25, 8.5, 8.75, 9.25, 9.5]
+  # [6.25, 6.75, 7.25, 7.75, 8.25, 8.75, 9.25, 9.5, 9.75, 10.25, 10.5, 10.75]
+  reg_ih_tests = []
+  for i, reg in enumerate(regs_ih):
+      reg_ih_tests.append(('reg_')+str(reg))
+
+  print(reg_ih_tests)
+
+  reg_tests = []
+  for i, reg in enumerate(regs):
+      reg_tests.append(('reg_')+str(reg))
+
+  reg_time = 1500
+  reg_dt = 0.05
+  data_format = OrderedDict([('TIME', 0), ('WAVE_ELEVATION', 1), ('SURGE', 2), ('HEAVE', 3), ('PITCH', 4),  ('FLAP 1 PITCH', 5),  ('FLAP 2 PITCH', 6), ])
+  reg_tvec = np.linspace(0, reg_time, (reg_time / reg_dt))
+  reg_dat = np.zeros((len(reg_tvec), len(data_format)-2, len(reg_tests)))
+  reg_ih_dat = np.zeros((len(reg_tvec), len(data_format)-2, len(reg_ih_tests)))
+
+  print(reg_ih_dat.shape)
+
+  for i, test_name in enumerate(reg_ih_tests):
+      temp_dat = np.loadtxt(reg_loc + '\\' + test_name + '.txt', skiprows=3)
+      np.squeeze(temp_dat)
+      for j in range(len(data_format)-2):
+          for k in range(len(reg_tvec)):
+              reg_ih_dat[k, j, i] = temp_dat[k, j+2]
+
+  #t_sel = 0.95*1500
+  #rao_sel = reg_dat[25000:, 0, 9]
+  #print(rao_sel.max(0))
+  #print(rao_sel.min(0))
+  #print(((abs(rao_sel.max(0)) - abs(rao_sel.min(0)))/2)/0.1)
+
+  rao_vals_surge = np.zeros(len(regs))
+  rao_vals_heave = np.zeros(len(regs))
+  rao_vals_pitch = np.zeros(len(regs))
+
+
+  # for i in range(len(regs)):
+  #     rao_sel_surge = reg_dat[25000:, 0, i]
+  #     rao_sel_heave = reg_dat[25000:, 1, i]
+  #     rao_sel_pitch = reg_dat[25000:, 2, i]
+  #     print(rao_sel_surge.max(0))
+  #     print(rao_sel_surge.min(0))
+  #     rao_vals_surge[i] = ((rao_sel_surge.max(0)) - rao_sel_surge.min(0))/0.2
+  #     rao_vals_heave[i] = ((abs(abs(rao_sel_heave.max(0)) - abs(rao_sel_heave.min(0))))/0.2)
+  #     rao_vals_pitch[i] = ((rao_sel_pitch.max(0)) - rao_sel_pitch.min(0))/0.2
+
+  #regs = np.zeros(len(periods_dict))
+
+  #for i in range(len(periods_dict)):
+  #    regs[i] = periods_dict[i+1]
+
+  wWaves = 2*math.pi/regs_ih
+  reg_ih_amps = np.empty(len(wWaves))
+  reg_ih_amps.fill(0.01)
+  Xwmodules, Xwphases, meanvalue = getRAO_ndof(wWaves, reg_ih_amps, reg_tvec, (0.9*reg_tvec[-1]), reg_tvec[-1], reg_ih_dat)
+
+  # nw = np.size(reg_dat, 2)
+
+  # # for i in range(3):
+  # #     r = Xwmodules[:,i]/0.01
+  # #     #if (i != 0) or (i != 1):
+  # #     #    r = np.degrees(r)
+  # #     plt.plot(regs, r, label='hotint')
+  # #     plt.legend(loc=0)
+  # #     plt.xlabel('Period (s)')
+  # #     plt.ylabel('RAO')
+  # #     plt.suptitle('RAO (1500s, A=0.01m)')
+  # #     #plt.show()
+  # #     #fig.tight_layout()
+  # #     plt.savefig('images/rao/' + 'rao_' + str(i) + '.jpg')
+
+  # # inwave reference data
+  inw_raos = np.loadtxt('../ref/INW/RAO.dat', skiprows = 5)
+  #inw_heave_rao = np.loadtxt('../ref/inw/raos/rao_heave.txt')
+  #inw_pitch_rao = np.loadtxt('../ref/inw/raos/rao_pitch.txt')
+  # # numwec reference data
+  numwec_surge_rao_t = np.loadtxt('../ref/NumWEC_data/xrao1m.txt')
+  numwec_surge_rao_freq = np.loadtxt('../ref/NumWEC_data/xraofreq.txt')
+  numwec_heave_rao_t = np.loadtxt('../ref/NumWEC_data/zrao1m.txt')
+  numwec_heave_rao_freq = np.loadtxt('../ref/NumWEC_data/zraofreq.txt')
+  numwec_pitch_rao_t = np.loadtxt('../ref/NumWEC_data/thetarao1m.txt')
+  numwec_pitch_rao_freq = np.loadtxt('../ref/NumWEC_data/thetaraofreq.txt')
+  
+  ltx = latexify.Latexify()
+  ltx.latexify()
+
+  fig = plt.figure(figsize=None)
+  r = Xwmodules[:,0]
+  numwf, = plt.plot(numwec_surge_rao_freq[:,0], numwec_surge_rao_freq[:,1], '-', linewidth=0.5, label="NumWEC: freq", color='#872b22')
+  numwt, = plt.plot(numwec_surge_rao_t[:,0], numwec_surge_rao_t[:,1], 'o', markersize=1, label="NumWEC: time", color='#f96464')
+  inw, = plt.plot((2*math.pi)/inw_raos[:,0], inw_raos[:,1], 'o', markersize=2.0, label="InWave", color='#3a93c9')
+  inwh, = plt.plot(regs_ih, r, 'o', markersize=1, label="InWave-HOTINT", color='#212121')
+  plt.legend((inwh, inw, numwt, numwf), ('InWave-HOTINT', 'InWave', 'NumWEC: time', 'NumWEC: freq'))
+  #plt.grid(1)
+  plt.xlim(5.0, 15.0)
+  plt.xlabel('Wave Period (s)')
+  plt.ylabel('Surge RAO')
+  #plt.suptitle('RAO (1500s, A-0.01m)')
+  fig.tight_layout()
+  #plt.show()
+  plt.savefig('images/rao/' + 'rao_surge' + '.pdf', dpi=1000)
+  #plt.savefig('images/rao/' + 'rao_surge'+ '.eps', dpi=1000)
+
+  fig = plt.figure(figsize=None)
+  r = Xwmodules[:,1]
+  #plt.plot(inw_heave_rao[:,0], inw_heave_rao[:,1], '-bo', label="InWave")
+  #plt.plot(regs, rao_vals_heave, 'go--', label="Hotint")
+  numwf, = plt.plot(numwec_heave_rao_freq[:,0], numwec_heave_rao_freq[:,1], '-', linewidth=0.5, label="NumWEC, freq", color='#872b22')
+  numwt, = plt.plot(numwec_heave_rao_t[:,0], numwec_heave_rao_t[:,1], 'o', markersize=1, label="NumWEC, time", color='#f96464')
+  inw, = plt.plot((2*math.pi)/inw_raos[:,0], inw_raos[:,2], 'o', markersize=2.0, label="InWave", color='#3a93c9')
+  inwh, = plt.plot(regs_ih, r, 'o', markersize=1, label="InWave-HOTINT", color='#212121')
+  plt.legend((inwh, inw, numwt, numwf), ('InWave-HOTINT', 'InWave', 'NumWEC: time', 'NumWEC: freq'))
+  #plt.grid(1)
+  plt.xlim(5.0, 15.0)
+  plt.xlabel('Wave Period (s)')
+  plt.ylabel('Heave RAO')
+  #plt.suptitle('RAO (1500s, A-0.01m)')
+  fig.tight_layout()
+  plt.savefig('images/rao/' + 'rao_heave' + '.pdf', dpi=1000)
+  #plt.savefig('images/rao/' + 'rao_heave' + '.eps', dpi=1000)
+
+  fig = plt.figure(figsize=None)
+  r = (Xwmodules[:,2])*(180/math.pi)
+  #plt.plot(inw_pitch_rao[:,0], inw_pitch_rao[:,1], '-bo', label="InWave")
+  #plt.plot(regs, rao_vals_pitch*(180/math.pi), 'go--', label="Hotint")
+  numwf, = plt.plot(numwec_pitch_rao_freq[:,0], numwec_pitch_rao_freq[:,1], '-', linewidth=0.5,label="NumWEC, freq", color='#872b22')
+  numwt, = plt.plot(numwec_pitch_rao_t[:,0], numwec_pitch_rao_t[:,1], 'o', markersize=1, label="NumWEC, time", color='#f96464')
+  inw, = plt.plot((2*math.pi)/inw_raos[:,0], inw_raos[:,3], 'o', markersize=2.0, label="InWave", color='#3a93c9')
+  inwh, = plt.plot(regs_ih, r, 'o', markersize=1, label="InWave-HOTINT", color='#212121') 
+  plt.legend((inwh, inw, numwt, numwf), ('InWave-HOTINT', 'InWave', 'NumWEC: time', 'NumWEC: freq'))
+  #plt.grid(1)
+  plt.xlim(5.0, 15.0)
+  plt.xlabel('Wave Period (s)')
+  plt.ylabel('Pitch RAO')
+  #plt.suptitle('RAO (1500s, A-0.01m)')
+  fig.tight_layout()
+  plt.savefig('images/rao/' + 'rao_pitch' + '.pdf', dpi=1000)
+  #plt.savefig('images/rao/' + 'rao_pitch' + '.eps', dpi=1000)
+
+  fig = plt.figure(figsize=None)
+  r = (Xwmodules[:,3])*(180/math.pi)
+  #plt.plot(inw_pitch_rao[:,0], inw_pitch_rao[:,1], '-bo', label="InWave")
+  #plt.plot(regs, rao_vals_pitch*(180/math.pi), 'go--', label="Hotint")
+  plt.plot(regs_ih, r, 'o', markersize=1, label="InWave-HOTINT", color='#212121')
+  plt.legend(loc=0)
+  plt.xlabel('Wave Period (s)')
+  plt.ylabel('RAO')
+  #plt.suptitle('RAO (1500s, A-0.01m)')
+  fig.tight_layout()
+  plt.savefig('images/rao/' + 'rao_f1pitch' + '.pdf', dpi=1000)
+  #plt.savefig('images/rao/' + 'rao_f1pitch' + '.eps', dpi=1000)
+
+  fig = plt.figure(figsize=None)
+  r = (Xwmodules[:,4])*(180/math.pi)
+  #plt.plot(inw_pitch_rao[:,0], inw_pitch_rao[:,1], '-bo', label="InWave")
+  #plt.plot(regs, rao_vals_pitch*(180/math.pi), 'go--', label="Hotint")
+  plt.plot(regs_ih, r, 'o', markersize=1, label="InWave-HOTINT", color='#212121')
+  plt.legend(loc=0)
+  plt.xlabel('Wave Period (s)')
+  plt.ylabel('RAO')
+  #plt.suptitle('RAO (1500s, A-0.01m)')
+  fig.tight_layout()
+  #plt.show()
+  plt.savefig('images/rao/' + 'rao_f2pitch' + '.pdf', dpi=1000)
+  #plt.savefig('images/rao/' + 'rao_f2pitch' + '.eps', dpi=1000)
+
+#+END_SRC
+
+#+RESULTS:
+: None
+
+** Surge RAO
+    #+CAPTION: Surge RAO Comparison.
+    [[file:images/rao/rao_surge.pdf]]
+    
+    #+LATEX: \clearpage
+** Heave RAO
+    #+CAPTION: Heave RAO Comparison.
+    [[file:images/rao/rao_heave.pdf]]
+    
+#+LATEX: \clearpage
+** Pitch RAO
+    #+CAPTION: Pitch RAO Comparison.
+    [[file:images/rao/rao_pitch.pdf]]
+     
+    
+* RIRFs
+#+BEGIN_SRC python
+import numpy as np
+import math
+import matplotlib.pyplot as plt
+from ipl.inwavepp.processing.FromTimeDomainToFrequencyDomain import getRAO_ndof
+from collections import OrderedDict
+from latexify import latexify
+
+rirf_path = 'C:\work\nemoh\projects\f3of_rirf125s\Results\IRF.tec'
+rirf_dat = np.loadtxt(rirf_path)
+
+def loadB():
+
+# Purpose: Loading damping coefficients from CA.dat
+#
+# Output:
+# - B       : Matrix (6 x 6 x length(w)) of radiation damping coefficients
+
+nBodies = 3
+t_rirf = 125.0
+dt_rirf = 0.05
+len_rirf = t_rirf/dt_rirf
+
+K_rad = np.zeros((6*nBodies,6*nBodies,len_rirf))
+
+    fid = open(PathB, 'r')
+    fid.readline().rstrip()
+#    for i in range(0,6*nBodies):
+#        fid.readline().rstrip()
+#    for i in range(0,nBodies):
+#        for j in range(0,6):
+#            fid.readline().rstrip()
+#            for k in range(0,nw):
+#                ligne = fid.readline().split()
+#                q = 0
+#                for p in range(1,2*6*nBodies):
+#                    if p%2 == 0:
+#                        B[6*i+j,q,k] = float(ligne[p])
+#                        q = q+1
+    for i in range(0,nw):
+        fid.readline().rstrip()
+        k = 0
+        for p in range(0,6*nBodies*nBodies):
+            ligne = fid.readline().split()
+            for j in range(0,6):
+                B[k,j+6*(p%nBodies),i] = ligne[j]
+            if p%nBodies == (nBodies-1):
+                k = k+1
+    fid.close()
+
+    return B
+
+
+#+END_SRC
