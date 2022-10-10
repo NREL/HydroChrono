@@ -5,10 +5,10 @@ project(demos CXX)
 #######################################################
 # demo/sphere_decay
 #######################################################
-# add_executable for sphere demo, list it's source files and ${CMAKE_SOURCE_DIR}/src/hydro_forces.cpp
+# add_executable for sphere demo, list it's source files and ${CMAKE_SOURCE_DIR}/src/hydro_cxx/hydro_forces.cpp
 add_executable(sphere_decay
   ${CMAKE_SOURCE_DIR}/demos/sphere/sphere_decay.cpp
-  ${CMAKE_SOURCE_DIR}/src/hydro_forces.cpp
+  ${CMAKE_SOURCE_DIR}/src/hydro_cxx/hydro_forces.cpp
 )
 
 # include directories for shere demo 
@@ -29,10 +29,10 @@ set_target_properties(sphere_decay PROPERTIES
 #######################################################
 # demo/sphere_reg_waves
 #######################################################
-# add_executable for sphere demo, list it's source files and ${CMAKE_SOURCE_DIR}/src/hydro_forces.cpp
+# add_executable for sphere demo, list it's source files and ${CMAKE_SOURCE_DIR}/src/hydro_cxx/hydro_forces.cpp
 add_executable(sphere_reg_waves
   ${CMAKE_SOURCE_DIR}/demos/sphere/sphere_reg_waves.cpp
-  ${CMAKE_SOURCE_DIR}/src/hydro_forces.cpp
+  ${CMAKE_SOURCE_DIR}/src/hydro_cxx/hydro_forces.cpp
 )
 
 # include directories for shere demo 
@@ -53,10 +53,10 @@ set_target_properties(sphere_reg_waves PROPERTIES
 #######################################################
 # demo/rm3
 #######################################################
-# add_executable for rm3 demo, list it's source files and ${CMAKE_SOURCE_DIR}/src/hydro_forces.cpp
+# add_executable for rm3 demo, list it's source files and ${CMAKE_SOURCE_DIR}/src/hydro_cxx/hydro_forces.cpp
 add_executable(rm3_decay
   ${CMAKE_SOURCE_DIR}/demos/rm3/rm3_decay.cpp
-  ${CMAKE_SOURCE_DIR}/src/hydro_forces.cpp
+  ${CMAKE_SOURCE_DIR}/src/hydro_cxx/hydro_forces.cpp
 )
 
 # include directories for shere demo 
@@ -77,10 +77,10 @@ set_target_properties(rm3_decay PROPERTIES
 #######################################################
 # demo/rm3_reg_waves
 #######################################################
-# add_executable for rm3 demo, list it's source files and ${CMAKE_SOURCE_DIR}/src/hydro_forces.cpp
+# add_executable for rm3 demo, list it's source files and ${CMAKE_SOURCE_DIR}/src/hydro_cxx/hydro_forces.cpp
 add_executable(rm3_reg_waves
   ${CMAKE_SOURCE_DIR}/demos/rm3/rm3_reg_waves.cpp
-  ${CMAKE_SOURCE_DIR}/src/hydro_forces.cpp
+  ${CMAKE_SOURCE_DIR}/src/hydro_cxx/hydro_forces.cpp
 )
 
 # include directories for shere demo 
@@ -102,10 +102,10 @@ set_target_properties(rm3_reg_waves PROPERTIES
 # demo/newdemo
 # example lines to add your own demo to the cmake 
 #######################################################
-# # add_executable for newdemo demo, list it's source files and ${CMAKE_SOURCE_DIR}/src/hydro_forces.cpp
+# # add_executable for newdemo demo, list it's source files and ${CMAKE_SOURCE_DIR}/src/hydro_cxx/hydro_forces.cpp
 # add_executable(newdemo
 #   ${CMAKE_SOURCE_DIR}/demos/newdemodirectory/newdemo.cpp
-#   ${CMAKE_SOURCE_DIR}/src/hydro_forces.cpp
+#   ${CMAKE_SOURCE_DIR}/src/hydro_cxx/hydro_forces.cpp
 # )
 
 # # include directories for newdemo demo 

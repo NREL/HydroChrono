@@ -43,4 +43,12 @@ option(BUILD_DEMOS "Build demo programs" ON)
 # if option for demos on:
 if(BUILD_DEMOS AND IS_DIRECTORY ${CMAKE_SOURCE_DIR}/demos)
 	add_subdirectory(${CMAKE_SOURCE_DIR}/demos)
+
+# # copy input files
+# add_custom_command(
+#         TARGET sphere_decay POST_BUILD
+#         COMMAND ${CMAKE_COMMAND} -E copy
+#                 ${CMAKE_SOURCE_DIR}/demos/sphere/hydroData/sphere.h5
+#                 ${CMAKE_CURRENT_BINARY_DIR}/demos/sphere.h5)
+
 endif()
