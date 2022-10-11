@@ -162,18 +162,24 @@ int main(int argc, char* argv[]) {
 
 	// add revolute joint between the two bodies
 	//auto prismatic = chrono_types::make_shared<ChLinkLockPrismatic>();
-	auto Flap_Right_Joint = chrono_types::make_shared<ChLinkLockRevolute>();
+	//auto Flap_Right_Joint = chrono_types::make_shared<ChLinkLockRevolute>();
+	ChQuaternion<> rev_rot = Q_from_AngX(CH_C_PI / 2.0); // set as 0 initially, use to displace later
+	ChVector<> rev_pos(12.5, 0, -9.0); // location of right revolute joint
+	// Create revolute joint between body and ground
+	auto rev_right = chrono_types::make_shared<ChLinkLockRevolute>();
+	rev_right->Initialize(Base_body, Flap_body_Right, ChCoordsys<>(rev_pos, rev_rot));
+	system.AddLink(rev_right);
 	//prismatic->Initialize(Base_body, Flap_body_left, false, ChCoordsys<>(ChVector<>(0, 0, -0.72)), ChCoordsys<>(ChVector<>(0, 0, -21.29)));
-	Flap_Right_Joint->Initialize(Base_body, Flap_body_Right, ChCoordsys<>(ChVector<>(-12.5, 0, 0)));
+	//Flap_Right_Joint->Initialize(Base_body, Flap_body_Right, ChCoordsys<>(ChVector<>(-12.5, 0, 0)));
 	//system.AddLink(prismatic);
-	system.AddLink(Flap_Right_Joint);
+	//system.AddLink(Flap_Right_Joint);
 
 	//auto prismatic_pto = chrono_types::make_shared<ChLinkTSDA>();
-	auto Flap_Left_Joint = chrono_types::make_shared<ChLinkLockRevolute>();
+	//auto Flap_Left_Joint = chrono_types::make_shared<ChLinkLockRevolute>();
 	//prismatic_pto->Initialize(Base_body, Flap_body_left, false, ChVector<>(0, 0, -0.72), ChVector<>(0, 0, -21.29));
-	Flap_Left_Joint->Initialize(Base_body, Flap_body_left, ChCoordsys<>(ChVector<>(12.5, 0, 0)));
+	//Flap_Left_Joint->Initialize(Base_body, Flap_body_left, ChCoordsys<>(ChVector<>(12.5, 0, 0)));
 	//system.AddLink(prismatic_pto);
-	system.AddLink(Flap_Left_Joint);
+	//system.AddLink(Flap_Left_Joint);
 
 	// define wave parameters (not used in this demo)
 	HydroInputs my_hydro_inputs;
@@ -207,6 +213,8 @@ int main(int argc, char* argv[]) {
 		irrlichtVis->AddSkyBox();
 		irrlichtVis->AddCamera(ChVector<>(0, -50, -10), ChVector<>(0, 0, -10)); // camera position and where it points
 		irrlichtVis->AddTypicalLights();
+		irrlichtVis->EnableBodyFrameDrawing(true);
+		irrlichtVis->EnableLinkFrameDrawing(true);
 
 		// add play/pause button
 		bool buttonPressed = false;
