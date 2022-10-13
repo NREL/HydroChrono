@@ -1,16 +1,19 @@
-FIND_PACKAGE(SWIG REQUIRED)
-INCLUDE(${SWIG_USE_FILE})
+project(target-hydropy LANGUAGES CXX)
 
-FIND_PACKAGE(PythonLibs)
-INCLUDE_DIRECTORIES(${PYTHON_INCLUDE_PATH})
+find_package(PythonLibs)
+include_directories(${PYTHON_INCLUDE_PATH}) # or ${PYTHON_INCLUDE_DIR}?
 
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include
+find_package(SWIG REQUIRED)
+include(${SWIG_USE_FILE})
+
+include_directories(${CMAKE_SOURCE_DIR}/include
 					${CMAKE_SOURCE_DIR}/src/hydro_cxx	
 					${CMAKE_SOURCE_DIR}/src/hydro_swig)
 
-SET(CMAKE_SWIG_FLAGS "")
+set(CMAKE_SWIG_FLAGS "")
+set_source_files_properties(swig_test.i PROPERTIES CPLUSPLUS ON)
+set_source_files_properties(swig_test.i PROPERTIES SWIG_FLAGS "-includeall")
 
-SET_SOURCE_FILES_PROPERTIES(swig_test.i PROPERTIES CPLUSPLUS ON)
-SET_SOURCE_FILES_PROPERTIES(swig_test.i PROPERTIES SWIG_FLAGS "-includeall")
-SWIG_ADD_LIBRARY(swig_test LANGUAGE python SOURCES swig_test.i)
-SWIG_LINK_LIBRARIES(swig_test ${PYTHON_LIBRARIES})
+swig_add_library(hydro_py TYPE SHARED LANGUAGE python SOURCES swig_test.i)
+target_include_directories(hydro_py PRIVATE ${PYTHON_INCLUDE_DIR})
+swig_link_libraries(hydro_py ${PYTHON_LIBRARIES})
