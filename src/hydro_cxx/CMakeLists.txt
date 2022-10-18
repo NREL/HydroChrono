@@ -37,19 +37,3 @@ set_target_properties(hydro_lib PROPERTIES
     COMPILE_FLAGS "${CHRONO_CXX_FLAGS} ${EXTRA_COMPILE_FLAGS}"
     COMPILE_DEFINITIONS "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
     LINK_FLAGS "${CHRONO_LINKER_FLAGS}")
-
-
-#find_package(SWIG REQUIRED)
-#find_package(PythonLibs)
-#include(${SWIG_USE_FILE})
-# find required packages and libraries to make HydroChrono library
-# set (LIB_TYPE STATIC) # or SHARED
-# string(TOLOWER ${LIB_TYPE} SEARCH_TYPE)
-
-#SET(CMAKE_SWIG_FLAGS "")
-
-
-#include_directories(${PYTHON_INCLUDE_PATH})
-
-#SWIG_ADD_LIBRARY(py_wec_chrono LANGUAGE python SOURCES hydro_forces_no_viz.i)
-#SWIG_LINK_LIBRARIES(py_wec_chrono wec_chrono ${PYTHON_LIBRARIES})

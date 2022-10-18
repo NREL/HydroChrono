@@ -24,12 +24,19 @@
 
 #include "H5Cpp.h"
 
+#ifdef hydro_lib_EXPORTS
+#define hydro_lib_API __declspec(dllexport)
+#else
+#define hydro_lib_API 
+#endif
+
+
 using namespace chrono;
 using namespace chrono::irrlicht;
 using namespace chrono::fea;
 
 // =============================================================================
-class H5FileInfo {
+class hydro_lib_API H5FileInfo {
 public:
 	bool printed = false;
 	H5FileInfo();
@@ -89,7 +96,7 @@ private:
 };
 enum WaveMode {NONE, REGULAR}; // eventually add irregular waves mode
 // =============================================================================
-class HydroInputs {
+class hydro_lib_API HydroInputs {
 public:
 	WaveMode mode;
 	HydroInputs();
@@ -105,11 +112,11 @@ private:
 };
 
 // =============================================================================
-class ForceFunc6d;
+class hydro_lib_API ForceFunc6d;
 
-class TestHydro;
+class hydro_lib_API TestHydro;
 
-class ComponentFunc : public ChFunction {
+class hydro_lib_API ComponentFunc : public ChFunction {
 public:
 	ComponentFunc();
 	ComponentFunc(const ComponentFunc& old);
@@ -123,7 +130,7 @@ private:
 
 // =============================================================================
 // ForceFunc6d organizes the functional (time dependent) forces in each DoF (6 total) for a body
-class ForceFunc6d {
+class hydro_lib_API ForceFunc6d {
 public:
 	ForceFunc6d();
 	ForceFunc6d(std::shared_ptr<ChBody> object, TestHydro* all_hydro_forces_user);
@@ -141,9 +148,9 @@ private:
 	TestHydro* all_hydro_forces;
 };
 
-class ChLoadAddedMass;
+class hydro_lib_API ChLoadAddedMass;
 
-class TestHydro {
+class hydro_lib_API TestHydro {
 public:
 	bool printed = false;
 	TestHydro();
@@ -188,7 +195,7 @@ private:
 };
 
 // =============================================================================
-class ChLoadAddedMass : public ChLoadCustomMultiple {
+class hydro_lib_API ChLoadAddedMass : public ChLoadCustomMultiple {
 public:
 	ChLoadAddedMass(const std::vector<H5FileInfo>& file,   ///< h5 file to initialize added mass with
 					std::vector<std::shared_ptr<ChBody>>& bodies  ///< objects to apply additional inertia to
