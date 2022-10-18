@@ -37,7 +37,7 @@
 // C++ classes that might be used as base-classes for class declarations in the interface
 // ie like above, this is how we get chbody stuff in i think
 
-
+void test();
 //int foo;
 //int bar(int x);
 //...

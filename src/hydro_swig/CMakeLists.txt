@@ -37,7 +37,7 @@ target_include_directories(hydro_py PRIVATE ${Python_INCLUDE_DIRS})
 swig_link_libraries(hydro_py ${Python_LIBRARIES} ${LINK_LIBS} hydro_lib)
 
 set_target_properties(${SWIG_MODULE_hydro_py_REAL_NAME} PROPERTIES
-                      PROJECT_LABEL "HydroChrono_python_hydro_py"
+                      PROJECT_LABEL "hydro_py"
                       OUTPUT_NAME   "${SWIG_MODULE_hydro_py_REAL_NAME}"
                       LIBRARY_OUTPUT_DIRECTORY "${EXECUTABLE_OUTPUT_PATH}"
                       )
