@@ -84,7 +84,7 @@ private:
 	std::string bodyName;
 	void readH5Data();
 };
-enum WaveMode {NONE, REGULAR}; // eventually add irregular waves mode
+enum WaveMode {noWaveCIC, regular}; // eventually add irregular waves mode
 // =============================================================================
 class HydroInputs {
 public:
