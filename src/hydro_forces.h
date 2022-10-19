@@ -84,7 +84,7 @@ private:
 	std::string bodyName;
 	void readH5Data();
 };
-enum WaveMode {NONE, REGULAR}; // eventually add irregular waves mode
+enum WaveMode {noWaveCIC, regular}; // eventually add irregular waves mode
 // =============================================================================
 class HydroInputs {
 public:
@@ -170,7 +170,7 @@ private:
 	std::vector<double> equilibrium;
 	std::vector<double> cb_minus_cg;
 	double rirf_timestep;
-	double getVelHistoryAllBodies(int step, int c) const;
+	double getVelHistoryVal(int step, int c) const;
 	double setVelHistory(double val, int step, int b_num, int index);
 
 	//double freq_index_des;

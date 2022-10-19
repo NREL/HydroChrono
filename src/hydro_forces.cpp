@@ -367,8 +367,8 @@ double H5FileInfo::GetExcitationPhaseInterp(int i, int j, double freq_index_des)
 *******************************************************************************/
 HydroInputs::HydroInputs() {
 	// TODO: switch depending on wave option (regular, regularCIC, irregular, noWaveCIC) enum?
-	mode = NONE;
-	regular_wave_amplitude = 0;
+	//mode = none;
+	//regular_wave_amplitude = 0;
 	//excitation_force_phase.resize(6,0);
 	//excitation_force_mag.resize(6,0);
 }
@@ -625,10 +625,9 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::stri
 void TestHydro::WaveSetUp() {
 	int total_dofs = 6 * num_bodies;
 	switch (hydro_inputs.mode) {
-	case NONE:
-
+	case noWaveCIC:
 		break;
-	case REGULAR:
+	case regular:
 		hydro_inputs.excitation_force_mag.resize(total_dofs, 0);
 		hydro_inputs.excitation_force_phase.resize(total_dofs, 0);
 		force_excitation_freq.resize(total_dofs, 0.0);
@@ -647,13 +646,13 @@ void TestHydro::WaveSetUp() {
 }
 
 /*******************************************************************************
-* TestHydro::getVelHistoryAllBodies(int step, int c) const
-* finds and returns the component of velocity history for given step and c (column)
+* TestHydro::getVelHistoryVal(int step, int c) const
+* finds and returns the component of velocity history for given step and dof (c - column)
 * step: [0,1,...,1000] (timesteps from h5 file, one velocity per step
 * c: [0,..,num_bodies-1,...,numbodies*6-1] (in order of bodies, iterates over 
 *    dof for each body...3 bodies c would be [0,1,...,17])
 *******************************************************************************/
-double TestHydro::getVelHistoryAllBodies(int step, int c) const {
+double TestHydro::getVelHistoryVal(int step, int c) const {
 	if (step < 0 || step >= file_info[0].GetRIRFDims(2) || c < 0 || c >= num_bodies * 6) {
 		std::cout << "wrong vel history index " << std::endl;
 		return 0;
@@ -789,7 +788,7 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 				TMP_S(row, st) = 0;
 				for (int col = 0; col < numCols; col++) { // numCols goes to 6N
 					// multiply rirf by velocity history for each step and row (0,...,6N), store product in TIMESERIES
-					TIMESERIES(row, col, st) = GetRIRFval(row, col, st) * getVelHistoryAllBodies(vi, col); 
+					TIMESERIES(row, col, st) = GetRIRFval(row, col, st) * getVelHistoryVal(vi, col); 
 					// TMP_S is the sum over col (sum the effects of all radiating dofs (LDOF) for each time and motion dof)
 					TMP_S(row, st) += TIMESERIES(row, col, st);
 				}
@@ -808,7 +807,7 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 			for (int col = 0; col < numCols; col++) {
 				for (int st = 0; st < size; st++) {
 					vi = (((st + offset_rirf) % size) + size) % size; // vi takes care of circshift function from matLab
-					TIMESERIES(row, col, st) = GetRIRFval(row, col, st) * getVelHistoryAllBodies(vi, col); // col now runs thru all bodies (0->11 for 2 bodies...)
+					TIMESERIES(row, col, st) = GetRIRFval(row, col, st) * getVelHistoryVal(vi, col); // col now runs thru all bodies (0->11 for 2 bodies...)
 					TMP_S(row, st) = TIMESERIES(row, col, st);
 					sumVelHistoryAndRIRF += TMP_S(row, st);
 				}
@@ -924,18 +923,23 @@ double TestHydro::coordinateFunc(int b, int i) {
 	//call compute forces
 	convTrapz = true; // use trapeziodal rule or assume fixed dt.
 
-	ComputeForceHydrostatics();
-	ComputeForceRadiationDampingConv();
-
-	// sum all forces element by element
-	for (int j = 0; j < total_dofs; j++) {
-		total_force[j] = force_hydrostatic[j] - force_radiation_damping[j];
-	}
-
-	if (hydro_inputs.mode == REGULAR) {
-		ComputeForceExcitationRegularFreq();
+	if (hydro_inputs.mode == noWaveCIC) {
+		// update required forces:
+		ComputeForceHydrostatics();
+		ComputeForceRadiationDampingConv();
+		// sum all forces element by element
 		for (int j = 0; j < total_dofs; j++) {
-			total_force[j] += force_excitation_freq[j];
+			total_force[j] = force_hydrostatic[j] - force_radiation_damping[j];
+		}
+	}
+	if (hydro_inputs.mode == regular) {
+		// update required forces:
+		ComputeForceHydrostatics();
+		ComputeForceRadiationDampingConv();
+		ComputeForceExcitationRegularFreq();
+		// sum all forces element by element
+		for (int j = 0; j < total_dofs; j++) {
+			total_force[j] = force_hydrostatic[j] - force_radiation_damping[j] + force_excitation_freq[j];
 		}
 	}
 	if (body_num_offset + i < 0 || body_num_offset >= total_dofs) {
@@ -978,8 +982,6 @@ void ChLoadAddedMass::AssembleSystemAddedMassMat() {
 	for (int i = 0; i < nBodies; i++) {
 		infinite_added_mass.block(i * 6, 0, 6, nBodies * 6) = h5_body_data[i].GetInfAddedMassMatrix();
 	}
-	/*infinite_added_mass(2, 2) += ((2 * 92.72929) * 9.81 * 1000);*/
-	//infinite_added_mass(8, 8) += ((2 * 749.6824) * 9.81 * 1000);
 }
 
 /*******************************************************************************
