@@ -646,13 +646,13 @@ void TestHydro::WaveSetUp() {
 }
 
 /*******************************************************************************
-* TestHydro::getVelHistoryAllBodies(int step, int c) const
-* finds and returns the component of velocity history for given step and c (column)
+* TestHydro::getVelHistoryVal(int step, int c) const
+* finds and returns the component of velocity history for given step and dof (c - column)
 * step: [0,1,...,1000] (timesteps from h5 file, one velocity per step
 * c: [0,..,num_bodies-1,...,numbodies*6-1] (in order of bodies, iterates over 
 *    dof for each body...3 bodies c would be [0,1,...,17])
 *******************************************************************************/
-double TestHydro::getVelHistoryAllBodies(int step, int c) const {
+double TestHydro::getVelHistoryVal(int step, int c) const {
 	if (step < 0 || step >= file_info[0].GetRIRFDims(2) || c < 0 || c >= num_bodies * 6) {
 		std::cout << "wrong vel history index " << std::endl;
 		return 0;
@@ -788,7 +788,7 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 				TMP_S(row, st) = 0;
 				for (int col = 0; col < numCols; col++) { // numCols goes to 6N
 					// multiply rirf by velocity history for each step and row (0,...,6N), store product in TIMESERIES
-					TIMESERIES(row, col, st) = GetRIRFval(row, col, st) * getVelHistoryAllBodies(vi, col); 
+					TIMESERIES(row, col, st) = GetRIRFval(row, col, st) * getVelHistoryVal(vi, col); 
 					// TMP_S is the sum over col (sum the effects of all radiating dofs (LDOF) for each time and motion dof)
 					TMP_S(row, st) += TIMESERIES(row, col, st);
 				}
@@ -807,7 +807,7 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 			for (int col = 0; col < numCols; col++) {
 				for (int st = 0; st < size; st++) {
 					vi = (((st + offset_rirf) % size) + size) % size; // vi takes care of circshift function from matLab
-					TIMESERIES(row, col, st) = GetRIRFval(row, col, st) * getVelHistoryAllBodies(vi, col); // col now runs thru all bodies (0->11 for 2 bodies...)
+					TIMESERIES(row, col, st) = GetRIRFval(row, col, st) * getVelHistoryVal(vi, col); // col now runs thru all bodies (0->11 for 2 bodies...)
 					TMP_S(row, st) = TIMESERIES(row, col, st);
 					sumVelHistoryAndRIRF += TMP_S(row, st);
 				}
