@@ -25,6 +25,7 @@
 
 ## Building HydroChrono (and demos)
 1. Install and build above requirements.
+	N.B. We are currently using Chrono commit 9eed26df8ca4c5e84e7affa6222989d8260add2f
 2. Now to build HydroChrono library: 
 	1. Clone this project into a directory, and set up a build folder (i.e. clone project into HydroChrono directory and set up HydroChrono_build adjacent directory). 
 	2. Just like when building Project Chrono, open CMake GUI specifying the location of the source files and built binaries for HydroChrono (HydroChrono and HydroChrono_build respectively). Configure and generate the solution, specifying `Chrono_DIR` as Chrono Build location (`../chrono_build/cmake`) and HDF5_DIR as (`../CMake-hdf5-1.10.8/CMake-hdf5-1.10.8/build/HDF5-1.10.8-win64/HDF5-1.10.8-win64/share/cmake` or similar path to find the cmake file at the end of this path). Note: version 1.10.8 of HDF5 works best with Visual Studio 2019.
