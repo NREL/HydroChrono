@@ -4,7 +4,7 @@ set output "rm3.pdf"
 set samples 100000
 set grid
 
-set lmargin at screen 0.125
+# set lmargin at screen 0.125
 set multiplot layout 2,1
 set ylabel "Float Heave"
 set xrange [0:40]
