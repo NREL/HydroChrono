@@ -135,56 +135,41 @@ int main(int argc, char* argv[]) {
 		);
 
 
-	// define the float's initial conditions
+	// define the base's initial conditions
 	system.Add(base);
 	base->SetNameString("body1");
 	base->SetPos(ChVector<>(0,0,-9));
 	base->SetMass(1089825.0);
-	//base->SetInertiaXX(ChVector<>(20907301.0, 21306090.66, 37085481.11));
-	//base->SetCollide(false);
+	base->SetInertiaXX(ChVector<>(100000000.0, 76300000.0, 100000000.0));
 
-	// define the plate's initial conditions
+	// define the fore flap's initial conditions
 	system.Add(flapFore);
 	flapFore->SetNameString("body2");
 	flapFore->SetPos(ChVector<>(-12.5,0,-5.5));
 	flapFore->SetMass(179250.0);
-	// flapFore->SetInertiaXX(ChVector<>(94419614.57, 94407091.24, 28542224.82));
-	//flapFore->SetCollide(false);
+	flapFore->SetInertiaXX(ChVector<>(100000000.0, 1300000.0, 100000000.0));
 
-	// define the float's initial conditions
+	// define the aft flap's initial conditions
 	system.Add(flapAft);
 	flapAft->SetNameString("body3");
 	flapAft->SetPos(ChVector<>(12.5,0,-5.5));
 	flapAft->SetMass(179250.0);
-	// flapAft->SetInertiaXX(ChVector<>(20907301.0, 21306090.66, 37085481.11));
-	//base->SetCollide(false);
+	flapAft->SetInertiaXX(ChVector<>(100000000.0, 1300000.0, 100000000.0));
 
-
-	// add revolute joint between the two bodies
-	//auto prismatic = chrono_types::make_shared<ChLinkLockPrismatic>();
-	//auto Flap_Right_Joint = chrono_types::make_shared<ChLinkLockRevolute>();
-	//ChQuaternion<> rev_rot = Q_from_AngX(CH_C_PI / 2.0); // set as 0 initially, use to displace later
-	//ChVector<> rev_pos(12.5, 0, -9.0); // location of right revolute joint
-	//// Create revolute joint between body and ground
-	//auto rev_right = chrono_types::make_shared<ChLinkLockRevolute>();
-	//rev_right->Initialize(base, flapAft, ChCoordsys<>(rev_pos, rev_rot));
-	//system.AddLink(rev_right);
-	//prismatic->Initialize(base, flapFore, false, ChCoordsys<>(ChVector<>(0, 0, -0.72)), ChCoordsys<>(ChVector<>(0, 0, -21.29)));
-	//Flap_Right_Joint->Initialize(base, flapAft, ChCoordsys<>(ChVector<>(-12.5, 0, 0)));
-	//system.AddLink(prismatic);
-	//system.AddLink(Flap_Right_Joint);
-
-	//auto prismatic_pto = chrono_types::make_shared<ChLinkTSDA>();
-	//auto Flap_Left_Joint = chrono_types::make_shared<ChLinkLockRevolute>();
-	//prismatic_pto->Initialize(base, flapFore, false, ChVector<>(0, 0, -0.72), ChVector<>(0, 0, -21.29));
-	//Flap_Left_Joint->Initialize(base, flapFore, ChCoordsys<>(ChVector<>(12.5, 0, 0)));
-	//system.AddLink(prismatic_pto);
-	//system.AddLink(Flap_Left_Joint);
+	//// define base-fore flap joint
+	ChVector<> revoluteForePos(-12.5, 0, -9.0);
+	ChQuaternion<> revoluteForeRot = Q_from_AngX(0.0); // CH_C_PI / 2.0);
+	auto revoluteFore = chrono_types::make_shared<ChLinkLockRevolute>();
+	revoluteFore->Initialize(base, flapFore, ChCoordsys<>(revoluteForePos, revoluteForeRot));
+	system.AddLink(revoluteFore);
+	
+	// define base-aft flap joint
+	//auto revoluteAft = chrono_types::make_shared<ChLinkLockRevolute>();
 
 	// define wave parameters (not used in this demo)
 	HydroInputs my_hydro_inputs;
-	my_hydro_inputs.regular_wave_amplitude = 0.022;
-	my_hydro_inputs.regular_wave_omega = 2.10;
+	//my_hydro_inputs.regular_wave_amplitude = 0.022;
+	//my_hydro_inputs.regular_wave_omega = 2.10;
 	my_hydro_inputs.mode = noWaveCIC;  // switch to NONE to turn waves off
 	// attach hydrodynamic forces to body,switch to REGULAR with REGULAR
 	std::vector<std::shared_ptr<ChBody>> bodies;
@@ -192,11 +177,6 @@ int main(int argc, char* argv[]) {
 	bodies.push_back(flapFore);
 	bodies.push_back(flapAft);
 	TestHydro blah(bodies, "../../HydroChrono/demos/f3of/hydroData/f3of.h5", my_hydro_inputs);
-
-	//// Debug printing added mass matrix and system mass matrix
-	//ChSparseMatrix M;
-	//system.GetMassMatrix(&M);
-	//std::cout << M << std::endl;
 
 	// for profiling
 	auto start = std::chrono::high_resolution_clock::now();
