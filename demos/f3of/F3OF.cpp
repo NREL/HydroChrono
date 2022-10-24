@@ -90,7 +90,7 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 	//std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/float.obj").c_str()) << std::endl;
-	std::shared_ptr<ChBody> Base_body = chrono_types::make_shared<ChBodyEasyMesh>(                   //
+	std::shared_ptr<ChBody> base = chrono_types::make_shared<ChBodyEasyMesh>(                   //
 		GetChronoDataFile("../../HydroChrono/demos/F3OF/geometry/base.obj").c_str(),                 // file name
 		0,                                                                                        // density
 		false,                                                                                    // do not evaluate mass automatically
@@ -124,7 +124,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	//std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/plate.obj").c_str()) << std::endl;
-	std::shared_ptr<ChBody> Flap_body_Right = chrono_types::make_shared<ChBodyEasyMesh>(                   //
+	std::shared_ptr<ChBody> Flap_body_right = chrono_types::make_shared<ChBodyEasyMesh>(                   //
 		GetChronoDataFile("../../HydroChrono/demos/F3OF/geometry/flap.obj").c_str(),                 // file name
 		0,                                                                                        // density
 		false,                                                                                    // do not evaluate mass automatically
@@ -136,12 +136,12 @@ int main(int argc, char* argv[]) {
 
 
 	// define the float's initial conditions
-	system.Add(Base_body);
-	Base_body->SetNameString("body1"); 
-	Base_body->SetPos(ChVector<>(0,0,-9));
-	Base_body->SetMass(1089825);
-	//Base_body->SetInertiaXX(ChVector<>(20907301.0, 21306090.66, 37085481.11));
-	//Base_body->SetCollide(false);
+	system.Add(base);
+	base->SetNameString("body1");
+	base->SetPos(ChVector<>(0,0,-9));
+	base->SetMass(1089825);
+	//base->SetInertiaXX(ChVector<>(20907301.0, 21306090.66, 37085481.11));
+	//base->SetCollide(false);
 
 	// define the plate's initial conditions
 	system.Add(Flap_body_left);
@@ -157,7 +157,7 @@ int main(int argc, char* argv[]) {
 	Flap_body_Right->SetPos(ChVector<>(12.5,0,-5.5));
 	Flap_body_Right->SetMass(725834);
 	// Flap_body_Right->SetInertiaXX(ChVector<>(20907301.0, 21306090.66, 37085481.11));
-	//Base_body->SetCollide(false);
+	//base->SetCollide(false);
 
 
 	// add revolute joint between the two bodies
@@ -167,17 +167,17 @@ int main(int argc, char* argv[]) {
 	ChVector<> rev_pos(12.5, 0, -9.0); // location of right revolute joint
 	// Create revolute joint between body and ground
 	auto rev_right = chrono_types::make_shared<ChLinkLockRevolute>();
-	rev_right->Initialize(Base_body, Flap_body_Right, ChCoordsys<>(rev_pos, rev_rot));
+	rev_right->Initialize(base, Flap_body_Right, ChCoordsys<>(rev_pos, rev_rot));
 	system.AddLink(rev_right);
-	//prismatic->Initialize(Base_body, Flap_body_left, false, ChCoordsys<>(ChVector<>(0, 0, -0.72)), ChCoordsys<>(ChVector<>(0, 0, -21.29)));
-	//Flap_Right_Joint->Initialize(Base_body, Flap_body_Right, ChCoordsys<>(ChVector<>(-12.5, 0, 0)));
+	//prismatic->Initialize(base, Flap_body_left, false, ChCoordsys<>(ChVector<>(0, 0, -0.72)), ChCoordsys<>(ChVector<>(0, 0, -21.29)));
+	//Flap_Right_Joint->Initialize(base, Flap_body_Right, ChCoordsys<>(ChVector<>(-12.5, 0, 0)));
 	//system.AddLink(prismatic);
 	//system.AddLink(Flap_Right_Joint);
 
 	//auto prismatic_pto = chrono_types::make_shared<ChLinkTSDA>();
 	//auto Flap_Left_Joint = chrono_types::make_shared<ChLinkLockRevolute>();
-	//prismatic_pto->Initialize(Base_body, Flap_body_left, false, ChVector<>(0, 0, -0.72), ChVector<>(0, 0, -21.29));
-	//Flap_Left_Joint->Initialize(Base_body, Flap_body_left, ChCoordsys<>(ChVector<>(12.5, 0, 0)));
+	//prismatic_pto->Initialize(base, Flap_body_left, false, ChVector<>(0, 0, -0.72), ChVector<>(0, 0, -21.29));
+	//Flap_Left_Joint->Initialize(base, Flap_body_left, ChCoordsys<>(ChVector<>(12.5, 0, 0)));
 	//system.AddLink(prismatic_pto);
 	//system.AddLink(Flap_Left_Joint);
 
@@ -188,7 +188,7 @@ int main(int argc, char* argv[]) {
 	my_hydro_inputs.mode = NONE;  // switch to NONE to turn waves off
 	// attach hydrodynamic forces to body,switch to REGULAR with REGULAR
 	std::vector<std::shared_ptr<ChBody>> bodies;
-	bodies.push_back(Base_body);
+	bodies.push_back(base);
 	bodies.push_back(Flap_body_left);
 	bodies.push_back(Flap_body_Right);
 	TestHydro blah(bodies, "../../HydroChrono/demos/F3OF/hydroData/f3of.h5", my_hydro_inputs);
@@ -233,7 +233,7 @@ int main(int argc, char* argv[]) {
 				system.DoStepDynamics(timestep);
 				// append data to std vector
 				time_vector.push_back(system.GetChTime());
-				float_heave_position.push_back(Base_body->GetPos().z());
+				float_heave_position.push_back(base->GetPos().z());
 				plate_heave_position.push_back(Flap_body_left->GetPos().z());
 				// force playback to be real-time
 				realtime_timer.Spin(timestep);
@@ -245,7 +245,7 @@ int main(int argc, char* argv[]) {
 		while (system.GetChTime() <= simulationDuration) {
 			// append data to std vector
 			time_vector.push_back(system.GetChTime());
-			float_heave_position.push_back(Base_body->GetPos().z());
+			float_heave_position.push_back(base->GetPos().z());
 			plate_heave_position.push_back(Flap_body_left->GetPos().z());
 
 			// step the simulation forwards
