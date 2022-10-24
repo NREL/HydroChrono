@@ -68,13 +68,13 @@ int main(int argc, char* argv[]) {
 	// system/solver settings
 	ChSystemNSC system;
 	system.Set_G_acc(ChVector<>(0.0, 0.0, 0.0));
-	double timestep = 0.01;
+	double timestep = 0.02;
 	system.SetTimestepperType(ChTimestepper::Type::HHT);
 	system.SetSolverType(ChSolver::Type::GMRES);
 	system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
 	system.SetStep(timestep);
 	ChRealtimeStepTimer realtime_timer;
-	double simulationDuration = 300.0;
+	double simulationDuration = 60.0;
 
 	// some io/viz options
 	bool visualizationOn = true;
@@ -85,13 +85,13 @@ int main(int argc, char* argv[]) {
 	std::vector<double> plate_heave_position;
 
 	// set up body from a mesh
-	if (!std::filesystem::exists("../../HydroChrono/demos/F3OF/geometry/base.obj")) {
-		std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/F3OF/geometry/base.obj").c_str()) << " does not exist" << std::endl;
+	if (!std::filesystem::exists("../../HydroChrono/demos/f3of/geometry/base.obj")) {
+		std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/f3of/geometry/base.obj").c_str()) << " does not exist" << std::endl;
 		return 0;
 	}
 	//std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/float.obj").c_str()) << std::endl;
 	std::shared_ptr<ChBody> base = chrono_types::make_shared<ChBodyEasyMesh>(                   //
-		GetChronoDataFile("../../HydroChrono/demos/F3OF/geometry/base.obj").c_str(),                 // file name
+		GetChronoDataFile("../../HydroChrono/demos/f3of/geometry/base.obj").c_str(),                 // file name
 		0,                                                                                        // density
 		false,                                                                                    // do not evaluate mass automatically
 		true,                                                                                     // create visualization asset
@@ -101,14 +101,14 @@ int main(int argc, char* argv[]) {
 		);
 
 	// set up body from a mesh
-	if (!std::filesystem::exists("../../HydroChrono/demos/F3OF/geometry/flap.obj")) {
-		std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/F3OF/geometry/flap.obj").c_str()) << " does not exist" << std::endl;
+	if (!std::filesystem::exists("../../HydroChrono/demos/f3of/geometry/flap.obj")) {
+		std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/f3of/geometry/flap.obj").c_str()) << " does not exist" << std::endl;
 		return 0;
 	}
 
 	//std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/plate.obj").c_str()) << std::endl;
-	std::shared_ptr<ChBody> Flap_body_left = chrono_types::make_shared<ChBodyEasyMesh>(                   //
-		GetChronoDataFile("../../HydroChrono/demos/F3OF/geometry/flap.obj").c_str(),                 // file name
+	std::shared_ptr<ChBody> flapFore = chrono_types::make_shared<ChBodyEasyMesh>(                   //
+		GetChronoDataFile("../../HydroChrono/demos/f3of/geometry/flap.obj").c_str(),                 // file name
 		0,                                                                                        // density
 		false,                                                                                    // do not evaluate mass automatically
 		true,                                                                                     // create visualization asset
@@ -118,14 +118,14 @@ int main(int argc, char* argv[]) {
 		);
 
 	// set up body from a mesh
-	if (!std::filesystem::exists("../../HydroChrono/demos/F3OF/geometry/flap.obj")) {
+	if (!std::filesystem::exists("../../HydroChrono/demos/f3of/geometry/flap.obj")) {
 		std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/F3OF/geometry/flap.obj").c_str()) << " does not exist" << std::endl;
 		return 0;
 	}
 
 	//std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/plate.obj").c_str()) << std::endl;
-	std::shared_ptr<ChBody> Flap_body_right = chrono_types::make_shared<ChBodyEasyMesh>(                   //
-		GetChronoDataFile("../../HydroChrono/demos/F3OF/geometry/flap.obj").c_str(),                 // file name
+	std::shared_ptr<ChBody> flapAft = chrono_types::make_shared<ChBodyEasyMesh>(                   //
+		GetChronoDataFile("../../HydroChrono/demos/f3of/geometry/flap.obj").c_str(),                 // file name
 		0,                                                                                        // density
 		false,                                                                                    // do not evaluate mass automatically
 		true,                                                                                     // create visualization asset
@@ -144,19 +144,19 @@ int main(int argc, char* argv[]) {
 	//base->SetCollide(false);
 
 	// define the plate's initial conditions
-	system.Add(Flap_body_left);
-	Flap_body_left->SetNameString("body2");
-	Flap_body_left->SetPos(ChVector<>(-12.5,0,-5.5));
-	Flap_body_left->SetMass(886691);
-	// Flap_body_left->SetInertiaXX(ChVector<>(94419614.57, 94407091.24, 28542224.82));
-	//Flap_body_left->SetCollide(false);
+	system.Add(flapFore);
+	flapFore->SetNameString("body2");
+	flapFore->SetPos(ChVector<>(-12.5,0,-5.5));
+	flapFore->SetMass(886691);
+	// flapFore->SetInertiaXX(ChVector<>(94419614.57, 94407091.24, 28542224.82));
+	//flapFore->SetCollide(false);
 
 	// define the float's initial conditions
-	system.Add(Flap_body_Right);
-	Flap_body_Right->SetNameString("body3");
-	Flap_body_Right->SetPos(ChVector<>(12.5,0,-5.5));
-	Flap_body_Right->SetMass(725834);
-	// Flap_body_Right->SetInertiaXX(ChVector<>(20907301.0, 21306090.66, 37085481.11));
+	system.Add(flapAft);
+	flapAft->SetNameString("body3");
+	flapAft->SetPos(ChVector<>(12.5,0,-5.5));
+	flapAft->SetMass(725834);
+	// flapAft->SetInertiaXX(ChVector<>(20907301.0, 21306090.66, 37085481.11));
 	//base->SetCollide(false);
 
 
@@ -167,17 +167,17 @@ int main(int argc, char* argv[]) {
 	ChVector<> rev_pos(12.5, 0, -9.0); // location of right revolute joint
 	// Create revolute joint between body and ground
 	auto rev_right = chrono_types::make_shared<ChLinkLockRevolute>();
-	rev_right->Initialize(base, Flap_body_Right, ChCoordsys<>(rev_pos, rev_rot));
+	rev_right->Initialize(base, flapAft, ChCoordsys<>(rev_pos, rev_rot));
 	system.AddLink(rev_right);
-	//prismatic->Initialize(base, Flap_body_left, false, ChCoordsys<>(ChVector<>(0, 0, -0.72)), ChCoordsys<>(ChVector<>(0, 0, -21.29)));
-	//Flap_Right_Joint->Initialize(base, Flap_body_Right, ChCoordsys<>(ChVector<>(-12.5, 0, 0)));
+	//prismatic->Initialize(base, flapFore, false, ChCoordsys<>(ChVector<>(0, 0, -0.72)), ChCoordsys<>(ChVector<>(0, 0, -21.29)));
+	//Flap_Right_Joint->Initialize(base, flapAft, ChCoordsys<>(ChVector<>(-12.5, 0, 0)));
 	//system.AddLink(prismatic);
 	//system.AddLink(Flap_Right_Joint);
 
 	//auto prismatic_pto = chrono_types::make_shared<ChLinkTSDA>();
 	//auto Flap_Left_Joint = chrono_types::make_shared<ChLinkLockRevolute>();
-	//prismatic_pto->Initialize(base, Flap_body_left, false, ChVector<>(0, 0, -0.72), ChVector<>(0, 0, -21.29));
-	//Flap_Left_Joint->Initialize(base, Flap_body_left, ChCoordsys<>(ChVector<>(12.5, 0, 0)));
+	//prismatic_pto->Initialize(base, flapFore, false, ChVector<>(0, 0, -0.72), ChVector<>(0, 0, -21.29));
+	//Flap_Left_Joint->Initialize(base, flapFore, ChCoordsys<>(ChVector<>(12.5, 0, 0)));
 	//system.AddLink(prismatic_pto);
 	//system.AddLink(Flap_Left_Joint);
 
@@ -189,9 +189,9 @@ int main(int argc, char* argv[]) {
 	// attach hydrodynamic forces to body,switch to REGULAR with REGULAR
 	std::vector<std::shared_ptr<ChBody>> bodies;
 	bodies.push_back(base);
-	bodies.push_back(Flap_body_left);
-	bodies.push_back(Flap_body_Right);
-	TestHydro blah(bodies, "../../HydroChrono/demos/F3OF/hydroData/f3of.h5", my_hydro_inputs);
+	bodies.push_back(flapFore);
+	bodies.push_back(flapAft);
+	TestHydro blah(bodies, "../../HydroChrono/demos/f3of/hydroData/f3of.h5", my_hydro_inputs);
 
 	//// Debug printing added mass matrix and system mass matrix
 	//ChSparseMatrix M;
@@ -234,7 +234,7 @@ int main(int argc, char* argv[]) {
 				// append data to std vector
 				time_vector.push_back(system.GetChTime());
 				float_heave_position.push_back(base->GetPos().z());
-				plate_heave_position.push_back(Flap_body_left->GetPos().z());
+				plate_heave_position.push_back(flapFore->GetPos().z());
 				// force playback to be real-time
 				realtime_timer.Spin(timestep);
 			}
@@ -246,7 +246,7 @@ int main(int argc, char* argv[]) {
 			// append data to std vector
 			time_vector.push_back(system.GetChTime());
 			float_heave_position.push_back(base->GetPos().z());
-			plate_heave_position.push_back(Flap_body_left->GetPos().z());
+			plate_heave_position.push_back(flapFore->GetPos().z());
 
 			// step the simulation forwards
 			system.DoStepDynamics(timestep);
@@ -261,14 +261,14 @@ int main(int argc, char* argv[]) {
 
 	if (profilingOn) {
 		std::ofstream profilingFile;
-		profilingFile.open("./results/F3OF/decay/duration_ms.txt");
+		profilingFile.open("./results/f3of/decay/duration_ms.txt");
 		if (!profilingFile.is_open()) {
-			if (!std::filesystem::exists("./results/F3OF/decay")) {
-				std::cout << "Path " << std::filesystem::absolute("./results/F3OF/decay") << " does not exist, creating it now..." << std::endl;
+			if (!std::filesystem::exists("./results/f3of/decay")) {
+				std::cout << "Path " << std::filesystem::absolute("./results/f3of/decay") << " does not exist, creating it now..." << std::endl;
 				std::filesystem::create_directory("./results");
-				std::filesystem::create_directory("./results/F3OF");
-				std::filesystem::create_directory("./results/F3OF/decay");
-				profilingFile.open("./results/F3OF/decay/duration_ms.txt");
+				std::filesystem::create_directory("./results/f3of");
+				std::filesystem::create_directory("./results/f3of/decay");
+				profilingFile.open("./results/f3of/decay/duration_ms.txt");
 				if (!profilingFile.is_open()) {
 					std::cout << "Still cannot open file, ending program" << std::endl;
 					return 0;
@@ -281,14 +281,14 @@ int main(int argc, char* argv[]) {
 
 	if (saveDataOn) {
 		std::ofstream outputFile;
-		outputFile.open("./results/F3OF/decay/F3OF_decay.txt");
+		outputFile.open("./results/f3of/decay/f3of_decay.txt");
 		if (!outputFile.is_open()) {
-			if (!std::filesystem::exists("./results/F3OF/decay")) {
-				std::cout << "Path " << std::filesystem::absolute("./results/F3OF/decay") << " does not exist, creating it now..." << std::endl;
+			if (!std::filesystem::exists("./results/f3of/decay")) {
+				std::cout << "Path " << std::filesystem::absolute("./results/f3of/decay") << " does not exist, creating it now..." << std::endl;
 				std::filesystem::create_directory("./results");
-				std::filesystem::create_directory("./results/F3OF");
-				std::filesystem::create_directory("./results/F3OF/decay");
-				outputFile.open("./results/F3OF/decay/F3OF_decay.txt");
+				std::filesystem::create_directory("./results/f3of");
+				std::filesystem::create_directory("./results/f3of/decay");
+				outputFile.open("./results/f3of/decay/f3of_decay.txt");
 				if (!outputFile.is_open()) {
 					std::cout << "Still cannot open file, ending program" << std::endl;
 					return 0;
