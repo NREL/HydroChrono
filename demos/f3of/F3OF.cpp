@@ -139,7 +139,7 @@ int main(int argc, char* argv[]) {
 	system.Add(base);
 	base->SetNameString("body1");
 	base->SetPos(ChVector<>(0,0,-9));
-	base->SetMass(1089825);
+	base->SetMass(1089825.0);
 	//base->SetInertiaXX(ChVector<>(20907301.0, 21306090.66, 37085481.11));
 	//base->SetCollide(false);
 
@@ -147,7 +147,7 @@ int main(int argc, char* argv[]) {
 	system.Add(flapFore);
 	flapFore->SetNameString("body2");
 	flapFore->SetPos(ChVector<>(-12.5,0,-5.5));
-	flapFore->SetMass(886691);
+	flapFore->SetMass(179250.0);
 	// flapFore->SetInertiaXX(ChVector<>(94419614.57, 94407091.24, 28542224.82));
 	//flapFore->SetCollide(false);
 
@@ -155,7 +155,7 @@ int main(int argc, char* argv[]) {
 	system.Add(flapAft);
 	flapAft->SetNameString("body3");
 	flapAft->SetPos(ChVector<>(12.5,0,-5.5));
-	flapAft->SetMass(725834);
+	flapAft->SetMass(179250.0);
 	// flapAft->SetInertiaXX(ChVector<>(20907301.0, 21306090.66, 37085481.11));
 	//base->SetCollide(false);
 
@@ -163,12 +163,12 @@ int main(int argc, char* argv[]) {
 	// add revolute joint between the two bodies
 	//auto prismatic = chrono_types::make_shared<ChLinkLockPrismatic>();
 	//auto Flap_Right_Joint = chrono_types::make_shared<ChLinkLockRevolute>();
-	ChQuaternion<> rev_rot = Q_from_AngX(CH_C_PI / 2.0); // set as 0 initially, use to displace later
-	ChVector<> rev_pos(12.5, 0, -9.0); // location of right revolute joint
-	// Create revolute joint between body and ground
-	auto rev_right = chrono_types::make_shared<ChLinkLockRevolute>();
-	rev_right->Initialize(base, flapAft, ChCoordsys<>(rev_pos, rev_rot));
-	system.AddLink(rev_right);
+	//ChQuaternion<> rev_rot = Q_from_AngX(CH_C_PI / 2.0); // set as 0 initially, use to displace later
+	//ChVector<> rev_pos(12.5, 0, -9.0); // location of right revolute joint
+	//// Create revolute joint between body and ground
+	//auto rev_right = chrono_types::make_shared<ChLinkLockRevolute>();
+	//rev_right->Initialize(base, flapAft, ChCoordsys<>(rev_pos, rev_rot));
+	//system.AddLink(rev_right);
 	//prismatic->Initialize(base, flapFore, false, ChCoordsys<>(ChVector<>(0, 0, -0.72)), ChCoordsys<>(ChVector<>(0, 0, -21.29)));
 	//Flap_Right_Joint->Initialize(base, flapAft, ChCoordsys<>(ChVector<>(-12.5, 0, 0)));
 	//system.AddLink(prismatic);
@@ -185,7 +185,7 @@ int main(int argc, char* argv[]) {
 	HydroInputs my_hydro_inputs;
 	my_hydro_inputs.regular_wave_amplitude = 0.022;
 	my_hydro_inputs.regular_wave_omega = 2.10;
-	my_hydro_inputs.mode = NONE;  // switch to NONE to turn waves off
+	my_hydro_inputs.mode = noWaveCIC;  // switch to NONE to turn waves off
 	// attach hydrodynamic forces to body,switch to REGULAR with REGULAR
 	std::vector<std::shared_ptr<ChBody>> bodies;
 	bodies.push_back(base);
