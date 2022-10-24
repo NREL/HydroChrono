@@ -37,10 +37,23 @@
 // C++ classes that might be used as base-classes for class declarations in the interface
 // ie like above, this is how we get chbody stuff in i think
 
-void test();
-//int foo;
-//int bar(int x);
-//...
+%include "swig_test.h"
 
-// notes
-// if swig doesnt recognize a type, it is treated as a pointer
+
+void test();
+
+//enum WaveMode { NONE, REGULAR }; // eventually add irregular waves mode
+//class HydroInputs {
+//public:
+//	WaveMode mode;
+//	HydroInputs();
+//	double freq_index_des;
+//	double regular_wave_amplitude;
+//	double regular_wave_omega;
+//	double wave_omega_delta;
+//	std::vector<double> excitation_force_mag;
+//	std::vector<double> excitation_force_phase;
+//	HydroInputs(HydroInputs& old);
+//	HydroInputs& operator = (HydroInputs& rhs);
+//private:
+//};
