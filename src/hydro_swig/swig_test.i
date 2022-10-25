@@ -21,6 +21,7 @@
 // enum values as assigned by the C compiler. 
 %{
 #include "swig_test.h"
+#include <vector>
 %}
 
 // However, #include statements are ignored unless the -includeall command line option has been supplied.  (out of %{...%} block)
@@ -31,6 +32,11 @@
 // To include another file into a SWIG interface, use the %include directive like this:
 // this makes more wrapper for pointer.i in this swig 
 //%include "pointer.i"
+%include "std_vector.i"
+// Instantiate templates used by example
+namespace std {
+   %template(DoubleVector) vector<double>;
+}
 
 // %import "foo.i" on the other hand would import info from foo.i but not make more wrapper code
 // Such information generally includes type declarations (e.g., typedef) as well as 
@@ -41,19 +47,19 @@
 
 
 void test();
-
-//enum WaveMode { NONE, REGULAR }; // eventually add irregular waves mode
-//class HydroInputs {
-//public:
-//	WaveMode mode;
-//	HydroInputs();
-//	double freq_index_des;
-//	double regular_wave_amplitude;
-//	double regular_wave_omega;
-//	double wave_omega_delta;
-//	std::vector<double> excitation_force_mag;
-//	std::vector<double> excitation_force_phase;
-//	HydroInputs(HydroInputs& old);
-//	HydroInputs& operator = (HydroInputs& rhs);
-//private:
-//};
+// enum is weird, to change see https://stackoverflow.com/questions/16471213/wrapping-c-enum-in-a-python-module-with-swig
+enum WaveMode { NONE, REGULAR }; // eventually add irregular waves mode
+class HydroInputs {
+public:
+	WaveMode mode;
+	HydroInputs();
+	double freq_index_des;
+	double regular_wave_amplitude;
+	double regular_wave_omega;
+	double wave_omega_delta;
+	DoubleVector excitation_force_mag;
+	DoubleVector excitation_force_phase;
+	HydroInputs(HydroInputs& old);
+	HydroInputs& operator = (HydroInputs& rhs);
+private:
+};

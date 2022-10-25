@@ -3,7 +3,7 @@
 
 #include <cstdio>
 #include <filesystem>
-
+#include "swig_test.h"
 #include "chrono/solver/ChSolverPMINRES.h"
 #include "chrono/solver/ChIterativeSolverLS.h"
 #include "chrono/timestepper/ChTimestepper.h"
@@ -94,26 +94,11 @@ private:
 	std::string bodyName;
 	void readH5Data();
 };
-enum WaveMode {NONE, REGULAR}; // eventually add irregular waves mode
-// =============================================================================
-class hydro_lib_API HydroInputs {
-public:
-	WaveMode mode;
-	HydroInputs();
-	double freq_index_des;
-	double regular_wave_amplitude;
-	double regular_wave_omega;
-	double wave_omega_delta;
-	std::vector<double> excitation_force_mag;
-	std::vector<double> excitation_force_phase;
-	HydroInputs(HydroInputs& old);
-	HydroInputs& operator = (HydroInputs& rhs);
-private:
-};
+
 
 // =============================================================================
 class hydro_lib_API ForceFunc6d;
-
+class HydroInputs;
 class hydro_lib_API TestHydro;
 
 class hydro_lib_API ComponentFunc : public ChFunction {

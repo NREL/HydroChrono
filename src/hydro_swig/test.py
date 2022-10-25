@@ -17,6 +17,18 @@ system.AddBody(body)
 
 # use _hydro_py module
 _hydro_py.test()
+b = _hydro_py.NONE
+if(b == _hydro_py.NONE):
+    print("enum worked")
+if(b == _hydro_py.REGULAR):
+    print("enum didn't work")
+c = _hydro_py.REGULAR
+if(c == _hydro_py.REGULAR):
+    print("enum still working")
+
+input = _hydro_py.HydroInputs()
+
+
 
 # visualization
 irr_app = chronoirr.ChVisualSystemIrrlicht()
