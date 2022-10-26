@@ -26,13 +26,9 @@ c = _hydro_py.REGULAR
 if(c == _hydro_py.REGULAR):
     print("enum still working")
 
-# example for python class calls and syntax http://web.mit.edu/svn/src/swig-1.3.25/Examples/python/class/
+input = _hydro_py.HydroInputs()
 
-input = _hydro_py.new_HydroInputs()
-_hydro_py.HydroInputs_regular_wave_amplitude_set(input, 1)
-_hydro_py.HydroInputs_regular_wave_omega_set(input, 1)
-print("wave amp = ", _hydro_py.HydroInputs_regular_wave_amplitude_get(input))
-print("wave omega = ", _hydro_py.HydroInputs_regular_wave_omega_get(input))
+
 
 # visualization
 irr_app = chronoirr.ChVisualSystemIrrlicht()
