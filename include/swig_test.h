@@ -1,5 +1,6 @@
 #ifndef _SWIG_TEST_
 #define _SWIG_TEST_
+
 #include <vector>
 void test();
 enum WaveMode { NONE, REGULAR }; // eventually add irregular waves mode
@@ -16,6 +17,7 @@ public:
 	std::vector<double> excitation_force_phase;
 	HydroInputs(HydroInputs& old);
 	HydroInputs& operator = (HydroInputs& rhs);
+	void test2();
 private:
 };
 #endif // !

@@ -1,2 +1,4 @@
 .vs
 build
+data
+src/hydro_swig/py_out.txt

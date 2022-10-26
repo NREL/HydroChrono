@@ -40,3 +40,9 @@ HydroInputs& HydroInputs::operator = (HydroInputs& rhs) {
 	mode = rhs.mode;
 	return *this;
 }
+/*******************************************************************************
+* HydroInputs test member function for swig wrapping
+*******************************************************************************/
+void HydroInputs::test2() {
+	std::cout << "member function works" << std::endl;
+}

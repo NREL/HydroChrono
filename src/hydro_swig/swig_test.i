@@ -43,7 +43,7 @@ namespace std {
 // C++ classes that might be used as base-classes for class declarations in the interface
 // ie like above, this is how we get chbody stuff in i think
 
-%include "swig_test.h"
+// %include "swig_test.h"
 
 
 void test();
@@ -57,9 +57,10 @@ public:
 	double regular_wave_amplitude;
 	double regular_wave_omega;
 	double wave_omega_delta;
-	DoubleVector excitation_force_mag;
-	DoubleVector excitation_force_phase;
+	std::vector<double> excitation_force_mag;
+	std::vector<double> excitation_force_phase;
 	HydroInputs(HydroInputs& old);
 	HydroInputs& operator = (HydroInputs& rhs);
+	void test2();
 private:
 };

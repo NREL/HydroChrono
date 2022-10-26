@@ -9,7 +9,7 @@ system = chrono.ChSystemNSC()
 system.Set_G_acc(chrono.ChVectorD(0, 0, 0))
 
 # define the sphere rigid body from mesh
-body = chrono.ChBodyEasyMesh("oes_task10_sphere.obj",1000,False,True,False)
+body = chrono.ChBodyEasyMesh("../../demos/sphere/geometry/oes_task10_sphere.obj",1000,False,True,False)
 body.SetMass(261.8e3)
 body.SetPos(chrono.ChVectorD(0, 0, -1))
 body.SetNameString("body1")
@@ -26,9 +26,15 @@ c = _hydro_py.REGULAR
 if(c == _hydro_py.REGULAR):
     print("enum still working")
 
-input = _hydro_py.HydroInputs()
+# example for python class calls and syntax http://web.mit.edu/svn/src/swig-1.3.25/Examples/python/class/
 
+input = _hydro_py.new_HydroInputs()
+_hydro_py.HydroInputs_regular_wave_amplitude_set(input, 1)
+_hydro_py.HydroInputs_regular_wave_omega_set(input, 1)
+print("wave amp = ", _hydro_py.HydroInputs_regular_wave_amplitude_get(input))
+print("wave omega = ", _hydro_py.HydroInputs_regular_wave_omega_get(input))
 
+_hydro_py.HydroInputs_test2(input)
 
 # visualization
 irr_app = chronoirr.ChVisualSystemIrrlicht()
@@ -38,7 +44,7 @@ irr_app.SetWindowTitle("Sphere Decay - hydro_py")
 irr_app.SetCameraVertical(chrono.CameraVerticalDir_Z)
 irr_app.Initialize()
 # irr_app.AddLogo()
-irr_app.AddSkyBox("./skybox/")
+irr_app.AddSkyBox("../../data/skybox/")
 irr_app.AddCamera(chrono.ChVectorD(0,-30,0), chrono.ChVectorD(0,0,0))
 irr_app.AddTypicalLights()
 
