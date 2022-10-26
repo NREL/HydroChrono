@@ -62,4 +62,3 @@ with open("py_out.txt", mode='w', encoding='utf-8') as f:
         f.write("\t")
         f.write(str(body.GetPos().z))
         system.DoStepDynamics(0.015)
-

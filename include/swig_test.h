@@ -9,6 +9,7 @@ class HydroInputs {
 public:
 	WaveMode mode;
 	HydroInputs();
+	~HydroInputs() = default;
 	double freq_index_des;
 	double regular_wave_amplitude;
 	double regular_wave_omega;

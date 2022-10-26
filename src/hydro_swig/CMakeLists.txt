@@ -1,6 +1,6 @@
 project(target-hydropy LANGUAGES CXX)
 
-find_package(SWIG REQUIRED) # this adds FindSWIG cmake stuff
+find_package(SWIG 4.0 REQUIRED) # this adds FindSWIG cmake stuff
 include(${SWIG_USE_FILE}) # this loads cmake file swig_use_file  which adds swig_add_library
 message("SWIG_USE_FILE = ${SWIG_USE_FILE}")
 if(NOT SWIG_FOUND)
