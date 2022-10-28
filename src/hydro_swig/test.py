@@ -15,26 +15,19 @@ body.SetPos(chrono.ChVectorD(0, 0, -1))
 body.SetNameString("body1")
 system.AddBody(body)
 
-# use _hydro_py module
+# use _hydro_py module global function and enum
 _hydro_py.test()
 b = _hydro_py.NONE
 if(b == _hydro_py.NONE):
     print("enum worked")
-if(b == _hydro_py.REGULAR):
-    print("enum didn't work")
-c = _hydro_py.REGULAR
-if(c == _hydro_py.REGULAR):
-    print("enum still working")
 
 # example for python class calls and syntax http://web.mit.edu/svn/src/swig-1.3.25/Examples/python/class/
-
-input = _hydro_py.new_HydroInputs()
-_hydro_py.HydroInputs_regular_wave_amplitude_set(input, 1)
-_hydro_py.HydroInputs_regular_wave_omega_set(input, 1)
-print("wave amp = ", _hydro_py.HydroInputs_regular_wave_amplitude_get(input))
-print("wave omega = ", _hydro_py.HydroInputs_regular_wave_omega_get(input))
-
-_hydro_py.HydroInputs_test2(input)
+input = _hydro_py.HydroInputs()
+input.regular_wave_amplitude = 1
+input.regular_wave_omega = 0.5
+print("wave amp = ", input.regular_wave_amplitude)
+print("wave omega = ", input.regular_wave_omega)
+input.test2()
 
 # visualization
 irr_app = chronoirr.ChVisualSystemIrrlicht()

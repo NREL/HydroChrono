@@ -29,7 +29,7 @@ include_directories(${CMAKE_SOURCE_DIR}/include
 					${CMAKE_SOURCE_DIR}/src/hydro_swig
 					C:/Users/ZQUINTON/code/libraries/swigwin-3.0.12/Lib/python)
 
-set(CMAKE_SWIG_FLAGS "")
+set(CMAKE_SWIG_FLAGS "-builtin")
 set_source_files_properties(swig_test.i PROPERTIES CPLUSPLUS ON)
 set_source_files_properties(swig_test.i PROPERTIES SWIG_FLAGS "-includeall")
 
