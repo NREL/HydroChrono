@@ -74,7 +74,7 @@ int main(int argc, char* argv[]) {
 	system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
 	system.SetStep(timestep);
 	ChRealtimeStepTimer realtime_timer;
-	double simulationDuration = 60.0;
+	double simulationDuration = 0.02;
 
 	// some io/viz options
 	bool visualizationOn = true;
@@ -140,6 +140,7 @@ int main(int argc, char* argv[]) {
 	base->SetNameString("body1");
 	base->SetPos(ChVector<>(0.0, 0.0, -9.0));
 	base->SetMass(1089825.0);
+	base->SetPos_dt(ChVector<>(0.0, 0.0, 1.0));
 	//base->SetInertiaXX(ChVector<>(100000000.0, 76300000.0, 100000000.0));
 
 	// define the fore flap's initial conditions
@@ -147,6 +148,7 @@ int main(int argc, char* argv[]) {
 	flapFore->SetNameString("body2");
 	flapFore->SetPos(ChVector<>(-12.5, 0.0, -5.5));
 	flapFore->SetMass(179250.0);
+	flapFore->SetPos_dt(ChVector<>(0.0, 0.0, 1.0));
 	//flapFore->SetInertiaXX(ChVector<>(100000000.0, 1300000.0, 100000000.0));
 
 	// define the aft flap's initial conditions
@@ -154,21 +156,28 @@ int main(int argc, char* argv[]) {
 	flapAft->SetNameString("body3");
 	flapAft->SetPos(ChVector<>(12.5, 0.0, -5.5));
 	flapAft->SetMass(179250.0);
+	flapAft->SetPos_dt(ChVector<>(0.0, 0.0, 1.0));
+
 	//flapAft->SetInertiaXX(ChVector<>(100000000.0, 1300000.0, 100000000.0));
 
 	// define base-fore flap joint
 	ChVector<> revoluteForePos(-12.5, 0.0, -9.0);
 	ChQuaternion<> revoluteForeRot = Q_from_AngX(0.0); // CH_C_PI / 2.0);
 	auto revoluteFore = chrono_types::make_shared<ChLinkLockRevolute>();
-	revoluteFore->Initialize(base, flapFore, ChCoordsys<>(revoluteForePos, revoluteForeRot));
+	revoluteFore->Initialize(base, flapFore, ChCoordsys<>(revoluteForePos));// , revoluteForeRot));
 	system.AddLink(revoluteFore);
 
+	// add prismatic joint between the two bodies
+	//auto prismatic = chrono_types::make_shared<ChLinkLockPrismatic>();
+	//prismatic->Initialize(base, flapFore, false, ChCoordsys<>(ChVector<>(0.0, 0.0, -9.0)), ChCoordsys<>(ChVector<>(-12.5, 0.0, -5.5)));
+	//system.AddLink(prismatic);
+
 	// define base-aft flap joint
-	ChVector<> revoluteAftPos(12.5, 0.0, -9.0);
-	ChQuaternion<> revoluteAftRot = Q_from_AngX(0.0); // CH_C_PI / 2.0);
-	auto revoluteAft = chrono_types::make_shared<ChLinkLockRevolute>();
-	revoluteAft->Initialize(base, flapAft, ChCoordsys<>(revoluteAftPos, revoluteAftRot));
-	system.AddLink(revoluteAft);
+	//ChVector<> revoluteAftPos(12.5, 0.0, -9.0);
+	//ChQuaternion<> revoluteAftRot = Q_from_AngX(0.0); // CH_C_PI / 2.0);
+	//auto revoluteAft = chrono_types::make_shared<ChLinkLockRevolute>();
+	//revoluteAft->Initialize(base, flapAft, ChCoordsys<>(revoluteAftPos, revoluteAftRot));
+	//system.AddLink(revoluteAft);
 
 	// define wave parameters (not used in this demo)
 	HydroInputs my_hydro_inputs;
@@ -180,7 +189,7 @@ int main(int argc, char* argv[]) {
 	bodies.push_back(base);
 	bodies.push_back(flapFore);
 	bodies.push_back(flapAft);
-	/*TestHydro blah(bodies, "../../HydroChrono/demos/f3of/hydroData/f3of.h5", my_hydro_inputs);*/
+	TestHydro blah(bodies, "../../HydroChrono/demos/f3of/hydroData/f3of.h5", my_hydro_inputs);
 
 	// for profiling
 	auto start = std::chrono::high_resolution_clock::now();
@@ -204,15 +213,15 @@ int main(int argc, char* argv[]) {
 		bool buttonPressed = false;
 		MyActionReceiver receiver(irrlichtVis.get(), buttonPressed);
 		irrlichtVis->AddUserEventReceiver(&receiver);
-
+		ChSparseMatrix M;
 		// main simulation loop
 		while (irrlichtVis->Run() && system.GetChTime() <= simulationDuration) {
 			irrlichtVis->BeginScene();
 			irrlichtVis->Render();
 			irrlichtVis->EndScene();
 			if (buttonPressed) {
-				//system.GetMassMatrix(&M);
-				//std::cout << M << std::endl;
+				system.GetMassMatrix(&M);
+				std::cout << M << std::endl;
 				// step the simulation forwards
 				system.DoStepDynamics(timestep);
 				// append data to std vector
@@ -263,32 +272,33 @@ int main(int argc, char* argv[]) {
 	//	profilingFile.close();
 	//}
 
-	//if (saveDataOn) {
-	//	std::ofstream outputFile;
-	//	outputFile.open("./results/f3of/decay/f3of_decay.txt");
-	//	if (!outputFile.is_open()) {
-	//		if (!std::filesystem::exists("./results/f3of/decay")) {
-	//			std::cout << "Path " << std::filesystem::absolute("./results/f3of/decay") << " does not exist, creating it now..." << std::endl;
-	//			std::filesystem::create_directory("./results");
-	//			std::filesystem::create_directory("./results/f3of");
-	//			std::filesystem::create_directory("./results/f3of/decay");
-	//			outputFile.open("./results/f3of/decay/f3of_decay.txt");
-	//			if (!outputFile.is_open()) {
-	//				std::cout << "Still cannot open file, ending program" << std::endl;
-	//				return 0;
-	//			}
-	//		}
-	//	}
-	//	outputFile << std::left << std::setw(10) << "Time (s)"
-	//		<< std::right << std::setw(16) << "Float Heave (m)"
-	//		<< std::right << std::setw(16) << "Plate Heave (m)"
-	//		<< std::endl;
-	//	for (int i = 0; i < time_vector.size(); ++i)
-	//		outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
-	//		<< std::right << std::setw(16) << std::setprecision(4) << std::fixed << float_heave_position[i]
-	//		<< std::right << std::setw(16) << std::setprecision(4) << std::fixed << plate_heave_position[i]
-	//		<< std::endl;
-	//	outputFile.close();
-	//}
-	//return 0;
+	if (saveDataOn) {
+		std::ofstream outputFile;
+		outputFile.open("./results/f3of/decay/f3of_decay.txt");
+		if (!outputFile.is_open()) {
+			if (!std::filesystem::exists("./results/f3of/decay")) {
+				std::cout << "Path " << std::filesystem::absolute("./results/f3of/decay") << " does not exist, creating it now..." << std::endl;
+				std::filesystem::create_directory("./results");
+				std::filesystem::create_directory("./results/f3of");
+				std::filesystem::create_directory("./results/f3of/decay");
+				outputFile.open("./results/f3of/decay/f3of_decay.txt");
+				if (!outputFile.is_open()) {
+					std::cout << "Still cannot open file, ending program" << std::endl;
+					return 0;
+				}
+			}
+		}
+		outputFile << std::left << std::setw(10) << "Time (s)"
+			<< std::right << std::setw(16) << "Base Heave (m)"
+			<< std::right << std::setw(16) << "Flap Fore Heave (m)"
+			<< std::right << std::setw(16) << "Flap Aft Heave (m)"
+			<< std::endl;
+		for (int i = 0; i < time_vector.size(); ++i)
+			outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
+			<< std::right << std::setw(16) << std::setprecision(4) << std::fixed << float_heave_position[i]
+			<< std::right << std::setw(16) << std::setprecision(4) << std::fixed << plate_heave_position[i]
+			<< std::endl;
+		outputFile.close();
+	}
+	return 0;
 }
