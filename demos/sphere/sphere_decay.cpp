@@ -69,7 +69,7 @@ int main(int argc, char* argv[]) {
 
 	// system/solver settings
 	ChSystemNSC system;
-	system.Set_G_acc(ChVector<>(0, 0, 0));
+	system.Set_G_acc(ChVector<>(0, 0, -9.81));
 	double timestep = 0.015;
 	system.SetSolverType(ChSolver::Type::GMRES);
 	system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
@@ -91,9 +91,7 @@ int main(int argc, char* argv[]) {
 		1000,                                                                             // density
 		false,                                                                            // do not evaluate mass automatically
 		true,                                                                             // create visualization asset
-		false,                                                                            // do not collide
-		nullptr,                                                                          // no need for contact material
-		0                                                                                 // swept sphere radius
+		false                                                                             // do not collide
 		);
 
 	// define the body's initial conditions
