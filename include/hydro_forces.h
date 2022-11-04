@@ -1,28 +1,16 @@
 #ifndef _HYDRO_FORCES_
 #define _HYDRO_FORCES_
 
-#include <cstdio>
-#include <filesystem>
-#include "swig_test.h"
-#include "chrono/solver/ChSolverPMINRES.h"
-#include "chrono/solver/ChIterativeSolverLS.h"
-#include "chrono/timestepper/ChTimestepper.h"
-
-#include "chrono/physics/ChForce.h"
-#include "chrono/physics/ChLoadContainer.h"
-#include "chrono/physics/ChLoadsBody.h"
-#include "chrono/physics/ChLoad.h"
-#include "chrono/physics/ChSystemNSC.h"
-#include "chrono/physics/ChBody.h"
-#include "chrono/physics/ChBodyEasy.h"
-
-#include "chrono/fea/ChMeshFileLoader.h"
-
-//#include "chrono/assets/ChPointPointDrawing.h"
-#include "chrono_irrlicht/ChIrrGUI.h"
-#include "chrono_irrlicht/ChIrrMeshTools.h"
-
+#ifndef SWIG
+#include <filesystem> // includes file checking features for h5 class
 #include "H5Cpp.h"
+#include "chrono/physics/ChSystemNSC.h" // includes ChSystem which includes many std libs and chrono core files
+#include "chrono/physics/ChLoad.h"
+#include "chrono/physics/ChLoadContainer.h" // includes ChLoad and ChPhysicsItem
+#include "chrono/physics/ChLoadsBody.h" // includes ChFunction, ChBody, and ChLoad
+#endif
+
+#include "swig_test.h"
 
 #ifdef hydro_lib_EXPORTS
 #define hydro_lib_API __declspec(dllexport)
@@ -30,10 +18,11 @@
 #define hydro_lib_API 
 #endif
 
-
-using namespace chrono;
-using namespace chrono::irrlicht;
-using namespace chrono::fea;
+using chrono::ChMatrixDynamic;
+using chrono::ChBody;
+using chrono::ChForce;
+using chrono::ChLoadCustomMultiple;
+using chrono::ChLoadable;
 
 // =============================================================================
 class hydro_lib_API H5FileInfo {
@@ -41,8 +30,8 @@ public:
 	bool printed = false;
 	H5FileInfo();
 	H5FileInfo(std::string file, std::string body_name);
-	H5FileInfo(H5FileInfo& old);
-	H5FileInfo& operator = (H5FileInfo& rhs);
+	H5FileInfo(const H5FileInfo& old);
+	H5FileInfo& operator = (const H5FileInfo& rhs);
 	void InitScalar(H5::H5File& file, std::string data_name, double& var);
 	void Init1D(H5::H5File& file, std::string data_name, std::vector<double>& var);
 	void Init2D(H5::H5File& file, std::string data_name, ChMatrixDynamic<double>& var); 
@@ -101,7 +90,7 @@ class hydro_lib_API ForceFunc6d;
 class HydroInputs;
 class hydro_lib_API TestHydro;
 
-class hydro_lib_API ComponentFunc : public ChFunction {
+class hydro_lib_API ComponentFunc : public chrono::ChFunction {
 public:
 	ComponentFunc();
 	ComponentFunc(const ComponentFunc& old);
@@ -135,49 +124,6 @@ private:
 
 class hydro_lib_API ChLoadAddedMass;
 
-class hydro_lib_API TestHydro {
-public:
-	bool printed = false;
-	TestHydro();
-	TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::string h5_file_name, HydroInputs& users_hydro_inputs);
-	TestHydro(const TestHydro& old) = delete;
-	TestHydro operator = (const TestHydro& rhs) = delete;
-	void WaveSetUp();
-	std::vector<double> ComputeForceHydrostatics();
-	std::vector<double> ComputeForceRadiationDampingConv(); 
-	std::vector<double> ComputeForceExcitationRegularFreq();
-	//std::vector<double> ComputeForceRegularWaves();
-	double GetRIRFval(int row, int col, int st);
-	double coordinateFunc(int b, int i);
-	bool convTrapz;
-private:
-	std::vector<std::shared_ptr<ChBody>> bodies;
-	std::vector<H5FileInfo> file_info;
-	std::vector<ForceFunc6d> force_per_body;
-	double sumVelHistoryAndRIRF;
-	HydroInputs hydro_inputs;
-	std::vector<double> force_hydrostatic;
-	std::vector<double> force_radiation_damping;
-	std::vector<double> force_excitation_freq;
-	//std::vector<double> force_reg_waves;
-	std::vector<double> total_force;
-	int num_bodies;
-	std::vector<double> equilibrium;
-	std::vector<double> cb_minus_cg;
-	double rirf_timestep;
-	double getVelHistoryAllBodies(int step, int c) const;
-	double setVelHistory(double val, int step, int b_num, int index);
-
-	//double freq_index_des;
-	//int freq_index_floor;
-	//double freq_interp_val;
-	std::vector<double> velocity_history; // use helper function to access vel_history elements correctly
-	double prev_time;
-	std::vector<double> rirf_time_vector; // (should be the same for each body?)
-	int offset_rirf;
-	std::shared_ptr<ChLoadContainer> my_loadcontainer;
-	std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia;
-};
 
 // =============================================================================
 class hydro_lib_API ChLoadAddedMass : public ChLoadCustomMultiple {
@@ -193,23 +139,23 @@ public:
 //	/// Signs are negative as Q assumed at right hand side, so Q= -Fgyro -Fcentrifugal
 //	/// Called automatically at each Update().
 //	/// The M*a term is not added: to this end one could use LoadIntLoadResidual_Mv afterward.
-	virtual void ComputeQ(ChState* state_x,      ///< state position to evaluate Q
-		ChStateDelta* state_w  ///< state speed to evaluate Q
+	virtual void ComputeQ(chrono::ChState* state_x,      ///< state position to evaluate Q
+		chrono::ChStateDelta* state_w  ///< state speed to evaluate Q
 	) override {}
 
 	/// For efficiency reasons, do not let the parent class do automatic differentiation
 	/// to compute the R, K matrices. Use analytic expressions instead. For example, R is
 	/// the well known gyroscopic damping matrix. Also, compute the M matrix.
-	virtual void ComputeJacobian(ChState* state_x,       ///< state position to evaluate jacobians
-		ChStateDelta* state_w,  ///< state speed to evaluate jacobians
-		ChMatrixRef mK,         ///< result -dQ/dx
-		ChMatrixRef mR,         ///< result -dQ/dv
-		ChMatrixRef mM          ///< result -dQ/da
+	virtual void ComputeJacobian(chrono::ChState* state_x,       ///< state position to evaluate jacobians
+		chrono::ChStateDelta* state_w,  ///< state speed to evaluate jacobians
+		chrono::ChMatrixRef mK,         ///< result -dQ/dx
+		chrono::ChMatrixRef mR,         ///< result -dQ/dv
+		chrono::ChMatrixRef mM          ///< result -dQ/da
 	) override;
 
 	/// Just for efficiency, override the default LoadIntLoadResidual_Mv, because we can do this in a simplified way.
-	virtual void LoadIntLoadResidual_Mv(ChVectorDynamic<>& R,           ///< result: the R residual, R += c*M*w
-		const ChVectorDynamic<>& w,     ///< the w vector
+	virtual void LoadIntLoadResidual_Mv(chrono::ChVectorDynamic<>& R,           ///< result: the R residual, R += c*M*w
+		const chrono::ChVectorDynamic<>& w,     ///< the w vector
 		const double c) override;       ///< a scaling factor
 	void AssembleSystemAddedMassMat();
 private:

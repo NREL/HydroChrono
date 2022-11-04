@@ -6,6 +6,7 @@ message("SWIG_USE_FILE = ${SWIG_USE_FILE}")
 if(NOT SWIG_FOUND)
 	message("SWIG NOT FOUND")
 endif()
+message("SWIG_VERSION = ${SWIG_VERSION}")
 
 # find_package(Python)
 # set(Python_ADDITIONAL_VERSIONS 3.10.4)
@@ -27,11 +28,13 @@ endif()
 include_directories(${CMAKE_SOURCE_DIR}/include
 					${CMAKE_SOURCE_DIR}/src/hydro_cxx	
 					${CMAKE_SOURCE_DIR}/src/hydro_swig
-					C:/Users/ZQUINTON/code/libraries/swigwin-3.0.12/Lib/python)
+					C:/Users/ZQUINTON/code/libraries/swigwin-4.1.0/Lib/python
+					C:/Users/ZQUINTON/code/chrono_dev/chrono/src)
 
-set(CMAKE_SWIG_FLAGS "-builtin")
 set_source_files_properties(swig_test.i PROPERTIES CPLUSPLUS ON)
-set_source_files_properties(swig_test.i PROPERTIES SWIG_FLAGS "-includeall")
+# set_source_files_properties(swig_test.i PROPERTIES SWIG_FLAGS "-includeall")
+set_source_files_properties(swig_test.i PROPERTIES COMPILE_OPTIONS "-builtin;-nodefaultctor")
+# set_source_files_properties(swig_test.i PROPERTIES COMPILE_OPTIONS "-builtin")
 
 swig_add_library(hydro_py TYPE SHARED LANGUAGE python SOURCES swig_test.i)
 target_include_directories(hydro_py PRIVATE ${Python_INCLUDE_DIRS})

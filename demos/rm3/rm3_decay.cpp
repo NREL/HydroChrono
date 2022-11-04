@@ -1,7 +1,13 @@
 #include "hydro_forces.h"
 #include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
 #include "chrono_irrlicht/ChIrrMeshTools.h"
+#include "chrono_irrlicht/ChIrrGUI.h"
 #include "chrono/core/ChRealtimeStep.h"
+#include "chrono/physics/ChBodyEasy.h"
+#include "chrono/solver/ChSolverPMINRES.h"
+#include "chrono/solver/ChIterativeSolverLS.h"
+#include "chrono/timestepper/ChTimestepper.h"
+#include "chrono/fea/ChMeshFileLoader.h"
 #include <iomanip> // std::setprecision
 #include <chrono> // std::chrono::high_resolution_clock::now
 #include <vector> // std::vector<double>

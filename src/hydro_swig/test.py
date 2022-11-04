@@ -8,26 +8,28 @@ import _hydro_py
 system = chrono.ChSystemNSC()
 system.Set_G_acc(chrono.ChVectorD(0, 0, 0))
 
-# define the sphere rigid body from mesh
-body = chrono.ChBodyEasyMesh("../../demos/sphere/geometry/oes_task10_sphere.obj",1000,False,True,False)
-body.SetMass(261.8e3)
-body.SetPos(chrono.ChVectorD(0, 0, -1))
-body.SetNameString("body1")
-system.AddBody(body)
-
 # use _hydro_py module global function and enum
 _hydro_py.test()
 b = _hydro_py.NONE
 if(b == _hydro_py.NONE):
     print("enum worked")
 
-# example for python class calls and syntax http://web.mit.edu/svn/src/swig-1.3.25/Examples/python/class/
 input = _hydro_py.HydroInputs()
 input.regular_wave_amplitude = 1
 input.regular_wave_omega = 0.5
 print("wave amp = ", input.regular_wave_amplitude)
 print("wave omega = ", input.regular_wave_omega)
 input.test2()
+
+# define the sphere rigid body from mesh
+body = chrono.ChBodyEasyMesh("../../demos/sphere/geometry/oes_task10_sphere.obj",1000,False,True,False)
+# bodyptr = chrono.make_shared(body)
+body.SetMass(261.8e3)
+body.SetPos(chrono.ChVectorD(0, 0, -1))
+body.SetNameString("body1")
+system.AddBody(body)
+bodies = (body,) # make a list of all bodies (just one here but list all with commas-for c++ maybe look at span)
+_hydro_py.TestHydro(bodies, "../../demos/sphere/hydroData/sphere.h5", input)
 
 # visualization
 irr_app = chronoirr.ChVisualSystemIrrlicht()
