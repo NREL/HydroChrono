@@ -729,7 +729,6 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 	// now handle buoyancy force....
 	assert(num_bodies > 0);
 	double* buoyancy = new double[num_bodies];
-	double* weight = new double[num_bodies];
 	// add vertical buoyancy for each body, and add (0,0,buoyancy)x(cb-cg) to torque for each body (simplified)
 	for (int b = 0; b < num_bodies; b++) {
 		auto buoyancy = file_info[b].rho * (-bodies[b]->GetSystem()->Get_G_acc()) * file_info[b].disp_vol; // buoyancy = rho*g*Vdisp
@@ -738,9 +737,7 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 		force_hydrostatic[1 + b_offset] += buoyancy[1];
 		force_hydrostatic[2 + b_offset] += buoyancy[2];
 	}
-
 	delete[] buoyancy;
-	delete[] weight;
 	return force_hydrostatic;
 }
 
