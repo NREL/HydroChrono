@@ -91,9 +91,7 @@ int main(int argc, char* argv[]) {
 		1000,                                                                             // density
 		false,                                                                            // do not evaluate mass automatically
 		true,                                                                             // create visualization asset
-		false,                                                                            // do not collide
-		nullptr,                                                                          // no need for contact material
-		0                                                                                 // swept sphere radius
+		false                                                                             // do not collide
 		);
 
 	// define the body's initial conditions
