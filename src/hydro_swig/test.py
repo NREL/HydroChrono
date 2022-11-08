@@ -23,13 +23,16 @@ input.test2()
 
 # define the sphere rigid body from mesh
 body = chrono.ChBodyEasyMesh("../../demos/sphere/geometry/oes_task10_sphere.obj",1000,False,True,False)
-# bodyptr = chrono.make_shared(body)
 body.SetMass(261.8e3)
 body.SetPos(chrono.ChVectorD(0, 0, -1))
 body.SetNameString("body1")
 system.AddBody(body)
-bodies = (body,) # make a list of all bodies (just one here but list all with commas-for c++ maybe look at span)
-_hydro_py.TestHydro(bodies, "../../demos/sphere/hydroData/sphere.h5", input)
+bodies = _hydro_py.vector_ChBody_ptr(1)
+print(bodies.size())
+bodies[0] = _hydro_py.upcast(body)
+# bodies = [body]
+# bodies = (body,) # make a list of all bodies (just one here but list all with commas-for c++ maybe look at span)
+_hydro_py.TestHydro(_hydro_py.upcast(bodies), "../../demos/sphere/hydroData/sphere.h5", input)
 
 # visualization
 irr_app = chronoirr.ChVisualSystemIrrlicht()
