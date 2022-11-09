@@ -38,7 +38,6 @@ public:
 			switch (event.GUIEvent.EventType) {
 			case EGET_BUTTON_CLICKED:
 				pressed = !pressed;
-				pressed = !pressed;
 				if (pressed) {
 					buttonText->setText(L"Playing");
 				}
