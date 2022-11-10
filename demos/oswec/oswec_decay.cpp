@@ -68,13 +68,13 @@ int main(int argc, char* argv[]) {
 	// system/solver settings
 	ChSystemNSC system;
 	system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
-	double timestep = 0.01;
+	double timestep = 0.02;
 	system.SetTimestepperType(ChTimestepper::Type::HHT);
 	system.SetSolverType(ChSolver::Type::GMRES);
 	system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
 	system.SetStep(timestep);
 	ChRealtimeStepTimer realtime_timer;
-	double simulationDuration = 30.0;
+	double simulationDuration = 3.0;
 
 	// some io/viz options
 	bool visualizationOn = true;

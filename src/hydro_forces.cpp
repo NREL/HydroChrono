@@ -704,10 +704,8 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 			if (b_offset + i + 3 > total_dofs || b_offset + i < 0) {
 				std::cout << "temp index in hydrostatic force is bad " << std::endl;
 			}
-			//double linearPosition = bodies[b]->GetPos().eigen()[i];
-			//double rotationalPosition = bodies[b]->GetRot().Q_to_Euler123()[i];
 			position[i + b_offset] = bodies[b]->GetPos().eigen()[i];
-			//position[i + 3 + b_offset] = rotationalPosition;
+			position[i + 3 + b_offset] = bodies[b]->GetRot().Q_to_Euler123()[i];
 		}
 	}
 
@@ -738,6 +736,13 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 		force_hydrostatic[2 + b_offset] += buoyancy[2];
 	}
 	delete[] buoyancy;
+
+	//std::ofstream fHsOut("results/oswec/debugging/force_hydrostatic.txt");
+	//for (int i = 0; i < total_dofs; i++) {
+	//	fHsOut << force_hydrostatic[i] << std::endl;
+	//}
+	//fHsOut.close();
+
 	return force_hydrostatic;
 }
 
@@ -815,12 +820,6 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 #undef TMP_S
 	delete[] timeseries;
 	delete[] tmp_s;
-
-	std::ofstream fRadOut("results/rm3/debugging/fRadOut.txt");
-	for (int i = 0; i < numCols; i++) {
-		fRadOut << force_radiation_damping[i] << std::endl;
-	}
-	fRadOut.close();
 
 	return force_radiation_damping;
 }
