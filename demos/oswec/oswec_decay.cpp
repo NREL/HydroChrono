@@ -74,7 +74,7 @@ int main(int argc, char* argv[]) {
 	system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
 	system.SetStep(timestep);
 	ChRealtimeStepTimer realtime_timer;
-	double simulationDuration = 300.0;
+	double simulationDuration = 30.0;
 
 	// some io/viz options
 	bool visualizationOn = true;
@@ -95,9 +95,7 @@ int main(int argc, char* argv[]) {
 		0,                                                                                        // density
 		false,                                                                                    // do not evaluate mass automatically
 		true,                                                                                     // create visualization asset
-		false,                                                                                    // collisions
-		nullptr,                                                                                  // no need for contact material
-		0                                                                                         // swept sphere radius
+		false                                                                                    // collisions
 		);
 
 	// set up body from a mesh
@@ -112,18 +110,17 @@ int main(int argc, char* argv[]) {
 		0,                                                                                        // density
 		false,                                                                                    // do not evaluate mass automatically
 		true,                                                                                     // create visualization asset
-		false,                                                                                    // collisions
-		nullptr,                                                                                  // no need for contact material
-		0                                                                                         // swept sphere radius
+		false                                                                                    // collisions
 		);
 
 	// define the float's initial conditions
 	system.Add(flap_body);
 	flap_body->SetNameString("body1");
-	flap_body->SetPos(ChVector<>(0, 0, -3.9));
+	// flap_body->SetPos(ChVector<>(0, 0, -3.9));
+	flap_body->SetPos(ChVector<>(1.05925388, 0., -3.99267271));
+	flap_body->SetRot(Q_from_AngAxis(CH_C_PI / 18, VECT_Y));
 	flap_body->SetMass(127000);
 	flap_body->SetInertiaXX(ChVector<>(1.85e6, 1.85e6, 1.85e6));
-	//float_body1->SetCollide(false);
 
 	// define the plate's initial conditions
 	system.Add(base_body);
@@ -132,11 +129,10 @@ int main(int argc, char* argv[]) {
 	base_body->SetMass(999);
 	base_body->SetInertiaXX(ChVector<>(1, 1, 1));
 	base_body->SetBodyFixed(true);
-	//plate_body2->SetCollide(false);
 
 	// define base-fore flap joint
 	ChVector<> revolutePos(0.0, 0.0, -10.0);
-	ChQuaternion<> revoluteRot = Q_from_AngX(0.0); // CH_C_PI / 2.0);
+	//ChQuaternion<> revoluteRot = Q_from_AngX(0.0); // CH_C_PI / 2.0);
 	auto revolute = chrono_types::make_shared<ChLinkLockRevolute>();
 	revolute->Initialize(base_body, flap_body, ChCoordsys<>(revolutePos));// , revoluteForeRot));
 	system.AddLink(revolute);
