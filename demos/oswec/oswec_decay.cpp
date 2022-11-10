@@ -69,58 +69,66 @@ int main(int argc, char* argv[]) {
 	ChSystemNSC system;
 	system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
 	double timestep = 0.02;
-	system.SetTimestepperType(ChTimestepper::Type::HHT);
+	//system.SetTimestepperType(ChTimestepper::Type::HHT);
 	system.SetSolverType(ChSolver::Type::GMRES);
-	system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
+	//system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
 	system.SetStep(timestep);
 	ChRealtimeStepTimer realtime_timer;
-	double simulationDuration = 3.0;
+	double simulationDuration = 30.0;
 
 	// some io/viz options
 	bool visualizationOn = true;
-	bool profilingOn = true;
-	bool saveDataOn = true;
-	std::vector<double> time_vector;
-	std::vector<double> float_heave_position;
-	std::vector<double> plate_heave_position;
+	//bool profilingOn = false;
+	//bool saveDataOn = false;
+	//std::vector<double> time_vector;
+	//std::vector<double> flap_heave_position;
+	//std::vector<double> base_heave_position;
 
-	// set up body from a mesh
-	if (!std::filesystem::exists("../../HydroChrono/demos/oswec/geometry/flap.obj")) {
-		std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/oswec/geometry/flap.obj").c_str()) << " does not exist" << std::endl;
-		return 0;
-	}
+	//// set up body from a mesh
+	//if (!std::filesystem::exists("../../HydroChrono/demos/oswec/geometry/flap.obj")) {
+	//	std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/oswec/geometry/flap.obj").c_str()) << " does not exist" << std::endl;
+	//	return 0;
+	//}
 	//std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/float.obj").c_str()) << std::endl;
-	std::shared_ptr<ChBody> flap_body = chrono_types::make_shared<ChBodyEasyMesh>(                   //
-		GetChronoDataFile("../../HydroChrono/demos/oswec/geometry/flap.obj").c_str(),                 // file name
-		0,                                                                                        // density
-		false,                                                                                    // do not evaluate mass automatically
-		true,                                                                                     // create visualization asset
-		false                                                                                    // collisions
+	std::shared_ptr<ChBody> flap_body;
+	flap_body = chrono_types::make_shared<ChBodyEasyMesh>(
+		GetChronoDataFile("../../HydroChrono/demos/oswec/geometry/flap.obj").c_str(), // file name
+		1000,                                                                         // density
+		false,                                                                        // do not evaluate mass automatically
+		true,                                                                         // create visualization asset
+		false,                                                                        // collisions
+		nullptr,                                                                      // no need for contact material
+		0                                                                             // swept sphere radius
 		);
+	system.Add(flap_body);
 
-	// set up body from a mesh
-	if (!std::filesystem::exists("../../HydroChrono/demos/oswec/geometry/base.obj")) {
-		std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/oswec/geometry/base.obj").c_str()) << " does not exist" << std::endl;
-		return 0;
-	}
+	//// set up body from a mesh
+	//if (!std::filesystem::exists("../../HydroChrono/demos/oswec/geometry/base.obj")) {
+	//	std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/oswec/geometry/base.obj").c_str()) << " does not exist" << std::endl;
+	//	return 0;
+	//}
 
 	//std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/plate.obj").c_str()) << std::endl;
-	std::shared_ptr<ChBody> base_body = chrono_types::make_shared<ChBodyEasyMesh>(                   //
-		GetChronoDataFile("../../HydroChrono/demos/oswec/geometry/base.obj").c_str(),                 // file name
-		0,                                                                                        // density
-		false,                                                                                    // do not evaluate mass automatically
-		true,                                                                                     // create visualization asset
-		false                                                                                    // collisions
+	std::shared_ptr<ChBody> base_body;
+	base_body = chrono_types::make_shared<ChBodyEasyMesh>(
+		GetChronoDataFile("../../HydroChrono/demos/oswec/geometry/base.obj").c_str(), // file name
+		1000,                                                                         // density
+		false,                                                                        // do not evaluate mass automatically
+		true,                                                                         // create visualization asset
+		false,                                                                         // collisions
+		nullptr,                                                                      // no need for contact material
+		0                                                                             // swept sphere radius
 		);
 
 	// define the float's initial conditions
-	system.Add(flap_body);
 	flap_body->SetNameString("body1");
 	// flap_body->SetPos(ChVector<>(0, 0, -3.9));
 	flap_body->SetPos(ChVector<>(1.05925388, 0., -3.99267271));
 	flap_body->SetRot(Q_from_AngAxis(CH_C_PI / 18, VECT_Y));
 	flap_body->SetMass(127000);
 	flap_body->SetInertiaXX(ChVector<>(1.85e6, 1.85e6, 1.85e6));
+	//flap_body->SetWvel_par(ChVector<>(0, 1.0, 0));
+	//flap_body->SetPos_dt(ChVector<>(initial_linspeed, 0, 0));
 
 	// define the plate's initial conditions
 	system.Add(base_body);
@@ -131,21 +139,22 @@ int main(int argc, char* argv[]) {
 	base_body->SetBodyFixed(true);
 
 	// define base-fore flap joint
-	ChVector<> revolutePos(0.0, 0.0, -10.0);
-	//ChQuaternion<> revoluteRot = Q_from_AngX(0.0); // CH_C_PI / 2.0);
-	auto revolute = chrono_types::make_shared<ChLinkLockRevolute>();
-	revolute->Initialize(base_body, flap_body, ChCoordsys<>(revolutePos));// , revoluteForeRot));
+	//ChVector<> revolutePos(0.0, 0.0, -10.0);
+	ChQuaternion<> revoluteRot = Q_from_AngX(CH_C_PI / 2.0);
+	std::shared_ptr<ChLinkLockRevolute> revolute;
+	revolute = chrono_types::make_shared<ChLinkLockRevolute>();
+	revolute->Initialize(base_body, flap_body, ChCoordsys<>(ChVector<>(0.0, 0.0, -10.0), revoluteRot));
 	system.AddLink(revolute);
 
 	// add rotational spring-damper:
 
-	// define wave parameters (not used in this demo)
+	//// define wave parameters (not used in this demo)
 	HydroInputs my_hydro_inputs;
 	my_hydro_inputs.mode = noWaveCIC;// or 'regular' or 'regularCIC' or 'irregular';
-	//my_hydro_inputs.regular_wave_amplitude = 0.022;
-	//my_hydro_inputs.regular_wave_omega = 2.10;
+	////my_hydro_inputs.regular_wave_amplitude = 0.022;
+	////my_hydro_inputs.regular_wave_omega = 2.10;
 
-	// attach hydrodynamic forces to body
+	//// attach hydrodynamic forces to body
 	std::vector<std::shared_ptr<ChBody>> bodies;
 	bodies.push_back(flap_body);
 	bodies.push_back(base_body);
@@ -157,7 +166,7 @@ int main(int argc, char* argv[]) {
 	//std::cout << M << std::endl;
 
 	// for profiling
-	auto start = std::chrono::high_resolution_clock::now();
+	//auto start = std::chrono::high_resolution_clock::now();
 
 	if (visualizationOn) {
 		// create the irrlicht application for visualizing
@@ -188,9 +197,9 @@ int main(int argc, char* argv[]) {
 				// step the simulation forwards
 				system.DoStepDynamics(timestep);
 				// append data to std vector
-				time_vector.push_back(system.GetChTime());
-				float_heave_position.push_back(flap_body->GetPos().z());
-				plate_heave_position.push_back(base_body->GetPos().z());
+				//time_vector.push_back(system.GetChTime());
+				//flap_heave_position.push_back(flap_body->GetPos().z());
+				//base_heave_position.push_back(base_body->GetPos().z());
 				// force playback to be real-time
 				realtime_timer.Spin(timestep);
 			}
@@ -200,9 +209,9 @@ int main(int argc, char* argv[]) {
 		int frame = 0;
 		while (system.GetChTime() <= simulationDuration) {
 			// append data to std vector
-			time_vector.push_back(system.GetChTime());
-			float_heave_position.push_back(flap_body->GetPos().z());
-			plate_heave_position.push_back(base_body->GetPos().z());
+			//time_vector.push_back(system.GetChTime());
+			//flap_heave_position.push_back(flap_body->GetPos().z());
+			//base_heave_position.push_back(base_body->GetPos().z());
 
 			// step the simulation forwards
 			system.DoStepDynamics(timestep);
@@ -211,56 +220,56 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
-	// for profiling
-	auto end = std::chrono::high_resolution_clock::now();
-	unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+	//// for profiling
+	//auto end = std::chrono::high_resolution_clock::now();
+	//unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-	if (profilingOn) {
-		std::ofstream profilingFile;
-		profilingFile.open("./results/oswec/decay/duration_ms.txt");
-		if (!profilingFile.is_open()) {
-			if (!std::filesystem::exists("./results/oswec/decay")) {
-				std::cout << "Path " << std::filesystem::absolute("./results/oswec/decay") << " does not exist, creating it now..." << std::endl;
-				std::filesystem::create_directory("./results");
-				std::filesystem::create_directory("./results/oswec");
-				std::filesystem::create_directory("./results/oswec/decay");
-				profilingFile.open("./results/oswec/decay/duration_ms.txt");
-				if (!profilingFile.is_open()) {
-					std::cout << "Still cannot open file, ending program" << std::endl;
-					return 0;
-				}
-			}
-		}
-		profilingFile << duration << "\n";
-		profilingFile.close();
-	}
+	//if (profilingOn) {
+	//	std::ofstream profilingFile;
+	//	profilingFile.open("./results/oswec/decay/duration_ms.txt");
+	//	if (!profilingFile.is_open()) {
+	//		if (!std::filesystem::exists("./results/oswec/decay")) {
+	//			std::cout << "Path " << std::filesystem::absolute("./results/oswec/decay") << " does not exist, creating it now..." << std::endl;
+	//			std::filesystem::create_directory("./results");
+	//			std::filesystem::create_directory("./results/oswec");
+	//			std::filesystem::create_directory("./results/oswec/decay");
+	//			profilingFile.open("./results/oswec/decay/duration_ms.txt");
+	//			if (!profilingFile.is_open()) {
+	//				std::cout << "Still cannot open file, ending program" << std::endl;
+	//				return 0;
+	//			}
+	//		}
+	//	}
+	//	profilingFile << duration << "\n";
+	//	profilingFile.close();
+	//}
 
-	if (saveDataOn) {
-		std::ofstream outputFile;
-		outputFile.open("./results/oswec/decay/oswec_decay.txt");
-		if (!outputFile.is_open()) {
-			if (!std::filesystem::exists("./results/oswec/decay")) {
-				std::cout << "Path " << std::filesystem::absolute("./results/oswec/decay") << " does not exist, creating it now..." << std::endl;
-				std::filesystem::create_directory("./results");
-				std::filesystem::create_directory("./results/oswec");
-				std::filesystem::create_directory("./results/oswec/decay");
-				outputFile.open("./results/oswec/decay/oswec_decay.txt");
-				if (!outputFile.is_open()) {
-					std::cout << "Still cannot open file, ending program" << std::endl;
-					return 0;
-				}
-			}
-		}
-		outputFile << std::left << std::setw(10) << "Time (s)"
-			<< std::right << std::setw(16) << "Float Heave (m)"
-			<< std::right << std::setw(16) << "Plate Heave (m)"
-			<< std::endl;
-		for (int i = 0; i < time_vector.size(); ++i)
-			outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
-			<< std::right << std::setw(16) << std::setprecision(4) << std::fixed << float_heave_position[i]
-			<< std::right << std::setw(16) << std::setprecision(4) << std::fixed << plate_heave_position[i]
-			<< std::endl;
-		outputFile.close();
-	}
-	return 0;
+	//if (saveDataOn) {
+	//	std::ofstream outputFile;
+	//	outputFile.open("./results/oswec/decay/oswec_decay.txt");
+	//	if (!outputFile.is_open()) {
+	//		if (!std::filesystem::exists("./results/oswec/decay")) {
+	//			std::cout << "Path " << std::filesystem::absolute("./results/oswec/decay") << " does not exist, creating it now..." << std::endl;
+	//			std::filesystem::create_directory("./results");
+	//			std::filesystem::create_directory("./results/oswec");
+	//			std::filesystem::create_directory("./results/oswec/decay");
+	//			outputFile.open("./results/oswec/decay/oswec_decay.txt");
+	//			if (!outputFile.is_open()) {
+	//				std::cout << "Still cannot open file, ending program" << std::endl;
+	//				return 0;
+	//			}
+	//		}
+	//	}
+	//	outputFile << std::left << std::setw(10) << "Time (s)"
+	//		<< std::right << std::setw(16) << "Float Heave (m)"
+	//		<< std::right << std::setw(16) << "Plate Heave (m)"
+	//		<< std::endl;
+	//	for (int i = 0; i < time_vector.size(); ++i)
+	//		outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
+	//		<< std::right << std::setw(16) << std::setprecision(4) << std::fixed << flap_heave_position[i]
+	//		<< std::right << std::setw(16) << std::setprecision(4) << std::fixed << base_heave_position[i]
+	//		<< std::endl;
+	//	outputFile.close();
+	//}
+	//return 0;
 }
