@@ -726,14 +726,16 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 
 	// now handle buoyancy force....
 	assert(num_bodies > 0);
-	double* buoyancy = new double[num_bodies];
-	// add vertical buoyancy for each body, and add (0,0,buoyancy)x(cb-cg) to torque for each body (simplified)
+	double* buoyancy = new double[num_bodies]; // this sets up buoyancy as a vector, for each body
+	// add vertical buoyancy for each body, and add (cb-cg)x(0,0,buoyancy) aka rxf to torque for each body (simplified)
 	for (int b = 0; b < num_bodies; b++) {
-		auto buoyancy = file_info[b].rho * (-bodies[b]->GetSystem()->Get_G_acc()) * file_info[b].disp_vol; // buoyancy = rho*g*Vdisp
-		unsigned b_offset = 6 * b;
-		force_hydrostatic[0 + b_offset] += buoyancy[0];
-		force_hydrostatic[1 + b_offset] += buoyancy[1];
-		force_hydrostatic[2 + b_offset] += buoyancy[2];
+		//double buoyancy = file_info[b].rho * (-bodies[b]->GetSystem()->Get_G_acc()) * file_info[b].disp_vol; // buoyancy = rho*g*Vdisp
+		buoyancy[b] = file_info[b].rho * (-bodies[b]->GetSystem()->Get_G_acc()).z() * file_info[b].disp_vol; // buoyancy = rho*g*Vdisp
+		unsigned b_offset = 6 * b; // force_hydrostatic has 6 elements for each body so to skip to the next body we move 6 spaces
+		unsigned r_offset = 3 * b; // cb_minus_cg has 3 elements for each body so to skip to the next body we move 3 spaces
+		force_hydrostatic[b_offset + 2] += buoyancy[b]; // for this body, add the buoyancy to the heave component of this body's force
+		force_hydrostatic[b_offset + 3] += buoyancy[b] * cb_minus_cg[1 + r_offset];
+		force_hydrostatic[b_offset + 4] += -1 * buoyancy[b] * cb_minus_cg[0 + r_offset];
 	}
 	delete[] buoyancy;
 
@@ -920,7 +922,7 @@ double TestHydro::coordinateFunc(int b, int i) {
 	if (hydro_inputs.mode == noWaveCIC) {
 		// update required forces:
 		ComputeForceHydrostatics();
-		ComputeForceRadiationDampingConv();
+		//ComputeForceRadiationDampingConv();
 		// sum all forces element by element
 		for (int j = 0; j < total_dofs; j++) {
 			total_force[j] = force_hydrostatic[j] - force_radiation_damping[j];
