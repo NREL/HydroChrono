@@ -67,20 +67,21 @@ int main(int argc, char* argv[]) {
 
 	// system/solver settings
 	ChSystemNSC system;
-	system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
+	system.Set_G_acc(ChVector<>(0.0, 0.0, 0.0));
 	double timestep = 0.03;
 	//system.SetTimestepperType(ChTimestepper::Type::HHT);
 	system.SetSolverType(ChSolver::Type::GMRES);
 	//system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
 	system.SetStep(timestep);
 	ChRealtimeStepTimer realtime_timer;
-	double simulationDuration = 30.0;
+	double simulationDuration = 300.0;
 
 	// some io/viz options
 	bool visualizationOn = true;
 	//bool profilingOn = false;
-	//bool saveDataOn = false;
-	//std::vector<double> time_vector;
+	bool saveDataOn = true;
+	std::vector<double> time_vector;
+	std::vector<double> flap_rot;
 	//std::vector<double> flap_heave_position;
 	//std::vector<double> base_heave_position;
 
@@ -125,7 +126,7 @@ int main(int argc, char* argv[]) {
 	// flap_body->SetPos(ChVector<>(0, 0, -3.9));
 	flap_body->SetPos(ChVector<>(1.05925388, 0., -3.99267271));
 	flap_body->SetRot(Q_from_AngAxis(CH_C_PI / 18, VECT_Y));
-	flap_body->SetMass(127000);
+	flap_body->SetMass(127000); // f_g = -1.27e6
 	flap_body->SetInertiaXX(ChVector<>(1.85e6, 1.85e6, 1.85e6));
 	//flap_body->SetWvel_par(ChVector<>(0, 1.0, 0));
 	//flap_body->SetPos_dt(ChVector<>(initial_linspeed, 0, 0));
@@ -197,7 +198,9 @@ int main(int argc, char* argv[]) {
 				// step the simulation forwards
 				system.DoStepDynamics(timestep);
 				// append data to std vector
-				//time_vector.push_back(system.GetChTime());
+				time_vector.push_back(system.GetChTime());
+				flap_rot.push_back(flap_body->GetRot().Q_to_Euler123().y());
+				std::cout << flap_body->GetAppliedForce() << flap_body->GetAppliedTorque() << std::endl;
 				//flap_heave_position.push_back(flap_body->GetPos().z());
 				//base_heave_position.push_back(base_body->GetPos().z());
 				// force playback to be real-time
@@ -244,32 +247,32 @@ int main(int argc, char* argv[]) {
 	//	profilingFile.close();
 	//}
 
-	//if (saveDataOn) {
-	//	std::ofstream outputFile;
-	//	outputFile.open("./results/oswec/decay/oswec_decay.txt");
-	//	if (!outputFile.is_open()) {
-	//		if (!std::filesystem::exists("./results/oswec/decay")) {
-	//			std::cout << "Path " << std::filesystem::absolute("./results/oswec/decay") << " does not exist, creating it now..." << std::endl;
-	//			std::filesystem::create_directory("./results");
-	//			std::filesystem::create_directory("./results/oswec");
-	//			std::filesystem::create_directory("./results/oswec/decay");
-	//			outputFile.open("./results/oswec/decay/oswec_decay.txt");
-	//			if (!outputFile.is_open()) {
-	//				std::cout << "Still cannot open file, ending program" << std::endl;
-	//				return 0;
-	//			}
-	//		}
-	//	}
-	//	outputFile << std::left << std::setw(10) << "Time (s)"
-	//		<< std::right << std::setw(16) << "Float Heave (m)"
-	//		<< std::right << std::setw(16) << "Plate Heave (m)"
-	//		<< std::endl;
-	//	for (int i = 0; i < time_vector.size(); ++i)
-	//		outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
-	//		<< std::right << std::setw(16) << std::setprecision(4) << std::fixed << flap_heave_position[i]
-	//		<< std::right << std::setw(16) << std::setprecision(4) << std::fixed << base_heave_position[i]
-	//		<< std::endl;
-	//	outputFile.close();
-	//}
-	//return 0;
+	if (saveDataOn) {
+		std::ofstream outputFile;
+		outputFile.open("./results/oswec/decay/oswec_decay.txt");
+		if (!outputFile.is_open()) {
+			if (!std::filesystem::exists("./results/oswec/decay")) {
+				std::cout << "Path " << std::filesystem::absolute("./results/oswec/decay") << " does not exist, creating it now..." << std::endl;
+				std::filesystem::create_directory("./results");
+				std::filesystem::create_directory("./results/oswec");
+				std::filesystem::create_directory("./results/oswec/decay");
+				outputFile.open("./results/oswec/decay/oswec_decay.txt");
+				if (!outputFile.is_open()) {
+					std::cout << "Still cannot open file, ending program" << std::endl;
+					return 0;
+				}
+			}
+		}
+		outputFile << std::left << std::setw(10) << "Time (s)"
+			<< std::right << std::setw(16) << "Flap Rotation y (radians)"
+			<< std::right << std::setw(16) << "Flap Rotation y (degrees)"
+			<< std::endl;
+		for (int i = 0; i < time_vector.size(); ++i)
+			outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
+			<< std::right << std::setw(16) << std::setprecision(4) << std::fixed << flap_rot[i]
+			<< std::right << std::setw(16) << std::setprecision(4) << std::fixed << flap_rot[i]*360.0/6.28
+			<< std::endl;
+		outputFile.close();
+	}
+	return 0;
 }

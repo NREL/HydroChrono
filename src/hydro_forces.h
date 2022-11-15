@@ -172,6 +172,7 @@ private:
 	double rirf_timestep;
 	double getVelHistoryVal(int step, int c) const;
 	double setVelHistory(double val, int step, int b_num, int index);
+	bool temp;
 
 	//double freq_index_des;
 	//int freq_index_floor;
