@@ -67,14 +67,14 @@ int main(int argc, char* argv[]) {
 
 	// system/solver settings
 	ChSystemNSC system;
-	system.Set_G_acc(ChVector<>(0.0, 0.0, 0.0));
+	system.Set_G_acc(ChVector<>(0.0, 0.0, 0.0)); // handle weight in hydroforces
 	double timestep = 0.03;
 	//system.SetTimestepperType(ChTimestepper::Type::HHT);
 	system.SetSolverType(ChSolver::Type::GMRES);
 	//system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
 	system.SetStep(timestep);
 	ChRealtimeStepTimer realtime_timer;
-	double simulationDuration = 300.0;
+	double simulationDuration = 40.0;
 
 	// some io/viz options
 	bool visualizationOn = true;
@@ -97,9 +97,7 @@ int main(int argc, char* argv[]) {
 		1000,                                                                         // density
 		false,                                                                        // do not evaluate mass automatically
 		true,                                                                         // create visualization asset
-		false,                                                                        // collisions
-		nullptr,                                                                      // no need for contact material
-		0                                                                             // swept sphere radius
+		false                                                                        // collisions                                                                           // swept sphere radius
 		);
 	system.Add(flap_body);
 
@@ -116,15 +114,13 @@ int main(int argc, char* argv[]) {
 		1000,                                                                         // density
 		false,                                                                        // do not evaluate mass automatically
 		true,                                                                         // create visualization asset
-		false,                                                                         // collisions
-		nullptr,                                                                      // no need for contact material
-		0                                                                             // swept sphere radius
+		false                                                                          // collisions
 		);
 
 	// define the float's initial conditions
 	flap_body->SetNameString("body1");
-	// flap_body->SetPos(ChVector<>(0, 0, -3.9));
-	flap_body->SetPos(ChVector<>(1.05925388, 0., -3.99267271));
+	 flap_body->SetPos(ChVector<>(0, 0, -3.9));
+	//flap_body->SetPos(ChVector<>(1.05925388, 0., -3.99267271));
 	flap_body->SetRot(Q_from_AngAxis(CH_C_PI / 18, VECT_Y));
 	flap_body->SetMass(127000); // f_g = -1.27e6
 	flap_body->SetInertiaXX(ChVector<>(1.85e6, 1.85e6, 1.85e6));
@@ -146,8 +142,6 @@ int main(int argc, char* argv[]) {
 	revolute = chrono_types::make_shared<ChLinkLockRevolute>();
 	revolute->Initialize(base_body, flap_body, ChCoordsys<>(ChVector<>(0.0, 0.0, -10.0), revoluteRot));
 	system.AddLink(revolute);
-
-	// add rotational spring-damper:
 
 	//// define wave parameters (not used in this demo)
 	HydroInputs my_hydro_inputs;
@@ -200,11 +194,14 @@ int main(int argc, char* argv[]) {
 				// append data to std vector
 				time_vector.push_back(system.GetChTime());
 				flap_rot.push_back(flap_body->GetRot().Q_to_Euler123().y());
-				std::cout << flap_body->GetAppliedForce() << flap_body->GetAppliedTorque() << std::endl;
 				//flap_heave_position.push_back(flap_body->GetPos().z());
 				//base_heave_position.push_back(base_body->GetPos().z());
 				// force playback to be real-time
 				realtime_timer.Spin(timestep);
+				std::cout << flap_body->GetAppliedForce() << " " << flap_body->GetAppliedTorque() << std::endl;
+				for (int i = 0; i < flap_body->GetForceList().size(); i++) {
+					std::cout << flap_body->GetForceList()[i]->GetNameString() << std::endl;
+				}
 			}
 		}
 	}

@@ -464,7 +464,9 @@ ForceFunc6d::ForceFunc6d() : forces{ {this, 0}, {this, 1}, {this, 2}, {this, 3},
 		// Also! don't need to worry about deleting this later, because stack arrays are always deleted automatically
 	}
 	chrono_force = chrono_types::make_shared<ChForce>();
+	chrono_force->SetNameString("Force");
 	chrono_torque = chrono_types::make_shared<ChForce>();
+	chrono_torque->SetNameString("Torque");
 }
 
 /*******************************************************************************
@@ -588,7 +590,7 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::stri
 	// simplify 6* num_bodies to be the system's total number of dofs, makes expressions later easier to read
 	unsigned total_dofs = 6 * num_bodies;
 	// resize and initialize velocity history vector to all zeros
-	velocity_history.resize(file_info[0].GetRIRFDims(2) * total_dofs, 0); // resize and fill with 0s
+	velocity_history.resize(file_info[0].GetRIRFDims(2) * total_dofs, 0.0); // resize and fill with 0s
 	// resize and initialize all persistent forces to all 0s
 	force_hydrostatic.resize(total_dofs, 0.0);
 	force_radiation_damping.resize(total_dofs, 0.0);
@@ -613,10 +615,10 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::stri
 	}
 
 	// added mass info
-	my_loadcontainer = chrono_types::make_shared<ChLoadContainer>();
-	my_loadbodyinertia = chrono_types::make_shared<ChLoadAddedMass>(file_info, bodies);
-	bodies[0]->GetSystem()->Add(my_loadcontainer);
-	my_loadcontainer->Add(my_loadbodyinertia);
+	//my_loadcontainer = chrono_types::make_shared<ChLoadContainer>();
+	//my_loadbodyinertia = chrono_types::make_shared<ChLoadAddedMass>(file_info, bodies);
+	//bodies[0]->GetSystem()->Add(my_loadcontainer);
+	//my_loadcontainer->Add(my_loadbodyinertia);
 
 	// set up hydro inputs stuff 
 	hydro_inputs = user_hydro_inputs;
@@ -629,8 +631,8 @@ void TestHydro::WaveSetUp() {
 	case noWaveCIC:
 		break;
 	case regular:
-		hydro_inputs.excitation_force_mag.resize(total_dofs, 0);
-		hydro_inputs.excitation_force_phase.resize(total_dofs, 0);
+		hydro_inputs.excitation_force_mag.resize(total_dofs, 0.0);
+		hydro_inputs.excitation_force_phase.resize(total_dofs, 0.0);
 		force_excitation_freq.resize(total_dofs, 0.0);
 		hydro_inputs.wave_omega_delta = file_info[0].GetOmegaDelta();
 		hydro_inputs.freq_index_des = (hydro_inputs.regular_wave_omega / hydro_inputs.wave_omega_delta) - 1;
@@ -695,8 +697,8 @@ double TestHydro::setVelHistory(double val, int step, int b_num, int index) {
 std::vector<double> TestHydro::ComputeForceHydrostatics() {
 	std::vector<double> position, displacement;
 	unsigned total_dofs = 6 * num_bodies;
-	position.resize(total_dofs, 0);
-	displacement.resize(total_dofs, 0);
+	position.resize(total_dofs, 0.0);
+	displacement.resize(total_dofs, 0.0);
 
 	// orientation initialized to system current pos/rot vectors
 	for (int b = 0; b < num_bodies; b++) {
@@ -720,50 +722,37 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 	for (int b = 0; b < num_bodies; b++) {
 		for (int i = 0; i < 6; i++) {
 			for (int j = 0; j < 6; j++) {
-	//			//KHSOut << i << " " << j << " " << file_info[b].GetHydrostaticStiffness(i, j) << "\n";
-				if (i == 4) { // this behavior seems right without g, 
-					force_hydrostatic[i + (6 * b)] -= ((file_info[b].GetHydrostaticStiffness(i, j)) * displacement[i + (6 * b)]);
-
-				}
-				else { // this is the only option we had previously, and it doesn't work right for the moments
-					force_hydrostatic[i + (6 * b)] += ((file_info[b].GetHydrostaticStiffness(i, j)) * displacement[i + (6 * b)]);
-
-				}
+				unsigned b_offset = 6 * b;
+				force_hydrostatic[i + b_offset] += ((file_info[b].GetHydrostaticStiffness(i, j)) * displacement[j + b_offset]);
 			}
 		}
 	}
 
 	// now handle buoyancy force....
 	assert(num_bodies > 0);
-	double* buoyancy = new double[num_bodies]; // this sets up buoyancy as a vector, for each body
-	// add vertical buoyancy for each body, and add (cb-cg)x(0,0,buoyancy) aka rxf to torque for each body (simplified)
+	double* buoyancy = new double[num_bodies]; // this sets up an array for buoyancy for each body
+	double* weight = new double[num_bodies]; // this sets up an array for the weight for each body
+	// add heave buoyancy for each body, and add rxb=(cb-cg)x(0,0,buoyancy) for the moment due to buoyancy for each body (simplified)
 	for (int b = 0; b < num_bodies; b++) {
-		//double buoyancy = file_info[b].rho * (-bodies[b]->GetSystem()->Get_G_acc()) * file_info[b].disp_vol; // buoyancy = rho*g*Vdisp
-		buoyancy[b] = file_info[b].rho * -(bodies[b]->GetSystem()->Get_G_acc()).z() * file_info[b].disp_vol; // buoyancy = rho*g*Vdisp
+		//buoyancy[b] = file_info[b].rho * -(bodies[b]->GetSystem()->Get_G_acc()).z() * file_info[b].disp_vol; // buoyancy = rho*g*Vdisp
+		buoyancy[b] = file_info[b].rho * file_info[b].g * file_info[b].disp_vol; // buoyancy = rho*g*Vdisp
+		weight[b] = -file_info[b].g * bodies[b]->GetMass(); // not g>0, so use -g for weight
+		//weight[b] = 0.0;
 		unsigned b_offset = 6 * b; // force_hydrostatic has 6 elements for each body so to skip to the next body we move 6 spaces
 		unsigned r_offset = 3 * b; // cb_minus_cg has 3 elements for each body so to skip to the next body we move 3 spaces
-		force_hydrostatic[b_offset + 2] += buoyancy[b]; // for this body, add the buoyancy to the heave component of this body's force
-		force_hydrostatic[b_offset + 3] += -1 * buoyancy[b] * cb_minus_cg[1 + r_offset];
-		force_hydrostatic[b_offset + 4] += buoyancy[b] * cb_minus_cg[0 + r_offset];
+		force_hydrostatic[b_offset + 2] += buoyancy[b]; // add heave buoyancy
+		force_hydrostatic[b_offset + 2] += weight[b]; // add weight to heave force
+		// now for moments due to buoyancy (simplified)
+		// for torque about x (index 3) per body, add b * r_y
+		force_hydrostatic[b_offset + 3] += buoyancy[b] * cb_minus_cg[1 + r_offset];
+		// for torque about y (index 4) per body, subtract b*r_x
+		force_hydrostatic[b_offset + 4] += -1 * buoyancy[b] * cb_minus_cg[0 + r_offset];
 	}
-
-	if (temp == true) {
-		std::ofstream fHsOut("./results/oswec/debugging/force_hydrostatic.txt");
-		for (int i = 0; i < total_dofs; i++) {
-			fHsOut << force_hydrostatic[i] << std::endl;
-		}
-		fHsOut.close();
-		fHsOut.open("./results/oswec/debugging/buoyancy.txt");
-		for (int b = 0; b < num_bodies; b++) {
-			fHsOut << "0\n0\n"
-				<< buoyancy[b] << "\n"
-				<< buoyancy[b] * cb_minus_cg[1 + 3 * b] << "\n"
-				<< -1 * buoyancy[b] * cb_minus_cg[0 + 3 * b] << "\n0\n";
-		}
-
-		fHsOut.close();
-		temp = false;
-	}
+	//for (int i = 0; i < total_dofs; i++) {
+	//	std::cout << force_hydrostatic[i] << " ";
+	//}
+	std::cout << std::endl;
+	delete[] weight;
 	delete[] buoyancy;
 	return force_hydrostatic;
 }
@@ -945,10 +934,20 @@ double TestHydro::coordinateFunc(int b, int i) {
 		ComputeForceRadiationDampingConv();
 		// sum all forces element by element
 		for (int j = 0; j < total_dofs; j++) {
+			std::cout << " " << force_hydrostatic[j];
 			total_force[j] = force_hydrostatic[j] - force_radiation_damping[j];
 		}
+		std::cout << std::endl << "-(";
+		for (int j = 0; j < total_dofs; j++) {
+			std::cout << force_radiation_damping[j] << " ";
+		}
+		std::cout << ")\n=(";
+		for (int j = 0; j < total_dofs; j++) {
+			std::cout << total_force[j] << " ";
+		}
+		std::cout << std::endl;
 	}
-	if (hydro_inputs.mode == regular) {
+	else if (hydro_inputs.mode == regular) {
 		// update required forces:
 		ComputeForceHydrostatics();
 		ComputeForceRadiationDampingConv();
