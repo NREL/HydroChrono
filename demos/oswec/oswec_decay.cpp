@@ -202,6 +202,9 @@ int main(int argc, char* argv[]) {
 				for (int i = 0; i < flap_body->GetForceList().size(); i++) {
 					std::cout << flap_body->GetForceList()[i]->GetNameString() << std::endl;
 				}
+				for (int i = 0; i < base_body->GetForceList().size(); i++) {
+					std::cout << base_body->GetForceList()[i]->GetNameString() << std::endl;
+				}
 			}
 		}
 	}

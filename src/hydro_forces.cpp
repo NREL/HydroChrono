@@ -463,10 +463,8 @@ ForceFunc6d::ForceFunc6d() : forces{ {this, 0}, {this, 1}, {this, 2}, {this, 3},
 		// default deletion logic to do nothing
 		// Also! don't need to worry about deleting this later, because stack arrays are always deleted automatically
 	}
-	chrono_force = chrono_types::make_shared<ChForce>();
-	chrono_force->SetNameString("Force");
+	chrono_force = chrono_types::make_shared<ChForce>();	
 	chrono_torque = chrono_types::make_shared<ChForce>();
-	chrono_torque->SetNameString("Torque");
 }
 
 /*******************************************************************************
@@ -485,11 +483,14 @@ ForceFunc6d::ForceFunc6d( std::shared_ptr<ChBody> object, TestHydro* user_all_fo
 	}
 	SetForce();
 	SetTorque();
+	ApplyForceAndTorqueToBody();
 }
 
 /*******************************************************************************
 * ForceFunc6d copy constructor
-* calls
+* copy constructor should check to see if this force has been added to this body yet
+* if not, it should add it, if so it shouldnt add the force a second time
+* TODO
 *******************************************************************************/
 ForceFunc6d::ForceFunc6d(const ForceFunc6d& old) : 
 forces{ {this, 0}, {this, 1}, {this, 2}, {this, 3}, {this, 4}, {this, 5} } {
@@ -538,7 +539,6 @@ void ForceFunc6d::SetForce() {
 	chrono_force->SetF_x(force_ptrs[0]);
 	chrono_force->SetF_y(force_ptrs[1]);
 	chrono_force->SetF_z(force_ptrs[2]);
-	body->AddForce(chrono_force);
 }
 
 /*******************************************************************************
@@ -553,6 +553,18 @@ void ForceFunc6d::SetTorque() {
 	chrono_torque->SetF_y(force_ptrs[4]);
 	chrono_torque->SetF_z(force_ptrs[5]);
 	chrono_torque->SetMode(ChForce::ForceType::TORQUE);
+}
+
+/*******************************************************************************
+* ForceFunc6d::ApplyForceAndTorqueToBody()
+* adds this force to the body's list of applied forces
+* Warning: everytime this is called, a force is applied to the body so be careful not to 
+* duplicate forces on accident
+* TODO: make this function less risky, there shouldn't be a chance to apply the same force
+* multiple times
+*******************************************************************************/
+void ForceFunc6d::ApplyForceAndTorqueToBody() {
+	body->AddForce(chrono_force);
 	body->AddForce(chrono_torque);
 }
 
