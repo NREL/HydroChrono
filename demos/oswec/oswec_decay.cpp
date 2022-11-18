@@ -78,21 +78,18 @@ int main(int argc, char* argv[]) {
 
 	// some io/viz options
 	bool visualizationOn = true;
-	//bool profilingOn = false;
+	bool profilingOn = false;
 	bool saveDataOn = true;
 	std::vector<double> time_vector;
 	std::vector<double> flap_rot;
-	//std::vector<double> flap_heave_position;
-	//std::vector<double> base_heave_position;
 
-	//// set up body from a mesh
-	//if (!std::filesystem::exists("../../HydroChrono/demos/oswec/geometry/flap.obj")) {
-	//	std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/oswec/geometry/flap.obj").c_str()) << " does not exist" << std::endl;
-	//	return 0;
-	//}
-	//std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/float.obj").c_str()) << std::endl;
-	std::shared_ptr<ChBody> flap_body;
-	flap_body = chrono_types::make_shared<ChBodyEasyMesh>(
+	// set up body from a mesh
+	if (!std::filesystem::exists("../../HydroChrono/demos/oswec/geometry/flap.obj")) {
+		std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/oswec/geometry/flap.obj").c_str()) << " does not exist" << std::endl;
+		return 0;
+	}
+	//std::shared_ptr<ChBody> flap_body;
+	auto flap_body = chrono_types::make_shared<ChBodyEasyMesh>(
 		GetChronoDataFile("../../HydroChrono/demos/oswec/geometry/flap.obj").c_str(), // file name
 		1000,                                                                         // density
 		false,                                                                        // do not evaluate mass automatically
@@ -101,15 +98,13 @@ int main(int argc, char* argv[]) {
 		);
 	system.Add(flap_body);
 
-	//// set up body from a mesh
-	//if (!std::filesystem::exists("../../HydroChrono/demos/oswec/geometry/base.obj")) {
-	//	std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/oswec/geometry/base.obj").c_str()) << " does not exist" << std::endl;
-	//	return 0;
-	//}
-
-	//std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/plate.obj").c_str()) << std::endl;
-	std::shared_ptr<ChBody> base_body;
-	base_body = chrono_types::make_shared<ChBodyEasyMesh>(
+	// set up body from a mesh
+	if (!std::filesystem::exists("../../HydroChrono/demos/oswec/geometry/base.obj")) {
+		std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/oswec/geometry/base.obj").c_str()) << " does not exist" << std::endl;
+		return 0;
+	}
+	//std::shared_ptr<ChBody> base_body;
+	auto base_body = chrono_types::make_shared<ChBodyEasyMesh>(
 		GetChronoDataFile("../../HydroChrono/demos/oswec/geometry/base.obj").c_str(), // file name
 		1000,                                                                         // density
 		false,                                                                        // do not evaluate mass automatically
@@ -119,13 +114,10 @@ int main(int argc, char* argv[]) {
 
 	// define the float's initial conditions
 	flap_body->SetNameString("body1");
-	 flap_body->SetPos(ChVector<>(0, 0, -3.9));
-	//flap_body->SetPos(ChVector<>(1.05925388, 0., -3.99267271));
+	flap_body->SetPos(ChVector<>(1.05925388, 0., -3.99267271));
 	flap_body->SetRot(Q_from_AngAxis(CH_C_PI / 18, VECT_Y));
 	flap_body->SetMass(127000); // f_g = -1.27e6
 	flap_body->SetInertiaXX(ChVector<>(1.85e6, 1.85e6, 1.85e6));
-	//flap_body->SetWvel_par(ChVector<>(0, 1.0, 0));
-	//flap_body->SetPos_dt(ChVector<>(initial_linspeed, 0, 0));
 
 	// define the plate's initial conditions
 	system.Add(base_body);
@@ -136,7 +128,6 @@ int main(int argc, char* argv[]) {
 	base_body->SetBodyFixed(true);
 
 	// define base-fore flap joint
-	//ChVector<> revolutePos(0.0, 0.0, -10.0);
 	ChQuaternion<> revoluteRot = Q_from_AngX(CH_C_PI / 2.0);
 	std::shared_ptr<ChLinkLockRevolute> revolute;
 	revolute = chrono_types::make_shared<ChLinkLockRevolute>();
@@ -155,13 +146,8 @@ int main(int argc, char* argv[]) {
 	bodies.push_back(base_body);
 	TestHydro blah(bodies, "../../HydroChrono/demos/oswec/hydroData/oswec.h5", my_hydro_inputs);
 
-	//// Debug printing added mass matrix and system mass matrix
-	//ChSparseMatrix M;
-	//system.GetMassMatrix(&M);
-	//std::cout << M << std::endl;
-
 	// for profiling
-	//auto start = std::chrono::high_resolution_clock::now();
+	auto start = std::chrono::high_resolution_clock::now();
 
 	if (visualizationOn) {
 		// create the irrlicht application for visualizing
@@ -187,24 +173,16 @@ int main(int argc, char* argv[]) {
 			irrlichtVis->Render();
 			irrlichtVis->EndScene();
 			if (buttonPressed) {
-				//system.GetMassMatrix(&M);
-				//std::cout << M << std::endl;
 				// step the simulation forwards
 				system.DoStepDynamics(timestep);
 				// append data to std vector
 				time_vector.push_back(system.GetChTime());
 				flap_rot.push_back(flap_body->GetRot().Q_to_Euler123().y());
-				//flap_heave_position.push_back(flap_body->GetPos().z());
-				//base_heave_position.push_back(base_body->GetPos().z());
 				// force playback to be real-time
 				realtime_timer.Spin(timestep);
-				std::cout << flap_body->GetAppliedForce() << " " << flap_body->GetAppliedTorque() << std::endl;
-				for (int i = 0; i < flap_body->GetForceList().size(); i++) {
-					std::cout << flap_body->GetForceList()[i]->GetNameString() << std::endl;
-				}
-				for (int i = 0; i < base_body->GetForceList().size(); i++) {
-					std::cout << base_body->GetForceList()[i]->GetNameString() << std::endl;
-				}
+				std::cout << "what chrono thinks the total forces are: \n";
+				std::cout << flap_body->GetAppliedForce() << " " << flap_body->GetAppliedTorque() << " ";
+				std::cout << base_body->GetAppliedForce() << " " << base_body->GetAppliedTorque() << std::endl;
 			}
 		}
 	}
@@ -212,40 +190,38 @@ int main(int argc, char* argv[]) {
 		int frame = 0;
 		while (system.GetChTime() <= simulationDuration) {
 			// append data to std vector
-			//time_vector.push_back(system.GetChTime());
-			//flap_heave_position.push_back(flap_body->GetPos().z());
-			//base_heave_position.push_back(base_body->GetPos().z());
+			time_vector.push_back(system.GetChTime());
+			flap_rot.push_back(flap_body->GetRot().Q_to_Euler123().y());
 
 			// step the simulation forwards
 			system.DoStepDynamics(timestep);
-
 			frame++;
 		}
 	}
 
-	//// for profiling
-	//auto end = std::chrono::high_resolution_clock::now();
-	//unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+	// for profiling
+	auto end = std::chrono::high_resolution_clock::now();
+	unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-	//if (profilingOn) {
-	//	std::ofstream profilingFile;
-	//	profilingFile.open("./results/oswec/decay/duration_ms.txt");
-	//	if (!profilingFile.is_open()) {
-	//		if (!std::filesystem::exists("./results/oswec/decay")) {
-	//			std::cout << "Path " << std::filesystem::absolute("./results/oswec/decay") << " does not exist, creating it now..." << std::endl;
-	//			std::filesystem::create_directory("./results");
-	//			std::filesystem::create_directory("./results/oswec");
-	//			std::filesystem::create_directory("./results/oswec/decay");
-	//			profilingFile.open("./results/oswec/decay/duration_ms.txt");
-	//			if (!profilingFile.is_open()) {
-	//				std::cout << "Still cannot open file, ending program" << std::endl;
-	//				return 0;
-	//			}
-	//		}
-	//	}
-	//	profilingFile << duration << "\n";
-	//	profilingFile.close();
-	//}
+	if (profilingOn) {
+		std::ofstream profilingFile;
+		profilingFile.open("./results/oswec/decay/duration_ms.txt");
+		if (!profilingFile.is_open()) {
+			if (!std::filesystem::exists("./results/oswec/decay")) {
+				std::cout << "Path " << std::filesystem::absolute("./results/oswec/decay") << " does not exist, creating it now..." << std::endl;
+				std::filesystem::create_directory("./results");
+				std::filesystem::create_directory("./results/oswec");
+				std::filesystem::create_directory("./results/oswec/decay");
+				profilingFile.open("./results/oswec/decay/duration_ms.txt");
+				if (!profilingFile.is_open()) {
+					std::cout << "Still cannot open file, ending program" << std::endl;
+					return 0;
+				}
+			}
+		}
+		profilingFile << duration << "\n";
+		profilingFile.close();
+	}
 
 	if (saveDataOn) {
 		std::ofstream outputFile;

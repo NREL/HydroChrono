@@ -67,7 +67,7 @@ int main(int argc, char* argv[]) {
 
 	// system/solver settings
 	ChSystemNSC system;
-	system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
+	system.Set_G_acc(ChVector<>(0.0, 0.0, 0.0));
 	double timestep = 0.01;
 	system.SetTimestepperType(ChTimestepper::Type::HHT);
 	system.SetSolverType(ChSolver::Type::GMRES);
@@ -184,8 +184,6 @@ int main(int argc, char* argv[]) {
 			irrlichtVis->Render();
 			irrlichtVis->EndScene();
 			if (buttonPressed) {
-				//system.GetMassMatrix(&M);
-				//std::cout << M << std::endl;
 				// step the simulation forwards
 				system.DoStepDynamics(timestep);
 				// append data to std vector

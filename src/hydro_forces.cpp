@@ -367,10 +367,10 @@ double H5FileInfo::GetExcitationPhaseInterp(int i, int j, double freq_index_des)
 *******************************************************************************/
 HydroInputs::HydroInputs() {
 	// TODO: switch depending on wave option (regular, regularCIC, irregular, noWaveCIC) enum?
-	//mode = none;
-	//regular_wave_amplitude = 0;
-	//excitation_force_phase.resize(6,0);
-	//excitation_force_mag.resize(6,0);
+	mode = noWaveCIC;
+	regular_wave_amplitude = 0.0;
+	excitation_force_phase.resize(6,0);
+	excitation_force_mag.resize(6,0);
 }
 
 /*******************************************************************************
@@ -627,10 +627,10 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::stri
 	}
 
 	// added mass info
-	//my_loadcontainer = chrono_types::make_shared<ChLoadContainer>();
-	//my_loadbodyinertia = chrono_types::make_shared<ChLoadAddedMass>(file_info, bodies);
-	//bodies[0]->GetSystem()->Add(my_loadcontainer);
-	//my_loadcontainer->Add(my_loadbodyinertia);
+	my_loadcontainer = chrono_types::make_shared<ChLoadContainer>();
+	my_loadbodyinertia = chrono_types::make_shared<ChLoadAddedMass>(file_info, bodies);
+	bodies[0]->GetSystem()->Add(my_loadcontainer);
+	my_loadcontainer->Add(my_loadbodyinertia);
 
 	// set up hydro inputs stuff 
 	hydro_inputs = user_hydro_inputs;
@@ -945,17 +945,10 @@ double TestHydro::coordinateFunc(int b, int i) {
 		ComputeForceHydrostatics();
 		ComputeForceRadiationDampingConv();
 		// sum all forces element by element
+		std::cout << "total hydro force:\n";
 		for (int j = 0; j < total_dofs; j++) {
-			std::cout << " " << force_hydrostatic[j];
 			total_force[j] = force_hydrostatic[j] - force_radiation_damping[j];
-		}
-		std::cout << std::endl << "-(";
-		for (int j = 0; j < total_dofs; j++) {
-			std::cout << force_radiation_damping[j] << " ";
-		}
-		std::cout << ")\n=(";
-		for (int j = 0; j < total_dofs; j++) {
-			std::cout << total_force[j] << " ";
+			std::cout << " " << total_force[j];
 		}
 		std::cout << std::endl;
 	}
