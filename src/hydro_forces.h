@@ -12,6 +12,7 @@
 #include "chrono/physics/ChSystemNSC.h"
 #include "chrono/physics/ChBody.h"
 #include "chrono/physics/ChBodyEasy.h"
+#include "chrono/physics/ChMarker.h"
 
 #include "chrono/fea/ChMeshFileLoader.h"
 
@@ -173,7 +174,8 @@ private:
 	double rirf_timestep;
 	double getVelHistoryVal(int step, int c) const;
 	double setVelHistory(double val, int step, int b_num, int index);
-	bool temp;
+	std::vector<std::shared_ptr<chrono::ChMarker>> cb_global;
+	std::vector<std::shared_ptr<chrono::ChMarker>> cg_global;
 
 	//double freq_index_des;
 	//int freq_index_floor;

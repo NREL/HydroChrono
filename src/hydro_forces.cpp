@@ -580,7 +580,6 @@ TestHydro::TestHydro() {
 	prev_time = -1;
 	offset_rirf = 0;
 	num_bodies = 0;
-	temp = true;
 }
 
 /*******************************************************************************
@@ -609,20 +608,32 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::stri
 	total_force.resize(total_dofs, 0.0);
 	// set up equilibrium for entire system (each body has position and rotation equilibria 3 indicies apart)
 	equilibrium.resize(total_dofs, 0.0);
-	cb_minus_cg.resize(3 * num_bodies, 0.0);
 	for (int b = 0; b < num_bodies; b++) {
 		for (int i = 0; i < 3; i++) {
 			unsigned equilibrium_idx = i + 6 * b;
-			unsigned c_idx = i + 3 * b;
+			//unsigned c_idx = i + 3 * b;
 			equilibrium[equilibrium_idx] = file_info[b].cg[i]; // positional equilib is cg, leave rotational bit 0
-			cb_minus_cg[c_idx] = file_info[b].cb[i] - file_info[b].cg[i];
+			//cb_minus_cg[c_idx] = file_info[b].cb[i] - file_info[b].cg[i];
 		}
 	}
 
+	// set up cb_global, cg_global, and cb-cg for each body:
+	cb_minus_cg.resize(3 * num_bodies, 0.0); // cb-cg has 3 components for each body
+	cb_global.resize(num_bodies);
+	cg_global.resize(num_bodies);
 	for (int b = 0; b < num_bodies; b++) {
-		if (this == NULL) {
-			std::cout << "woops" << std::endl;
-		}
+		cb_global[b] = chrono_types::make_shared<ChMarker>();
+		cg_global[b] = chrono_types::make_shared<ChMarker>();
+
+		bodies[b]->AddMarker(cb_global[b]);
+		bodies[b]->AddMarker(cg_global[b]);
+
+		// TODO: I think this needs body coords instead of global coords?
+		cb_global[b]->Impose_Abs_Coord(ChCoordsys<>(file_info[b].cb[0], file_info[b].cb[1], file_info[b].cb[2])); // this is wrong?
+		cg_global[b]->Impose_Abs_Coord(bodies[b]->GetCoord());
+	}
+
+	for (int b = 0; b < num_bodies; b++) {
 		force_per_body.emplace_back(bodies[b], this);
 	}
 
@@ -740,20 +751,24 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 		}
 	}
 
+	// update cb-cg here:
+	for (int b = 0; b < num_bodies; b++) {
+		unsigned body_offset = b * 3;
+		for (int i = 0; i < 3; i++) {
+			cb_minus_cg[body_offset + i] = cb_global[b]->GetAbsCoord().pos[i] - cg_global[b]->GetAbsCoord().pos[i];
+			std::cout << "b=" << b << " i =" << i << " cb-cg= " << cb_minus_cg[body_offset + i] << std::endl;
+		}
+	}
+
 	// now handle buoyancy force....
 	assert(num_bodies > 0);
 	double* buoyancy = new double[num_bodies]; // this sets up an array for buoyancy for each body
-	double* weight = new double[num_bodies]; // this sets up an array for the weight for each body
 	// add heave buoyancy for each body, and add rxb=(cb-cg)x(0,0,buoyancy) for the moment due to buoyancy for each body (simplified)
 	for (int b = 0; b < num_bodies; b++) {
-		//buoyancy[b] = file_info[b].rho * -(bodies[b]->GetSystem()->Get_G_acc()).z() * file_info[b].disp_vol; // buoyancy = rho*g*Vdisp
-		buoyancy[b] = file_info[b].rho * file_info[b].g * file_info[b].disp_vol; // buoyancy = rho*g*Vdisp
-		weight[b] = -file_info[b].g * bodies[b]->GetMass(); // not g>0, so use -g for weight
-		//weight[b] = 0.0;
+		buoyancy[b] = file_info[b].rho * -(bodies[b]->GetSystem()->Get_G_acc()).z() * file_info[b].disp_vol; // buoyancy = rho*g*Vdisp
 		unsigned b_offset = 6 * b; // force_hydrostatic has 6 elements for each body so to skip to the next body we move 6 spaces
 		unsigned r_offset = 3 * b; // cb_minus_cg has 3 elements for each body so to skip to the next body we move 3 spaces
 		force_hydrostatic[b_offset + 2] += buoyancy[b]; // add heave buoyancy
-		force_hydrostatic[b_offset + 2] += weight[b]; // add weight to heave force
 		// now for moments due to buoyancy (simplified)
 		// for torque about x (index 3) per body, add b * r_y
 		force_hydrostatic[b_offset + 3] += buoyancy[b] * cb_minus_cg[1 + r_offset];
@@ -763,8 +778,7 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 	//for (int i = 0; i < total_dofs; i++) {
 	//	std::cout << force_hydrostatic[i] << " ";
 	//}
-	std::cout << std::endl;
-	delete[] weight;
+	//std::cout << std::endl;
 	delete[] buoyancy;
 	return force_hydrostatic;
 }
@@ -933,6 +947,7 @@ double TestHydro::coordinateFunc(int b, int i) {
 	prev_time = bodies[0]->GetChTime();
 
 	// reset forces to 0
+	std::fill(total_force.begin(), total_force.end(), 0.0);
 	std::fill(force_hydrostatic.begin(), force_hydrostatic.end(), 0.0);
 	std::fill(force_radiation_damping.begin(), force_radiation_damping.end(), 0.0);
 	std::fill(force_excitation_freq.begin(), force_excitation_freq.end(), 0.0);
@@ -945,12 +960,9 @@ double TestHydro::coordinateFunc(int b, int i) {
 		ComputeForceHydrostatics();
 		ComputeForceRadiationDampingConv();
 		// sum all forces element by element
-		std::cout << "total hydro force:\n";
 		for (int j = 0; j < total_dofs; j++) {
 			total_force[j] = force_hydrostatic[j] - force_radiation_damping[j];
-			std::cout << " " << total_force[j];
 		}
-		std::cout << std::endl;
 	}
 	else if (hydro_inputs.mode == regular) {
 		// update required forces:
@@ -965,7 +977,6 @@ double TestHydro::coordinateFunc(int b, int i) {
 	if (body_num_offset + i < 0 || body_num_offset >= total_dofs) {
 		std::cout << "total force accessing out of bounds" << std::endl;
 	}
-
 	return total_force[body_num_offset + i];
 }
 

@@ -67,7 +67,7 @@ int main(int argc, char* argv[]) {
 
 	// system/solver settings
 	ChSystemNSC system;
-	system.Set_G_acc(ChVector<>(0.0, 0.0, 0.0)); // handle weight in hydroforces
+	system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81)); // handle weight in hydroforces
 	double timestep = 0.03;
 	//system.SetTimestepperType(ChTimestepper::Type::HHT);
 	system.SetSolverType(ChSolver::Type::GMRES);
@@ -114,9 +114,9 @@ int main(int argc, char* argv[]) {
 
 	// define the float's initial conditions
 	flap_body->SetNameString("body1");
-	flap_body->SetPos(ChVector<>(1.05925388, 0., -3.99267271));
+	flap_body->SetPos(ChVector<>(1.05925388, 0.0, -3.99267271));
 	flap_body->SetRot(Q_from_AngAxis(CH_C_PI / 18, VECT_Y));
-	flap_body->SetMass(127000); // f_g = -1.27e6
+	flap_body->SetMass(127000.0); // f_g = -1.27e6
 	flap_body->SetInertiaXX(ChVector<>(1.85e6, 1.85e6, 1.85e6));
 
 	// define the plate's initial conditions
@@ -180,9 +180,6 @@ int main(int argc, char* argv[]) {
 				flap_rot.push_back(flap_body->GetRot().Q_to_Euler123().y());
 				// force playback to be real-time
 				realtime_timer.Spin(timestep);
-				std::cout << "what chrono thinks the total forces are: \n";
-				std::cout << flap_body->GetAppliedForce() << " " << flap_body->GetAppliedTorque() << " ";
-				std::cout << base_body->GetAppliedForce() << " " << base_body->GetAppliedTorque() << std::endl;
 			}
 		}
 	}
