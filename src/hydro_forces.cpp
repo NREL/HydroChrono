@@ -732,7 +732,7 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 		for (int i = 0; i < 6; i++) {
 			for (int j = 0; j < 6; j++) {
 				auto t = (file_info[b].GetHydrostaticStiffness(i, j));
-				if (i == 4 && j == 4) {
+				if (i == 4 && j == 4 && t < 0) {
 					t = -t;
 				}
 				force_hydrostatic[i + b_offset] += t * displacement[j + b_offset];
