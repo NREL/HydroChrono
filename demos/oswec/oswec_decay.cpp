@@ -67,7 +67,7 @@ int main(int argc, char* argv[]) {
 
 	// system/solver settings
 	ChSystemNSC system;
-	system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81)); // handle weight in hydroforces
+	system.Set_G_acc(ChVector<>(0.0, 0.0, 0.0)); // handle weight in hydroforces
 	double timestep = 0.03;
 	//system.SetTimestepperType(ChTimestepper::Type::HHT);
 	system.SetSolverType(ChSolver::Type::GMRES);
@@ -171,6 +171,7 @@ int main(int argc, char* argv[]) {
 		while (irrlichtVis->Run() && system.GetChTime() <= simulationDuration) {
 			irrlichtVis->BeginScene();
 			irrlichtVis->Render();
+			irrlicht::tools::drawAllCOGs(irrlichtVis.get(), 10.0);
 			irrlichtVis->EndScene();
 			if (buttonPressed) {
 				// step the simulation forwards

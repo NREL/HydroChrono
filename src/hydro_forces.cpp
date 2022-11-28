@@ -715,7 +715,7 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 			if (b_offset + i + 3 > total_dofs || b_offset + i < 0) {
 				std::cout << "temp index in hydrostatic force is bad " << std::endl;
 			}
-			position[i + b_offset] = bodies[b]->GetPos().eigen()[i];
+			position[i + b_offset] = bodies[b]->GetPos()[i];
 			position[i + 3 + b_offset] = bodies[b]->GetRot().Q_to_Euler123()[i];
 		}
 	}
@@ -728,23 +728,32 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 
 	// re invent matrix vector multiplication
 	for (int b = 0; b < num_bodies; b++) {
+		unsigned b_offset = 6 * b;
 		for (int i = 0; i < 6; i++) {
 			for (int j = 0; j < 6; j++) {
-				unsigned b_offset = 6 * b;
-				force_hydrostatic[i + b_offset] += ((file_info[b].GetHydrostaticStiffness(i, j)) * displacement[j + b_offset]);
+				auto t = (file_info[b].GetHydrostaticStiffness(i, j));
+				if (i == 4 && j == 4) {
+					t = -t;
+				}
+				force_hydrostatic[i + b_offset] += t * displacement[j + b_offset];
 			}
 		}
 	}
 
+
 	// now handle buoyancy force....
 	assert(num_bodies > 0);
 	double* buoyancy = new double[num_bodies]; // this sets up an array for buoyancy for each body
+	double* weight = new double[num_bodies];
 	// add heave buoyancy for each body, and add rxb=(cb-cg)x(0,0,buoyancy) for the moment due to buoyancy for each body (simplified)
 	for (int b = 0; b < num_bodies; b++) {
-		buoyancy[b] = file_info[b].rho * -(bodies[b]->GetSystem()->Get_G_acc()).z() * file_info[b].disp_vol; // buoyancy = rho*g*Vdisp
+		buoyancy[b] = file_info[b].rho * file_info[b].g * file_info[b].disp_vol; // buoyancy = rho*g*Vdisp
+		weight[b] = bodies[b]->GetMass() * -file_info[b].g;
+		//buoyancy[b] = file_info[b].rho * -(bodies[b]->GetSystem()->Get_G_acc()).z() * file_info[b].disp_vol; // buoyancy = rho*g*Vdisp
 		unsigned b_offset = 6 * b; // force_hydrostatic has 6 elements for each body so to skip to the next body we move 6 spaces
 		unsigned r_offset = 3 * b; // cb_minus_cg has 3 elements for each body so to skip to the next body we move 3 spaces
 		force_hydrostatic[b_offset + 2] += buoyancy[b]; // add heave buoyancy
+		force_hydrostatic[b_offset + 2] += weight[b];
 		// now for moments due to buoyancy (simplified)
 		// for torque about x (index 3) per body, add b * r_y
 		force_hydrostatic[b_offset + 3] += buoyancy[b] * cb_minus_cg[1 + r_offset];
@@ -752,6 +761,7 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 		force_hydrostatic[b_offset + 4] += -1 * buoyancy[b] * cb_minus_cg[0 + r_offset];
 	}
 	delete[] buoyancy;
+	delete[] weight;
 	return force_hydrostatic;
 }
 
