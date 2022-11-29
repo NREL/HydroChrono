@@ -74,7 +74,7 @@ int main(int argc, char* argv[]) {
 	//system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
 	system.SetStep(timestep);
 	ChRealtimeStepTimer realtime_timer;
-	double simulationDuration = 400.0;
+	double simulationDuration = 40.0;
 
 	// some io/viz options
 	bool visualizationOn = true;
@@ -116,7 +116,7 @@ int main(int argc, char* argv[]) {
 	flap_body->SetNameString("body1");
 	flap_body->SetPos(ChVector<>(1.05925388, 0.0, -3.99267271));
 	flap_body->SetRot(Q_from_AngAxis(CH_C_PI / 18, VECT_Y));
-	flap_body->SetMass(127000.0); // f_g = -1.27e6
+	flap_body->SetMass(127000.0);
 	flap_body->SetInertiaXX(ChVector<>(1.85e6, 1.85e6, 1.85e6));
 
 	// define the plate's initial conditions

@@ -351,13 +351,6 @@ double H5FileInfo::GetExcitationPhaseInterp(int i, int j, double freq_index_des)
 	return excitationPhase;
 }
 
-/*******************************************************************************
-* H5FileInfo::GetRIRFdt() returns the difference in first 2 rirf_time_vector
-*******************************************************************************/
-//double H5FileInfo::GetRIRFdt() const {
-//	return rirf_time_vector[1] - rirf_time_vector[0];
-//}
-
 // =============================================================================
 // HydroInputs Class Definitions
 // =============================================================================
