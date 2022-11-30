@@ -716,7 +716,6 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 	// make displacement vector for system
 	for (int i = 0; i < total_dofs; i++) {
 		displacement[i] = equilibrium[i] - position[i];
-		//std::cout << displacement[i] << std::endl;
 	}
 
 	// re invent matrix vector multiplication
@@ -724,7 +723,7 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 		unsigned b_offset = 6 * b;
 		for (int i = 0; i < 6; i++) {
 			for (int j = 0; j < 6; j++) {
-				auto t = (file_info[b].GetHydrostaticStiffness(i, j));
+				double t = (file_info[b].GetHydrostaticStiffness(i, j));
 				if (i == 4 && j == 4 && t < 0) {
 					t = -t;
 				}
@@ -788,6 +787,8 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 				(((size + offset_rirf) % size) + size) % size, b, i);
 			setVelHistory(bodies[b-1]->GetWvel_par()[i],
 				(((size + offset_rirf) % size) + size) % size, b, i+3);
+			//setVelHistory(bodies[b - 1]->GetRot_dt().Q_to_Euler123()[i],
+			//	(((size + offset_rirf) % size) + size) % size, b, i + 3);
 		}
 	}
 	int vi;

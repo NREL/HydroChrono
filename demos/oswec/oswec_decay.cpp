@@ -3,6 +3,7 @@
 #include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
 #include "chrono_irrlicht/ChIrrMeshTools.h"
 #include "chrono/core/ChRealtimeStep.h"
+#include "chrono/physics/ChLinkMate.h"
 #include <iomanip> // std::setprecision
 #include <chrono> // std::chrono::high_resolution_clock::now
 #include <vector> // std::vector<double>
@@ -118,6 +119,7 @@ int main(int argc, char* argv[]) {
 	flap_body->SetRot(Q_from_AngAxis(CH_C_PI / 18, VECT_Y));
 	flap_body->SetMass(127000.0);
 	flap_body->SetInertiaXX(ChVector<>(1.85e6, 1.85e6, 1.85e6));
+	// notes: mass and inertia added to added mass and system mass correctly.
 
 	// define the plate's initial conditions
 	system.Add(base_body);
@@ -125,7 +127,24 @@ int main(int argc, char* argv[]) {
 	base_body->SetPos(ChVector<>(0, 0, -10.9));
 	base_body->SetMass(999);
 	base_body->SetInertiaXX(ChVector<>(1, 1, 1));
-	base_body->SetBodyFixed(true);
+	//base_body->SetBodyFixed(true);
+
+	// add floor
+	auto floor = chrono_types::make_shared<ChBodyEasyBox>(250, 250, 4,  // x,y,z size
+		1000,         // density
+		true,         // visualization?
+		false);       // collision?
+	floor->SetPos(ChVector<>(0, 0, -10.9 - 2));
+	floor->SetBodyFixed(true);
+	system.Add(floor);
+
+	// connect base to floor
+	auto anchor = chrono_types::make_shared<ChLinkMateGeneric>();
+	anchor->Initialize(base_body, floor, false, base_body->GetVisualModelFrame(), base_body->GetVisualModelFrame());
+	system.Add(anchor);
+	anchor->SetConstrainedCoords(true, true, true,   // x, y, z
+		                         true, true, true);  // Rx, Ry, Rz
+
 
 	// define base-fore flap joint
 	ChQuaternion<> revoluteRot = Q_from_AngX(CH_C_PI / 2.0);
@@ -181,6 +200,9 @@ int main(int argc, char* argv[]) {
 				flap_rot.push_back(flap_body->GetRot().Q_to_Euler123().y());
 				// force playback to be real-time
 				realtime_timer.Spin(timestep);
+				ChSparseMatrix M;
+				system.GetMassMatrix(&M);
+				std::cout << M << std::endl;
 			}
 		}
 	}
