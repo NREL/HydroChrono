@@ -95,9 +95,7 @@ int main(int argc, char* argv[]) {
 		0,                                                                                        // density
 		false,                                                                                    // do not evaluate mass automatically
 		true,                                                                                     // create visualization asset
-		false,                                                                                    // collisions
-		nullptr,                                                                                  // no need for contact material
-		0                                                                                         // swept sphere radius
+		false                                                                                     // collisions
 		);
 
 	// set up body from a mesh
@@ -112,9 +110,7 @@ int main(int argc, char* argv[]) {
 		0,                                                                                        // density
 		false,                                                                                    // do not evaluate mass automatically
 		true,                                                                                     // create visualization asset
-		false,                                                                                    // collisions
-		nullptr,                                                                                  // no need for contact material
-		0                                                                                         // swept sphere radius
+		false                                                                                     // collisions
 		);
 
 	// define the float's initial conditions

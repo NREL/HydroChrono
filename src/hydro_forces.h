@@ -129,6 +129,7 @@ public:
 private:
 	void SetForce();
 	void SetTorque();
+	void ApplyForceAndTorqueToBody();
 	std::shared_ptr<ChBody> body;
 	int b_num;
 	ComponentFunc forces[6];
