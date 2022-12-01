@@ -782,7 +782,7 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 		for (int b = 1; b < num_bodies + 1; b++) { // body index sucks but i think this is correct...
 			setVelHistory(bodies[b-1]->GetPos_dt()[i],
 				(((size + offset_rirf) % size) + size) % size, b, i);
-			setVelHistory(bodies[b - 1]->GetRot_dt().Q_to_Euler123()[i],
+			setVelHistory(bodies[b - 1]->GetWvel_par()[i],
 				(((size + offset_rirf) % size) + size) % size, b, i + 3);
 		}
 	}
