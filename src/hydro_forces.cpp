@@ -458,6 +458,8 @@ ForceFunc6d::ForceFunc6d() : forces{ {this, 0}, {this, 1}, {this, 2}, {this, 3},
 	}
 	chrono_force = chrono_types::make_shared<ChForce>();	
 	chrono_torque = chrono_types::make_shared<ChForce>();
+	chrono_force->SetAlign(ChForce::AlignmentFrame::WORLD_DIR);
+	chrono_torque->SetAlign(ChForce::AlignmentFrame::WORLD_DIR);
 }
 
 /*******************************************************************************
@@ -736,16 +738,12 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 	// now handle buoyancy force....
 	assert(num_bodies > 0);
 	double* buoyancy = new double[num_bodies]; // this sets up an array for buoyancy for each body
-	double* weight = new double[num_bodies];
 	// add heave buoyancy for each body, and add rxb=(cb-cg)x(0,0,buoyancy) for the moment due to buoyancy for each body (simplified)
 	for (int b = 0; b < num_bodies; b++) {
-		buoyancy[b] = file_info[b].rho * file_info[b].g * file_info[b].disp_vol; // buoyancy = rho*g*Vdisp
-		weight[b] = bodies[b]->GetMass() * -file_info[b].g;
-		//buoyancy[b] = file_info[b].rho * -(bodies[b]->GetSystem()->Get_G_acc()).z() * file_info[b].disp_vol; // buoyancy = rho*g*Vdisp
+		buoyancy[b] = file_info[b].rho * -(bodies[b]->GetSystem()->Get_G_acc()).z() * file_info[b].disp_vol; // buoyancy = rho*g*Vdisp
 		unsigned b_offset = 6 * b; // force_hydrostatic has 6 elements for each body so to skip to the next body we move 6 spaces
 		unsigned r_offset = 3 * b; // cb_minus_cg has 3 elements for each body so to skip to the next body we move 3 spaces
 		force_hydrostatic[b_offset + 2] += buoyancy[b]; // add heave buoyancy
-		force_hydrostatic[b_offset + 2] += weight[b];
 		// now for moments due to buoyancy (simplified)
 		// for torque about x (index 3) per body, add b * r_y
 		force_hydrostatic[b_offset + 3] += buoyancy[b] * cb_minus_cg[1 + r_offset];
@@ -753,7 +751,6 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 		force_hydrostatic[b_offset + 4] += -1 * buoyancy[b] * cb_minus_cg[0 + r_offset];
 	}
 	delete[] buoyancy;
-	delete[] weight;
 	return force_hydrostatic;
 }
 
@@ -785,10 +782,8 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 		for (int b = 1; b < num_bodies + 1; b++) { // body index sucks but i think this is correct...
 			setVelHistory(bodies[b-1]->GetPos_dt()[i],
 				(((size + offset_rirf) % size) + size) % size, b, i);
-			setVelHistory(bodies[b-1]->GetWvel_par()[i],
-				(((size + offset_rirf) % size) + size) % size, b, i+3);
-			//setVelHistory(bodies[b - 1]->GetRot_dt().Q_to_Euler123()[i],
-			//	(((size + offset_rirf) % size) + size) % size, b, i + 3);
+			setVelHistory(bodies[b - 1]->GetRot_dt().Q_to_Euler123()[i],
+				(((size + offset_rirf) % size) + size) % size, b, i + 3);
 		}
 	}
 	int vi;

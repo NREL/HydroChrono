@@ -68,14 +68,14 @@ int main(int argc, char* argv[]) {
 
 	// system/solver settings
 	ChSystemNSC system;
-	system.Set_G_acc(ChVector<>(0.0, 0.0, 0.0)); // handle weight in hydroforces
+	system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81)); // handle weight in hydroforces
 	double timestep = 0.03;
 	//system.SetTimestepperType(ChTimestepper::Type::HHT);
 	system.SetSolverType(ChSolver::Type::GMRES);
 	//system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
 	system.SetStep(timestep);
 	ChRealtimeStepTimer realtime_timer;
-	double simulationDuration = 40.0;
+	double simulationDuration = 400.0;
 
 	// some io/viz options
 	bool visualizationOn = true;
@@ -115,8 +115,11 @@ int main(int argc, char* argv[]) {
 
 	// define the float's initial conditions
 	flap_body->SetNameString("body1");
-	flap_body->SetPos(ChVector<>(1.05925388, 0.0, -3.99267271));
-	flap_body->SetRot(Q_from_AngAxis(CH_C_PI / 18, VECT_Y));
+	auto ang_rad = -0.575222039;
+	flap_body->SetPos(ChVector<>(6.1*std::cos(CH_C_PI / 2.0 - ang_rad),
+		                       0.0,
+		                      -10.0+6.1*std::sin(CH_C_PI / 2.0 -ang_rad)));
+	flap_body->SetRot(Q_from_AngAxis(ang_rad, VECT_Y));
 	flap_body->SetMass(127000.0);
 	flap_body->SetInertiaXX(ChVector<>(1.85e6, 1.85e6, 1.85e6));
 	// notes: mass and inertia added to added mass and system mass correctly.
@@ -127,24 +130,7 @@ int main(int argc, char* argv[]) {
 	base_body->SetPos(ChVector<>(0, 0, -10.9));
 	base_body->SetMass(999);
 	base_body->SetInertiaXX(ChVector<>(1, 1, 1));
-	//base_body->SetBodyFixed(true);
-
-	// add floor
-	auto floor = chrono_types::make_shared<ChBodyEasyBox>(250, 250, 4,  // x,y,z size
-		1000,         // density
-		true,         // visualization?
-		false);       // collision?
-	floor->SetPos(ChVector<>(0, 0, -10.9 - 2));
-	floor->SetBodyFixed(true);
-	system.Add(floor);
-
-	// connect base to floor
-	auto anchor = chrono_types::make_shared<ChLinkMateGeneric>();
-	anchor->Initialize(base_body, floor, false, base_body->GetVisualModelFrame(), base_body->GetVisualModelFrame());
-	system.Add(anchor);
-	anchor->SetConstrainedCoords(true, true, true,   // x, y, z
-		                         true, true, true);  // Rx, Ry, Rz
-
+	base_body->SetBodyFixed(true);
 
 	// define base-fore flap joint
 	ChQuaternion<> revoluteRot = Q_from_AngX(CH_C_PI / 2.0);
@@ -200,9 +186,9 @@ int main(int argc, char* argv[]) {
 				flap_rot.push_back(flap_body->GetRot().Q_to_Euler123().y());
 				// force playback to be real-time
 				realtime_timer.Spin(timestep);
-				ChSparseMatrix M;
-				system.GetMassMatrix(&M);
-				std::cout << M << std::endl;
+				//ChSparseMatrix M;
+				//system.GetMassMatrix(&M);
+				//std::cout << M << std::endl;
 			}
 		}
 	}
