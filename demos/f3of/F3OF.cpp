@@ -67,14 +67,14 @@ int main(int argc, char* argv[]) {
 
 	// system/solver settings
 	ChSystemNSC system;
-	system.Set_G_acc(ChVector<>(0.0, 0.0, 0.0));
+	system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
 	double timestep = 0.02;
-	system.SetTimestepperType(ChTimestepper::Type::HHT);
+	//system.SetTimestepperType(ChTimestepper::Type::HHT);
 	system.SetSolverType(ChSolver::Type::GMRES);
 	system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
 	system.SetStep(timestep);
 	ChRealtimeStepTimer realtime_timer;
-	double simulationDuration = 0.02;
+	double simulationDuration = 20.0;
 
 	// some io/viz options
 	bool visualizationOn = true;
@@ -95,9 +95,7 @@ int main(int argc, char* argv[]) {
 		0,                                                                                        // density
 		false,                                                                                    // do not evaluate mass automatically
 		true,                                                                                     // create visualization asset
-		false,                                                                                    // collisions
-		nullptr,                                                                                  // no need for contact material
-		0                                                                                         // swept sphere radius
+		false                                                                                     // collisions
 		);
 
 	// set up body from a mesh
@@ -105,16 +103,13 @@ int main(int argc, char* argv[]) {
 		std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/f3of/geometry/flap.obj").c_str()) << " does not exist" << std::endl;
 		return 0;
 	}
-
 	//std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/plate.obj").c_str()) << std::endl;
 	std::shared_ptr<ChBody> flapFore = chrono_types::make_shared<ChBodyEasyMesh>(                   //
 		GetChronoDataFile("../../HydroChrono/demos/f3of/geometry/flap.obj").c_str(),                 // file name
 		0,                                                                                        // density
 		false,                                                                                    // do not evaluate mass automatically
 		true,                                                                                     // create visualization asset
-		false,                                                                                    // collisions
-		nullptr,                                                                                  // no need for contact material
-		0                                                                                         // swept sphere radius
+		false                                                                                     // collisions
 		);
 
 	// set up body from a mesh
@@ -122,16 +117,13 @@ int main(int argc, char* argv[]) {
 		std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/F3OF/geometry/flap.obj").c_str()) << " does not exist" << std::endl;
 		return 0;
 	}
-
 	//std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/plate.obj").c_str()) << std::endl;
 	std::shared_ptr<ChBody> flapAft = chrono_types::make_shared<ChBodyEasyMesh>(                   //
 		GetChronoDataFile("../../HydroChrono/demos/f3of/geometry/flap.obj").c_str(),                 // file name
 		0,                                                                                        // density
 		false,                                                                                    // do not evaluate mass automatically
 		true,                                                                                     // create visualization asset
-		false,                                                                                    // collisions
-		nullptr,                                                                                  // no need for contact material
-		0                                                                                         // swept sphere radius
+		false                                                                                     // collisions
 		);
 
 
@@ -140,56 +132,38 @@ int main(int argc, char* argv[]) {
 	base->SetNameString("body1");
 	base->SetPos(ChVector<>(0.0, 0.0, -9.0));
 	base->SetMass(1089825.0);
-	base->SetPos_dt(ChVector<>(0.0, 0.0, 1.0));
-	//base->SetInertiaXX(ChVector<>(100000000.0, 76300000.0, 100000000.0));
+	base->SetInertiaXX(ChVector<>(100000000.0, 76300000.0, 100000000.0));
 
 	// define the fore flap's initial conditions
 	system.Add(flapFore);
 	flapFore->SetNameString("body2");
 	flapFore->SetPos(ChVector<>(-12.5, 0.0, -5.5));
 	flapFore->SetMass(179250.0);
-	flapFore->SetPos_dt(ChVector<>(0.0, 0.0, 1.0));
-	//flapFore->SetInertiaXX(ChVector<>(100000000.0, 1300000.0, 100000000.0));
+	flapFore->SetInertiaXX(ChVector<>(100000000.0, 1300000.0, 100000000.0));
 
 	// define the aft flap's initial conditions
 	system.Add(flapAft);
 	flapAft->SetNameString("body3");
 	flapAft->SetPos(ChVector<>(12.5, 0.0, -5.5));
 	flapAft->SetMass(179250.0);
-	flapAft->SetPos_dt(ChVector<>(0.0, 0.0, 1.0));
+	flapAft->SetInertiaXX(ChVector<>(100000000.0, 1300000.0, 100000000.0));
 
-	//flapAft->SetInertiaXX(ChVector<>(100000000.0, 1300000.0, 100000000.0));
-
-	// define base-fore flap joint
-	ChVector<> revoluteForePos(-12.5, 0.0, -9.0);
-	ChQuaternion<> revoluteForeRot = Q_from_AngX(0.0); // CH_C_PI / 2.0);
+	ChQuaternion<> revoluteRot = Q_from_AngX(CH_C_PI / 2.0); // do not change ?
 	auto revoluteFore = chrono_types::make_shared<ChLinkLockRevolute>();
-	revoluteFore->Initialize(base, flapFore, ChCoordsys<>(revoluteForePos));// , revoluteForeRot));
+	revoluteFore->Initialize(base, flapFore, ChCoordsys<>(ChVector<>(-12.5, 0.0, -9.0), revoluteRot));
 	system.AddLink(revoluteFore);
-
-	// add prismatic joint between the two bodies
-	//auto prismatic = chrono_types::make_shared<ChLinkLockPrismatic>();
-	//prismatic->Initialize(base, flapFore, false, ChCoordsys<>(ChVector<>(0.0, 0.0, -9.0)), ChCoordsys<>(ChVector<>(-12.5, 0.0, -5.5)));
-	//system.AddLink(prismatic);
-
-	// define base-aft flap joint
-	//ChVector<> revoluteAftPos(12.5, 0.0, -9.0);
-	//ChQuaternion<> revoluteAftRot = Q_from_AngX(0.0); // CH_C_PI / 2.0);
-	//auto revoluteAft = chrono_types::make_shared<ChLinkLockRevolute>();
-	//revoluteAft->Initialize(base, flapAft, ChCoordsys<>(revoluteAftPos, revoluteAftRot));
-	//system.AddLink(revoluteAft);
+	auto revoluteAft = chrono_types::make_shared<ChLinkLockRevolute>();
+	revoluteAft->Initialize(base, flapAft, ChCoordsys<>(ChVector<>(12.5, 0.0, -9.0), revoluteRot));
+	system.AddLink(revoluteAft);
 
 	// define wave parameters (not used in this demo)
 	HydroInputs my_hydro_inputs;
-	//my_hydro_inputs.regular_wave_amplitude = 0.022;
-	//my_hydro_inputs.regular_wave_omega = 2.10;
-	my_hydro_inputs.mode = noWaveCIC;  // switch to NONE to turn waves off
-	// attach hydrodynamic forces to body,switch to REGULAR with REGULAR
+	my_hydro_inputs.mode = noWaveCIC; 
 	std::vector<std::shared_ptr<ChBody>> bodies;
 	bodies.push_back(base);
 	bodies.push_back(flapFore);
 	bodies.push_back(flapAft);
-	TestHydro blah(bodies, "../../HydroChrono/demos/f3of/hydroData/f3of.h5", my_hydro_inputs);
+	TestHydro hydroforces(bodies, "../../HydroChrono/demos/f3of/hydroData/f3of.h5", my_hydro_inputs);
 
 	// for profiling
 	auto start = std::chrono::high_resolution_clock::now();
@@ -213,15 +187,15 @@ int main(int argc, char* argv[]) {
 		bool buttonPressed = false;
 		MyActionReceiver receiver(irrlichtVis.get(), buttonPressed);
 		irrlichtVis->AddUserEventReceiver(&receiver);
-		ChSparseMatrix M;
+		//ChSparseMatrix M;
 		// main simulation loop
 		while (irrlichtVis->Run() && system.GetChTime() <= simulationDuration) {
 			irrlichtVis->BeginScene();
 			irrlichtVis->Render();
 			irrlichtVis->EndScene();
 			if (buttonPressed) {
-				system.GetMassMatrix(&M);
-				std::cout << M << std::endl;
+				//system.GetMassMatrix(&M);
+				//std::cout << M << std::endl;
 				// step the simulation forwards
 				system.DoStepDynamics(timestep);
 				// append data to std vector

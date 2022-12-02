@@ -134,8 +134,7 @@ int main(int argc, char* argv[]) {
 
 	// define base-fore flap joint
 	ChQuaternion<> revoluteRot = Q_from_AngX(CH_C_PI / 2.0);
-	std::shared_ptr<ChLinkLockRevolute> revolute;
-	revolute = chrono_types::make_shared<ChLinkLockRevolute>();
+	auto revolute = chrono_types::make_shared<ChLinkLockRevolute>();
 	revolute->Initialize(base_body, flap_body, ChCoordsys<>(ChVector<>(0.0, 0.0, -10.0), revoluteRot));
 	system.AddLink(revolute);
 
