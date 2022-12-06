@@ -67,7 +67,7 @@ int main(int argc, char* argv[]) {
 
 	// system/solver settings
 	ChSystemNSC system;
-	system.Set_G_acc(ChVector<>(0.0, 0.0, 0.0));
+	system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
 	double timestep = 0.01;
 	system.SetTimestepperType(ChTimestepper::Type::HHT);
 	system.SetSolverType(ChSolver::Type::GMRES);

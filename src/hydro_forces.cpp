@@ -711,7 +711,7 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 				std::cout << "temp index in hydrostatic force is bad " << std::endl;
 			}
 			position[i + b_offset] = bodies[b]->GetPos()[i];
-			position[i + 3 + b_offset] = bodies[b]->GetRot().Q_to_Euler123()[i];
+			position[i + 3 + b_offset] = bodies[b]->GetRot().Q_to_Euler123()[i]; // TODO check if we want this, or GetWvel_par()?
 		}
 	}
 
