@@ -74,15 +74,16 @@ int main(int argc, char* argv[]) {
 	system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
 	system.SetStep(timestep);
 	ChRealtimeStepTimer realtime_timer;
-	double simulationDuration = 20.0;
+	double simulationDuration = 40.0;
 
 	// some io/viz options
 	bool visualizationOn = true;
 	bool profilingOn = true;
 	bool saveDataOn = true;
 	std::vector<double> time_vector;
-	std::vector<double> float_heave_position;
-	std::vector<double> plate_heave_position;
+	std::vector<double> base_heave_position;
+	std::vector<double> fore_pitch;
+	std::vector<double> aft_pitch;
 
 	// set up body from a mesh
 	if (!std::filesystem::exists("../../HydroChrono/demos/f3of/geometry/base.obj")) {
@@ -200,8 +201,9 @@ int main(int argc, char* argv[]) {
 				system.DoStepDynamics(timestep);
 				// append data to std vector
 				time_vector.push_back(system.GetChTime());
-				float_heave_position.push_back(base->GetPos().z());
-				plate_heave_position.push_back(flapFore->GetPos().z());
+				base_heave_position.push_back(base->GetPos().z());
+				fore_pitch.push_back(flapFore->GetRot().Q_to_Euler123().y());
+				aft_pitch.push_back(flapAft->GetRot().Q_to_Euler123().y());
 				// force playback to be real-time
 				realtime_timer.Spin(timestep);
 			}
@@ -212,9 +214,9 @@ int main(int argc, char* argv[]) {
 		while (system.GetChTime() <= simulationDuration) {
 			// append data to std vector
 			time_vector.push_back(system.GetChTime());
-			float_heave_position.push_back(base->GetPos().z());
-			plate_heave_position.push_back(flapFore->GetPos().z());
-
+			base_heave_position.push_back(base->GetPos().z());
+			fore_pitch.push_back(flapFore->GetRot().Q_to_Euler123().y());
+			aft_pitch.push_back(flapAft->GetRot().Q_to_Euler123().y());
 			// step the simulation forwards
 			system.DoStepDynamics(timestep);
 
@@ -264,13 +266,14 @@ int main(int argc, char* argv[]) {
 		}
 		outputFile << std::left << std::setw(10) << "Time (s)"
 			<< std::right << std::setw(16) << "Base Heave (m)"
-			<< std::right << std::setw(16) << "Flap Fore Heave (m)"
-			<< std::right << std::setw(16) << "Flap Aft Heave (m)"
+			<< std::right << std::setw(16) << "Flap Fore Pitch (radians)"
+			<< std::right << std::setw(16) << "Flap Aft Pitch (radians)"
 			<< std::endl;
 		for (int i = 0; i < time_vector.size(); ++i)
 			outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
-			<< std::right << std::setw(16) << std::setprecision(4) << std::fixed << float_heave_position[i]
-			<< std::right << std::setw(16) << std::setprecision(4) << std::fixed << plate_heave_position[i]
+			<< std::right << std::setw(16) << std::setprecision(4) << std::fixed << base_heave_position[i]
+			<< std::right << std::setw(16) << std::setprecision(4) << std::fixed << fore_pitch[i]
+			<< std::right << std::setw(16) << std::setprecision(4) << std::fixed << aft_pitch[i]
 			<< std::endl;
 		outputFile.close();
 	}
