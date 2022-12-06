@@ -14,7 +14,7 @@
 	3. Execute the batch file or shell script for your platform. For example, `ctest -S HDF5config.cmake,BUILD_GENERATOR=VS201964 -C RelWithDebInfo -V -O hdf5.log` 
 	4. Config `RelWithDebInfo` is the recommended configuration to allow running in Release mode or a debug mode (RelWithDebInfo).
 	5. Wait for it to configure everything and run all its tests, most should pass.
-	6. Locate and uncompress built binary its name is `HDF5-N-<platform>.<zip or tar.gz>` it appears in 2 locations, unzip the one in the build folder!
+	6. Locate and uncompress built binary its name is `HDF5-N-<platform>.<zip or tar.gz>` it appears in 2 locations, make sure to unzip the one in the build folder!
 	7. Navagate to `<path>\libraries\CMake-hdf5-1.10.8\CMake-hdf5-1.10.8\build\HDF5-1.10.8-win64\HDF5-1.10.8-win64\share\cmake` or similar location to the cmake folder. Check that `hdf5-config.cmake` files are here.
 	8. In general, to use HDF5 library users must first set the `HDF5_DIR` environment variable to the installed location of the CMake configuration files for HDF5. For example, on Windows the following path might be set:
 		* `HDF5_DIR=C:\Users\USER\code\libraries\CMake-hdf5-1.10.8\CMake-hdf5-1.10.8\build\HDF5-1.10.8-win64\HDF5-1.10.8-win64\share\cmake`
@@ -30,7 +30,7 @@
 	1. Clone this project into a directory, and set up a build folder (i.e. clone project into HydroChrono directory and set up HydroChrono_build adjacent directory). 
 	2. Just like when building Project Chrono, open CMake GUI specifying the location of the source files and built binaries for HydroChrono (HydroChrono and HydroChrono_build respectively). Configure and generate the solution, specifying `Chrono_DIR` as Chrono Build location (`../chrono_build/cmake`) and HDF5_DIR as (`../CMake-hdf5-1.10.8/CMake-hdf5-1.10.8/build/HDF5-1.10.8-win64/HDF5-1.10.8-win64/share/cmake` or similar path to find the cmake file at the end of this path). Note: version 1.10.8 of HDF5 works best with Visual Studio 2019.
 	3. Navigate to the build folder and open the solution in Visual Studio. Build the solution for HydroChrono in RelWithDebInfo mode (The `ALL_BUILD` project is the best for building and linking everything. It will build the library and all demos).
-3. From Project Chrono build directory copy `chrono_build/bin/data` file into `HydroChrono_build/data` for shaders and logos
+3. From Project Chrono build directory copy `chrono_build/bin/data` file into `HydroChrono_build/data` for optional shaders and logos
 4. Navigate to `chrono_build/bin/RelWithDebInfo` folder and copy all .dll and .pdb files (not for demos) and paste them into `HydroChrono_build/RelWithDebInfo` file. List of all files to copy:
 	* ChronoEngine.dll
 	* ChronoEngine.pdb
@@ -57,3 +57,15 @@
 		* demos/sphere/geometry - .obj files defining verticies on sphere object
 		* demos/sphere/hydroData - contains sphere.h5 file
 		* demos/sphere/postprocessing - contains .plt and .py plotting files and WEC-Sim comparison data for plots. Copy these into results folder to plot demo outputs
+	* demos/f3of - contains required files for f3of demo (decay test and regular wave test)
+		* F3OF.cpp - demo showing f3of decay, optionally add regular waves
+		* demos/f3of/geometry - .obj files defining verticies on f3of objects
+		* demos/f3of/hydroData - contains f3of.h5 file
+		* demos/f3of/postprocessing - contains .plt plotting files and WEC-Sim comparison data for plots. Copy these into results folder to plot demo outputs
+	* demos/oswec - contains required files for oswec demo (decay test)
+		* oswec_decay.cpp - demo showing oswec decay and optionally regular waves
+		* demos/oswec/geometry - .obj files defining verticies on oswec object
+		* demos/oswec/hydroData - contains oswec.h5 file
+		* demos/oswec/postprocessing - contains .plt and .py plotting files and WEC-Sim comparison data for plots. Copy these into results folder to plot demo outputs
+	* demos/Test - can be ignored
+	* demos/python - can be ignored for now
