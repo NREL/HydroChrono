@@ -138,14 +138,24 @@ int main(int argc, char* argv[]) {
 	// define the fore flap's initial conditions
 	system.Add(flapFore);
 	flapFore->SetNameString("body2");
-	flapFore->SetPos(ChVector<>(-12.5, 0.0, -5.5));
+	double fore_ang_rad = CH_C_PI / 18.0;
+	flapFore->SetRot(Q_from_AngAxis(fore_ang_rad, VECT_Y));
+	flapFore->SetPos(ChVector<>(-12.5 + 3.5 * std::cos(CH_C_PI / 2.0 - fore_ang_rad),
+		                         0.0,
+		                         -9.0 + 3.5 * std::sin(CH_C_PI / 2.0 - fore_ang_rad)));
+	//flapFore->SetPos(ChVector<>(-12.5, 0.0, -5.5));
 	flapFore->SetMass(179250.0);
 	flapFore->SetInertiaXX(ChVector<>(100000000.0, 1300000.0, 100000000.0));
 
 	// define the aft flap's initial conditions
 	system.Add(flapAft);
 	flapAft->SetNameString("body3");
-	flapAft->SetPos(ChVector<>(12.5, 0.0, -5.5));
+	double aft_ang_rad = 0.0;
+	flapAft->SetRot(Q_from_AngAxis(aft_ang_rad, VECT_Y));
+	flapAft->SetPos(ChVector<>(12.5 + 3.5 * std::cos(CH_C_PI / 2.0 - aft_ang_rad),
+		                       0.0,
+		                       -9.0 + 3.5 * std::sin(CH_C_PI / 2.0 - fore_ang_rad)));
+	//flapAft->SetPos(ChVector<>(12.5, 0.0, -5.5));
 	flapAft->SetMass(179250.0);
 	flapAft->SetInertiaXX(ChVector<>(100000000.0, 1300000.0, 100000000.0));
 
