@@ -167,6 +167,25 @@ int main(int argc, char* argv[]) {
 	revoluteAft->Initialize(base, flapAft, ChCoordsys<>(ChVector<>(12.5, 0.0, -9.0), revoluteRot));
 	system.AddLink(revoluteAft);
 
+	// create ground aka anchor point for spring
+	auto ground = chrono_types::make_shared<ChBody>();
+	system.AddBody(ground);
+	ground->SetPos(ChVector<>(0, 0, -12));
+	ground->SetIdentifier(-1);
+	ground->SetBodyFixed(true);
+	ground->SetCollide(false);
+	// Create the spring between body_1 and ground. The spring end points are
+	// specified in the body relative frames.
+	double rest_length = 3.0;
+	double spring_coef = 0.0;
+	double damping_coef = 1077123.445;
+	auto spring_1 = chrono_types::make_shared<ChLinkTSDA>();
+	spring_1->Initialize(base, ground, true, ChVector<>(0, 0, -9), ChVector<>(0, 0, -12));
+	spring_1->SetRestLength(rest_length);
+	spring_1->SetSpringCoefficient(spring_coef);
+	spring_1->SetDampingCoefficient(damping_coef);
+	system.AddLink(spring_1);
+
 	// define wave parameters (not used in this demo)
 	HydroInputs my_hydro_inputs;
 	my_hydro_inputs.mode = noWaveCIC; 
