@@ -1,18 +1,16 @@
 set terminal pdf size 5in,4.5in
-set output "rm3.pdf"
+set output "f3of_decay.pdf"
 
 set samples 100000
 set grid
 
 set lmargin at screen 0.125
 set multiplot layout 2,1
-set ylabel "Float Heave"
+set ylabel "Base Heave"
 set xrange [0:40]
-plot "rm3_decay.txt" using 1:2 with lines title "Chrono", \
-     "rm3_WECSim_decay.txt" using 1:2 with lines title "WEC-Sim"
+plot "f3of_decay.txt" using 1:2 with lines title "Chrono"
 
-set ylabel "Plate Heave"
+set ylabel "Flap Pitch (radians)"
 set xlabel "Time (s)"
-set xrange [0:300]
-plot "rm3_decay.txt" using 1:3 with lines title "Chrono", \
-     "rm3_WECSim_decay.txt" using 1:3 with lines title "WEC-Sim"
+plot "f3of_decay.txt" using 1:3 with lines title "Fore Flap", \
+     "f3of_decay.txt" using 1:4 with lines title "Aft Flap"
