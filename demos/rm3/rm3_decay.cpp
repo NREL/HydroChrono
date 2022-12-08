@@ -129,11 +129,6 @@ int main(int argc, char* argv[]) {
 	plate_body2->SetInertiaXX(ChVector<>(94419614.57, 94407091.24, 28542224.82));
 	//plate_body2->SetCollide(false);
 
-	// add prismatic joint between the two bodies
-	auto prismatic = chrono_types::make_shared<ChLinkLockPrismatic>();
-	prismatic->Initialize(float_body1, plate_body2, false, ChCoordsys<>(ChVector<>(0, 0, -0.72)), ChCoordsys<>(ChVector<>(0, 0, -21.29)));
-	system.AddLink(prismatic);
-
 	auto prismatic_pto = chrono_types::make_shared<ChLinkTSDA>();
 	prismatic_pto->Initialize(float_body1, plate_body2, false, ChVector<>(0, 0, -0.72), ChVector<>(0, 0, -21.29));
 	prismatic_pto->SetDampingCoefficient(0.0);

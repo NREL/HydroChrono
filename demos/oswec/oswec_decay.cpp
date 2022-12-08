@@ -115,7 +115,7 @@ int main(int argc, char* argv[]) {
 
 	// define the float's initial conditions
 	flap_body->SetNameString("body1");
-	auto ang_rad = -0.575222039;
+	auto ang_rad = CH_C_PI / 18.0;
 	flap_body->SetPos(ChVector<>(6.1*std::cos(CH_C_PI / 2.0 - ang_rad),
 		                       0.0,
 		                      -10.0+6.1*std::sin(CH_C_PI / 2.0 -ang_rad)));

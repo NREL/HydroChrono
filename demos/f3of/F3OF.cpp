@@ -3,6 +3,7 @@
 #include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
 #include "chrono_irrlicht/ChIrrMeshTools.h"
 #include "chrono/core/ChRealtimeStep.h"
+#include "chrono/physics/ChLinkMate.h"
 #include <iomanip> // std::setprecision
 #include <chrono> // std::chrono::high_resolution_clock::now
 #include <vector> // std::vector<double>
@@ -74,7 +75,7 @@ int main(int argc, char* argv[]) {
 	system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
 	system.SetStep(timestep);
 	ChRealtimeStepTimer realtime_timer;
-	double simulationDuration = 40.0;
+	double simulationDuration = 300.0;
 
 	// some io/viz options
 	bool visualizationOn = true;
@@ -143,7 +144,6 @@ int main(int argc, char* argv[]) {
 	flapFore->SetPos(ChVector<>(-12.5 + 3.5 * std::cos(CH_C_PI / 2.0 - fore_ang_rad),
 		                         0.0,
 		                         -9.0 + 3.5 * std::sin(CH_C_PI / 2.0 - fore_ang_rad)));
-	//flapFore->SetPos(ChVector<>(-12.5, 0.0, -5.5));
 	flapFore->SetMass(179250.0);
 	flapFore->SetInertiaXX(ChVector<>(100000000.0, 1300000.0, 100000000.0));
 
@@ -155,36 +155,53 @@ int main(int argc, char* argv[]) {
 	flapAft->SetPos(ChVector<>(12.5 + 3.5 * std::cos(CH_C_PI / 2.0 - aft_ang_rad),
 		                       0.0,
 		                       -9.0 + 3.5 * std::sin(CH_C_PI / 2.0 - fore_ang_rad)));
-	//flapAft->SetPos(ChVector<>(12.5, 0.0, -5.5));
 	flapAft->SetMass(179250.0);
 	flapAft->SetInertiaXX(ChVector<>(100000000.0, 1300000.0, 100000000.0));
 
-	ChQuaternion<> revoluteRot = Q_from_AngX(CH_C_PI / 2.0); // do not change ?
+	// for pto use
+	//auto revoluteFore = chrono_types::make_shared<ChLinkRSDA>();
+	//auto revoluteAft = chrono_types::make_shared<ChLinkRSDA>();
+	//revoluteFore->SetDampingCoefficient(4.0e7);
+	//revoluteAft->SetDampingCoefficient(4.0e7);
+
+	// for no pto use
 	auto revoluteFore = chrono_types::make_shared<ChLinkLockRevolute>();
+	auto revoluteAft = chrono_types::make_shared<ChLinkLockRevolute>();
+
+	// finalize either link set up
+	ChQuaternion<> revoluteRot = Q_from_AngX(CH_C_PI / 2.0); // do not change ?
 	revoluteFore->Initialize(base, flapFore, ChCoordsys<>(ChVector<>(-12.5, 0.0, -9.0), revoluteRot));
 	system.AddLink(revoluteFore);
-	auto revoluteAft = chrono_types::make_shared<ChLinkLockRevolute>();
 	revoluteAft->Initialize(base, flapAft, ChCoordsys<>(ChVector<>(12.5, 0.0, -9.0), revoluteRot));
 	system.AddLink(revoluteAft);
 
-	// create ground aka anchor point for spring
+
+	// create ground
 	auto ground = chrono_types::make_shared<ChBody>();
 	system.AddBody(ground);
 	ground->SetPos(ChVector<>(0, 0, -12));
 	ground->SetIdentifier(-1);
 	ground->SetBodyFixed(true);
 	ground->SetCollide(false);
+
 	// Create the spring between body_1 and ground. The spring end points are
 	// specified in the body relative frames.
-	double rest_length = 3.0;
-	double spring_coef = 0.0;
-	double damping_coef = 1077123.445;
-	auto spring_1 = chrono_types::make_shared<ChLinkTSDA>();
-	spring_1->Initialize(base, ground, true, ChVector<>(0, 0, -9), ChVector<>(0, 0, -12));
-	spring_1->SetRestLength(rest_length);
-	spring_1->SetSpringCoefficient(spring_coef);
-	spring_1->SetDampingCoefficient(damping_coef);
-	system.AddLink(spring_1);
+	//double rest_length = 3.0;
+	//double spring_coef = 0.0;
+	//double damping_coef = 1.0e5;
+	//auto spring_1 = chrono_types::make_shared<ChLinkTSDA>();
+	//spring_1->Initialize(base, ground, true, ChVector<>(0, 0, -9), ChVector<>(0, 0, -12));
+	//spring_1->SetRestLength(rest_length);
+	//spring_1->SetSpringCoefficient(spring_coef);
+	//spring_1->SetDampingCoefficient(damping_coef);
+	//system.AddLink(spring_1);
+
+	// or create solid link
+	auto anchor = chrono_types::make_shared<ChLinkMateGeneric>();
+	anchor->Initialize(base, ground, false, base->GetVisualModelFrame(), base->GetVisualModelFrame());
+	system.Add(anchor);
+	anchor->SetConstrainedCoords(true, true, true,   // x, y, z
+		                         true, true, true);  // Rx, Ry, Rz
 
 	// define wave parameters (not used in this demo)
 	HydroInputs my_hydro_inputs;
