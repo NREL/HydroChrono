@@ -16,7 +16,7 @@ set key at screen 1, 0.55
 set size 1, .5
 set origin 0, .5
 set title " "
-plot "f3of_decay.txt" using 1:($4/3.14159*180.0) with lines title "Chrono", \
+plot "CHRONO_F3OF_DT3_PITCH.txt" using 1:($4/3.14159*180.0) with lines title "Chrono", \
      "reference_data/INW/DT1-3/INW_F3OF_DT3_FLAP1.dat" using 1:2 with lines title "INW", \
      "reference_data/PDS/DT1-3/PDS_F3OF_DT3_FLAP1.dat" using 1:2 with lines title "PDS", \
      "reference_data/WDN/DT1-3/WDN_F3OF_DT3_FLAP1.dat" using 1:2 with lines title "WDN", \
@@ -30,7 +30,7 @@ unset key
 set size 1, .5
 set origin 0, 0
 unset title
-plot "f3of_decay.txt" using 1:($5/3.14159*180.0) with lines title "Chrono", \
+plot "CHRONO_F3OF_DT3_PITCH.txt" using 1:($5/3.14159*180.0) with lines title "Chrono", \
      "reference_data/INW/DT1-3/INW_F3OF_DT3_FLAP2.dat" using 1:2 with lines title "INW", \
      "reference_data/PDS/DT1-3/PDS_F3OF_DT3_FLAP2.dat" using 1:2 with lines title "PDS", \
      "reference_data/WDN/DT1-3/WDN_F3OF_DT3_FLAP2.dat" using 1:2 with lines title "WDN", \
