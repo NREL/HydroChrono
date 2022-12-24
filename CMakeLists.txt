@@ -11,7 +11,15 @@ cmake_minimum_required(VERSION 3.18.2)
 # Modify the project name if you want: 
 #--------------------------------------------------------------
 
-project(HydroChrono CXX)
+project(HydroChrono 
+	VERSION 0.0.1
+	DESCRIPTION "Hydro dynamic library based on chrono engine"
+	LANGUAGES CXX
+)
+
+
+option (HYDRO_CHRONO_ENABLE_TESTS "Enable tests" ON)
+
 
 # find required packages and libraries to make HydroChrono library
 set (LIB_TYPE STATIC) # or SHARED
@@ -156,11 +164,24 @@ add_executable(sphere_decay demos/sphere/sphere_decay.cpp)
 target_link_libraries(sphere_decay HydroChrono)
 
 
+# ====================
+# TESTS
+# ====================
+if(HYDRO_CHRONO_ENABLE_TESTS)
 
+	if(DEFINED ENV{HYDRO_CHRONO_DATA_DIR})
+		# Override DATA_DIR by environement variable
+		set(HYDRO_CHRONO_DATA_DIR $ENV{HYDRO_CHRONO_DATA_DIR})
+	else()
+		set(HYDRO_CHRONO_DATA_DIR "${PROJECT_SOURCE_DIR}/demos")
+	endif()
 
+	include(CTest)
+	enable_testing()
 
+	add_subdirectory(tests)
 
-
+endif(HYDRO_CHRONO_ENABLE_TESTS)
 
 
 #--------------------------------------------------------------

@@ -31,13 +31,6 @@ H5FileInfo::H5FileInfo(std::string file, std::string Name) {
 	readH5Data();
 }
 
-/*******************************************************************************
-* H5FileInfo copy constructor (H5FileInfo& rhs)
-* defines basic copy constructor using the = operator
-*******************************************************************************/
-H5FileInfo::H5FileInfo(H5FileInfo& old) {
-	*this = old;
-}
 
 /*******************************************************************************
 * H5FileInfo::operator = (H5FileInfo& rhs) 

@@ -15,17 +15,13 @@ public:
 	bool printed = false;
 
 	H5FileInfo(std::string file, std::string body_name);
-	H5FileInfo(H5FileInfo& old);
+	H5FileInfo(H5FileInfo& old) = default;
 	H5FileInfo& operator = (H5FileInfo& rhs);
 
     H5FileInfo() = delete;
     H5FileInfo(const H5FileInfo&) = delete;
     H5FileInfo(H5FileInfo&&) = default;  ///TODO Check if default is OK;  Mandatory to use in vector emplace_back
 
-	void InitScalar(H5::H5File& file, std::string data_name, double& var);
-	void Init1D(H5::H5File& file, std::string data_name, std::vector<double>& var);
-	void Init2D(H5::H5File& file, std::string data_name, chrono::ChMatrixDynamic<double>& var); 
-	void Init3D(H5::H5File& file, std::string data_name, std::vector<double>& var, std::vector<int>& dims);
 	~H5FileInfo();
 
 	chrono::ChMatrixDynamic<double> GetInfAddedMassMatrix() const;
@@ -49,6 +45,7 @@ public:
 	//const double& rirf_timestep = _rirf_timestep;
 	int bodyNum;
 private:
+
 	double _rho;
 	double _g;
 	double _disp_vol;
@@ -71,5 +68,11 @@ private:
 	std::vector<int> excitation_phase_dims;
 	std::string h5_file_name;
 	std::string bodyName;
+
+
+	void InitScalar(H5::H5File& file, std::string data_name, double& var);
+	void Init1D(H5::H5File& file, std::string data_name, std::vector<double>& var);
+	void Init2D(H5::H5File& file, std::string data_name, chrono::ChMatrixDynamic<double>& var); 
+	void Init3D(H5::H5File& file, std::string data_name, std::vector<double>& var, std::vector<int>& dims);
 	void readH5Data();
 };

@@ -284,6 +284,7 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::stri
 
 
 	/// TODO Check if local vector is really copied into constructor of ChLoadAddedMass
+	/// else it could be a memory fault
 	std::vector<std::shared_ptr<ChLoadable>> loadables(bodies.size());
 	for(auto i =0; i<bodies.size(); ++i) {
 		loadables[i] = bodies[i];
