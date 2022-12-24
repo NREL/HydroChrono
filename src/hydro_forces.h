@@ -23,69 +23,12 @@
 
 #include "H5Cpp.h"
 
+#include <hydroc/h5fileinfo.h>
+
 using namespace chrono;
 using namespace chrono::irrlicht;
 using namespace chrono::fea;
 
-// =============================================================================
-class H5FileInfo {
-public:
-	bool printed = false;
-	H5FileInfo();
-	H5FileInfo(std::string file, std::string body_name);
-	H5FileInfo(H5FileInfo& old);
-	H5FileInfo& operator = (H5FileInfo& rhs);
-	void InitScalar(H5::H5File& file, std::string data_name, double& var);
-	void Init1D(H5::H5File& file, std::string data_name, std::vector<double>& var);
-	void Init2D(H5::H5File& file, std::string data_name, ChMatrixDynamic<double>& var); 
-	void Init3D(H5::H5File& file, std::string data_name, std::vector<double>& var, std::vector<int>& dims);
-	~H5FileInfo();
-
-	ChMatrixDynamic<double> GetInfAddedMassMatrix() const;
-	double GetHydrostaticStiffness(int i, int j) const;
-	double GetRIRFval(int i, int n, int m) const;
-	int GetRIRFDims(int i) const;
-	std::vector<double> GetRIRFTimeVector() const; // TODO
-	double GetExcitationMagValue(int m, int n, int w) const;
-	double GetExcitationMagInterp(int i, int j, double freq_index_des) const;
-	double GetOmegaDelta() const;
-	double GetOmegaMax() const;
-	double GetExcitationPhaseValue(int m, int n, int w) const;
-	double GetExcitationPhaseInterp(int i, int j, double freq_index_des) const;
-	double GetNumFreqs() const;
-
-	std::vector<double> cg;
-	std::vector<double> cb;
-	const double& rho = _rho;
-	const double& g = _g;
-	const double& disp_vol = _disp_vol;
-	//const double& rirf_timestep = _rirf_timestep;
-	int bodyNum;
-private:
-	double _rho;
-	double _g;
-	double _disp_vol;
-	double _rirf_timestep;
-	std::vector<double> freq_list;
-	ChMatrixDynamic<double> lin_matrix;
-	ChMatrixDynamic<double> inf_added_mass;
-	std::vector<double> rirf_matrix;
-	std::vector<int> rirf_dims;
-	std::vector<double> rirf_time_vector;
-	std::vector<double> radiation_damping_matrix; // TODO check about names
-	std::vector<int> Bw_dims; // TODO check with dave on name for dimensions of radiation damping matrix
-	std::vector<double> excitation_mag_matrix;
-	std::vector<int> excitation_mag_dims;
-	std::vector<double> excitation_re_matrix;
-	std::vector<int> re_dims;
-	std::vector<double> excitation_im_matrix;
-	std::vector<int> im_dims;
-	std::vector<double> excitation_phase_matrix;
-	std::vector<int> excitation_phase_dims;
-	std::string h5_file_name;
-	std::string bodyName;
-	void readH5Data();
-};
 enum WaveMode {noWaveCIC, regular}; // eventually add irregular waves mode
 // =============================================================================
 class HydroInputs {
@@ -185,44 +128,4 @@ private:
 	int offset_rirf;
 	std::shared_ptr<ChLoadContainer> my_loadcontainer;
 	std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia;
-};
-
-// =============================================================================
-class ChLoadAddedMass : public ChLoadCustomMultiple {
-public:
-	ChLoadAddedMass(const std::vector<H5FileInfo>& file,   ///< h5 file to initialize added mass with
-					std::vector<std::shared_ptr<ChBody>>& bodies  ///< objects to apply additional inertia to
-					);     
-//	/// "Virtual" copy constructor (covariant return type).
-	virtual ChLoadAddedMass* Clone() const override { return new ChLoadAddedMass(*this); }
-//
-//	/// Compute Q, the generalized load.
-//	/// In this case, it computes the quadratic (centrifugal, gyroscopic) terms.
-//	/// Signs are negative as Q assumed at right hand side, so Q= -Fgyro -Fcentrifugal
-//	/// Called automatically at each Update().
-//	/// The M*a term is not added: to this end one could use LoadIntLoadResidual_Mv afterward.
-	virtual void ComputeQ(ChState* state_x,      ///< state position to evaluate Q
-		ChStateDelta* state_w  ///< state speed to evaluate Q
-	) override {}
-
-	/// For efficiency reasons, do not let the parent class do automatic differentiation
-	/// to compute the R, K matrices. Use analytic expressions instead. For example, R is
-	/// the well known gyroscopic damping matrix. Also, compute the M matrix.
-	virtual void ComputeJacobian(ChState* state_x,       ///< state position to evaluate jacobians
-		ChStateDelta* state_w,  ///< state speed to evaluate jacobians
-		ChMatrixRef mK,         ///< result -dQ/dx
-		ChMatrixRef mR,         ///< result -dQ/dv
-		ChMatrixRef mM          ///< result -dQ/da
-	) override;
-
-	/// Just for efficiency, override the default LoadIntLoadResidual_Mv, because we can do this in a simplified way.
-	virtual void LoadIntLoadResidual_Mv(ChVectorDynamic<>& R,           ///< result: the R residual, R += c*M*w
-		const ChVectorDynamic<>& w,     ///< the w vector
-		const double c) override;       ///< a scaling factor
-	void AssembleSystemAddedMassMat();
-private:
-	ChMatrixDynamic<double> infinite_added_mass;       ///< added mass at infinite frequency in global coordinates
-	int nBodies;
-	std::vector<H5FileInfo> h5_body_data;
-	virtual bool IsStiff() override { return true; } // this to force the use of the inertial M, R and K matrices
 };

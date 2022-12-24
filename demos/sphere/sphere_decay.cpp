@@ -78,16 +78,16 @@ int main(int argc, char* argv[]) {
 	double simulationDuration = 40.0;
 
 	// some io/viz options
-	bool visualizationOn = true;
-	bool profilingOn = true;
+	bool visualizationOn = false;
+	bool profilingOn = false;
 	bool saveDataOn = true;
 	std::vector<double> time_vector;
 	std::vector<double> heave_position;
 
 	// set up body from a mesh
-	std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/sphere/geometry/oes_task10_sphere.obj").c_str()) << std::endl;
+	std::cout << "Attempting to open mesh file: " << std::filesystem::absolute("../demos/sphere/geometry/oes_task10_sphere.obj") << std::endl;
 	std::shared_ptr<ChBody> sphereBody = chrono_types::make_shared<ChBodyEasyMesh>(       //
-		GetChronoDataFile("../../HydroChrono/demos/sphere/geometry/oes_task10_sphere.obj").c_str(),    // file name
+		"../demos/sphere/geometry/oes_task10_sphere.obj",    // file name
 		1000,                                                                             // density
 		false,                                                                            // do not evaluate mass automatically
 		true,                                                                             // create visualization asset
@@ -110,7 +110,7 @@ int main(int argc, char* argv[]) {
 	// attach hydrodynamic forces to body
 	std::vector<std::shared_ptr<ChBody>> bodies;
 	bodies.push_back(sphereBody);
-	TestHydro blah(bodies, "../../HydroChrono/demos/sphere/hydroData/sphere.h5", my_hydro_inputs);
+	TestHydro blah(bodies, "../demos/sphere/hydroData/sphere.h5", my_hydro_inputs);
 
 	// for profiling
 	auto start = std::chrono::high_resolution_clock::now(); 
