@@ -2,3 +2,8 @@
 build
 data
 demos/F3OF/f3of
+sandbox
+.editorconfig
+launch.json
+settings.json
+c_cpp_properties.json
