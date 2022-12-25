@@ -10,6 +10,10 @@ namespace H5 {
 
 #include <chrono/core/ChMatrix.h>
 
+/**@brief Extract bemio formated hdf5 data
+ * 
+ * https://wec-sim.github.io/bemio/_modules/bemio/io/output.html
+*/
 class H5FileInfo {
 public:
 	bool printed = false;
