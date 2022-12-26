@@ -1,0 +1,6 @@
+if(HYDRO_CHRONO_ENABLE_USER_DOC) 
+    add_subdirectory(user)
+endif()
+if(HYDRO_CHRONO_ENABLE_PROG_DOC) 
+    add_subdirectory(prog)
+endif()
