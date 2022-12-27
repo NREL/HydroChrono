@@ -6,6 +6,27 @@
 
 cmake_minimum_required(VERSION 3.18.2)
 
+# guard against in-source builds
+if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
+    message(FATAL_ERROR "In-source builds not allowed. Please make a new directory (called a build directory) and run CMake from there. You may need to remove CMakeCache.txt. ")
+endif()
+
+# Default build type to use if none was specified
+if(NOT DEFINED HYDRO_CHRONO_DEFAULT_BUILD_TYPE)
+	set(HYDRO_CHRONO_DEFAULT_BUILD_TYPE "Release")
+endif()
+
+# Set a default build type if none was specified
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+	message(STATUS "Setting build type to '${HYDRO_CHRONO_DEFAULT_BUILD_TYPE}' as none was specified.")
+
+	set(CMAKE_BUILD_TYPE ${HYDRO_CHRONO_DEFAULT_BUILD_TYPE}
+	    CACHE STRING "Choose the type of build." FORCE)
+	mark_as_advanced(CMAKE_BUILD_TYPE)
+
+	# Set the possible values of build type for cmake-gui
+	set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+endif()
 
 #--------------------------------------------------------------
 # Modify the project name if you want: 
