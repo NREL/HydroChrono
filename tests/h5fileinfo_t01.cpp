@@ -32,14 +32,16 @@ int main(int argc, char* argv[]) {
     //H5FileInfo(h5fname, "body1");
 
     std::vector<H5FileInfo> infos;
-    infos.emplace_back(h5fname, "body1");
+    infos.emplace_back(h5fname, "body1"); // Use move constructor
     infos.emplace_back(h5fname, "body2"); // reopen the file
 
     auto rirf_time_vector = infos[0].GetRIRFTimeVector();
 
-    for(auto time: rirf_time_vector) {
+    std::vector<H5FileInfo> infos2 = infos; // Use move assignement operator
+
+   /* for(auto time: rirf_time_vector) {
         std::cout << time << "\n";
-    }
+    } */
 
     std::cout << "End" << std::endl;
     return 0;

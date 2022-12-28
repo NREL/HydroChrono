@@ -32,39 +32,6 @@ H5FileInfo::H5FileInfo(std::string file, std::string Name) {
 }
 
 
-/*******************************************************************************
-* H5FileInfo::operator = (H5FileInfo& rhs) 
-* defines = operator, sets the left object = to right object (*this = rhs)
-* returns *this
-*******************************************************************************/
-H5FileInfo& H5FileInfo::operator = (H5FileInfo& rhs) {
-	printed = rhs.printed;
-	cg = rhs.cg;
-	cb = rhs.cb;
-	bodyNum = rhs.bodyNum;
-	_rho = rhs._rho;
-	_g = rhs._g;
-	_disp_vol = rhs._disp_vol;
-	freq_list = rhs.freq_list;
-	lin_matrix = rhs.lin_matrix;
-	inf_added_mass = rhs.inf_added_mass;
-	rirf_matrix = rhs.rirf_matrix;
-	rirf_dims = rhs.rirf_dims;
-	rirf_time_vector = rhs.rirf_time_vector;
-	radiation_damping_matrix = rhs.radiation_damping_matrix;
-	Bw_dims = rhs.Bw_dims;
-	excitation_mag_matrix = rhs.excitation_mag_matrix;
-	excitation_mag_dims = rhs.excitation_mag_dims;
-	excitation_re_matrix = rhs.excitation_re_matrix;
-	re_dims = rhs.re_dims;
-	excitation_im_matrix = rhs.excitation_im_matrix;
-	im_dims = rhs.im_dims;
-	excitation_phase_matrix = rhs.excitation_phase_matrix;
-	excitation_phase_dims = rhs.excitation_phase_dims;
-	h5_file_name = rhs.h5_file_name;
-	bodyName = rhs.bodyName;
-	return *this;
-}
 
 /*******************************************************************************
 * H5FileInfo::readH5Data()
@@ -236,7 +203,7 @@ int H5FileInfo::GetRIRFDims(int i) const {
 * returns the linear restoring stiffness matrix element in row i , column j
 *******************************************************************************/
 double H5FileInfo::GetHydrostaticStiffness(int i, int j) const { 
-	return lin_matrix(i, j) * rho * g;
+	return lin_matrix(i, j) * _rho * g;
 }
 
 
