@@ -1,5 +1,6 @@
 #include <hydroc/h5fileinfo.h>
 #include <hydroc/chloadaddedmass.h>
+#include <hydroc/helper.h>
 
 #include <chrono/core/ChTypes.h>
 #include <chrono/physics/ChBodyEasy.h>
@@ -20,27 +21,19 @@
 using std::filesystem::path;
 using std::filesystem::absolute;
 
-static path DATADIR{};
 
 int main(int argc, char* argv[]) {
 
-    const char* env_p = std::getenv("HYDRO_CHRONO_DATA_DIR");
-
-    if (env_p == nullptr) {
-        if (argc < 2) {
-            std::cerr << "Usage: .exe [<datadir>] or set HYDRO_CHRONO_DATA_DIR environement variable" << std::endl;
-            return 1;
-        } else {
-            DATADIR = absolute(path(argv[1]));
-        }
-    } else {
-        DATADIR = absolute(path(env_p));
+    if (hydroc::setInitialEnvironment(argc, argv) != 0) {
+        return 1;
     }
 
+    path DATADIR(hydroc::getDataDir());
+
     //auto h5fname = (DATADIR / "sphere" / "hydroData" /"sphere.h5").lexically_normal().generic_string();
-    auto h5fname = (DATADIR / "rm3" / "hydroData" /"rm3.h5").lexically_normal().generic_string();
-    auto b1Meshfname = (DATADIR / "rm3" / "geometry" /"float_cog.obj").lexically_normal().generic_string();
-    auto b2Meshfname = (DATADIR / "rm3" / "geometry" /"plate_cog.obj").lexically_normal().generic_string();
+    auto h5fname = (DATADIR / "rm3" / "hydroData" /"rm3.h5").generic_string();
+    auto b1Meshfname = (DATADIR / "rm3" / "geometry" /"float_cog.obj").generic_string();
+    auto b2Meshfname = (DATADIR / "rm3" / "geometry" /"plate_cog.obj").generic_string();
 
 	//std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/float.obj").c_str()) << std::endl;
 	double density = 0.0;

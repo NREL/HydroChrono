@@ -1,4 +1,5 @@
 #include <hydroc/h5fileinfo.h>
+#include <hydroc/helper.h>
 
 #include <filesystem>  // C++17
 #include <cstdlib>
@@ -6,26 +7,16 @@
 #include <vector>
 
 using std::filesystem::path;
-using std::filesystem::absolute;
-
-static path DATADIR{};
 
 int main(int argc, char* argv[]) {
 
-    const char* env_p = std::getenv("HYDRO_CHRONO_DATA_DIR");
-
-    if (env_p == nullptr) {
-        if (argc < 2) {
-            std::cerr << "Usage: .exe [<datadir>] or set HYDRO_CHRONO_DATA_DIR environement variable" << std::endl;
-            return 1;
-        } else {
-            DATADIR = absolute(path(argv[1]));
-        }
-    } else {
-        DATADIR = absolute(path(env_p));
+    if (hydroc::setInitialEnvironment(argc, argv) != 0) {
+        return 1;
     }
 
-    //auto h5fname = (DATADIR / "sphere" / "hydroData" /"sphere.h5").lexically_normal().generic_string();
+    path DATADIR(hydroc::getDataDir());
+
+
     auto h5fname = (DATADIR / "rm3" / "hydroData" /"rm3.h5").lexically_normal().generic_string();
 
 

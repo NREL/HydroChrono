@@ -92,6 +92,7 @@ set(HYDRO_CHRONO_SOURCES
 	src/h5fileinfo.cpp
 	src/chloadaddedmass.cpp
 	src/hydro_forces.cpp
+	src/helper.cpp
 
 )
 
