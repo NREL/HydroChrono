@@ -15,6 +15,8 @@
 #endif
 
 #include "chrono/core/ChRealtimeStep.h"
+
+
 #include <iomanip> // std::setprecision
 #include <chrono> // std::chrono::high_resolution_clock::now
 #include <vector> // std::vector<double>
@@ -139,15 +141,20 @@ int main(int argc, char* argv[]) {
 	if (visualizationOn){
 		// create the irrlicht application for visualizing
 		auto irrlichtVis = chrono_types::make_shared<ChVisualSystemIrrlicht>();
+
+
+
 		irrlichtVis->AttachSystem(&system);
 		irrlichtVis->SetWindowSize(1280, 720);
 		irrlichtVis->SetWindowTitle("Sphere - Decay Test");
 		irrlichtVis->SetCameraVertical(CameraVerticalDir::Z);
 		irrlichtVis->Initialize();
+
 		irrlichtVis->AddLogo();
-		irrlichtVis->AddSkyBox();
+		//irrlichtVis->AddSkyBox();
 		irrlichtVis->AddCamera(ChVector<>(0, -30, 0), ChVector<>(0, 0, 0));
 		irrlichtVis->AddTypicalLights();
+		
 
 		// add play/pause button
 		bool buttonPressed = false;
@@ -156,7 +163,16 @@ int main(int argc, char* argv[]) {
 
 		// main simulation loop
 		while (irrlichtVis->Run() && system.GetChTime() <= simulationDuration) {
+
+
+
 			irrlichtVis->BeginScene();
+			
+			// Add grid to materialize horizontal plane 
+			tools::drawGrid(irrlichtVis.get(), 1, 1, 20, 20,
+				ChCoordsys<>(ChVector<>(0, 0.0, 0), Q_from_AngZ(CH_C_PI_2)),
+				chrono::ChColor(100.0, 0.0, 0.0), true);
+
 			irrlichtVis->Render();
 			irrlichtVis->EndScene();
 			if (buttonPressed) {
