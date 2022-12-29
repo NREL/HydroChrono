@@ -40,13 +40,19 @@ project(HydroChrono
 
 
 option (HYDRO_CHRONO_ENABLE_TESTS "Enable tests" ON)
-
+option (HYDRO_CHRONO_ENABLE_IRRLICHT "Enable irrlicht visualization library" ON)
 
 # find required packages and libraries to make HydroChrono library
 set (LIB_TYPE STATIC) # or SHARED
 string(TOLOWER ${LIB_TYPE} SEARCH_TYPE)
 
-find_package(Chrono COMPONENTS Irrlicht CONFIG)
+if(HYDRO_CHRONO_ENABLE_IRRLICHT)
+	# If irrlicht is required chrono library must be compiled with irrlicht
+	find_package(Chrono COMPONENTS Irrlicht CONFIG REQUIRED)
+else(HYDRO_CHRONO_ENABLE_IRRLICHT)
+	find_package(Chrono CONFIG REQUIRED)
+endif(HYDRO_CHRONO_ENABLE_IRRLICHT)
+
 find_package(HDF5 NAMES hdf5 COMPONENTS CXX ${SEARCH_TYPE})
 #find_package(SWIG REQUIRED)
 #find_package(PythonLibs)
@@ -176,13 +182,13 @@ target_link_libraries(HydroChrono ${LINK_LIBS})
 
 
 
-
-
-
-
-
 add_executable(sphere_decay demos/sphere/sphere_decay.cpp)
-
+if(HYDRO_CHRONO_ENABLE_IRRLICHT)
+	target_compile_definitions(sphere_decay 
+		PRIVATE 
+		HYDRO_CHRONO_HAVE_IRRLICHT=1
+	)
+endif()
 target_link_libraries(sphere_decay HydroChrono)
 
 

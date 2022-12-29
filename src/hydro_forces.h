@@ -17,16 +17,12 @@
 
 #include "chrono/fea/ChMeshFileLoader.h"
 
-//#include "chrono/assets/ChPointPointDrawing.h"
-#include "chrono_irrlicht/ChIrrGUI.h"
-#include "chrono_irrlicht/ChIrrMeshTools.h"
 
 #include "H5Cpp.h"
 
 #include <hydroc/h5fileinfo.h>
 
 using namespace chrono;
-using namespace chrono::irrlicht;
 using namespace chrono::fea;
 
 enum WaveMode {noWaveCIC, regular}; // eventually add irregular waves mode

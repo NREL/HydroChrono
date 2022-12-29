@@ -1,9 +1,19 @@
 #include <src/hydro_forces.h>
 #include <hydroc/helper.h>
 
+#ifdef HYDRO_CHRONO_HAVE_IRRLICHT
+	#include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
+	#include "chrono_irrlicht/ChIrrMeshTools.h"
+	// Use the main namespaces of Irrlicht
+	using namespace irr;
+	using namespace irr::core;
+	using namespace irr::scene;
+	using namespace irr::video;
+	using namespace irr::io;
+	using namespace irr::gui;
+	using namespace chrono::irrlicht;
+#endif
 
-#include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
-#include "chrono_irrlicht/ChIrrMeshTools.h"
 #include "chrono/core/ChRealtimeStep.h"
 #include <iomanip> // std::setprecision
 #include <chrono> // std::chrono::high_resolution_clock::now
@@ -13,18 +23,9 @@
 // Use the namespaces of Chrono
 using namespace chrono;
 using namespace chrono::geometry;
-using namespace chrono::irrlicht;
 
-// Use the main namespaces of Irrlicht
-using namespace irr;
-using namespace irr::core;
-using namespace irr::scene;
-using namespace irr::video;
-using namespace irr::io;
-using namespace irr::gui;
-
+#ifdef HYDRO_CHRONO_HAVE_IRRLICHT
 // Define a class to manage user inputs via the GUI (i.e. play/pause button)
-
 class MyActionReceiver : public IEventReceiver {
 	public:
 		MyActionReceiver(ChVisualSystemIrrlicht* vsys, bool& buttonPressed)
@@ -65,6 +66,8 @@ class MyActionReceiver : public IEventReceiver {
 
 		bool& pressed;
 };
+#endif
+
 
 // the main program to be executed:
 int main(int argc, char* argv[]) {
@@ -92,7 +95,10 @@ int main(int argc, char* argv[]) {
 	double simulationDuration = 40.0;
 
 	// some io/viz options
-	bool visualizationOn = true;
+	bool visualizationOn = false;
+#ifdef HYDRO_CHRONO_HAVE_IRRLICHT
+	visualizationOn = true;
+#endif
 	bool profilingOn = false;
 	bool saveDataOn = true;
 	std::vector<double> time_vector;
@@ -126,9 +132,10 @@ int main(int argc, char* argv[]) {
 	bodies.push_back(sphereBody);
 	TestHydro blah(bodies, h5fname, my_hydro_inputs);
 
-	// for profiling
+	// for profilingvisualizationOn = false;
 	auto start = std::chrono::high_resolution_clock::now(); 
 
+#ifdef HYDRO_CHRONO_HAVE_IRRLICHT
 	if (visualizationOn){
 		// create the irrlicht application for visualizing
 		auto irrlichtVis = chrono_types::make_shared<ChVisualSystemIrrlicht>();
@@ -164,6 +171,7 @@ int main(int argc, char* argv[]) {
 		}
 	}
 	else{
+#endif // #ifdef HYDRO_CHRONO_HAVE_IRRLICHT
 		int frame = 0;
 		while (system.GetChTime() <= simulationDuration) {
 			// step the simulation forwards
@@ -173,7 +181,9 @@ int main(int argc, char* argv[]) {
 			heave_position.push_back(sphereBody->GetPos().z());
 			frame++;
 		}
+#ifdef HYDRO_CHRONO_HAVE_IRRLICHT		
 	}
+#endif
 
 	// for profiling
 	auto end = std::chrono::high_resolution_clock::now();
