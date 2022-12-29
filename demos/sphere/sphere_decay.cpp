@@ -139,6 +139,12 @@ int main(int argc, char* argv[]) {
 
 #ifdef HYDRO_CHRONO_HAVE_IRRLICHT
 	if (visualizationOn){
+
+		// Create a visualization material
+		auto cadet_blue = chrono_types::make_shared<ChVisualMaterial>();
+		cadet_blue->SetDiffuseColor(ChColor(0.3f, 0.1f, 0.1f));
+		sphereBody->GetVisualShape(0)->SetMaterial(0, cadet_blue);
+
 		// create the irrlicht application for visualizing
 		auto irrlichtVis = chrono_types::make_shared<ChVisualSystemIrrlicht>();
 
@@ -151,8 +157,8 @@ int main(int argc, char* argv[]) {
 		irrlichtVis->Initialize();
 
 		irrlichtVis->AddLogo();
-		//irrlichtVis->AddSkyBox();
-		irrlichtVis->AddCamera(ChVector<>(0, -30, 0), ChVector<>(0, 0, 0));
+		irrlichtVis->AddSkyBox();
+		irrlichtVis->AddCamera(ChVector<>(8, -25, 15), ChVector<>(0, 0, 0));
 		irrlichtVis->AddTypicalLights();
 		
 
@@ -165,15 +171,15 @@ int main(int argc, char* argv[]) {
 		while (irrlichtVis->Run() && system.GetChTime() <= simulationDuration) {
 
 
-
 			irrlichtVis->BeginScene();
-			
-			// Add grid to materialize horizontal plane 
-			tools::drawGrid(irrlichtVis.get(), 1, 1, 20, 20,
-				ChCoordsys<>(ChVector<>(0, 0.0, 0), Q_from_AngZ(CH_C_PI_2)),
-				chrono::ChColor(100.0, 0.0, 0.0), true);
-
 			irrlichtVis->Render();
+
+			// Add grid to materialize horizontal plane 
+			tools::drawGrid(irrlichtVis.get(), 1, 1, 30, 30,
+				ChCoordsys<>(ChVector<>(0, 0.0, 0), Q_from_AngZ(CH_C_PI_2)),
+				chrono::ChColor(.1f, .1f, .1f), true);
+
+
 			irrlichtVis->EndScene();
 			if (buttonPressed) {
 				// step the simulation forwards
