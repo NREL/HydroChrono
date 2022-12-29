@@ -29,7 +29,7 @@ body.SetNameString("body1")
 system.AddBody(body)
 bodies = _hydro_py.vector_ChBody_ptr(1)
 print(bodies.size())
-bodies[0] = _hydro_py.upcast(body)
+temp = _hydro_py.upcast(body)
 # bodies = [body]
 # bodies = (body,) # make a list of all bodies (just one here but list all with commas-for c++ maybe look at span)
 _hydro_py.TestHydro(_hydro_py.upcast(bodies), "../../demos/sphere/hydroData/sphere.h5", input)

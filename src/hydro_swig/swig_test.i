@@ -31,6 +31,7 @@
 #include <cstddef>
 
 #include "chrono/ChConfig.h"
+#include "chrono/solver/ChSolver.h"
 
 #include "chrono/core/ChApiCE.h"
 #include "chrono/physics/ChBody.h"
@@ -66,6 +67,7 @@
 #include "chrono/utils/ChUtilsInputOutput.h"
 #include "chrono/utils/ChFilters.h"
 #include "chrono/utils/ChUtilsCreators.h"
+using chrono::ChSolver;
 %}
 
 // However, #include statements are ignored unless the -includeall command line option has been supplied.  (out of %{...%} block)
@@ -83,7 +85,11 @@
 %include "typemaps.i"
 %include "std_shared_ptr.i"
 %include "exception.i"
-// %import(module="pychrono") "chrono_swig/interface/core/ChModuleCore.i"
+// %include "python_exceptions.i"
+%import(module="core") "chrono_swig/interface/core/ChModuleCore.i"
+// %inline %{ #include "ChModuleCore.h" %}
+%inline %{ #include "swig_test.h" %}
+%inline %{ #include "hydro_forces.h" %}
 
 %shared_ptr(chrono::ChBody)
 
@@ -112,38 +118,19 @@
 %template(vector_H5FileInfo) std::vector< H5FileInfo >;
 %template(vector_ForceFunc6d) std::vector< ForceFunc6d >;
 
-// %inline %{ // add one of these for each body type you wish to upcast to generic ChBody
-//   std::vector<std::shared_ptr<chrono::ChBody>> upcast(std::vector<std::shared_ptr<chrono::ChBodyEasyMesh >>& d) {
-// 	std::vector<std::shared_ptr<chrono::ChBody>> re(d.size());
-// 	std::transform(d.begin(), d.end(), re.begin(), [](const std::shared_ptr<chrono::ChBodyEasyMesh>& p) { return std::static_pointer_cast<chrono::ChBody>(p); });
-//     return re;
-//   }
-// %}
-// %inline %{ // add one of these for each body type you wish to upcast to generic ChBody
-//   std::shared_ptr<chrono::ChBody> upcast(std::shared_ptr<chrono::ChBodyEasyMesh >& d) {
-// 	return d;
-//   }
-// %}
 %inline %{
-  std::shared_ptr<chrono::ChBody> upcast(const std::shared_ptr<chrono::ChBodyEasyMesh> d) {
-	std::shared_ptr<chrono::ChBody> re = std::static_pointer_cast<chrono::ChBody>(d);
+  std::shared_ptr<chrono::ChBody> upcast(std::shared_ptr<chrono::ChBodyEasyMesh>* d) {
+	std::shared_ptr<chrono::ChBody> re = std::static_pointer_cast<chrono::ChBody>(*d);
     return re;
   }
 %}
-// %inline %{ 
-//   std::vector<std::shared_ptr<chrono::ChBody *>> upcast(std::vector<std::shared_ptr<chrono::ChBodyEasyMesh *>> d) {
-// 	std::vector<std::shared_ptr<chrono::ChBody>> re(d.size());
-// 	std::transform(d.begin(), d.end(), re.begin(), [](const std::shared_ptr<chrono::ChBodyEasyMesh>& p) { return std::static_pointer_cast<chrono::ChBody>(p); });
-//     return re;
-//   }
-// %}
-/* helper function that helps hydro forces...
-std::vector<std::shared_ptr<ChLoadable>> constructorHelper(std::vector<std::shared_ptr<ChBody>>& bodies) {
-	std::vector<std::shared_ptr<ChLoadable>> re(bodies.size());
-	std::transform(bodies.begin(), bodies.end(), re.begin(), [](const std::shared_ptr<ChBody>& p) { return std::static_pointer_cast<ChLoadable>(p); });
-	return re;
-}
-*/
+%inline %{ 
+  std::vector<std::shared_ptr<chrono::ChBody>> upcast(std::vector<std::shared_ptr<chrono::ChBodyEasyMesh>> d) {
+	std::vector<std::shared_ptr<chrono::ChBody>> re(d.size());
+	std::transform(d.begin(), d.end(), re.begin(), [](const std::shared_ptr<chrono::ChBodyEasyMesh>& p) { return std::static_pointer_cast<chrono::ChBody>(p); });
+    return re;
+  }
+%}
 
 %feature("director") ChBody;
 // %nodefaultctor chrono::ChBodyEasyMesh;
