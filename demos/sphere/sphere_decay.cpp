@@ -1,4 +1,4 @@
-#include <src/hydro_forces.h>
+#include <hydroc/hydro_forces.h>
 #include <hydroc/helper.h>
 
 #ifdef HYDRO_CHRONO_HAVE_IRRLICHT

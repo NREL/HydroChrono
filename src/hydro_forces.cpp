@@ -1,4 +1,4 @@
-#include "hydro_forces.h"
+#include "hydroc/hydro_forces.h"
 
 #include <algorithm>
 #include <numeric> // std::accumulate
