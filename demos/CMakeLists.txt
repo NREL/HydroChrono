@@ -1,6 +1,17 @@
+# =====================
+# SPHERE_DECAY
+# =====================
+add_executable(sphere_decay)
 
 
-add_executable(sphere_decay sphere/sphere_decay.cpp)
+target_sources(
+    sphere_decay
+
+    PRIVATE
+        sphere/sphere_decay.cpp
+)
+
+
 if(HYDRO_CHRONO_ENABLE_IRRLICHT)
 	target_compile_definitions(sphere_decay 
 		PRIVATE 
@@ -18,9 +29,81 @@ target_include_directories(
 target_link_libraries(sphere_decay HydroChrono)
 
 
+# =====================
+# RM3_REG_DECAY
+# =====================
+add_executable(rm3_decay)
+
+target_sources(
+    rm3_decay
+
+    PRIVATE
+    rm3/rm3_decay.cpp
+)
+
+
+if(HYDRO_CHRONO_ENABLE_IRRLICHT)
+	target_compile_definitions(rm3_decay
+		PRIVATE 
+		HYDRO_CHRONO_HAVE_IRRLICHT=1
+	)
+endif()
+
+target_include_directories(
+	rm3_decay
+
+	PRIVATE
+	    ${CMAKE_CURRENT_SOURCE_DIR}/
+	    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_link_libraries(rm3_decay
+    PRIVATE 
+    HydroChrono
+)
+
+
+
+# =====================
+# RM3_REG_WAVES
+# =====================
+add_executable(rm3_reg_waves)
+
+target_sources(
+    rm3_reg_waves
+
+    PRIVATE
+    rm3/rm3_reg_waves.cpp
+)
+
+
+if(HYDRO_CHRONO_ENABLE_IRRLICHT)
+	target_compile_definitions(rm3_reg_waves
+		PRIVATE 
+		HYDRO_CHRONO_HAVE_IRRLICHT=1
+	)
+endif()
+
+target_include_directories(
+	rm3_reg_waves
+
+	PRIVATE
+	    ${CMAKE_CURRENT_SOURCE_DIR}/
+	    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_link_libraries(rm3_reg_waves 
+    PRIVATE 
+    HydroChrono
+)
+
+
+
+
+
 # add_executable(sphere_reg_waves "demos/sphere/sphere_reg_waves.cpp")
 # add_executable(rm3_decay "demos/rm3/rm3_decay.cpp")
-# add_executable(rm3_reg_waves "demos/rm3/rm3_reg_waves.cpp")
+# 
 # add_executable(oswec_decay "demos/oswec/oswec_decay.cpp")
 #SWIG_ADD_LIBRARY(py_wec_chrono LANGUAGE python SOURCES hydro_forces_no_viz.i)
 
