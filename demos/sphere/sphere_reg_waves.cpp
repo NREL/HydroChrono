@@ -1,25 +1,33 @@
-#include "./src/hydro_forces.h"
-#include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
-#include "chrono_irrlicht/ChIrrMeshTools.h"
-#include "chrono/core/ChRealtimeStep.h"
+#include <hydroc/hydro_forces.h>
+#include <hydroc/helper.h>
+
+#ifdef HYDRO_CHRONO_HAVE_IRRLICHT
+	#include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
+	#include "chrono_irrlicht/ChIrrMeshTools.h"
+	// Use the main namespaces of Irrlicht
+	using namespace irr;
+	using namespace irr::core;
+	using namespace irr::scene;
+	using namespace irr::video;
+	using namespace irr::io;
+	using namespace irr::gui;
+	using namespace chrono::irrlicht;
+#endif
+
+
+#include <chrono/core/ChRealtimeStep.h>
+
 #include <filesystem>
 #include <iomanip> // std::setprecision
 #include <chrono> // std::chrono::high_resolution_clock::now
 #include <vector> // std::vector<double>
+
 // Use the namespaces of Chrono
 using namespace chrono;
 using namespace chrono::geometry;
-using namespace chrono::irrlicht;
-
-// Use the main namespaces of Irrlicht
-using namespace irr;
-using namespace irr::core;
-using namespace irr::scene;
-using namespace irr::video;
-using namespace irr::io;
-using namespace irr::gui;
 
 
+#ifdef HYDRO_CHRONO_HAVE_IRRLICHT
 class MyActionReceiver : public IEventReceiver {
 public:
 	MyActionReceiver(ChVisualSystemIrrlicht* vsys, bool& buttonPressed)
@@ -60,10 +68,24 @@ private:
 
 	bool& pressed;
 };
-
+#endif
 
 int main(int argc, char* argv[]) {
 	GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
+
+
+    if (hydroc::setInitialEnvironment(argc, argv) != 0) {
+        return 1;
+    }
+
+    std::filesystem::path DATADIR(hydroc::getDataDir());
+
+	auto body1_meshfame = (DATADIR / "sphere" / "geometry" /"oes_task10_sphere.obj")
+		.lexically_normal().generic_string();
+	auto h5fname = (DATADIR / "sphere" / "hydroData" /"sphere.h5")
+		.lexically_normal().generic_string();
+
+
 
 	// system/solver settings
 	ChSystemNSC system;
@@ -85,15 +107,15 @@ int main(int argc, char* argv[]) {
 
 	// some io/viz options
 	bool visualizationOn = true;
-	bool profilingOn = true;
+	bool profilingOn = false;
 	bool saveDataOn = true;
 	std::vector<double> time_vector;
 	std::vector<double> heave_position;
 
 	// set up body from a mesh
-	std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/sphere/geometry/oes_task10_sphere.obj").c_str()) << std::endl;
+	std::cout << "Attempting to open mesh file: " << body1_meshfame << std::endl;
 	std::shared_ptr<ChBody> sphereBody = chrono_types::make_shared<ChBodyEasyMesh>(       //
-		GetChronoDataFile("../../HydroChrono/demos/sphere/geometry/oes_task10_sphere.obj").c_str(),    // file name
+		body1_meshfame,    // file name
 		1000,                                                                             // density
 		false,                                                                            // do not evaluate mass automatically
 		true,                                                                             // create visualization asset
@@ -138,22 +160,31 @@ int main(int argc, char* argv[]) {
 
 	std::vector<std::shared_ptr<ChBody>> bodies;
 	bodies.push_back(sphereBody);
-	TestHydro blah(bodies, "../../HydroChrono/demos/sphere/hydroData/sphere.h5", my_hydro_inputs);
+	TestHydro blah(bodies, h5fname, my_hydro_inputs);
 
 	// for profiling
 	auto start = std::chrono::high_resolution_clock::now();
 	
+#ifdef HYDRO_CHRONO_HAVE_IRRLICHT
 	if (visualizationOn) {
+
+		// Create a visualization material
+		auto cadet_blue = chrono_types::make_shared<ChVisualMaterial>();
+		cadet_blue->SetDiffuseColor(ChColor(0.3f, 0.1f, 0.1f));
+		sphereBody->GetVisualShape(0)->SetMaterial(0, cadet_blue);
+
 		// create the irrlicht application for visualizing
 		auto irrlichtVis = chrono_types::make_shared<ChVisualSystemIrrlicht>();
+		
 		irrlichtVis->AttachSystem(&system);
 		irrlichtVis->SetWindowSize(1280, 720);
 		irrlichtVis->SetWindowTitle("Sphere - Regular Waves Test");
 		irrlichtVis->SetCameraVertical(CameraVerticalDir::Z);
 		irrlichtVis->Initialize();
+		
 		irrlichtVis->AddLogo();
 		irrlichtVis->AddSkyBox();
-		irrlichtVis->AddCamera(ChVector<>(0, -30, 0), ChVector<>(0, 0, 0));
+		irrlichtVis->AddCamera(ChVector<>(8, -25, 15), ChVector<>(0, 0, 0));
 		irrlichtVis->AddTypicalLights();
 
 		// add play/pause button
@@ -166,6 +197,12 @@ int main(int argc, char* argv[]) {
 		while (irrlichtVis->Run() && system.GetChTime() <= simulationDuration) {
 			irrlichtVis->BeginScene();
 			irrlichtVis->Render();
+
+			// Add grid to materialize horizontal plane 
+			tools::drawGrid(irrlichtVis.get(), 1, 1, 30, 30,
+				ChCoordsys<>(ChVector<>(0, 0.0, 0), Q_from_AngZ(CH_C_PI_2)),
+				chrono::ChColor(.1f, .1f, .1f), true);
+
 			irrlichtVis->EndScene();
 			if (buttonPressed) {
 				// step simulation forward
@@ -178,6 +215,7 @@ int main(int argc, char* argv[]) {
 		}
 	}
 	else {
+#endif // #ifdef HYDRO_CHRONO_HAVE_IRRLICHT		
 		int frame = 0;
 		while (system.GetChTime() <= simulationDuration) {
 			// step the simulation forwards
@@ -187,7 +225,9 @@ int main(int argc, char* argv[]) {
 			heave_position.push_back(sphereBody->GetPos().z());
 			frame++;
 		}
+#ifdef HYDRO_CHRONO_HAVE_IRRLICHT		
 	}
+#endif
 
 	// for profiling
 	auto end = std::chrono::high_resolution_clock::now();
