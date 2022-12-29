@@ -67,11 +67,10 @@ int main(int argc, char* argv[]) {
 	GetLog() << "Copyright (c) 2017 projectchrono.org\nChrono version: " << CHRONO_VERSION << "\n\n";
 
 	// system/solver settings
-	ChSystemNSC system;
+	ChSystemSMC system;
 	system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
 	double timestep = 0.02;
-	//system.SetTimestepperType(ChTimestepper::Type::HHT);
-	system.SetSolverType(ChSolver::Type::GMRES);
+	system.SetSolverType(ChSolver::Type::SPARSE_QR);
 	system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
 	system.SetStep(timestep);
 	ChRealtimeStepTimer realtime_timer;
@@ -299,6 +298,7 @@ int main(int argc, char* argv[]) {
 				aft_pitch.push_back(flapAft->GetRot().Q_to_Euler123().y());
 				// force playback to be real-time
 				realtime_timer.Spin(timestep);
+
 			}
 		}
 	}

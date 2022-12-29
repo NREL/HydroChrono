@@ -711,7 +711,7 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 				std::cout << "temp index in hydrostatic force is bad " << std::endl;
 			}
 			position[i + b_offset] = bodies[b]->GetPos()[i];
-			position[i + 3 + b_offset] = bodies[b]->GetRot().Q_to_Euler123()[i];
+			position[i + 3 + b_offset] = bodies[b]->GetRot().Q_to_Euler123()[i]; //todo change to getwvel?
 		}
 	}
 
@@ -726,9 +726,9 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 		for (int i = 0; i < 6; i++) {
 			for (int j = 0; j < 6; j++) {
 				double t = (file_info[b].GetHydrostaticStiffness(i, j));
-				if (i == 4 && j == 4 && t < 0) {
-					t = -t;
-				}
+				//if (i == 4 && j == 4 && t < 0) {
+				//	t = -t;
+				//}
 				force_hydrostatic[i + b_offset] += t * displacement[j + b_offset];
 			}
 		}
@@ -762,7 +762,7 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 	int size = file_info[0].GetRIRFDims(2);
 	int nDoF = 6;
 	// "shift" everything left 1
-	offset_rirf--;
+	offset_rirf--; // starts as 0 before timestep change
 	// keep offset close to 0, avoids small chance of -overflow errors in long simulations
 	if (offset_rirf < -1 * size) {
 		offset_rirf += size;
@@ -779,11 +779,10 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 #define TMP_S(row,step) tmp_s[(row)*size + (step)]
 	// set last entry as velocity
 	for (int i = 0; i < 3; i++) {
-		for (int b = 1; b < num_bodies + 1; b++) { // body index sucks but i think this is correct...
-			setVelHistory(bodies[b-1]->GetPos_dt()[i],
-				(((size + offset_rirf) % size) + size) % size, b, i);
-			setVelHistory(bodies[b - 1]->GetWvel_par()[i],
-				(((size + offset_rirf) % size) + size) % size, b, i + 3);
+		for (int b = 1; b < num_bodies + 1; b++) { // body index being 1 indexed here is right
+			int vi = (((size + offset_rirf) % size) + size) % size;
+			setVelHistory(bodies[b-1]->GetPos_dt()[i], vi, b, i);
+			setVelHistory(bodies[b - 1]->GetWvel_par()[i], vi, b, i + 3);
 		}
 	}
 	int vi;
