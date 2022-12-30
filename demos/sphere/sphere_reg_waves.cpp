@@ -107,7 +107,7 @@ int main(int argc, char* argv[]) {
 
 	// some io/viz options
 	bool visualizationOn = true;
-	bool profilingOn = false;
+	bool profilingOn = true;
 	bool saveDataOn = true;
 	std::vector<double> time_vector;
 	std::vector<double> heave_position;
@@ -234,7 +234,7 @@ int main(int argc, char* argv[]) {
 	unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
 	if (profilingOn) {
-		std::string out_dir = "results/regular_waves/";
+		std::string out_dir = "results/sphere_regular_waves/";
 		std::string out_file = "duration_ms.txt";
 		std::ofstream profilingFile(out_dir + out_file);
 		if (!profilingFile.is_open()) {
@@ -253,7 +253,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	if (saveDataOn) {
-		std::string out_dir = "results/regular_waves/";
+		std::string out_dir = "results/sphere_regular_waves/";
 		std::string out_file = "regwave_" + std::to_string(reg_wave_num) + ".txt";
 		std::ofstream outputFile(out_dir + out_file);
 		if (!outputFile.is_open()) {

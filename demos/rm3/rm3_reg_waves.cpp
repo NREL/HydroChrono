@@ -107,7 +107,7 @@ int main(int argc, char* argv[]) {
 
 	// some io/viz options
 	bool visualizationOn = true;
-	bool profilingOn = false;
+	bool profilingOn = true;
 	bool saveDataOn = true;
 	std::vector<double> time_vector;
 	std::vector<double> float_heave_position;

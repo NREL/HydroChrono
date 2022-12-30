@@ -101,7 +101,7 @@ int main(int argc, char* argv[]) {
 #ifdef HYDRO_CHRONO_HAVE_IRRLICHT
 	visualizationOn = true;
 #endif
-	bool profilingOn = false;
+	bool profilingOn = true;
 	bool saveDataOn = true;
 	std::vector<double> time_vector;
 	std::vector<double> heave_position;
