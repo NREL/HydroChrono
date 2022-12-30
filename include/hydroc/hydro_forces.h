@@ -18,8 +18,6 @@
 #include <chrono/fea/ChMeshFileLoader.h>
 
 
-#include "H5Cpp.h"
-
 #include <hydroc/h5fileinfo.h>
 
 using namespace chrono;
