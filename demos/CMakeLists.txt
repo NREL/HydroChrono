@@ -24,7 +24,13 @@ target_include_directories(
 	    ${CMAKE_CURRENT_SOURCE_DIR}/
 	    ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
-target_link_libraries(sphere_decay HydroChrono)
+
+target_link_libraries(sphere_decay 
+	PRIVATE
+	HydroChronoGUI
+	HydroChrono
+	
+)
 
 
 # =====================
