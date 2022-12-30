@@ -1,21 +1,21 @@
 #include <cstdio>
 #include <filesystem>
 
-#include "chrono/solver/ChSolverPMINRES.h"
-#include "chrono/solver/ChIterativeSolverLS.h"
-//#include "chrono/timestepper/ChTimestepper.h"
-#include "chrono/timestepper/ChTimestepperHHT.h"
+#include <chrono/solver/ChSolverPMINRES.h>
+#include <chrono/solver/ChIterativeSolverLS.h>
+#include <chrono/timestepper/ChTimestepper.h>
+#include <chrono/timestepper/ChTimestepperHHT.h>
 
-#include "chrono/physics/ChForce.h"
-#include "chrono/physics/ChLoadContainer.h"
-#include "chrono/physics/ChLoadsBody.h"
-#include "chrono/physics/ChLoad.h"
-#include "chrono/physics/ChSystemNSC.h"
-#include "chrono/physics/ChSystemSMC.h"
-#include "chrono/physics/ChBody.h"
-#include "chrono/physics/ChBodyEasy.h"
+#include <chrono/physics/ChForce.h>
+#include <chrono/physics/ChLoadContainer.h>
+#include <chrono/physics/ChLoadsBody.h>
+#include <chrono/physics/ChLoad.h>
+#include <chrono/physics/ChSystemNSC.h>
+#include <chrono/physics/ChSystemSMC.h>
+#include <chrono/physics/ChBody.h>
+#include <chrono/physics/ChBodyEasy.h>
 
-#include "chrono/fea/ChMeshFileLoader.h"
+#include <chrono/fea/ChMeshFileLoader.h>
 
 
 #include "H5Cpp.h"
@@ -25,21 +25,28 @@
 using namespace chrono;
 using namespace chrono::fea;
 
-enum WaveMode {noWaveCIC, regular}; // eventually add irregular waves mode
+///@todo eventually add irregular waves mode
+enum class WaveMode {
+	/// @brief No waves
+	noWaveCIC = 0, 
+	/// @brief Regular waves
+	regular = 1
+}; 
+
 // =============================================================================
-class HydroInputs {
-public:
+struct HydroInputs {
+
 	WaveMode mode;
-	HydroInputs();
+	HydroInputs(); 
 	double freq_index_des;
 	double regular_wave_amplitude;
 	double regular_wave_omega;
 	double wave_omega_delta;
 	std::vector<double> excitation_force_mag;
 	std::vector<double> excitation_force_phase;
-	HydroInputs(HydroInputs& old);
-	HydroInputs& operator = (HydroInputs& rhs);
-private:
+	HydroInputs(HydroInputs& old) = default;
+	HydroInputs& operator = (const HydroInputs& rhs) = default;
+
 };
 
 // =============================================================================

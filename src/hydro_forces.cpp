@@ -15,32 +15,13 @@
 *******************************************************************************/
 HydroInputs::HydroInputs() {
 	// TODO: switch depending on wave option (regular, regularCIC, irregular, noWaveCIC) enum?
-	mode = noWaveCIC;
+	mode = WaveMode::noWaveCIC;
 	regular_wave_amplitude = 0.0;
 	excitation_force_phase.resize(6,0);
 	excitation_force_mag.resize(6,0);
 }
 
-/*******************************************************************************
-* HydroInputs constructor
-*******************************************************************************/
-HydroInputs::HydroInputs(HydroInputs& old) {
-	*this = old;
-}
 
-/*******************************************************************************
-* HydroInputs constructor
-*******************************************************************************/
-HydroInputs& HydroInputs::operator = (HydroInputs& rhs) {
-	freq_index_des = rhs.freq_index_des;
-	regular_wave_amplitude = rhs.regular_wave_amplitude;
-	regular_wave_omega = rhs.regular_wave_omega;
-	wave_omega_delta = rhs.wave_omega_delta;
-	excitation_force_mag = rhs.excitation_force_mag;
-	excitation_force_phase = rhs.excitation_force_phase;
-	mode = rhs.mode;
-	return *this;
-}
 
 // =============================================================================
 // ComponentFunc Class Definitions
@@ -302,9 +283,9 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::stri
 void TestHydro::WaveSetUp() {
 	int total_dofs = 6 * num_bodies;
 	switch (hydro_inputs.mode) {
-	case noWaveCIC:
+	case WaveMode::noWaveCIC:
 		break;
-	case regular:
+	case WaveMode::regular:
 		hydro_inputs.excitation_force_mag.resize(total_dofs, 0.0);
 		hydro_inputs.excitation_force_phase.resize(total_dofs, 0.0);
 		force_excitation_freq.resize(total_dofs, 0.0);
@@ -601,7 +582,7 @@ double TestHydro::coordinateFunc(int b, int i) {
 	//call compute forces
 	convTrapz = true; // use trapeziodal rule or assume fixed dt.
 
-	if (hydro_inputs.mode == noWaveCIC) {
+	if (hydro_inputs.mode == WaveMode::noWaveCIC) {
 		// update required forces:
 		ComputeForceHydrostatics();
 
@@ -633,7 +614,7 @@ double TestHydro::coordinateFunc(int b, int i) {
 		}
 		totalForceCheck.close();
 	}
-	else if (hydro_inputs.mode == regular) {
+	else if (hydro_inputs.mode == WaveMode::regular) {
 		// update required forces:
 		ComputeForceHydrostatics();
 		ComputeForceRadiationDampingConv();

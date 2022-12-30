@@ -125,7 +125,7 @@ int main(int argc, char* argv[]) {
 	// define wave parameters (not used in this demo)
 	// Todo define a way to use TestHydro without hydro_inputs/waves
 	HydroInputs my_hydro_inputs;
-	my_hydro_inputs.mode = noWaveCIC;
+	my_hydro_inputs.mode = WaveMode::noWaveCIC;
 	//my_hydro_inputs.regular_wave_amplitude = 0.022;
 	//my_hydro_inputs.regular_wave_omega = 2.10;
 

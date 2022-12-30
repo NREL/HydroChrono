@@ -161,7 +161,7 @@ int main(int argc, char* argv[]) {
 
 	// define wave parameters 
 	HydroInputs my_hydro_inputs;
-	my_hydro_inputs.mode = regular;
+	my_hydro_inputs.mode = WaveMode::regular;
 	my_hydro_inputs.regular_wave_amplitude = 1.0;
 	my_hydro_inputs.regular_wave_omega = 2.10;
 

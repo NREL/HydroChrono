@@ -159,7 +159,7 @@ int main(int argc, char* argv[]) {
 
 	// define wave parameters (not used in this demo)
 	HydroInputs my_hydro_inputs;
-	my_hydro_inputs.mode = noWaveCIC;// or 'regular' or 'regularCIC' or 'irregular';
+	my_hydro_inputs.mode = WaveMode::noWaveCIC;// or 'regular' or 'regularCIC' or 'irregular';
 	//my_hydro_inputs.regular_wave_amplitude = 0.022;
 	//my_hydro_inputs.regular_wave_omega = 2.10;
 
