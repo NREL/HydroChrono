@@ -148,6 +148,57 @@ target_link_libraries(HydroChrono
 
 )
 
+# ====================
+# Irrlicht GUI helper
+# ====================
+if(HYDROCHRONO_ENABLE_IRRLICHT)
+
+	add_library(HydroChronoGUI)
+
+	target_sources(
+		HydroChronoGUI
+
+		PUBLIC
+		src/gui/guihelper.cpp
+	)
+
+	target_compile_features(HydroChronoGUI PUBLIC cxx_std_17)
+
+
+	target_include_directories(
+		HydroChronoGUI
+
+		PUBLIC
+		
+		$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+		$<INSTALL_INTERFACE:include>
+		${CHRONO_INCLUDE_DIRS} 		
+	)
+
+	target_compile_definitions(HydroChronoGUI
+		PUBLIC
+			CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\"
+		PRIVATE
+			HYDROCHRONO_HAVE_IRRLICHT=1			
+	)
+
+	target_compile_options(HydroChronoGUI BEFORE 
+		PUBLIC
+			${CHRONO_CXX_FLAGS}
+	)
+
+	target_link_options(HydroChronoGUI BEFORE 
+		PUBLIC
+			${CHRONO_LINKER_FLAGS}
+	)
+
+	target_link_libraries(HydroChronoGUI 
+		PRIVATE
+			${CHRONO_LIBRARIES}
+	)
+
+
+endif(HYDROCHRONO_ENABLE_IRRLICHT)
 
 # ====================
 # DEMOS
