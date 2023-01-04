@@ -107,43 +107,10 @@
 %template(shared_ChBody)  std::shared_ptr<chrono::ChBody>;
 %template(shared_ChBodyEasyMesh) std::shared_ptr<chrono::ChBodyEasyMesh>;
 %template(vector_ChBody) std::vector< chrono::ChBody >;
-%template(vector_ChBody_ptr) std::vector< std::shared_ptr<chrono::ChBody> >;
-%template(vector_ChBodyEasyMesh_ptr) std::vector< std::shared_ptr<chrono::ChBodyEasyMesh> >;
+%template(vector_ChBodyEasyMesh) std::vector< std::shared_ptr<chrono::ChBodyEasyMesh> >;
 %template(vector_H5FileInfo) std::vector< H5FileInfo >;
 %template(vector_ForceFunc6d) std::vector< ForceFunc6d >;
 
-// %inline %{ // add one of these for each body type you wish to upcast to generic ChBody
-//   std::vector<std::shared_ptr<chrono::ChBody>> upcast(std::vector<std::shared_ptr<chrono::ChBodyEasyMesh >>& d) {
-// 	std::vector<std::shared_ptr<chrono::ChBody>> re(d.size());
-// 	std::transform(d.begin(), d.end(), re.begin(), [](const std::shared_ptr<chrono::ChBodyEasyMesh>& p) { return std::static_pointer_cast<chrono::ChBody>(p); });
-//     return re;
-//   }
-// %}
-// %inline %{ // add one of these for each body type you wish to upcast to generic ChBody
-//   std::shared_ptr<chrono::ChBody> upcast(std::shared_ptr<chrono::ChBodyEasyMesh >& d) {
-// 	return d;
-//   }
-// %}
-%inline %{
-  std::shared_ptr<chrono::ChBody> upcast(const std::shared_ptr<chrono::ChBodyEasyMesh> d) {
-	std::shared_ptr<chrono::ChBody> re = std::static_pointer_cast<chrono::ChBody>(d);
-    return re;
-  }
-%}
-// %inline %{ 
-//   std::vector<std::shared_ptr<chrono::ChBody *>> upcast(std::vector<std::shared_ptr<chrono::ChBodyEasyMesh *>> d) {
-// 	std::vector<std::shared_ptr<chrono::ChBody>> re(d.size());
-// 	std::transform(d.begin(), d.end(), re.begin(), [](const std::shared_ptr<chrono::ChBodyEasyMesh>& p) { return std::static_pointer_cast<chrono::ChBody>(p); });
-//     return re;
-//   }
-// %}
-/* helper function that helps hydro forces...
-std::vector<std::shared_ptr<ChLoadable>> constructorHelper(std::vector<std::shared_ptr<ChBody>>& bodies) {
-	std::vector<std::shared_ptr<ChLoadable>> re(bodies.size());
-	std::transform(bodies.begin(), bodies.end(), re.begin(), [](const std::shared_ptr<ChBody>& p) { return std::static_pointer_cast<ChLoadable>(p); });
-	return re;
-}
-*/
 
 %feature("director") ChBody;
 // %nodefaultctor chrono::ChBodyEasyMesh;
