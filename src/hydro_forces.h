@@ -3,13 +3,15 @@
 
 #include "chrono/solver/ChSolverPMINRES.h"
 #include "chrono/solver/ChIterativeSolverLS.h"
-#include "chrono/timestepper/ChTimestepper.h"
+//#include "chrono/timestepper/ChTimestepper.h"
+#include "chrono/timestepper/ChTimestepperHHT.h"
 
 #include "chrono/physics/ChForce.h"
 #include "chrono/physics/ChLoadContainer.h"
 #include "chrono/physics/ChLoadsBody.h"
 #include "chrono/physics/ChLoad.h"
 #include "chrono/physics/ChSystemNSC.h"
+#include "chrono/physics/ChSystemSMC.h"
 #include "chrono/physics/ChBody.h"
 #include "chrono/physics/ChBodyEasy.h"
 

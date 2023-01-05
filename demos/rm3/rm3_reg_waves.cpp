@@ -140,7 +140,7 @@ int main(int argc, char* argv[]) {
 	prismatic_pto->SetDampingCoefficient(0.0);
 	system.AddLink(prismatic_pto);
 
-	// define wave parameters (not used in this demo)
+	// define wave parameters 
 	HydroInputs my_hydro_inputs;
 	my_hydro_inputs.mode = regular;
 	my_hydro_inputs.regular_wave_amplitude = 1.0;

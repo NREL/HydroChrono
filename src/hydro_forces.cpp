@@ -726,9 +726,9 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 		for (int i = 0; i < 6; i++) {
 			for (int j = 0; j < 6; j++) {
 				double t = (file_info[b].GetHydrostaticStiffness(i, j));
-				if (i == 4 && j == 4 && t < 0) {
-					t = -t;
-				}
+				//if (i == 4 && j == 4 && t < 0) {
+				//	t = -t;
+				//}
 				force_hydrostatic[i + b_offset] += t * displacement[j + b_offset];
 			}
 		}
@@ -762,7 +762,7 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 	int size = file_info[0].GetRIRFDims(2);
 	int nDoF = 6;
 	// "shift" everything left 1
-	offset_rirf--;
+	offset_rirf--; // starts as 0 before timestep change
 	// keep offset close to 0, avoids small chance of -overflow errors in long simulations
 	if (offset_rirf < -1 * size) {
 		offset_rirf += size;
@@ -779,11 +779,10 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 #define TMP_S(row,step) tmp_s[(row)*size + (step)]
 	// set last entry as velocity
 	for (int i = 0; i < 3; i++) {
-		for (int b = 1; b < num_bodies + 1; b++) { // body index sucks but i think this is correct...
-			setVelHistory(bodies[b-1]->GetPos_dt()[i],
-				(((size + offset_rirf) % size) + size) % size, b, i);
-			setVelHistory(bodies[b - 1]->GetWvel_par()[i],
-				(((size + offset_rirf) % size) + size) % size, b, i + 3);
+		for (int b = 1; b < num_bodies + 1; b++) { // body index being 1 indexed here is right
+			int vi = (((size + offset_rirf) % size) + size) % size;
+			setVelHistory(bodies[b-1]->GetPos_dt()[i], vi, b, i);
+			setVelHistory(bodies[b - 1]->GetWvel_par()[i], vi, b, i + 3);
 		}
 	}
 	int vi;
@@ -797,6 +796,9 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 				for (int col = 0; col < numCols; col++) { // numCols goes to 6N
 					// multiply rirf by velocity history for each step and row (0,...,6N), store product in TIMESERIES
 					TIMESERIES(row, col, st) = GetRIRFval(row, col, st) * getVelHistoryVal(vi, col); 
+					//for (int i = 0; i < numCols; i++) {
+					//velOut << getVelHistoryVal(vi, col) << std::endl;
+					//}
 					// TMP_S is the sum over col (sum the effects of all radiating dofs (LDOF) for each time and motion dof)
 					TMP_S(row, st) += TIMESERIES(row, col, st);
 				}
@@ -807,22 +809,24 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 			}
 		}
 	}
-	else { // TODO fix this for force_radiation_damping to go over col not row!
-		// convolution integral assuming fixed dt
-		for (int row = 0; row < numRows; row++) {
-			//#pragma omp parallel for
-			sumVelHistoryAndRIRF = 0.0;
-			for (int col = 0; col < numCols; col++) {
-				for (int st = 0; st < size; st++) {
-					vi = (((st + offset_rirf) % size) + size) % size; // vi takes care of circshift function from matLab
-					TIMESERIES(row, col, st) = GetRIRFval(row, col, st) * getVelHistoryVal(vi, col); // col now runs thru all bodies (0->11 for 2 bodies...)
-					TMP_S(row, st) = TIMESERIES(row, col, st);
-					sumVelHistoryAndRIRF += TMP_S(row, st);
-				}
-			}
-			force_radiation_damping[row] -= sumVelHistoryAndRIRF * rirf_timestep;
-		}
-	}
+	//velOut.close();
+
+	//else { // TODO fix this for force_radiation_damping to go over col not row!
+	//	// convolution integral assuming fixed dt
+	//	for (int row = 0; row < numRows; row++) {
+	//		//#pragma omp parallel for
+	//		sumVelHistoryAndRIRF = 0.0;
+	//		for (int col = 0; col < numCols; col++) {
+	//			for (int st = 0; st < size; st++) {
+	//				vi = (((st + offset_rirf) % size) + size) % size; // vi takes care of circshift function from matLab
+	//				TIMESERIES(row, col, st) = GetRIRFval(row, col, st) * getVelHistoryVal(vi, col); // col now runs thru all bodies (0->11 for 2 bodies...)
+	//				TMP_S(row, st) = TIMESERIES(row, col, st);
+	//				sumVelHistoryAndRIRF += TMP_S(row, st);
+	//			}
+	//		}
+	//		force_radiation_damping[row] -= sumVelHistoryAndRIRF * rirf_timestep;
+	//	}
+	//}
 	// Deallocate memory
 #undef TIMESERIES
 #undef TMP_S
@@ -929,11 +933,34 @@ double TestHydro::coordinateFunc(int b, int i) {
 	if (hydro_inputs.mode == noWaveCIC) {
 		// update required forces:
 		ComputeForceHydrostatics();
+
+		std::ofstream hydrostaticsCheck;
+		hydrostaticsCheck.open("./results/f3of/debugging/fhs.txt");
+		for (int dof = 0; dof < total_dofs; dof++) {
+			hydrostaticsCheck << force_hydrostatic[dof] << std::endl;
+		}
+		hydrostaticsCheck.close();
+
 		ComputeForceRadiationDampingConv();
+
+		std::ofstream radiationCheck;
+		radiationCheck.open("./results/f3of/debugging/frad.txt");
+		for (int dof = 0; dof < total_dofs; dof++) {
+			radiationCheck << force_radiation_damping[dof] << std::endl;
+		}
+		radiationCheck.close();
+
 		// sum all forces element by element
 		for (int j = 0; j < total_dofs; j++) {
-			total_force[j] = force_hydrostatic[j] - force_radiation_damping[j];
+			total_force[j] = force_hydrostatic[j] - force_radiation_damping[j]; //force_hydrostatic[j] - 
 		}
+
+		std::ofstream totalForceCheck;
+		totalForceCheck.open("./results/f3of/debugging/ftotal.txt");
+		for (int dof = 0; dof < total_dofs; dof++) {
+			totalForceCheck << total_force[dof] << std::endl;
+		}
+		totalForceCheck.close();
 	}
 	else if (hydro_inputs.mode == regular) {
 		// update required forces:

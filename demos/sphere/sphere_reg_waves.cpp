@@ -112,14 +112,19 @@ int main(int argc, char* argv[]) {
 	double task10dampings[] = { 398736.034, 118149.758, 90080.857, 161048.558, 322292.419, 479668.979, 633979.761, 784083.286, 932117.647, 1077123.445 };
 	//int waveNum = 0;
 
+	// add prismatic joint between sphere and ground (limit to heave motion only)
+	auto prismatic = chrono_types::make_shared<ChLinkLockPrismatic>();
+	prismatic->Initialize(sphereBody, ground, false, ChCoordsys<>(ChVector<>(0, 0, -2)), ChCoordsys<>(ChVector<>(0, 0, -5)));
+	system.AddLink(prismatic);
+
 	// Create the spring between body_1 and ground. The spring end points are
 	// specified in the body relative frames.
 	double rest_length = 3.0;
 	double spring_coef = 0.0;
 	double damping_coef = task10dampings[reg_wave_num - 1];
 	auto spring_1 = chrono_types::make_shared<ChLinkTSDA>();
-	spring_1->Initialize(sphereBody, ground, true, ChVector<>(0, 0, -2), ChVector<>(0, 0, -5));
-	spring_1->SetRestLength(rest_length);
+	spring_1->Initialize(sphereBody, ground, false, ChVector<>(0, 0, -2), ChVector<>(0, 0, -5)); // false means positions are in global frame
+	//spring_1->SetRestLength(rest_length); // if not set, the rest length is calculated from initial position
 	spring_1->SetSpringCoefficient(spring_coef);
 	spring_1->SetDampingCoefficient(damping_coef);
 	system.AddLink(spring_1);
@@ -128,8 +133,8 @@ int main(int argc, char* argv[]) {
 	//my_hydro_inputs.SetRegularWaveAmplitude(task10_wave_amps[reg_wave_num - 1]); //0.594 (for wave 10)
 	//my_hydro_inputs.SetRegularWaveOmega(task10_wave_omegas[reg_wave_num - 1]); //0.571198664 (for wave 10)
 	my_hydro_inputs.mode = regular; // uses regular wave mode
-	my_hydro_inputs.regular_wave_amplitude = task10_wave_amps[reg_wave_num-1]; //0.095;
-	my_hydro_inputs.regular_wave_omega = task10_wave_omegas[reg_wave_num-1];//1.427996661;
+	my_hydro_inputs.regular_wave_amplitude = task10_wave_amps[reg_wave_num - 1]; //0.095;
+	my_hydro_inputs.regular_wave_omega = task10_wave_omegas[reg_wave_num - 1];//1.427996661;
 
 	std::vector<std::shared_ptr<ChBody>> bodies;
 	bodies.push_back(sphereBody);
