@@ -18,8 +18,11 @@ int hydroc::setInitialEnvironment(int argc, char* argv[]) noexcept {
 
     if (env_p == nullptr) {
         if (argc < 2) {
-            std::cerr << "Usage: .exe [<datadir>] or set HYDRO_CHRONO_DATA_DIR environement variable" << std::endl;
-            return 1;
+            std::cerr << "Warning::Usage: .exe [<datadir>] or set HYDRO_CHRONO_DATA_DIR environement variable" << std::endl;
+            
+            DATADIR = absolute(path("..") / ".." / "demos");
+            std::cerr << "Set default demos path to'" << getDataDir() << "'" << std::endl;
+            return 0;
         } else {
             DATADIR = absolute(path(argv[1]));
         }
