@@ -78,9 +78,9 @@ endif()
 if(MSVC)
 	# avoids deprecation warnings
     add_definitions(
-		_CRT_SECURE_NO_DEPRECATE  
-		_SCL_SECURE_NO_DEPRECATE
-		NOMINMAX
+		-D_CRT_SECURE_NO_DEPRECATE  
+		-D_SCL_SECURE_NO_DEPRECATE
+		-DNOMINMAX
 	)
     add_compile_options(/wd4275)                   # disable warnings triggered by Irrlicht
     add_compile_options(/wd4251)                   # class needs to have dll-interface
@@ -135,7 +135,7 @@ target_link_options(HydroChrono BEFORE
 
 target_link_libraries(HydroChrono 
 	PUBLIC
-		hdf5_cpp-static
+		hdf5::hdf5_cpp-static
 	PRIVATE
 		${CHRONO_LIBRARIES}
 )
