@@ -24,7 +24,7 @@ public:
 	H5FileInfo(const H5FileInfo& old) = default;
 	H5FileInfo& operator = (const H5FileInfo& rhs) = delete;
 
-    H5FileInfo(H5FileInfo&&) = delete;
+    H5FileInfo(H5FileInfo&&) = default;
 	H5FileInfo& operator = (H5FileInfo&& rhs) = default;
 
 	~H5FileInfo();
