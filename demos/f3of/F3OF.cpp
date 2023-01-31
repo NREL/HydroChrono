@@ -1,9 +1,22 @@
-#include "../../src/hydro_forces.h"
-//#include "./src/hydro_forces.h"
-#include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
-#include "chrono_irrlicht/ChIrrMeshTools.h"
-#include "chrono/core/ChRealtimeStep.h"
-#include "chrono/physics/ChLinkMate.h"
+#include <hydroc/hydro_forces.h>
+
+#include <hydroc/helper.h>
+
+#ifdef HYDRO_CHRONO_HAVE_IRRLICHT
+    #include <chrono_irrlicht/ChVisualSystemIrrlicht.h>
+    #include <chrono_irrlicht/ChIrrMeshTools.h>
+    // Use the main namespaces of Irrlicht
+    using namespace irr;
+    using namespace irr::core;
+    using namespace irr::scene;
+    using namespace irr::video;
+    using namespace irr::io;
+    using namespace irr::gui;
+    using namespace chrono::irrlicht;
+#endif
+
+#include <chrono/core/ChRealtimeStep.h>
+#include <chrono/physics/ChLinkMate.h>
 #include <iomanip> // std::setprecision
 #include <chrono> // std::chrono::high_resolution_clock::now
 #include <vector> // std::vector<double>
@@ -11,16 +24,10 @@
 // Use the namespaces of Chrono
 using namespace chrono;
 using namespace chrono::geometry;
-using namespace chrono::irrlicht;
 
-// Use the main namespaces of Irrlicht
-using namespace irr;
-using namespace irr::core;
-using namespace irr::scene;
-using namespace irr::video;
-using namespace irr::io;
-using namespace irr::gui;
 
+#ifdef HYDRO_CHRONO_HAVE_IRRLICHT
+// Define a class to manage user inputs via the GUI (i.e. play/pause button)
 class MyActionReceiver : public IEventReceiver {
 public:
 	MyActionReceiver(ChVisualSystemIrrlicht* vsys, bool& buttonPressed)
@@ -61,10 +68,32 @@ private:
 
 	bool& pressed;
 };
+#endif
+
 
 int main(int argc, char* argv[]) {
 	//auto start = std::chrono::high_resolution_clock::now();
-	GetLog() << "Copyright (c) 2017 projectchrono.org\nChrono version: " << CHRONO_VERSION << "\n\n";
+	GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
+
+
+	if (hydroc::setInitialEnvironment(argc, argv) != 0) {
+		return 1;
+	}
+
+	std::filesystem::path DATADIR(hydroc::getDataDir());
+
+	auto body1_meshfame = (DATADIR / "f3of" / "geometry" / "base.obj")
+		.lexically_normal()
+		.generic_string();
+	auto body2_meshfame = (DATADIR / "f3of" / "geometry" / "flap.obj")
+		.lexically_normal()
+		.generic_string();
+	auto body3_meshfame = (DATADIR / "f3of" / "geometry" / "flap.obj")
+		.lexically_normal()
+		.generic_string();
+	auto h5fname = (DATADIR / "f3of" / "hydroData" / "f3of.h5")
+		.lexically_normal()
+		.generic_string();
 
 	// system/solver settings
 	ChSystemSMC system;
@@ -86,13 +115,29 @@ int main(int argc, char* argv[]) {
 	std::vector<double> fore_pitch;
 	std::vector<double> aft_pitch;
 
-	// set up base body from mesh
-	if (!std::filesystem::exists("../../HydroChrono/demos/f3of/geometry/base.obj")) {
-		std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/f3of/geometry/base.obj").c_str()) << " does not exist" << std::endl;
-		return 0;
-	}
+
+	// set up body from a mesh
+	std::cout << "Attempting to open mesh file: " << body1_meshfame << std::endl;
 	std::shared_ptr<ChBody> base = chrono_types::make_shared<ChBodyEasyMesh>(                   //
-		GetChronoDataFile("../../HydroChrono/demos/f3of/geometry/base.obj").c_str(),                 // file name
+		body1_meshfame,
+		0,                                                                                        // density
+		false,                                                                                    // do not evaluate mass automatically
+		true,                                                                                     // create visualization asset
+		false                                                                                     // collisions
+		);
+
+	std::cout << "Attempting to open mesh file: " << body2_meshfame << std::endl;
+	std::shared_ptr<ChBody> flapFore = chrono_types::make_shared<ChBodyEasyMesh>(                   //
+		body2_meshfame,
+		0,                                                                                        // density
+		false,                                                                                    // do not evaluate mass automatically
+		true,                                                                                     // create visualization asset
+		false                                                                                     // collisions
+		);
+
+	std::cout << "Attempting to open mesh file: " << body3_meshfame << std::endl;
+	std::shared_ptr<ChBody> flapAft = chrono_types::make_shared<ChBodyEasyMesh>(                   //
+		body3_meshfame,
 		0,                                                                                        // density
 		false,                                                                                    // do not evaluate mass automatically
 		true,                                                                                     // create visualization asset
@@ -104,37 +149,12 @@ int main(int argc, char* argv[]) {
 	base->SetMass(1089825.0);
 	base->SetInertiaXX(ChVector<>(100000000.0, 76300000.0, 100000000.0));
 
-	// set up fore flap from mesh
-	if (!std::filesystem::exists("../../HydroChrono/demos/f3of/geometry/flap.obj")) {
-		std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/f3of/geometry/flap.obj").c_str()) << " does not exist" << std::endl;
-		return 0;
-	}
-	std::shared_ptr<ChBody> flapFore = chrono_types::make_shared<ChBodyEasyMesh>(                   //
-		GetChronoDataFile("../../HydroChrono/demos/f3of/geometry/flap.obj").c_str(),                 // file name
-		0,                                                                                        // density
-		false,                                                                                    // do not evaluate mass automatically
-		true,                                                                                     // create visualization asset
-		false                                                                                     // collisions
-		);
 	// define the fore flap's initial conditions (position and rotation defined later for specific tests
 	system.Add(flapFore);
 	flapFore->SetNameString("body2");
 	flapFore->SetMass(179250.0);
 	flapFore->SetInertiaXX(ChVector<>(100000000.0, 1300000.0, 100000000.0));
 
-	// set up aft flap body from mesh
-	if (!std::filesystem::exists("../../HydroChrono/demos/f3of/geometry/flap.obj")) {
-		std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/F3OF/geometry/flap.obj").c_str()) << " does not exist" << std::endl;
-		return 0;
-	}
-	//std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/plate.obj").c_str()) << std::endl;
-	std::shared_ptr<ChBody> flapAft = chrono_types::make_shared<ChBodyEasyMesh>(                   //
-		GetChronoDataFile("../../HydroChrono/demos/f3of/geometry/flap.obj").c_str(),                 // file name
-		0,                                                                                        // density
-		false,                                                                                    // do not evaluate mass automatically
-		true,                                                                                     // create visualization asset
-		false                                                                                     // collisions
-		);
 	// define the aft flap's initial conditions (position and rotation defined later for specific tests
 	system.Add(flapAft);
 	flapAft->SetNameString("body3");
@@ -248,7 +268,7 @@ int main(int argc, char* argv[]) {
 
 	// define wave parameters (not used in this demo TODO have hydroforces constructor without hydro inputs)
 	HydroInputs my_hydro_inputs;
-	my_hydro_inputs.mode = noWaveCIC; 
+	my_hydro_inputs.mode = WaveMode::noWaveCIC;
 	
 	// set up hydro forces
 	std::vector<std::shared_ptr<ChBody>> bodies;
@@ -260,6 +280,7 @@ int main(int argc, char* argv[]) {
 	// for profiling
 	auto start = std::chrono::high_resolution_clock::now();
 
+#ifdef HYDRO_CHRONO_HAVE_IRRLICHT
 	if (visualizationOn) {
 		// create the irrlicht application for visualizing
 		auto irrlichtVis = chrono_types::make_shared<ChVisualSystemIrrlicht>();
@@ -303,6 +324,7 @@ int main(int argc, char* argv[]) {
 		}
 	}
 	else {
+#endif // #ifdef HYDRO_CHRONO_HAVE_IRRLICHT
 		int frame = 0;
 		while (system.GetChTime() <= simulationDuration) {
 			// append data to std vector
@@ -316,7 +338,9 @@ int main(int argc, char* argv[]) {
 
 			frame++;
 		}
+#ifdef HYDRO_CHRONO_HAVE_IRRLICHT
 	}
+#endif
 
 	if (saveDataOn) {
 		std::ofstream outputFile;
