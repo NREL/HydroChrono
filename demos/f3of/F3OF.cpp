@@ -275,7 +275,7 @@ int main(int argc, char* argv[]) {
 	bodies.push_back(base);
 	bodies.push_back(flapFore);
 	bodies.push_back(flapAft);
-	TestHydro hydroforces(bodies, "../../HydroChrono/demos/f3of/hydroData/f3of.h5", my_hydro_inputs);
+	TestHydro hydroforces(bodies, h5fname, my_hydro_inputs);
 
 	// for profiling
 	auto start = std::chrono::high_resolution_clock::now();
