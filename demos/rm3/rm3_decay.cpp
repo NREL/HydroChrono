@@ -160,6 +160,7 @@ int main(int argc, char* argv[]) {
 	auto start = std::chrono::high_resolution_clock::now();
 
 	if (visualizationOn) {
+
 		// create the irrlicht application for visualizing
 		auto irrlichtVis = chrono_types::make_shared<ChVisualSystemIrrlicht>();
 		irrlichtVis->AttachSystem(&system);
@@ -203,7 +204,6 @@ int main(int argc, char* argv[]) {
 			time_vector.push_back(system.GetChTime());
 			float_heave_position.push_back(float_body1->GetPos().z());
 			plate_heave_position.push_back(plate_body2->GetPos().z());
-
 			// step the simulation forwards
 			system.DoStepDynamics(timestep);
 

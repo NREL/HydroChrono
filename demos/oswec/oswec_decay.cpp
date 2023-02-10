@@ -68,7 +68,7 @@ int main(int argc, char* argv[]) {
 
 	// system/solver settings
 	ChSystemNSC system;
-	system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81)); // handle weight in hydroforces
+	system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
 	double timestep = 0.03;
 	//system.SetTimestepperType(ChTimestepper::Type::HHT);
 	system.SetSolverType(ChSolver::Type::GMRES);

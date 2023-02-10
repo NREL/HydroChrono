@@ -460,6 +460,8 @@ ForceFunc6d::ForceFunc6d() : forces{ {this, 0}, {this, 1}, {this, 2}, {this, 3},
 	chrono_torque = chrono_types::make_shared<ChForce>();
 	chrono_force->SetAlign(ChForce::AlignmentFrame::WORLD_DIR);
 	chrono_torque->SetAlign(ChForce::AlignmentFrame::WORLD_DIR);
+	chrono_force->SetNameString("hydroforce");
+	chrono_torque->SetNameString("hydrotorque");
 }
 
 /*******************************************************************************
