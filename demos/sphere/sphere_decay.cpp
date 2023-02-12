@@ -1,7 +1,7 @@
 #include <hydroc/hydro_forces.h>
 #include <hydroc/helper.h>
 
-#ifdef HYDRO_CHRONO_HAVE_IRRLICHT
+#ifdef HYDROCHRONO_HAVE_IRRLICHT
 	#include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
 	#include "chrono_irrlicht/ChIrrMeshTools.h"
 	// Use the main namespaces of Irrlicht
@@ -26,7 +26,7 @@
 using namespace chrono;
 using namespace chrono::geometry;
 
-#ifdef HYDRO_CHRONO_HAVE_IRRLICHT
+#ifdef HYDROCHRONO_HAVE_IRRLICHT
 // Define a class to manage user inputs via the GUI (i.e. play/pause button)
 class MyActionReceiver : public IEventReceiver {
 	public:
@@ -98,7 +98,7 @@ int main(int argc, char* argv[]) {
 
 	// some io/viz options
 	bool visualizationOn = false;
-#ifdef HYDRO_CHRONO_HAVE_IRRLICHT
+#ifdef HYDROCHRONO_HAVE_IRRLICHT
 	visualizationOn = true;
 #endif
 	bool profilingOn = true;
@@ -137,7 +137,7 @@ int main(int argc, char* argv[]) {
 	// for profilingvisualizationOn = false;
 	auto start = std::chrono::high_resolution_clock::now(); 
 
-#ifdef HYDRO_CHRONO_HAVE_IRRLICHT
+#ifdef HYDROCHRONO_HAVE_IRRLICHT
 	if (visualizationOn){
 
 		// Create a visualization material
@@ -193,7 +193,7 @@ int main(int argc, char* argv[]) {
 		}
 	}
 	else{
-#endif // #ifdef HYDRO_CHRONO_HAVE_IRRLICHT
+#endif // #ifdef HYDROCHRONO_HAVE_IRRLICHT
 		int frame = 0;
 		while (system.GetChTime() <= simulationDuration) {
 			// step the simulation forwards
@@ -203,7 +203,7 @@ int main(int argc, char* argv[]) {
 			heave_position.push_back(sphereBody->GetPos().z());
 			frame++;
 		}
-#ifdef HYDRO_CHRONO_HAVE_IRRLICHT		
+#ifdef HYDROCHRONO_HAVE_IRRLICHT
 	}
 #endif
 

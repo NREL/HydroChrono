@@ -2,7 +2,7 @@
 
 #include <hydroc/helper.h>
 
-#ifdef HYDRO_CHRONO_HAVE_IRRLICHT
+#ifdef HYDROCHRONO_HAVE_IRRLICHT
 	#include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
 	#include "chrono_irrlicht/ChIrrMeshTools.h"
 	// Use the main namespaces of Irrlicht
@@ -27,7 +27,7 @@ using namespace chrono;
 using namespace chrono::geometry;
 
 
-#ifdef HYDRO_CHRONO_HAVE_IRRLICHT
+#ifdef HYDROCHRONO_HAVE_IRRLICHT
 class MyActionReceiver : public IEventReceiver {
 public:
 	MyActionReceiver(ChVisualSystemIrrlicht* vsys, bool& buttonPressed)
@@ -177,7 +177,7 @@ int main(int argc, char* argv[]) {
 	// for profiling
 	auto start = std::chrono::high_resolution_clock::now();
 
-#ifdef HYDRO_CHRONO_HAVE_IRRLICHT
+#ifdef HYDROCHRONO_HAVE_IRRLICHT
 	if (visualizationOn) {
 		// create the irrlicht application for visualizing
 		auto irrlichtVis = chrono_types::make_shared<ChVisualSystemIrrlicht>();
@@ -216,7 +216,7 @@ int main(int argc, char* argv[]) {
 		}
 	}
 	else {
-#endif // #ifdef HYDRO_CHRONO_HAVE_IRRLICHT		
+#endif // #ifdef HYDROCHRONO_HAVE_IRRLICHT
 		int frame = 0;
 		while (system.GetChTime() <= simulationDuration) {
 			// append data to std vector
@@ -229,7 +229,7 @@ int main(int argc, char* argv[]) {
 
 			frame++;
 		}
-#ifdef HYDRO_CHRONO_HAVE_IRRLICHT		
+#ifdef HYDROCHRONO_HAVE_IRRLICHT
 	}
 #endif
 

@@ -11,11 +11,11 @@ using std::filesystem::path;
 static path DATADIR{};
 
 static int init_env(int argc, char* argv[]) {
-    const char* env_p = std::getenv("HYDRO_CHRONO_DATA_DIR");
+    const char* env_p = std::getenv("HYDROCHRONO_DATA_DIR");
 
     if (env_p == nullptr) {
         if (argc < 2) {
-            std::cerr << "Usage: .exe [<datadir>] or set HYDRO_CHRONO_DATA_DIR environement variable" << std::endl;
+            std::cerr << "Usage: .exe [<datadir>] or set HYDROCHRONO_DATA_DIR environement variable" << std::endl;
             return 1;
         } else {
             DATADIR = absolute(path(argv[1]));

@@ -15,7 +15,7 @@ target_link_libraries(chrono_error_t01 HydroChrono)
 if(TARGET h5fileinfo_t01)
         add_test (
                 NAME h5fileinfo_01
-                COMMAND $<TARGET_FILE:h5fileinfo_t01> ${HYDRO_CHRONO_DATA_DIR}
+                COMMAND $<TARGET_FILE:h5fileinfo_t01> ${HYDROCHRONO_DATA_DIR}
         )
         set_tests_properties(
             h5fileinfo_01
@@ -26,7 +26,7 @@ endif(TARGET h5fileinfo_t01)
 if(TARGET chloadaddedmass_t01)
         add_test (
                 NAME chloadaddedmass_01
-                COMMAND $<TARGET_FILE:chloadaddedmass_t01> ${HYDRO_CHRONO_DATA_DIR}
+                COMMAND $<TARGET_FILE:chloadaddedmass_t01> ${HYDROCHRONO_DATA_DIR}
         )
         set_tests_properties(
                 chloadaddedmass_01
@@ -38,7 +38,7 @@ endif(TARGET chloadaddedmass_t01)
 if(TARGET chrono_error_t01)
         add_test (
                 NAME chrono_error_01
-                COMMAND $<TARGET_FILE:chrono_error_t01> ${HYDRO_CHRONO_DATA_DIR}
+                COMMAND $<TARGET_FILE:chrono_error_t01> ${HYDROCHRONO_DATA_DIR}
         )
         set_tests_properties(
                 chrono_error_01

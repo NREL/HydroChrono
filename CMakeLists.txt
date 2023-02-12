@@ -12,15 +12,15 @@ if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
 endif()
 
 # Default build type to use if none was specified
-if(NOT DEFINED HYDRO_CHRONO_DEFAULT_BUILD_TYPE)
-	set(HYDRO_CHRONO_DEFAULT_BUILD_TYPE "Release")
+if(NOT DEFINED HYDROCHRONO_DEFAULT_BUILD_TYPE)
+	set(HYDROCHRONO_DEFAULT_BUILD_TYPE "Release")
 endif()
 
 # Set a default build type if none was specified
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-	message(STATUS "Setting build type to '${HYDRO_CHRONO_DEFAULT_BUILD_TYPE}' as none was specified.")
+	message(STATUS "Setting build type to '${HYDROCHRONO_DEFAULT_BUILD_TYPE}' as none was specified.")
 
-	set(CMAKE_BUILD_TYPE ${HYDRO_CHRONO_DEFAULT_BUILD_TYPE}
+	set(CMAKE_BUILD_TYPE ${HYDROCHRONO_DEFAULT_BUILD_TYPE}
 	    CACHE STRING "Choose the type of build." FORCE)
 	mark_as_advanced(CMAKE_BUILD_TYPE)
 
@@ -41,9 +41,9 @@ project(HydroChrono
 # ===================
 # OPTIONS
 # ===================
-option (HYDRO_CHRONO_ENABLE_TESTS "Enable tests" ON)
-option (HYDRO_CHRONO_ENABLE_IRRLICHT "Enable irrlicht visualization library" ON)
-option (HYDRO_CHRONO_ENABLE_DEMOS "Enable demo executables" ON)
+option (HYDROCHRONO_ENABLE_TESTS "Enable tests" ON)
+option (HYDROCHRONO_ENABLE_IRRLICHT "Enable irrlicht visualization library" ON)
+option (HYDROCHRONO_ENABLE_DEMOS "Enable demo executables" ON)
 
 # ===================
 # External Libraries
@@ -52,12 +52,12 @@ option (HYDRO_CHRONO_ENABLE_DEMOS "Enable demo executables" ON)
 set (LIB_TYPE STATIC) # or SHARED
 string(TOLOWER ${LIB_TYPE} SEARCH_TYPE)
 
-if(HYDRO_CHRONO_ENABLE_IRRLICHT)
+if(HYDROCHRONO_ENABLE_IRRLICHT)
 	# If irrlicht is required chrono library must be compiled with irrlicht
 	find_package(Chrono COMPONENTS Irrlicht CONFIG REQUIRED)
-else(HYDRO_CHRONO_ENABLE_IRRLICHT)
+else(HYDROCHRONO_ENABLE_IRRLICHT)
 	find_package(Chrono CONFIG REQUIRED)
-endif(HYDRO_CHRONO_ENABLE_IRRLICHT)
+endif(HYDROCHRONO_ENABLE_IRRLICHT)
 
 find_package(HDF5 NAMES hdf5 COMPONENTS CXX ${SEARCH_TYPE})
 
@@ -89,7 +89,7 @@ endif()
 # =======================
 # Hydro Chrono Library
 # =======================
-set(HYDRO_CHRONO_SOURCES
+set(HYDROCHRONO_SOURCES
   
 	src/h5fileinfo.cpp
 	src/chloadaddedmass.cpp
@@ -98,7 +98,7 @@ set(HYDRO_CHRONO_SOURCES
 
 )
 
-add_library(HydroChrono STATIC ${HYDRO_CHRONO_SOURCES} )
+add_library(HydroChrono STATIC ${HYDROCHRONO_SOURCES} )
 
 target_compile_features(HydroChrono PUBLIC cxx_std_17)
 
@@ -144,21 +144,21 @@ target_link_libraries(HydroChrono
 # ====================
 # DEMOS
 # ====================
-if(HYDRO_CHRONO_ENABLE_DEMOS)
+if(HYDROCHRONO_ENABLE_DEMOS)
 	add_subdirectory(demos)
-endif(HYDRO_CHRONO_ENABLE_DEMOS)
+endif(HYDROCHRONO_ENABLE_DEMOS)
 
 
 # ====================
 # TESTS
 # ====================
-if(HYDRO_CHRONO_ENABLE_TESTS)
+if(HYDROCHRONO_ENABLE_TESTS)
 
-	if(DEFINED ENV{HYDRO_CHRONO_DATA_DIR})
+	if(DEFINED ENV{HYDROCHRONO_DATA_DIR})
 		# Override DATA_DIR by environement variable
-		set(HYDRO_CHRONO_DATA_DIR $ENV{HYDRO_CHRONO_DATA_DIR})
+		set(HYDROCHRONO_DATA_DIR $ENV{HYDROCHRONO_DATA_DIR})
 	else()
-		set(HYDRO_CHRONO_DATA_DIR "${PROJECT_SOURCE_DIR}/demos")
+		set(HYDROCHRONO_DATA_DIR "${PROJECT_SOURCE_DIR}/demos")
 	endif()
 
 	include(CTest)
@@ -166,7 +166,7 @@ if(HYDRO_CHRONO_ENABLE_TESTS)
 
 	add_subdirectory(tests)
 
-endif(HYDRO_CHRONO_ENABLE_TESTS)
+endif(HYDROCHRONO_ENABLE_TESTS)
 
 
 

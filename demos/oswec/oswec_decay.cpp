@@ -164,7 +164,7 @@ int main(int argc, char* argv[]) {
 	// for profiling
 	auto start = std::chrono::high_resolution_clock::now();
 
-#ifdef HYDRO_CHRONO_HAVE_IRRLICHT
+#ifdef HYDROCHRONO_HAVE_IRRLICHT
 	if (visualizationOn) {
 		// create the irrlicht application for visualizing
 		auto irrlichtVis = chrono_types::make_shared<ChVisualSystemIrrlicht>();
@@ -203,8 +203,8 @@ int main(int argc, char* argv[]) {
 			}
 		}
 	}
-#endif // #ifdef HYDRO_CHRONO_HAVE_IRRLICHT
 	else {
+#endif // #ifdef HYDROCHRONO_HAVE_IRRLICHT
 		int frame = 0;
 		while (system.GetChTime() <= simulationDuration) {
 			// append data to std vector
@@ -214,7 +214,7 @@ int main(int argc, char* argv[]) {
 			system.DoStepDynamics(timestep);
 			frame++;
 		}
-#ifdef HYDRO_CHRONO_HAVE_IRRLICHT
+#ifdef HYDROCHRONO_HAVE_IRRLICHT
 	}
 #endif
 

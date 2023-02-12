@@ -10,10 +10,10 @@ target_sources(
         sphere/sphere_decay.cpp
 )
 
-if(HYDRO_CHRONO_ENABLE_IRRLICHT)
+if(HYDROCHRONO_ENABLE_IRRLICHT)
 	target_compile_definitions(sphere_decay 
 		PRIVATE 
-		HYDRO_CHRONO_HAVE_IRRLICHT=1
+		HYDROCHRONO_HAVE_IRRLICHT=1
 	)
 endif()
 
@@ -39,10 +39,10 @@ target_sources(
         sphere/sphere_reg_waves.cpp
 )
 
-if(HYDRO_CHRONO_ENABLE_IRRLICHT)
+if(HYDROCHRONO_ENABLE_IRRLICHT)
 	target_compile_definitions(sphere_reg_waves 
 		PRIVATE 
-		HYDRO_CHRONO_HAVE_IRRLICHT=1
+		HYDROCHRONO_HAVE_IRRLICHT=1
 	)
 endif()
 
@@ -71,10 +71,10 @@ target_sources(
     rm3/rm3_decay.cpp
 )
 
-if(HYDRO_CHRONO_ENABLE_IRRLICHT)
+if(HYDROCHRONO_ENABLE_IRRLICHT)
 	target_compile_definitions(rm3_decay
 		PRIVATE 
-		HYDRO_CHRONO_HAVE_IRRLICHT=1
+		HYDROCHRONO_HAVE_IRRLICHT=1
 	)
 endif()
 
@@ -104,10 +104,10 @@ target_sources(
     rm3/rm3_reg_waves.cpp
 )
 
-if(HYDRO_CHRONO_ENABLE_IRRLICHT)
+if(HYDROCHRONO_ENABLE_IRRLICHT)
 	target_compile_definitions(rm3_reg_waves
 		PRIVATE 
-		HYDRO_CHRONO_HAVE_IRRLICHT=1
+		HYDROCHRONO_HAVE_IRRLICHT=1
 	)
 endif()
 
@@ -137,10 +137,10 @@ target_sources(
     oswec/oswec_decay.cpp
 )
 
-if(HYDRO_CHRONO_ENABLE_IRRLICHT)
+if(HYDROCHRONO_ENABLE_IRRLICHT)
 	target_compile_definitions(oswec_decay
 		PRIVATE 
-		HYDRO_CHRONO_HAVE_IRRLICHT=1
+		HYDROCHRONO_HAVE_IRRLICHT=1
 	)
 endif()
 
@@ -170,10 +170,10 @@ target_sources(
     f3of/F3OF.cpp
 )
 
-if(HYDRO_CHRONO_ENABLE_IRRLICHT)
+if(HYDROCHRONO_ENABLE_IRRLICHT)
 	target_compile_definitions(f3of
 		PRIVATE
-		HYDRO_CHRONO_HAVE_IRRLICHT=1
+		HYDROCHRONO_HAVE_IRRLICHT=1
 	)
 endif()
 

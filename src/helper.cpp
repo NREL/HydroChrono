@@ -14,11 +14,11 @@ static path DATADIR{};
 
 
 int hydroc::setInitialEnvironment(int argc, char* argv[]) noexcept {
-    const char* env_p = std::getenv("HYDRO_CHRONO_DATA_DIR");
+    const char* env_p = std::getenv("HYDROCHRONO_DATA_DIR");
 
     if (env_p == nullptr) {
         if (argc < 2) {
-            std::cerr << "Warning::Usage: .exe [<datadir>] or set HYDRO_CHRONO_DATA_DIR environement variable" << std::endl;
+            std::cerr << "Warning::Usage: .exe [<datadir>] or set HYDROCHRONO_DATA_DIR environement variable" << std::endl;
             
             DATADIR = absolute(path("..") / ".." / "demos");
             std::cerr << "Set default demos path to'" << getDataDir() << "'" << std::endl;
