@@ -1,8 +1,23 @@
-#include "../../src/hydro_forces.h"
-//#include "./src/hydro_forces.h"
-#include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
-#include "chrono_irrlicht/ChIrrMeshTools.h"
-#include "chrono/core/ChRealtimeStep.h"
+#include <hydroc/hydro_forces.h>
+
+#include <hydroc/helper.h>
+
+#ifdef HYDROCHRONO_HAVE_IRRLICHT
+	#include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
+	#include "chrono_irrlicht/ChIrrMeshTools.h"
+	// Use the main namespaces of Irrlicht
+	using namespace irr;
+	using namespace irr::core;
+	using namespace irr::scene;
+	using namespace irr::video;
+	using namespace irr::io;
+	using namespace irr::gui;
+	using namespace chrono::irrlicht;
+#endif
+
+
+#include <chrono/core/ChRealtimeStep.h>
+
 #include <iomanip> // std::setprecision
 #include <chrono> // std::chrono::high_resolution_clock::now
 #include <vector> // std::vector<double>
@@ -10,60 +25,74 @@
 // Use the namespaces of Chrono
 using namespace chrono;
 using namespace chrono::geometry;
-using namespace chrono::irrlicht;
 
-// Use the main namespaces of Irrlicht
-using namespace irr;
-using namespace irr::core;
-using namespace irr::scene;
-using namespace irr::video;
-using namespace irr::io;
-using namespace irr::gui;
 
+#ifdef HYDROCHRONO_HAVE_IRRLICHT
+// Define a class to manage user inputs via the GUI (i.e. play/pause button)
 class MyActionReceiver : public IEventReceiver {
-public:
-	MyActionReceiver(ChVisualSystemIrrlicht* vsys, bool& buttonPressed)
-		: pressed(buttonPressed) {
-		// store pointer application
-		vis = vsys;
+	public:
+		MyActionReceiver(ChVisualSystemIrrlicht* vsys, bool& buttonPressed)
+			: pressed(buttonPressed) {
+			// store pointer application
+			vis = vsys;
 
-		// ..add a GUI button to control pause/play
-		pauseButton = vis->GetGUIEnvironment()->addButton(rect<s32>(510, 20, 650, 35));
-		buttonText = vis->GetGUIEnvironment()->addStaticText(L"Paused", rect<s32>(560, 20, 600, 35), false);
-	}
-
-	bool OnEvent(const SEvent& event) {
-		// check if user clicked button
-		if (event.EventType == EET_GUI_EVENT) {
-			switch (event.GUIEvent.EventType) {
-			case EGET_BUTTON_CLICKED:
-				pressed = !pressed;
-				if (pressed) {
-					buttonText->setText(L"Playing");
-				}
-				else {
-					buttonText->setText(L"Paused");
-				}
-				return pressed;
-				break;
-			default:
-				break;
-			}
+			// ..add a GUI button to control pause/play
+			pauseButton = vis->GetGUIEnvironment()->addButton(rect<s32>(510, 20, 650, 35));
+			buttonText = vis->GetGUIEnvironment()->addStaticText(L"Paused", rect<s32>(560, 20, 600, 35), false);
 		}
-		return false;
-	}
 
-private:
-	ChVisualSystemIrrlicht* vis;
-	IGUIButton* pauseButton;
-	IGUIStaticText* buttonText;
+		bool OnEvent(const SEvent& event) {
+			// check if user clicked button
+			if (event.EventType == EET_GUI_EVENT) {
+				switch (event.GUIEvent.EventType) {
+				case EGET_BUTTON_CLICKED:
+					pressed = !pressed;
+					if (pressed) {
+						buttonText->setText(L"Playing");
+					}
+					else {
+						buttonText->setText(L"Paused");
+					}
+					return pressed;
+					break;
+				default:
+					break;
+				}
+			}
+			return false;
+		}
 
-	bool& pressed;
+	private:
+		ChVisualSystemIrrlicht* vis;
+		IGUIButton* pauseButton;
+		IGUIStaticText* buttonText;
+
+		bool& pressed;
 };
+#endif
+
 
 int main(int argc, char* argv[]) {
 	//auto start = std::chrono::high_resolution_clock::now();
-	GetLog() << "Copyright (c) 2017 projectchrono.org\nChrono version: " << CHRONO_VERSION << "\n\n";
+	GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
+
+
+    if (hydroc::setInitialEnvironment(argc, argv) != 0) {
+        return 1;
+    }
+
+    std::filesystem::path DATADIR(hydroc::getDataDir());
+
+	auto body1_meshfame = (DATADIR / "rm3" / "geometry" /"float_cog.obj")
+		.lexically_normal()
+		.generic_string();
+	auto body2_meshfame = (DATADIR / "rm3" / "geometry" /"plate_cog.obj")
+		.lexically_normal()
+		.generic_string();		
+	auto h5fname = (DATADIR / "rm3" / "hydroData" /"rm3.h5")
+		.lexically_normal()
+		.generic_string();
+
 
 	// system/solver settings
 	ChSystemNSC system;
@@ -86,28 +115,18 @@ int main(int argc, char* argv[]) {
 	std::vector<double> plate_heave_position;
 
 	// set up body from a mesh
-	if (!std::filesystem::exists("../../HydroChrono/demos/rm3/geometry/float_cog.obj")) {
-		std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/rm3/geometry/float.obj").c_str()) << " does not exist" << std::endl;
-		return 0;
-	}
-	//std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/float.obj").c_str()) << std::endl;
+	std::cout << "Attempting to open mesh file: " << body1_meshfame << std::endl;
 	std::shared_ptr<ChBody> float_body1 = chrono_types::make_shared<ChBodyEasyMesh>(                   //
-		GetChronoDataFile("../../HydroChrono/demos/rm3/geometry/float_cog.obj").c_str(),                 // file name
+		body1_meshfame,
 		0,                                                                                        // density
 		false,                                                                                    // do not evaluate mass automatically
 		true,                                                                                     // create visualization asset
 		false                                                                                     // collisions
 		);
 
-	// set up body from a mesh
-	if (!std::filesystem::exists("../../HydroChrono/demos/rm3/geometry/plate_cog.obj")) {
-		std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/rm3/geometry/plate.obj").c_str()) << " does not exist" << std::endl;
-		return 0;
-	}
-
-	//std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/plate.obj").c_str()) << std::endl;
+	std::cout << "Attempting to open mesh file: " << body2_meshfame << std::endl;
 	std::shared_ptr<ChBody> plate_body2 = chrono_types::make_shared<ChBodyEasyMesh>(                   //
-		GetChronoDataFile("../../HydroChrono/demos/rm3/geometry/plate_cog.obj").c_str(),                 // file name
+		body2_meshfame, 
 		0,                                                                                        // density
 		false,                                                                                    // do not evaluate mass automatically
 		true,                                                                                     // create visualization asset
@@ -142,7 +161,7 @@ int main(int argc, char* argv[]) {
 
 	// define wave parameters 
 	HydroInputs my_hydro_inputs;
-	my_hydro_inputs.mode = regular;
+	my_hydro_inputs.mode = WaveMode::regular;
 	my_hydro_inputs.regular_wave_amplitude = 1.0;
 	my_hydro_inputs.regular_wave_omega = 2.10;
 
@@ -150,16 +169,13 @@ int main(int argc, char* argv[]) {
 	std::vector<std::shared_ptr<ChBody>> bodies;
 	bodies.push_back(float_body1);
 	bodies.push_back(plate_body2);
-	TestHydro blah(bodies, "../../HydroChrono/demos/rm3/hydroData/rm3.h5", my_hydro_inputs);
+	TestHydro blah(bodies, h5fname, my_hydro_inputs);
 
-	//// Debug printing added mass matrix and system mass matrix
-	//ChSparseMatrix M;
-	//system.GetMassMatrix(&M);
-	//std::cout << M << std::endl;
 
 	// for profiling
 	auto start = std::chrono::high_resolution_clock::now();
 
+#ifdef HYDROCHRONO_HAVE_IRRLICHT
 	if (visualizationOn) {
 		// create the irrlicht application for visualizing
 		auto irrlichtVis = chrono_types::make_shared<ChVisualSystemIrrlicht>();
@@ -197,6 +213,7 @@ int main(int argc, char* argv[]) {
 		}
 	}
 	else {
+#endif // #ifdef HYDROCHRONO_HAVE_IRRLICHT
 		int frame = 0;
 		while (system.GetChTime() <= simulationDuration) {
 			// append data to std vector
@@ -210,7 +227,9 @@ int main(int argc, char* argv[]) {
 
 			frame++;
 		}
+#ifdef HYDROCHRONO_HAVE_IRRLICHT
 	}
+#endif
 
 	// for profiling
 	auto end = std::chrono::high_resolution_clock::now();

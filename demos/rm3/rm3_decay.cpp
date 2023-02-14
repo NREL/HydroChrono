@@ -1,8 +1,23 @@
-#include "../../src/hydro_forces.h"
-//#include "./src/hydro_forces.h"
-#include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
-#include "chrono_irrlicht/ChIrrMeshTools.h"
-#include "chrono/core/ChRealtimeStep.h"
+#include <hydroc/hydro_forces.h>
+
+#include <hydroc/helper.h>
+
+#ifdef HYDROCHRONO_HAVE_IRRLICHT
+	#include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
+	#include "chrono_irrlicht/ChIrrMeshTools.h"
+	// Use the main namespaces of Irrlicht
+	using namespace irr;
+	using namespace irr::core;
+	using namespace irr::scene;
+	using namespace irr::video;
+	using namespace irr::io;
+	using namespace irr::gui;
+	using namespace chrono::irrlicht;
+#endif
+
+
+#include <chrono/core/ChRealtimeStep.h>
+
 #include <iomanip> // std::setprecision
 #include <chrono> // std::chrono::high_resolution_clock::now
 #include <vector> // std::vector<double>
@@ -10,16 +25,9 @@
 // Use the namespaces of Chrono
 using namespace chrono;
 using namespace chrono::geometry;
-using namespace chrono::irrlicht;
 
-// Use the main namespaces of Irrlicht
-using namespace irr;
-using namespace irr::core;
-using namespace irr::scene;
-using namespace irr::video;
-using namespace irr::io;
-using namespace irr::gui;
 
+#ifdef HYDROCHRONO_HAVE_IRRLICHT
 class MyActionReceiver : public IEventReceiver {
 public:
 	MyActionReceiver(ChVisualSystemIrrlicht* vsys, bool& buttonPressed)
@@ -60,15 +68,34 @@ private:
 
 	bool& pressed;
 };
+#endif
+
 
 int main(int argc, char* argv[]) {
-	//auto start = std::chrono::high_resolution_clock::now();
-	GetLog() << "Copyright (c) 2017 projectchrono.org\nChrono version: " << CHRONO_VERSION << "\n\n";
+
+	GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
+
+    if (hydroc::setInitialEnvironment(argc, argv) != 0) {
+        return 1;
+    }
+
+    std::filesystem::path DATADIR(hydroc::getDataDir());
+
+	auto body1_meshfame = (DATADIR / "rm3" / "geometry" /"float_cog.obj")
+		.lexically_normal()
+		.generic_string();
+	auto body2_meshfame = (DATADIR / "rm3" / "geometry" /"plate_cog.obj")
+		.lexically_normal()
+		.generic_string();		
+	auto h5fname = (DATADIR / "rm3" / "hydroData" /"rm3.h5")
+		.lexically_normal()
+		.generic_string();
 
 	// system/solver settings
 	ChSystemNSC system;
 	system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
 	double timestep = 0.01;
+	//system.SetSolverType(ChSolver::Type::GMRES);
 	system.SetTimestepperType(ChTimestepper::Type::HHT);
 	system.SetSolverType(ChSolver::Type::GMRES);
 	system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
@@ -78,35 +105,26 @@ int main(int argc, char* argv[]) {
 
 	// some io/viz options
 	bool visualizationOn = true;
-	bool profilingOn = true;
+	bool profilingOn = false;
 	bool saveDataOn = true;
 	std::vector<double> time_vector;
 	std::vector<double> float_heave_position;
 	std::vector<double> plate_heave_position;
 
+
 	// set up body from a mesh
-	if (!std::filesystem::exists("../../HydroChrono/demos/rm3/geometry/float_cog.obj")) {
-		std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/rm3/geometry/float.obj").c_str()) << " does not exist" << std::endl;
-		return 0;
-	}
-	//std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/float.obj").c_str()) << std::endl;
+	std::cout << "Attempting to open mesh file: " << body1_meshfame << std::endl;
 	std::shared_ptr<ChBody> float_body1 = chrono_types::make_shared<ChBodyEasyMesh>(                   //
-		GetChronoDataFile("../../HydroChrono/demos/rm3/geometry/float_cog.obj").c_str(),                 // file name
+		body1_meshfame,
 		0,                                                                                        // density
 		false,                                                                                    // do not evaluate mass automatically
 		true,                                                                                     // create visualization asset
 		false                                                                                     // collisions
 		);
 
-	// set up body from a mesh
-	if (!std::filesystem::exists("../../HydroChrono/demos/rm3/geometry/plate_cog.obj")) {
-		std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/rm3/geometry/plate.obj").c_str()) << " does not exist" << std::endl;
-		return 0;
-	}
-
-	//std::cout << "Attempting to open mesh file: " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/meshFiles/plate.obj").c_str()) << std::endl;
+	std::cout << "Attempting to open mesh file: " << body2_meshfame << std::endl;
 	std::shared_ptr<ChBody> plate_body2 = chrono_types::make_shared<ChBodyEasyMesh>(                   //
-		GetChronoDataFile("../../HydroChrono/demos/rm3/geometry/plate_cog.obj").c_str(),                 // file name
+		body2_meshfame, 
 		0,                                                                                        // density
 		false,                                                                                    // do not evaluate mass automatically
 		true,                                                                                     // create visualization asset
@@ -141,7 +159,7 @@ int main(int argc, char* argv[]) {
 
 	// define wave parameters (not used in this demo)
 	HydroInputs my_hydro_inputs;
-	my_hydro_inputs.mode = noWaveCIC;// or 'regular' or 'regularCIC' or 'irregular';
+	my_hydro_inputs.mode = WaveMode::noWaveCIC;// or 'regular' or 'regularCIC' or 'irregular';
 	//my_hydro_inputs.regular_wave_amplitude = 0.022;
 	//my_hydro_inputs.regular_wave_omega = 2.10;
 
@@ -149,7 +167,7 @@ int main(int argc, char* argv[]) {
 	std::vector<std::shared_ptr<ChBody>> bodies;
 	bodies.push_back(float_body1);
 	bodies.push_back(plate_body2);
-	TestHydro blah(bodies, "../../HydroChrono/demos/rm3/hydroData/rm3.h5", my_hydro_inputs);
+	TestHydro blah(bodies, h5fname, my_hydro_inputs);
 
 	//// Debug printing added mass matrix and system mass matrix
 	//ChSparseMatrix M;
@@ -159,6 +177,7 @@ int main(int argc, char* argv[]) {
 	// for profiling
 	auto start = std::chrono::high_resolution_clock::now();
 
+#ifdef HYDROCHRONO_HAVE_IRRLICHT
 	if (visualizationOn) {
 
 		// create the irrlicht application for visualizing
@@ -198,6 +217,7 @@ int main(int argc, char* argv[]) {
 		}
 	}
 	else {
+#endif // #ifdef HYDROCHRONO_HAVE_IRRLICHT
 		int frame = 0;
 		while (system.GetChTime() <= simulationDuration) {
 			// append data to std vector
@@ -209,7 +229,9 @@ int main(int argc, char* argv[]) {
 
 			frame++;
 		}
+#ifdef HYDROCHRONO_HAVE_IRRLICHT
 	}
+#endif
 
 	// for profiling
 	auto end = std::chrono::high_resolution_clock::now();

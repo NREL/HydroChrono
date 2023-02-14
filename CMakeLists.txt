@@ -6,29 +6,61 @@
 
 cmake_minimum_required(VERSION 3.18.2)
 
+# guard against in-source builds
+if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
+    message(FATAL_ERROR "In-source builds not allowed. Please make a new directory (called a build directory) and run CMake from there. You may need to remove CMakeCache.txt. ")
+endif()
+
+# Default build type to use if none was specified
+if(NOT DEFINED HYDROCHRONO_DEFAULT_BUILD_TYPE)
+	set(HYDROCHRONO_DEFAULT_BUILD_TYPE "Release")
+endif()
+
+# Set a default build type if none was specified
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+	message(STATUS "Setting build type to '${HYDROCHRONO_DEFAULT_BUILD_TYPE}' as none was specified.")
+
+	set(CMAKE_BUILD_TYPE ${HYDROCHRONO_DEFAULT_BUILD_TYPE}
+	    CACHE STRING "Choose the type of build." FORCE)
+	mark_as_advanced(CMAKE_BUILD_TYPE)
+
+	# Set the possible values of build type for cmake-gui
+	set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+endif()
 
 #--------------------------------------------------------------
 # Modify the project name if you want: 
 #--------------------------------------------------------------
 
-project(HydroChrono CXX)
+project(HydroChrono 
+	VERSION 0.0.1
+	DESCRIPTION "Hydro dynamic library based on chrono engine"
+	LANGUAGES CXX
+)
 
+# ===================
+# OPTIONS
+# ===================
+option (HYDROCHRONO_ENABLE_TESTS "Enable tests" ON)
+option (HYDROCHRONO_ENABLE_IRRLICHT "Enable irrlicht visualization library" ON)
+option (HYDROCHRONO_ENABLE_DEMOS "Enable demo executables" ON)
+
+# ===================
+# External Libraries
+# ===================
 # find required packages and libraries to make HydroChrono library
 set (LIB_TYPE STATIC) # or SHARED
 string(TOLOWER ${LIB_TYPE} SEARCH_TYPE)
 
-find_package(Chrono COMPONENTS Irrlicht CONFIG)
+if(HYDROCHRONO_ENABLE_IRRLICHT)
+	# If irrlicht is required chrono library must be compiled with irrlicht
+	find_package(Chrono COMPONENTS Irrlicht CONFIG REQUIRED)
+else(HYDROCHRONO_ENABLE_IRRLICHT)
+	find_package(Chrono CONFIG REQUIRED)
+endif(HYDROCHRONO_ENABLE_IRRLICHT)
+
 find_package(HDF5 NAMES hdf5 COMPONENTS CXX ${SEARCH_TYPE})
-#find_package(SWIG REQUIRED)
-#find_package(PythonLibs)
-#include(${SWIG_USE_FILE})
 
-include_directories(${HDF5_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR} ${CHRONO_INCLUDE_DIRS})
-#include_directories(${HDF5_INCLUDE_DIRS} ${PYTHON_INCLUDE_PATH} ${CMAKE_CURRENT_SOURCE_DIR} ${CHRONO_INCLUDE_DIRS})
-
-set(PROJECT_LIBS ${HDF5_LIBS} ${HDF5_LIBRARIES})
-set (LINK_LIBS ${LINK_LIBS} ${CHRONO_LIBRARIES} ${HDF5_CXX_${LIB_TYPE}_LIBRARY})
-#SET(CMAKE_SWIG_FLAGS "")
 
 #-----------------------------------------------------------------------------
 # Fix for VS 2017 15.8 and newer to handle alignment specification with Eigen
@@ -36,7 +68,7 @@ set (LINK_LIBS ${LINK_LIBS} ${CHRONO_LIBRARIES} ${HDF5_CXX_${LIB_TYPE}_LIBRARY})
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
   if(MSVC AND ${MSVC_VERSION} GREATER_EQUAL 1915)
-    add_definitions( "-D_ENABLE_EXTENDED_ALIGNED_STORAGE" )
+    add_compile_definitions( "ENABLE_EXTENDED_ALIGNED_STORAGE" )
   endif()
 endif()
 
@@ -44,99 +76,101 @@ endif()
 # Tweaks to disable some warnings with MSVC
 #--------------------------------------------------------------
 if(MSVC)
-    add_definitions("-D_CRT_SECURE_NO_DEPRECATE")  # avoids deprecation warnings
-    add_definitions("-D_SCL_SECURE_NO_DEPRECATE")  # avoids deprecation warnings
-    add_definitions( "-DNOMINMAX" )                # do not use MSVC's min/max macros
+	# avoids deprecation warnings
+    add_definitions(
+		-D_CRT_SECURE_NO_DEPRECATE  
+		-D_SCL_SECURE_NO_DEPRECATE
+		-DNOMINMAX
+	)
     add_compile_options(/wd4275)                   # disable warnings triggered by Irrlicht
     add_compile_options(/wd4251)                   # class needs to have dll-interface
-else()
-    set(EXTRA_COMPILE_FLAGS "")
 endif()
 
-#--------------------------------------------------------------
-# === 3 ===
-# Add the executable from your project and specify all C++ 
-# files in your project. 
-#--------------------------------------------------------------
+# =======================
+# Hydro Chrono Library
+# =======================
+set(HYDROCHRONO_SOURCES
+  
+	src/h5fileinfo.cpp
+	src/chloadaddedmass.cpp
+	src/hydro_forces.cpp
+	src/helper.cpp
 
-add_library(HydroChrono STATIC "src/hydro_forces.cpp" "src/hydro_forces.h")
-add_executable(sphere_decay "demos/sphere/sphere_decay.cpp")
-add_executable(sphere_reg_waves "demos/sphere/sphere_reg_waves.cpp")
-add_executable(rm3_decay "demos/rm3/rm3_decay.cpp")
-add_executable(rm3_reg_waves "demos/rm3/rm3_reg_waves.cpp")
-add_executable(f3of "demos/f3of/f3of.cpp")
-add_executable(oswec_decay "demos/oswec/oswec_decay.cpp")
-#SWIG_ADD_LIBRARY(py_wec_chrono LANGUAGE python SOURCES hydro_forces_no_viz.i)
+)
+
+add_library(HydroChrono STATIC ${HYDROCHRONO_SOURCES} )
 
 target_compile_features(HydroChrono PUBLIC cxx_std_17)
 
-#--------------------------------------------------------------
-# Set properties for your executable target
-# 
-# Note that here we define a macro CHRONO_DATA_DIR which will
-# contain the path to the Chrono data directory, either in its
-# source tree (if using a build version of Chrono), or in its
-# install tree (if using an installed version of Chrono).
-#--------------------------------------------------------------
+target_include_directories(
+	HydroChrono
 
-set_target_properties(HydroChrono PROPERTIES 
-	    COMPILE_FLAGS "${CHRONO_CXX_FLAGS} ${EXTRA_COMPILE_FLAGS}"
-	    COMPILE_DEFINITIONS "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
-	    LINK_FLAGS "${CHRONO_LINKER_FLAGS}")
+	PUBLIC
+	$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+	$<INSTALL_INTERFACE:include>
+	${CHRONO_INCLUDE_DIRS} 	
 
-set_target_properties(sphere_decay PROPERTIES 
-	    COMPILE_FLAGS "${CHRONO_CXX_FLAGS} ${EXTRA_COMPILE_FLAGS}"
-	    COMPILE_DEFINITIONS "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
-	    LINK_FLAGS "${CHRONO_LINKER_FLAGS}")
+	PRIVATE
+	${CMAKE_CURRENT_SOURCE_DIR}/
+	${CMAKE_CURRENT_SOURCE_DIR}/include
+)
 
-set_target_properties(sphere_reg_waves PROPERTIES 
-	    COMPILE_FLAGS "${CHRONO_CXX_FLAGS} ${EXTRA_COMPILE_FLAGS}"
-	    COMPILE_DEFINITIONS "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
-	    LINK_FLAGS "${CHRONO_LINKER_FLAGS}")
+target_compile_definitions(HydroChrono
 
-set_target_properties(rm3_decay PROPERTIES 
-	    COMPILE_FLAGS "${CHRONO_CXX_FLAGS} ${EXTRA_COMPILE_FLAGS}"
-	    COMPILE_DEFINITIONS "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
-	    LINK_FLAGS "${CHRONO_LINKER_FLAGS}")
+	PUBLIC
 
-set_target_properties(rm3_reg_waves PROPERTIES 
-	    COMPILE_FLAGS "${CHRONO_CXX_FLAGS} ${EXTRA_COMPILE_FLAGS}"
-	    COMPILE_DEFINITIONS "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
-	    LINK_FLAGS "${CHRONO_LINKER_FLAGS}")
+	PRIVATE 
+		CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\"
+)
 
-set_target_properties(f3of PROPERTIES 
-		COMPILE_FLAGS "${CHRONO_CXX_FLAGS} ${EXTRA_COMPILE_FLAGS}"
-	    COMPILE_DEFINITIONS "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
-	    LINK_FLAGS "${CHRONO_LINKER_FLAGS}")
+target_compile_options(HydroChrono BEFORE 
+	PUBLIC
+		${CHRONO_CXX_FLAGS}
+)
 
-set_target_properties(oswec_decay PROPERTIES 
-	    COMPILE_FLAGS "${CHRONO_CXX_FLAGS} ${EXTRA_COMPILE_FLAGS}"
-	    COMPILE_DEFINITIONS "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
-	    LINK_FLAGS "${CHRONO_LINKER_FLAGS}")
+target_link_options(HydroChrono BEFORE 
+	PUBLIC
+		${CHRONO_LINKER_FLAGS}
+)
 
-#--------------------------------------------------------------
-# Link to Chrono libraries and dependency libraries
-#--------------------------------------------------------------
+target_link_libraries(HydroChrono 
+	PUBLIC
+		hdf5::hdf5_cpp-static
+	PRIVATE
+		${CHRONO_LIBRARIES}
+)
 
-target_link_libraries(HydroChrono ${LINK_LIBS})
-target_link_libraries(sphere_decay HydroChrono)
-target_link_libraries(sphere_reg_waves HydroChrono)
-target_link_libraries(rm3_decay HydroChrono)
-target_link_libraries(rm3_reg_waves HydroChrono)
-target_link_libraries(f3of HydroChrono)
-target_link_libraries(oswec_decay HydroChrono)
-#SWIG_LINK_LIBRARIES(py_wec_chrono wec_chrono ${PYTHON_LIBRARIES})
 
-#--------------------------------------------------------------
-# === 4 (OPTIONAL) ===
-# 
-# Optionally, add a custom command for copying all Chrono and
-# dependency DLLs to the appropriate binary output folder.
-# This function has effect only on Windows.
-# 
-# Note that you must first set EXECUTABLE_OUTPUT_PATH
-# (this can simply be ${CMAKE_BINARY_DIR}, like in this example)
-#--------------------------------------------------------------
+# ====================
+# DEMOS
+# ====================
+if(HYDROCHRONO_ENABLE_DEMOS)
+	add_subdirectory(demos)
+endif(HYDROCHRONO_ENABLE_DEMOS)
 
-set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
-add_DLL_copy_command("${CHRONO_DLLS}")
+
+# ====================
+# TESTS
+# ====================
+if(HYDROCHRONO_ENABLE_TESTS)
+
+	if(DEFINED ENV{HYDROCHRONO_DATA_DIR})
+		# Override DATA_DIR by environement variable
+		set(HYDROCHRONO_DATA_DIR $ENV{HYDROCHRONO_DATA_DIR})
+	else()
+		set(HYDROCHRONO_DATA_DIR "${PROJECT_SOURCE_DIR}/demos")
+	endif()
+
+	include(CTest)
+	enable_testing()
+
+	add_subdirectory(tests)
+
+endif(HYDROCHRONO_ENABLE_TESTS)
+
+
+
+# Not a good idea to copy DLLs
+# dosen't work on Linux
+#set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
+#add_DLL_copy_command("${CHRONO_DLLS}")
