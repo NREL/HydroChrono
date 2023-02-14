@@ -10,6 +10,7 @@ using namespace chrono;
 // H5FileInfo Class Definitions
 // =============================================================================
 
+H5FileInfo::H5FileInfo() {}
 
 /*******************************************************************************
 * H5FileInfo constructor
@@ -31,7 +32,47 @@ H5FileInfo::H5FileInfo(std::string file, std::string Name) {
 	readH5Data();
 }
 
+/*******************************************************************************
+* H5FileInfo copy constructor (H5FileInfo& rhs)
+* defines basic copy constructor using the = operator
+*******************************************************************************/
+H5FileInfo::H5FileInfo(H5FileInfo& old) {
+	*this = old;
+}
 
+/*******************************************************************************
+* H5FileInfo::operator = (H5FileInfo& rhs)
+* defines = operator, sets the left object = to right object (*this = rhs)
+* returns *this
+*******************************************************************************/
+H5FileInfo& H5FileInfo::operator = (H5FileInfo& rhs) {
+	printed = rhs.printed;
+	cg = rhs.cg;
+	cb = rhs.cb;
+	bodyNum = rhs.bodyNum;
+	_rho = rhs._rho;
+	_g = rhs._g;
+	_disp_vol = rhs._disp_vol;
+	freq_list = rhs.freq_list;
+	lin_matrix = rhs.lin_matrix;
+	inf_added_mass = rhs.inf_added_mass;
+	rirf_matrix = rhs.rirf_matrix;
+	rirf_dims = rhs.rirf_dims;
+	rirf_time_vector = rhs.rirf_time_vector;
+	radiation_damping_matrix = rhs.radiation_damping_matrix;
+	Bw_dims = rhs.Bw_dims;
+	excitation_mag_matrix = rhs.excitation_mag_matrix;
+	excitation_mag_dims = rhs.excitation_mag_dims;
+	excitation_re_matrix = rhs.excitation_re_matrix;
+	re_dims = rhs.re_dims;
+	excitation_im_matrix = rhs.excitation_im_matrix;
+	im_dims = rhs.im_dims;
+	excitation_phase_matrix = rhs.excitation_phase_matrix;
+	excitation_phase_dims = rhs.excitation_phase_dims;
+	h5_file_name = rhs.h5_file_name;
+	bodyName = rhs.bodyName;
+	return *this;
+}
 
 /*******************************************************************************
 * H5FileInfo::readH5Data()
@@ -60,7 +101,7 @@ void H5FileInfo::readH5Data() {
 	Init3D(userH5File, bodyName + "/hydro_coeffs/radiation_damping/impulse_response_fun/K", rirf_matrix, rirf_dims);
 	Init3D(userH5File, bodyName + "/hydro_coeffs/radiation_damping/all", radiation_damping_matrix, Bw_dims);
 	Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/phase", excitation_phase_matrix, excitation_phase_dims);
-	
+
 	// use same scalar function to set the int valued body number
 	double temp;
 	InitScalar(userH5File, bodyName + "/properties/body_number", temp);
@@ -194,7 +235,7 @@ H5FileInfo::~H5FileInfo() { }
 * H5FileInfo::GetRIRFDims(int i) returns the i-th component of the dimensions of radiation_damping_matrix
 * i = [0,1,2] -> [number of rows, number of columns, number of matrices]
 *******************************************************************************/
-int H5FileInfo::GetRIRFDims(int i) const { 
+int H5FileInfo::GetRIRFDims(int i) const {
 	return rirf_dims[i];
 }
 
@@ -202,7 +243,7 @@ int H5FileInfo::GetRIRFDims(int i) const {
 * H5FileInfo::GetHydrostaticStiffness()
 * returns the linear restoring stiffness matrix element in row i , column j
 *******************************************************************************/
-double H5FileInfo::GetHydrostaticStiffness(int i, int j) const { 
+double H5FileInfo::GetHydrostaticStiffness(int i, int j) const {
 	return lin_matrix(i, j) * _rho * g;
 }
 
@@ -226,7 +267,7 @@ double H5FileInfo::GetRIRFval(int dof, int col, int s) const {
 * H5FileInfo::GetRIRFTimeVector()
 * returns the std::vector of rirf_time_vector from h5 file
 *******************************************************************************/
-std::vector<double> H5FileInfo::GetRIRFTimeVector() const { 
+std::vector<double> H5FileInfo::GetRIRFTimeVector() const {
 	return rirf_time_vector;
 }
 
@@ -234,7 +275,7 @@ std::vector<double> H5FileInfo::GetRIRFTimeVector() const {
 * H5FileInfo::GetInfAddedMassMatrix()
 * returns the matrix for added mass at infinite frequency scaled by rho
 *******************************************************************************/
-ChMatrixDynamic<double> H5FileInfo::GetInfAddedMassMatrix() const { 
+ChMatrixDynamic<double> H5FileInfo::GetInfAddedMassMatrix() const {
 	return inf_added_mass * rho;
 }
 
@@ -243,7 +284,7 @@ ChMatrixDynamic<double> H5FileInfo::GetInfAddedMassMatrix() const {
 * H5FileInfo::GetNumFreqs()
 * returns number of frequencies computed
 *******************************************************************************/
-double H5FileInfo::GetNumFreqs() const { 
+double H5FileInfo::GetNumFreqs() const {
 	return freq_list.size();
 }
 
@@ -287,7 +328,7 @@ double H5FileInfo::GetExcitationMagValue(int i, int j, int k) const {
 double H5FileInfo::GetExcitationMagInterp(int i, int j, double freq_index_des) const {
 	double freq_interp_val = freq_index_des - floor(freq_index_des);
 	double excitationMagFloor = GetExcitationMagValue(i, j, floor(freq_index_des));
-	double excitationMagCeil = GetExcitationMagValue(i, j, floor(freq_index_des) +1);
+	double excitationMagCeil = GetExcitationMagValue(i, j, floor(freq_index_des) + 1);
 	double excitationMag = (freq_interp_val * (excitationMagCeil - excitationMagFloor)) + excitationMagFloor;
 
 	return excitationMag;

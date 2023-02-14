@@ -5,13 +5,13 @@
 
 
 namespace H5 {
-    class H5File;
+	class H5File;
 }
 
 #include <chrono/core/ChMatrix.h>
 
 /**@brief Extract bemio formated hdf5 data
- * 
+ *
  * https://wec-sim.github.io/bemio/_modules/bemio/io/output.html
 */
 class H5FileInfo {
@@ -19,13 +19,10 @@ public:
 	bool printed = false;
 
 	H5FileInfo(std::string file, std::string body_name);
-    H5FileInfo() = delete;
+	H5FileInfo();
 
-	H5FileInfo(const H5FileInfo& old) = default;
-	H5FileInfo& operator = (const H5FileInfo& rhs) = delete;
-
-    H5FileInfo(H5FileInfo&&) = default;
-	H5FileInfo& operator = (H5FileInfo&& rhs) = default;
+	H5FileInfo(H5FileInfo& old);
+	H5FileInfo& operator = (H5FileInfo& rhs);
 
 	~H5FileInfo();
 
@@ -77,7 +74,7 @@ private:
 
 	void InitScalar(H5::H5File& file, std::string data_name, double& var);
 	void Init1D(H5::H5File& file, std::string data_name, std::vector<double>& var);
-	void Init2D(H5::H5File& file, std::string data_name, chrono::ChMatrixDynamic<double>& var); 
+	void Init2D(H5::H5File& file, std::string data_name, chrono::ChMatrixDynamic<double>& var);
 	void Init3D(H5::H5File& file, std::string data_name, std::vector<double>& var, std::vector<int>& dims);
 	void readH5Data();
 };
