@@ -1,14 +1,14 @@
 # Building HydroChrono with Project Chrono and HDF5 files
 
-## Requirements
-* Chrono installed and built in RelWithDebInfo mode (currently using dev branch see note below) (built with Irrlicht module) and Chrono dependencies (see [Chrono Install/Build Guide for details](https://api.projectchrono.org/tutorial_install_chrono.html) ). This includes items like
+## Prerequisites 
+1. Chrono installed and built in RelWithDebInfo mode (currently using dev branch see note below) (built with Irrlicht module) and Chrono dependencies (see [Chrono Install/Build Guide for details](https://api.projectchrono.org/tutorial_install_chrono.html) ). This includes items like
 	* C++ Compiler (Visual Studio 2019 or newer required, 2019 recommended)
 	* Eigen3 (3.3.0 or newer required, 3.4.0 recommended)
 	* Irrlicht Engine (1.8.4)
 	* CMake
 	* GIT client
 
-* Install H5Cpp header file from HDF5Group Note: Version 1.10.8 recommended, other versions may not work as intended. [Download Link](https://portal.hdfgroup.org/display/support/Downloads) [Instructions](https://portal.hdfgroup.org/display/support/Building+HDF5+with+CMake#BuildingHDF5withCMake-quickins) Note 2: This is why Visual Studio 2019 is recommended above, building HDF5 with newer versions of Visual Studio is not as clear. To clarify the HDF5Group setup/build instructions here is a short summary of the steps:
+2. Install H5Cpp header file from HDF5Group Note: Version 1.10.8 recommended, other versions may not work as intended. [Download Link](https://portal.hdfgroup.org/display/support/Downloads) [Instructions](https://portal.hdfgroup.org/display/support/Building+HDF5+with+CMake#BuildingHDF5withCMake-quickins) Note 2: **This is why Visual Studio 2019 is recommended above**, building HDF5 with newer versions of Visual Studio is not as clear (TODO: add VS2022 instructions). To clarify the HDF5Group setup/build instructions here is a short summary of the steps:
 	1. Extract zip somewhere
 	2. Go into `<path>\libraries\CMake-hdf5-1.10.8\CMake-hdf5-1.10.8` which contains .bat files etc and open command line (SHIFT + right click, open powershell window on windows)
 	3. Execute the batch file or shell script for your platform. For example, `ctest -S HDF5config.cmake,BUILD_GENERATOR=VS201964 -C RelWithDebInfo -V -O hdf5.log` 
@@ -19,19 +19,22 @@
 	8. In general, to use HDF5 library users must first set the `HDF5_DIR` environment variable to the installed location of the CMake configuration files for HDF5. For example, on Windows the following path might be set:
 		* `HDF5_DIR=C:\Users\USER\code\libraries\CMake-hdf5-1.10.8\CMake-hdf5-1.10.8\build\HDF5-1.10.8-win64\HDF5-1.10.8-win64\share\cmake`
 
-* Recommended (For use with Python): Install and build PyChrono according to [instructions.](https://api.projectchrono.org/module_python_installation.html) Note, instructions for building PyChrono include installing SWIG to generate python files-this is used again to generate python from HydroChrono C++ code.
+3. Recommended (For use with Python): Install and build PyChrono according to [instructions.](https://api.projectchrono.org/module_python_installation.html) Note, instructions for building PyChrono include installing SWIG to generate python files-this is used again to generate python from HydroChrono C++ code.
 
 * (optional) Gnuplot [Gnuplot Home](http://www.gnuplot.info/) or other plotting software
 
 ## Building HydroChrono (and demos)
 1. Install and build above requirements.
-	* N.B. We are currently using Chrono commit 9eed26df8ca4c5e84e7affa6222989d8260add2f
+	* N.B. We are currently using Chrono commit 9eed26df8ca4c5e84e7affa6222989d8260add2f, please revert to this commit of Project Chrono for best results.
 2. Now to build HydroChrono library: 
 	1. Clone this project into a directory, and set up a build folder (i.e. clone project into HydroChrono directory and set up HydroChrono_build adjacent directory). 
-	2. Just like when building Project Chrono, open CMake GUI specifying the location of the source files and built binaries for HydroChrono (HydroChrono and HydroChrono_build respectively). Configure and generate the solution, specifying `Chrono_DIR` as Chrono Build location (`../chrono_build/cmake`) and HDF5_DIR as (`../CMake-hdf5-1.10.8/CMake-hdf5-1.10.8/build/HDF5-1.10.8-win64/HDF5-1.10.8-win64/share/cmake` or similar path to find the cmake file at the end of this path). Note: version 1.10.8 of HDF5 works best with Visual Studio 2019.
-	3. Navigate to the build folder and open the solution in Visual Studio. Build the solution for HydroChrono in RelWithDebInfo mode (The `ALL_BUILD` project is the best for building and linking everything. It will build the library and all demos).
+	2. Just like when building Project Chrono, open CMake GUI specifying the location of the source files and built binaries for HydroChrono (HydroChrono and HydroChrono_build respectively). Configure and generate the solution setting 
+		* `Chrono_DIR` as Chrono Build location (`../chrono_build/cmake`)
+		* HDF5_DIR as (`../CMake-hdf5-1.10.8/CMake-hdf5-1.10.8/build/HDF5-1.10.8-win64/HDF5-1.10.8-win64/share/cmake` or similar path to find the `cmake` file at the end of this path). Note: version 1.10.8 of HDF5 works best with Visual Studio 2019.
+		* Enable `HYDROCHRONO_ENABLE_DEMOS`, `HYDROCHRONO_ENABLE_IRRLICHT`, and `HYDROCHRONO_ENABLE_TESTS` to enable each feature. it is recommended to enable all of these, and the Irrlicht module depends on having Project Chrono be built with Irrlicht module enabled.
+	3. Navigate to the build folder and open the solution in Visual Studio (or simply press "Open Project" in CMake GUI). Build the solution for HydroChrono in RelWithDebInfo mode (The `ALL_BUILD` project is the best for building and linking everything).
 3. From Project Chrono build directory copy `chrono_build/bin/data` file into `HydroChrono_build/data` for optional shaders and logos
-4. Navigate to `chrono_build/bin/RelWithDebInfo` folder and copy all .dll and .pdb files (not for demos) and paste them into `HydroChrono_build/RelWithDebInfo` file. List of all files to copy:
+4. Navigate to `chrono_build/bin/RelWithDebInfo` folder and copy all .dll and .pdb files (not for demos) and paste them into `HydroChrono_build/demos/RelWithDebInfo` file. List of all files to copy:
 	* ChronoEngine.dll
 	* ChronoEngine.pdb
 	* ChronoEngine_irrlicht.dll
@@ -40,12 +43,22 @@
 	* ChronoEngine_postprocess.pdb
 	* Irrlicht.dll (no pdb for Irrlicht)
 	* and any other chrono module ChronoEngine_moduleName.dll and ChronoEngine_moduleName.pdb
-5. Navigate to `HydroChrono_build/RelWithDebInfo` and run executables. You may need to set up some output files to catch output/debug data. Optionally copy plot files into results files and generate plots. (TODO: have cmake copy these over automatically)
+5. Navigate to `HydroChrono_build/demos/RelWithDebInfo` and run demos.
+	* When running demos, a command line argument is needed for the location of input files. To set this, run demo executables from the command line with the command argument for the absolute file location for `<path>/HydroChrono/demos` (Ex: the command `> ./sphere_decay.exe C:\Users\USERNAME\HydroChrono\demos` when executed from the `HydroChrono_build/demos/RelWithDebInfo` file will run the sphere heave decay test demo with the proper input file locations.)
+		* Alternatively, set the command line argument for debug mode in a demo's properties. Do this in Visual Studio 2019 by navigating to the solution explorer, right clicking a demo, select `properties > Configuration Properties > Debugging` and set the option for Command Arguments to `C:\Users\USERNAME\HydroChrono\demos`.
+	* Optionally copy plot files into results files and generate plots. (TODO: have cmake copy these over automatically)
 
 ## Files
 * src - contains source code for HydroChrono library
-	* hydro_forces.h and hydro_forces.cpp
-		* header and implementation files for hydro forces initialized through H5 files
+	* hydro_forces.cpp
+		* Defines classes to calculate hydrodynamic forces and apply to a multibody system.
+	* chloadaddedmass.cpp
+		* Defines a class to apply the added mass at infinite frequency to a system using Project Chrono Loadable objects.
+	* h5fileinfo.cpp
+		* Defines a class to read an h5 file and store system properties.
+	* helper.cpp
+		* Defines helper functions for various operations.
+* include/hydroc - contains header files for above corresponding .cpp files.
 * demos - contains information for various demos
 	* demos/rm3 - contains required files for rm3 demos (decay test and regular wave test)
 		* rm3_decay.cpp and rm3_reg_waves.cpp - demos showing rm3 decay and regular wave test respectively
@@ -69,3 +82,4 @@
 		* demos/oswec/postprocessing - contains .plt and .py plotting files and WEC-Sim comparison data for plots. Copy these into results folder to plot demo outputs
 	* demos/Test - can be ignored
 	* demos/python - can be ignored for now
+* tests - contains multiple base tests used when option `HYDROCHRONO_ENABLE_TESTS` is enabled
