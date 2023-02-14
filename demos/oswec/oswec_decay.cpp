@@ -1,4 +1,6 @@
-#include "../../src/hydro_forces.h"
+#include <hydroc/hydro_forces.h>
+
+#include <hydroc/helper.h>
 //#include "./src/hydro_forces.h"
 #include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
 #include "chrono_irrlicht/ChIrrMeshTools.h"
@@ -64,7 +66,24 @@ private:
 
 int main(int argc, char* argv[]) {
 	//auto start = std::chrono::high_resolution_clock::now();
-	GetLog() << "Copyright (c) 2017 projectchrono.org\nChrono version: " << CHRONO_VERSION << "\n\n";
+	GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
+
+
+	if (hydroc::setInitialEnvironment(argc, argv) != 0) {
+		return 1;
+	}
+
+	std::filesystem::path DATADIR(hydroc::getDataDir());
+
+	auto body1_meshfame = (DATADIR / "oswec" / "geometry" / "flap.obj")
+		.lexically_normal()
+		.generic_string();
+	auto body2_meshfame = (DATADIR / "oswec" / "geometry" / "base.obj")
+		.lexically_normal()
+		.generic_string();
+	auto h5fname = (DATADIR / "oswec" / "hydroData" / "oswec.h5")
+		.lexically_normal()
+		.generic_string();
 
 	// system/solver settings
 	ChSystemNSC system;
@@ -85,35 +104,27 @@ int main(int argc, char* argv[]) {
 	std::vector<double> flap_rot;
 
 	// set up body from a mesh
-	if (!std::filesystem::exists("../../HydroChrono/demos/oswec/geometry/flap.obj")) {
-		std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/oswec/geometry/flap.obj").c_str()) << " does not exist" << std::endl;
-		return 0;
-	}
-	//std::shared_ptr<ChBody> flap_body;
-	auto flap_body = chrono_types::make_shared<ChBodyEasyMesh>(
-		GetChronoDataFile("../../HydroChrono/demos/oswec/geometry/flap.obj").c_str(), // file name
-		1000,                                                                         // density
-		false,                                                                        // do not evaluate mass automatically
-		true,                                                                         // create visualization asset
-		false                                                                        // collisions                                                                           // swept sphere radius
+	std::cout << "Attempting to open mesh file: " << body1_meshfame << std::endl;
+	std::shared_ptr<ChBody> flap_body = chrono_types::make_shared<ChBodyEasyMesh>(                   //
+		body1_meshfame,
+		1000,                                                                                     // density
+		false,                                                                                    // do not evaluate mass automatically
+		true,                                                                                     // create visualization asset
+		false                                                                                     // collisions
 		);
-	system.Add(flap_body);
 
 	// set up body from a mesh
-	if (!std::filesystem::exists("../../HydroChrono/demos/oswec/geometry/base.obj")) {
-		std::cout << "File " << std::filesystem::absolute(GetChronoDataFile("../../HydroChrono/demos/oswec/geometry/base.obj").c_str()) << " does not exist" << std::endl;
-		return 0;
-	}
-	//std::shared_ptr<ChBody> base_body;
-	auto base_body = chrono_types::make_shared<ChBodyEasyMesh>(
-		GetChronoDataFile("../../HydroChrono/demos/oswec/geometry/base.obj").c_str(), // file name
-		1000,                                                                         // density
-		false,                                                                        // do not evaluate mass automatically
-		true,                                                                         // create visualization asset
-		false                                                                          // collisions
+	std::cout << "Attempting to open mesh file: " << body2_meshfame << std::endl;
+	std::shared_ptr<ChBody> base_body = chrono_types::make_shared<ChBodyEasyMesh>(                   //
+		body2_meshfame,
+		1000,                                                                                     // density
+		false,                                                                                    // do not evaluate mass automatically
+		true,                                                                                     // create visualization asset
+		false                                                                                     // collisions
 		);
 
 	// define the float's initial conditions
+	system.Add(flap_body);
 	flap_body->SetNameString("body1");
 	auto ang_rad = CH_C_PI / 18.0;
 	flap_body->SetPos(ChVector<>(6.1*std::cos(CH_C_PI / 2.0 - ang_rad),
@@ -140,7 +151,7 @@ int main(int argc, char* argv[]) {
 
 	//// define wave parameters (not used in this demo)
 	HydroInputs my_hydro_inputs;
-	my_hydro_inputs.mode = noWaveCIC;// or 'regular' or 'regularCIC' or 'irregular';
+	my_hydro_inputs.mode = WaveMode::noWaveCIC;// or 'regular' or 'regularCIC' or 'irregular';
 	////my_hydro_inputs.regular_wave_amplitude = 0.022;
 	////my_hydro_inputs.regular_wave_omega = 2.10;
 
@@ -148,11 +159,12 @@ int main(int argc, char* argv[]) {
 	std::vector<std::shared_ptr<ChBody>> bodies;
 	bodies.push_back(flap_body);
 	bodies.push_back(base_body);
-	TestHydro blah(bodies, "../../HydroChrono/demos/oswec/hydroData/oswec.h5", my_hydro_inputs);
+	TestHydro blah(bodies, h5fname, my_hydro_inputs);
 
 	// for profiling
 	auto start = std::chrono::high_resolution_clock::now();
 
+#ifdef HYDROCHRONO_HAVE_IRRLICHT
 	if (visualizationOn) {
 		// create the irrlicht application for visualizing
 		auto irrlichtVis = chrono_types::make_shared<ChVisualSystemIrrlicht>();
@@ -192,6 +204,7 @@ int main(int argc, char* argv[]) {
 		}
 	}
 	else {
+#endif // #ifdef HYDROCHRONO_HAVE_IRRLICHT
 		int frame = 0;
 		while (system.GetChTime() <= simulationDuration) {
 			// append data to std vector
@@ -201,7 +214,9 @@ int main(int argc, char* argv[]) {
 			system.DoStepDynamics(timestep);
 			frame++;
 		}
+#ifdef HYDROCHRONO_HAVE_IRRLICHT
 	}
+#endif
 
 	// for profiling
 	auto end = std::chrono::high_resolution_clock::now();
