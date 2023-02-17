@@ -174,3 +174,38 @@ endif(HYDROCHRONO_ENABLE_TESTS)
 # dosen't work on Linux
 #set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 #add_DLL_copy_command("${CHRONO_DLLS}")
+
+
+# Export to include as external library in other projects
+
+install(TARGETS HydroChrono
+    EXPORT HydroChronoTargets
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(
+    EXPORT HydroChronoTargets
+    FILE HydroChronoTargets.cmake
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/HydroChrono/cmake"
+    NAMESPACE HydroChrono::
+)
+
+include(CMakePackageConfigHelpers)
+configure_package_config_file(
+    cmake/HydroChronoConfig.cmake.in
+    "${CMAKE_CURRENT_BINARY_DIR}/cmake/HydroChronoConfig.cmake"
+    INSTALL_DESTINATION "${CMAKE_INSTALL_DATADIR}/HydroChrono/cmake"
+)
+
+install(
+    FILES "${CMAKE_CURRENT_BINARY_DIR}/cmake/HydroChronoConfig.cmake"
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/HydroChrono/cmake"
+)
+
+export(
+    EXPORT HydroChronoTargets
+    FILE "${CMAKE_CURRENT_BINARY_DIR}/cmake/HydroChronoTargets.cmake"
+    NAMESPACE HydroChrono::
+)
