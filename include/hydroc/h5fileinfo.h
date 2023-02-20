@@ -19,10 +19,14 @@ public:
 	bool printed = false;
 
 	H5FileInfo(std::string file, std::string body_name);
-	H5FileInfo();
+    H5FileInfo() = delete;
 
-	H5FileInfo(H5FileInfo& old);
-	H5FileInfo& operator = (H5FileInfo& rhs);
+	H5FileInfo(const H5FileInfo& old) = default;
+	H5FileInfo& operator = (const H5FileInfo& rhs) = default;
+
+    H5FileInfo(H5FileInfo&&) = delete;
+	H5FileInfo& operator = (H5FileInfo&& rhs) = delete;
+
 
 	~H5FileInfo();
 
