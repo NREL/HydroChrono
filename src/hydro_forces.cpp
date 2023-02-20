@@ -394,7 +394,7 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 	double* buoyancy = new double[num_bodies]; // this sets up an array for buoyancy for each body
 	// add heave buoyancy for each body, and add rxb=(cb-cg)x(0,0,buoyancy) for the moment due to buoyancy for each body (simplified)
 	for (int b = 0; b < num_bodies; b++) {
-		buoyancy[b] = file_info[b].rho * -(bodies[b]->GetSystem()->Get_G_acc()).z() * file_info[b].disp_vol; // buoyancy = rho*g*Vdisp
+		buoyancy[b] = file_info[b].GetRho() * -(bodies[b]->GetSystem()->Get_G_acc()).z() * file_info[b].GetDispVol(); // buoyancy = rho*g*Vdisp
 		unsigned b_offset = 6 * b; // force_hydrostatic has 6 elements for each body so to skip to the next body we move 6 spaces
 		unsigned r_offset = 3 * b; // cb_minus_cg has 3 elements for each body so to skip to the next body we move 3 spaces
 		force_hydrostatic[b_offset + 2] += buoyancy[b]; // add heave buoyancy

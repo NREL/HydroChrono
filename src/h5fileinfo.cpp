@@ -200,7 +200,7 @@ int H5FileInfo::GetRIRFDims(int i) const {
 * returns the linear restoring stiffness matrix element in row i , column j
 *******************************************************************************/
 double H5FileInfo::GetHydrostaticStiffness(int i, int j) const {
-	return lin_matrix(i, j) * _rho * g;
+	return lin_matrix(i, j) * _rho * _g;
 }
 
 
@@ -215,7 +215,7 @@ double H5FileInfo::GetRIRFval(int dof, int col, int s) const {
 		return 0;
 	}
 	else {
-		return rirf_matrix[index] * rho; // scale radiation force by rho
+		return rirf_matrix[index] * _rho; // scale radiation force by rho
 	}
 }
 
@@ -232,7 +232,7 @@ std::vector<double> H5FileInfo::GetRIRFTimeVector() const {
 * returns the matrix for added mass at infinite frequency scaled by rho
 *******************************************************************************/
 ChMatrixDynamic<double> H5FileInfo::GetInfAddedMassMatrix() const {
-	return inf_added_mass * rho;
+	return inf_added_mass * _rho;
 }
 
 
@@ -274,7 +274,7 @@ double H5FileInfo::GetOmegaDelta() const {
 *******************************************************************************/
 double H5FileInfo::GetExcitationMagValue(int i, int j, int k) const {
 	int indexExMag = k + excitation_mag_dims[2] * i;
-	return excitation_mag_matrix[indexExMag] * rho * g;
+	return excitation_mag_matrix[indexExMag] * _rho * _g;
 }
 
 /*******************************************************************************

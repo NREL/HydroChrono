@@ -27,7 +27,6 @@ public:
     H5FileInfo(H5FileInfo&&) = delete;
 	H5FileInfo& operator = (H5FileInfo&& rhs) = delete;
 
-
 	~H5FileInfo();
 
 	chrono::ChMatrixDynamic<double> GetInfAddedMassMatrix() const;
@@ -45,10 +44,9 @@ public:
 
 	std::vector<double> cg;
 	std::vector<double> cb;
-	const double& rho = _rho;
-	const double& g = _g;
-	const double& disp_vol = _disp_vol;
-	//const double& rirf_timestep = _rirf_timestep;
+	double GetRho() const { return _rho;}
+	double GetDispVol() const  { return _disp_vol;}
+
 	int bodyNum;
 private:
 
