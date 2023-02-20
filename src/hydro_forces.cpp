@@ -261,7 +261,7 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::stri
 	std::vector<std::shared_ptr<ChLoadable>> loadables(bodies.size());
 	for (auto i = 0; i < bodies.size(); ++i) { loadables[i] = bodies[i]; }
 
-	my_loadbodyinertia = chrono_types::make_shared<ChLoadAddedMass>(file_info, loadables);
+	my_loadbodyinertia = chrono_types::make_shared<ChLoadAddedMass>(file_info, loadables, bodies[0]->GetSystem());
 	bodies[0]->GetSystem()->Add(my_loadcontainer);
 	my_loadcontainer->Add(my_loadbodyinertia);
 
