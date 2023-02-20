@@ -175,6 +175,7 @@ endif(HYDROCHRONO_ENABLE_TESTS)
 #set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 #add_DLL_copy_command("${CHRONO_DLLS}")
 
+include(GNUInstallDirs)
 
 # Export to include as external library in other projects
 
@@ -183,6 +184,7 @@ install(TARGETS HydroChrono
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
 install(
@@ -190,6 +192,11 @@ install(
     FILE HydroChronoTargets.cmake
     DESTINATION "${CMAKE_INSTALL_DATADIR}/HydroChrono/cmake"
     NAMESPACE HydroChrono::
+)
+
+install(
+    DIRECTORY include
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
 include(CMakePackageConfigHelpers)
