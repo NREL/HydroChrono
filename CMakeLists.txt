@@ -133,11 +133,19 @@ target_link_options(HydroChrono BEFORE
 		${CHRONO_LINKER_FLAGS}
 )
 
+# temporary hack
+# seems there is no namespace target hdf5:: on linux
+# for HDF5 version 1.10 to 1.14 ?
+if(NOT TARGET hdf5::hdf5_cpp-static)
+	add_library(hdf5::hdf5_cpp-static ALIAS hdf5_cpp-static)
+endif()
+
 target_link_libraries(HydroChrono 
 	PUBLIC
-		hdf5::hdf5_cpp-static
+		${CHRONO_LIBRARIES}		
 	PRIVATE
-		${CHRONO_LIBRARIES}
+		hdf5::hdf5_cpp-static
+
 )
 
 
