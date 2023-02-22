@@ -19,10 +19,13 @@ public:
 	bool printed = false;
 
 	H5FileInfo(std::string file, std::string body_name);
-	H5FileInfo();
+    H5FileInfo() = delete;
 
-	H5FileInfo(H5FileInfo& old);
-	H5FileInfo& operator = (H5FileInfo& rhs);
+	H5FileInfo(const H5FileInfo& old) = default;
+	H5FileInfo& operator = (const H5FileInfo& rhs) = default;
+
+    H5FileInfo(H5FileInfo&&) = delete;
+	H5FileInfo& operator = (H5FileInfo&& rhs) = delete;
 
 	~H5FileInfo();
 
@@ -41,10 +44,9 @@ public:
 
 	std::vector<double> cg;
 	std::vector<double> cb;
-	const double& rho = _rho;
-	const double& g = _g;
-	const double& disp_vol = _disp_vol;
-	//const double& rirf_timestep = _rirf_timestep;
+	double GetRho() const { return _rho;}
+	double GetDispVol() const  { return _disp_vol;}
+
 	int bodyNum;
 	chrono::ChMatrixDynamic<double> lin_matrix;
 private:
