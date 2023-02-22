@@ -350,59 +350,49 @@ double TestHydro::setVelHistory(double val, int step, int b_num, int index) {
 * computes the 6N dimensional Hydrostatic stiffness force
 *******************************************************************************/
 std::vector<double> TestHydro::ComputeForceHydrostatics() {
-	std::vector<double> position, displacement;
-	unsigned total_dofs = 6 * num_bodies;
-	position.resize(total_dofs, 0.0);
-	displacement.resize(total_dofs, 0.0);
-
-	// orientation initialized to system current pos/rot vectors
-	for (int b = 0; b < num_bodies; b++) {
-		for (int i = 0; i < 3; i++) {
-			unsigned b_offset = 6 * b;
-			if (b_offset + i + 3 > total_dofs || b_offset + i < 0) {
-				std::cout << "temp index in hydrostatic force is bad " << std::endl;
-			}
-			position[i + b_offset] = bodies[b]->GetPos()[i];
-			position[i + 3 + b_offset] = bodies[b]->GetRot().Q_to_Euler123()[i]; // TODO check if we want this, or GetWvel_par()?
-		}
-	}
-
-	// make displacement vector for system
-	for (int i = 0; i < total_dofs; i++) {
-		displacement[i] = equilibrium[i] - position[i];
-	}
-
-	// re invent matrix vector multiplication
-	for (int b = 0; b < num_bodies; b++) {
-		unsigned b_offset = 6 * b;
-		for (int i = 0; i < 6; i++) {
-			for (int j = 0; j < 6; j++) {
-				double t = (file_info[b].GetHydrostaticStiffness(i, j));
-				//if (i == 4 && j == 4 && t < 0) {
-				//	t = -t;
-				//}
-				force_hydrostatic[i + b_offset] += t * displacement[j + b_offset];
-			}
-		}
-	}
-
-
-	// now handle buoyancy force....
 	assert(num_bodies > 0);
-	double* buoyancy = new double[num_bodies]; // this sets up an array for buoyancy for each body
-	// add heave buoyancy for each body, and add rxb=(cb-cg)x(0,0,buoyancy) for the moment due to buoyancy for each body (simplified)
+
 	for (int b = 0; b < num_bodies; b++) {
-		buoyancy[b] = file_info[b].rho * -(bodies[b]->GetSystem()->Get_G_acc()).z() * file_info[b].disp_vol; // buoyancy = rho*g*Vdisp
-		unsigned b_offset = 6 * b; // force_hydrostatic has 6 elements for each body so to skip to the next body we move 6 spaces
-		unsigned r_offset = 3 * b; // cb_minus_cg has 3 elements for each body so to skip to the next body we move 3 spaces
-		force_hydrostatic[b_offset + 2] += buoyancy[b]; // add heave buoyancy
-		// now for moments due to buoyancy (simplified)
-		// for torque about x (index 3) per body, add b * r_y
-		force_hydrostatic[b_offset + 3] += buoyancy[b] * cb_minus_cg[1 + r_offset];
-		// for torque about y (index 4) per body, subtract b*r_x
-		force_hydrostatic[b_offset + 4] += -1 * buoyancy[b] * cb_minus_cg[0 + r_offset];
+		// initialize variables
+		std::shared_ptr<chrono::ChBody> body = bodies[b];
+		H5FileInfo& body_h5file = file_info[b];
+		double rho = body_h5file.rho;
+		unsigned b_offset = 6 * b;  // force_hydrostatic has 6 elements for each body so to skip to the next body we move 6 spaces
+		double* body_force_hydrostatic = &force_hydrostatic[b_offset];
+		double* body_equilibrium = &equilibrium[b_offset];
+		double gg = body->GetSystem()->Get_G_acc().Length();
+
+		// hydrostatic stiffness due to offset from equilibrium
+		chrono::ChVector<> body_position = body->GetPos();
+		chrono::ChVector<> body_rotation = body->GetRot().Q_to_Euler123();
+		// calculate displacement
+		chrono::ChVectorN<double, 6> body_displacement;
+		for (int ii = 0; ii < 3; ii++) {
+			body_displacement[ii] = body_position[ii] - body_equilibrium[ii];
+			body_displacement[ii + 3] = body_rotation[ii] - body_equilibrium[ii + 3];
+		}
+		// calculate force
+		chrono::ChVectorN<double, 6> force_offset = -gg * rho * body_h5file.lin_matrix * body_displacement;
+		// add to force_hydrostatic
+		for (int dof = 0; dof < 6; dof++) {
+			body_force_hydrostatic[dof] += force_offset[dof];
+		}
+
+		// buoyancy at equilibrium
+		// TODO: move to prestep (shouldn't be calculated at each time step)
+		// translational
+		chrono::ChVector<> buoyancy = rho * (-body->GetSystem()->Get_G_acc()) * body_h5file.disp_vol; // buoyancy = rho*g*Vdisp
+		body_force_hydrostatic[0] += buoyancy[0];
+		body_force_hydrostatic[1] += buoyancy[1];
+		body_force_hydrostatic[2] += buoyancy[2];
+		// rotational
+		unsigned r_offset = 3 * b;  // cb_minus_cg has 3 elements for each body so to skip to the next body we move 3 spaces
+		auto cg2cb = chrono::ChVector<double>(cb_minus_cg[0 + r_offset], cb_minus_cg[1 + r_offset], cb_minus_cg[2 + r_offset]);
+		chrono::ChVector<> buoyancy2 = cg2cb % buoyancy;
+		body_force_hydrostatic[3] += buoyancy2[0];
+		body_force_hydrostatic[4] += buoyancy2[1];
+		body_force_hydrostatic[5] += buoyancy2[2];
 	}
-	delete[] buoyancy;
 	return force_hydrostatic;
 }
 

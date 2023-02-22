@@ -46,6 +46,7 @@ public:
 	const double& disp_vol = _disp_vol;
 	//const double& rirf_timestep = _rirf_timestep;
 	int bodyNum;
+	chrono::ChMatrixDynamic<double> lin_matrix;
 private:
 
 	double _rho;
@@ -53,7 +54,6 @@ private:
 	double _disp_vol;
 	double _rirf_timestep;
 	std::vector<double> freq_list;
-	chrono::ChMatrixDynamic<double> lin_matrix;
 	chrono::ChMatrixDynamic<double> inf_added_mass;
 	std::vector<double> rirf_matrix;
 	std::vector<int> rirf_dims;
