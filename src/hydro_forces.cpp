@@ -356,7 +356,7 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 		// initialize variables
 		std::shared_ptr<chrono::ChBody> body = bodies[b];
 		H5FileInfo& body_h5file = file_info[b];
-		double rho = body_h5file.rho;
+		double rho = body_h5file.GetRho();
 		unsigned b_offset = 6 * b;  // force_hydrostatic has 6 elements for each body so to skip to the next body we move 6 spaces
 		double* body_force_hydrostatic = &force_hydrostatic[b_offset];
 		double* body_equilibrium = &equilibrium[b_offset];
@@ -381,7 +381,7 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 		// buoyancy at equilibrium
 		// TODO: move to prestep (shouldn't be calculated at each time step)
 		// translational
-		chrono::ChVector<> buoyancy = rho * (-body->GetSystem()->Get_G_acc()) * body_h5file.disp_vol; // buoyancy = rho*g*Vdisp
+		chrono::ChVector<> buoyancy = rho * (-body->GetSystem()->Get_G_acc()) * body_h5file.GetDispVol(); // buoyancy = rho*g*Vdisp
 		body_force_hydrostatic[0] += buoyancy[0];
 		body_force_hydrostatic[1] += buoyancy[1];
 		body_force_hydrostatic[2] += buoyancy[2];
