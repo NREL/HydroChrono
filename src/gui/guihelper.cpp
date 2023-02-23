@@ -6,17 +6,17 @@ using namespace hydroc::gui;
 #ifdef HYDROCHRONO_HAVE_IRRLICHT
     #include <IEventReceiver.h>  // irrlicht
 
-    #include <chrono_irrlicht/ChVisualSystemIrrlicht.h>
     #include <chrono_irrlicht/ChIrrMeshTools.h>
+    #include <chrono_irrlicht/ChVisualSystemIrrlicht.h>
 
-    #include <chrono/core/ChVector.h>
     #include <chrono/core/ChCoordsys.h>
-    #include <chrono/core/ChQuaternion.h>
     #include <chrono/core/ChMathematics.h>
+    #include <chrono/core/ChQuaternion.h>
+    #include <chrono/core/ChVector.h>
 
     #include <chrono/assets/ChVisualSystem.h>
-    #include <chrono_irrlicht/ChVisualSystemIrrlicht.h>
     #include <chrono_irrlicht/ChIrrMeshTools.h>
+    #include <chrono_irrlicht/ChVisualSystemIrrlicht.h>
 #endif
 
 void UI::Init(chrono::ChSystem* system, const char* title) {

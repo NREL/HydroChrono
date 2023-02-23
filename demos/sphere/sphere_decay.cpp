@@ -9,7 +9,11 @@
 using namespace chrono;
 using namespace chrono::geometry;
 
-// the main program to be executed:
+// usage: ./sphere_deca.exe [DATADIR] [--nogui]
+//
+// If no argument is given user can set HYDROCHRONO_DATA_DIR
+// environment variable to give the data_directory.
+//
 int main(int argc, char* argv[]) {
     GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
@@ -17,6 +21,13 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    // Check if --nogui option is set as 2nd argument
+    bool visualizationOn = true;
+    if (argc > 2 && std::string("--nogui").compare(argv[2]) == 0) {
+        visualizationOn = false;
+    }
+
+    // Get model file names
     std::filesystem::path DATADIR(hydroc::getDataDir());
 
     auto body1_meshfame =
@@ -36,8 +47,6 @@ int main(int argc, char* argv[]) {
     double simulationDuration = 40.0;
 
     // Create user interface
-    bool visualizationOn = true;
-
     std::shared_ptr<hydroc::gui::UI> pui = hydroc::gui::CreateUI(visualizationOn);
 
     hydroc::gui::UI& ui = *pui.get();
