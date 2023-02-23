@@ -44,3 +44,9 @@ set_target_properties(
 
 		FOLDER DOC
 )
+
+# Install documentation
+install(
+    DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/html"
+    DESTINATION ${CMAKE_INSTALL_DATADIR}
+)

@@ -179,10 +179,6 @@ if(HYDROCHRONO_ENABLE_TESTS)
 endif(HYDROCHRONO_ENABLE_TESTS)
 
 
-# ================
-# Documentation
-# ================
-add_subdirectory(doc)
 
 # Not a good idea to copy DLLs
 # dosen't work on Linux
@@ -230,3 +226,8 @@ export(
     FILE "${CMAKE_CURRENT_BINARY_DIR}/cmake/HydroChronoTargets.cmake"
     NAMESPACE HydroChrono::
 )
+
+# ================
+# Documentation
+# ================
+add_subdirectory(doc)
