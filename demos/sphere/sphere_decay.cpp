@@ -1,9 +1,14 @@
 #include <hydroc/helper.h>
 #include <hydroc/hydro_forces.h>
-
+#include <hydroc/helper.h>
 #include <hydroc/gui/guihelper.h>
 
-#include "chrono/core/ChRealtimeStep.h"
+#include <chrono/core/ChRealtimeStep.h>
+
+#include <iomanip> // std::setprecision
+#include <chrono> // std::chrono::high_resolution_clock::now
+#include <vector> // std::vector<double>
+#include <filesystem> // c++17 only
 
 // Use the namespaces of Chrono
 using namespace chrono;
