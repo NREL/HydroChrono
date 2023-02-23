@@ -26,6 +26,9 @@ void UI::Init(chrono::ChSystem* system, const char* title)
 
 }
 
+void UI::SetCamera(double x, double y, double z, double dirx, double diry, double dirz) {
+}
+
 bool UI::IsRunning(double timestep) {
 
 
@@ -59,6 +62,7 @@ public:
 	GUIImpl& operator = (const GUIImpl&) = delete;
 
 	void Init(UI& ui, chrono::ChSystem*, const char* title);
+	void SetCamera(double x, double y, double z, double dirx, double diry, double dirz);
 	bool IsRunning(double timestep);
 private:
 #ifdef HYDROCHRONO_HAVE_IRRLICHT	
@@ -90,6 +94,7 @@ class hydroc::gui::GUIImpl::MyActionReceiver : public irr::IEventReceiver {
 		MyActionReceiver(bool& buttonPressed);
 		bool OnEvent(const irr::SEvent& event);
         void Init(chrono::irrlicht::ChVisualSystemIrrlicht* vsys);
+		void SetCamera(double x, double y, double z, double dirx, double diry, double dirz);
 	private:
 		chrono::irrlicht::ChVisualSystemIrrlicht* vis;
 		irr::gui::IGUIButton* pauseButton;
@@ -129,6 +134,10 @@ void GUIImpl::Init(UI& ui, chrono::ChSystem* system, const char* title)
 	pVis->AddSkyBox();
 	pVis->AddCamera(chrono::ChVector<>(8, -25, 15), chrono::ChVector<>(0, 0, 0));
 	pVis->AddTypicalLights();
+}
+
+void GUIImpl::SetCamera(double x, double y, double z, double dirx, double diry, double dirz) {
+	pVis->AddCamera({x, y, z}, {dirx, diry, dirz});
 }
 
 bool GUIImpl::IsRunning(double timestep) {
@@ -201,6 +210,9 @@ void GUIImpl::Init(UI& ui, chrono::ChSystem* system, const char* title)
 	std::cout << "Warning: GUI deactivated. Compilation without Irrlicht library" << std::endl;
 }
 
+void GUIImpl::SetCamera(double x, double y, double z, double dirx, double diry, double dirz) {
+}
+
 bool GUIImpl::IsRunning(double timestep) {
 	return true;
 }
@@ -225,6 +237,10 @@ void GUI::Init(chrono::ChSystem* system, const char* title)
 {
 	UI::Init(system, title);
 	pImpl->Init(*this, system, title);
+}
+
+void GUI::SetCamera(double x, double y, double z, double dirx, double diry, double dirz) {
+	pImpl->SetCamera(x, y, z, dirx, diry, dirz);
 }
 
 bool GUI::IsRunning(double timestep) {

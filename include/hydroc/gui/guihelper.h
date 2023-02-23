@@ -32,6 +32,11 @@ struct UI {
 	*/
 	virtual void Init(chrono::ChSystem*, const char* title);
 
+	/**@brief Set Camera position and direction
+	 * 
+	*/
+	virtual void SetCamera(double x, double y, double z, double dirx, double diry, double dirz);
+
 	/**@brief To call during simulation loop  
 	 * 
 	*/
@@ -59,6 +64,7 @@ struct GUI: public UI {
 	GUI& operator = (const GUI&) = delete;
 
 	void Init(chrono::ChSystem*, const char* title) override;
+	void SetCamera(double x, double y, double z, double dirx, double diry, double dirz) override;
 	bool IsRunning(double timestep) override;
 
 private:
