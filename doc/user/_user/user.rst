@@ -3,7 +3,7 @@ User guide
 #######################
 
 .. todo::
-	This is an example from Libat3D. Should be replaced
+	This is an example. Should be replaced
 
 Global parameters
 =================

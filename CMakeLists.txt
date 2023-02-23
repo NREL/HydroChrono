@@ -47,8 +47,8 @@ set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 option (HYDROCHRONO_ENABLE_TESTS "Enable tests" ON)
 option (HYDROCHRONO_ENABLE_IRRLICHT "Enable irrlicht visualization library" ON)
 option (HYDROCHRONO_ENABLE_DEMOS "Enable demo executables" ON)
-option (HYDROCHRONO_ENABLE_USER_DOC "User's documentation" ON)
-option (HYDROCHRONO_ENABLE_PROG_DOC "Programmer's documentation" ON)
+option (HYDROCHRONO_ENABLE_USER_DOC "User's documentation" OFF)
+option (HYDROCHRONO_ENABLE_PROG_DOC "Programmer's documentation" OFF)
 
 # find required packages and libraries to make HydroChrono library
 set (LIB_TYPE STATIC) # or SHARED
