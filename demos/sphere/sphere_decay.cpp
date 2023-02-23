@@ -1,11 +1,8 @@
 #include <hydroc/hydro_forces.h>
 #include <hydroc/helper.h>
-
 #include <hydroc/gui/guihelper.h>
 
-
-#include "chrono/core/ChRealtimeStep.h"
-
+#include <chrono/core/ChRealtimeStep.h>
 
 #include <iomanip> // std::setprecision
 #include <chrono> // std::chrono::high_resolution_clock::now
