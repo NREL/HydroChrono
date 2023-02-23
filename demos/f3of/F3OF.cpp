@@ -1,18 +1,6 @@
+#include <hydroc/gui/guihelper.h>
 #include <hydroc/helper.h>
 #include <hydroc/hydro_forces.h>
-
-#ifdef HYDROCHRONO_HAVE_IRRLICHT
-    #include <chrono_irrlicht/ChIrrMeshTools.h>
-    #include <chrono_irrlicht/ChVisualSystemIrrlicht.h>
-// Use the main namespaces of Irrlicht
-using namespace irr;
-using namespace irr::core;
-using namespace irr::scene;
-using namespace irr::video;
-using namespace irr::io;
-using namespace irr::gui;
-using namespace chrono::irrlicht;
-#endif
 
 #include <chrono/core/ChRealtimeStep.h>
 #include <chrono/physics/ChLinkMate.h>
@@ -25,56 +13,25 @@ using namespace chrono::irrlicht;
 using namespace chrono;
 using namespace chrono::geometry;
 
-#ifdef HYDROCHRONO_HAVE_IRRLICHT
-// Define a class to manage user inputs via the GUI (i.e. play/pause button)
-class MyActionReceiver : public IEventReceiver {
-  public:
-    MyActionReceiver(ChVisualSystemIrrlicht* vsys, bool& buttonPressed) : pressed(buttonPressed) {
-        // store pointer application
-        vis = vsys;
-
-        // ..add a GUI button to control pause/play
-        pauseButton = vis->GetGUIEnvironment()->addButton(rect<s32>(510, 20, 650, 35));
-        buttonText  = vis->GetGUIEnvironment()->addStaticText(L"Paused", rect<s32>(560, 20, 600, 35), false);
-    }
-
-    bool OnEvent(const SEvent& event) {
-        // check if user clicked button
-        if (event.EventType == EET_GUI_EVENT) {
-            switch (event.GUIEvent.EventType) {
-                case EGET_BUTTON_CLICKED:
-                    pressed = !pressed;
-                    if (pressed) {
-                        buttonText->setText(L"Playing");
-                    } else {
-                        buttonText->setText(L"Paused");
-                    }
-                    return pressed;
-                    break;
-                default:
-                    break;
-            }
-        }
-        return false;
-    }
-
-  private:
-    ChVisualSystemIrrlicht* vis;
-    IGUIButton* pauseButton;
-    IGUIStaticText* buttonText;
-
-    bool& pressed;
-};
-#endif
-
+// usage: ./<demos>.exe [DATADIR] [--nogui]
+//
+// If no argument is given user can set HYDROCHRONO_DATA_DIR
+// environment variable to give the data_directory.
+//
 int main(int argc, char* argv[]) {
-    // auto start = std::chrono::high_resolution_clock::now();
     GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
     if (hydroc::setInitialEnvironment(argc, argv) != 0) {
         return 1;
     }
 
+    // Check if --nogui option is set as 2nd argument
+    bool visualizationOn = true;
+    if (argc > 2 && std::string("--nogui").compare(argv[2]) == 0) {
+        visualizationOn = false;
+    }
+
+    // Get model file names
     std::filesystem::path DATADIR(hydroc::getDataDir());
 
     auto body1_meshfame = (DATADIR / "f3of" / "geometry" / "base.obj").lexically_normal().generic_string();
@@ -84,6 +41,7 @@ int main(int argc, char* argv[]) {
 
     // system/solver settings
     ChSystemSMC system;
+
     system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
     double timestep = 0.02;
     system.SetSolverType(ChSolver::Type::SPARSE_QR);
@@ -92,10 +50,13 @@ int main(int argc, char* argv[]) {
     ChRealtimeStepTimer realtime_timer;
     double simulationDuration = 300.0;
 
+    // Create user interface
+    std::shared_ptr<hydroc::gui::UI> pui = hydroc::gui::CreateUI(visualizationOn);
+    hydroc::gui::UI& ui                  = *pui.get();
+
     // some io/viz options
-    bool visualizationOn = true;
-    bool profilingOn     = true;
-    bool saveDataOn      = true;
+    bool profilingOn = true;
+    bool saveDataOn  = true;
     std::vector<double> time_vector;
     std::vector<double> base_surge;
     std::vector<double> base_pitch;
@@ -112,6 +73,17 @@ int main(int argc, char* argv[]) {
         false   // collisions
     );
 
+    // Create a visualization material
+    auto red = chrono_types::make_shared<ChVisualMaterial>();
+    red->SetDiffuseColor(ChColor(0.3f, 0.1f, 0.1f));
+    base->GetVisualShape(0)->SetMaterial(0, red);
+
+    // define the base's initial conditions (position and rotation defined later for specific test)
+    system.Add(base);
+    base->SetNameString("body1");
+    base->SetMass(1089825.0);
+    base->SetInertiaXX(ChVector<>(100000000.0, 76300000.0, 100000000.0));
+
     std::cout << "Attempting to open mesh file: " << body2_meshfame << std::endl;
     std::shared_ptr<ChBody> flapFore = chrono_types::make_shared<ChBodyEasyMesh>(  //
         body2_meshfame,
@@ -121,6 +93,17 @@ int main(int argc, char* argv[]) {
         false   // collisions
     );
 
+    // Create a visualization material
+    auto blue = chrono_types::make_shared<ChVisualMaterial>();
+    blue->SetDiffuseColor(ChColor(0.3f, 0.1f, 0.6f));
+    flapFore->GetVisualShape(0)->SetMaterial(0, blue);
+
+    // define the fore flap's initial conditions (position and rotation defined later for specific tests
+    system.Add(flapFore);
+    flapFore->SetNameString("body2");
+    flapFore->SetMass(179250.0);
+    flapFore->SetInertiaXX(ChVector<>(100000000.0, 1300000.0, 100000000.0));
+
     std::cout << "Attempting to open mesh file: " << body3_meshfame << std::endl;
     std::shared_ptr<ChBody> flapAft = chrono_types::make_shared<ChBodyEasyMesh>(  //
         body3_meshfame,
@@ -129,17 +112,11 @@ int main(int argc, char* argv[]) {
         true,   // create visualization asset
         false   // collisions
     );
-    // define the base's initial conditions (position and rotation defined later for specific test)
-    system.Add(base);
-    base->SetNameString("body1");
-    base->SetMass(1089825.0);
-    base->SetInertiaXX(ChVector<>(100000000.0, 76300000.0, 100000000.0));
 
-    // define the fore flap's initial conditions (position and rotation defined later for specific tests
-    system.Add(flapFore);
-    flapFore->SetNameString("body2");
-    flapFore->SetMass(179250.0);
-    flapFore->SetInertiaXX(ChVector<>(100000000.0, 1300000.0, 100000000.0));
+    // Create a visualization material
+    auto green = chrono_types::make_shared<ChVisualMaterial>();
+    green->SetDiffuseColor(ChColor(0.3f, 0.6f, 0.1f));
+    flapAft->GetVisualShape(0)->SetMaterial(0, green);
 
     // define the aft flap's initial conditions (position and rotation defined later for specific tests
     system.Add(flapAft);
@@ -268,65 +245,22 @@ int main(int argc, char* argv[]) {
     // for profiling
     auto start = std::chrono::high_resolution_clock::now();
 
-#ifdef HYDROCHRONO_HAVE_IRRLICHT
-    if (visualizationOn) {
-        // create the irrlicht application for visualizing
-        auto irrlichtVis = chrono_types::make_shared<ChVisualSystemIrrlicht>();
-        irrlichtVis->AttachSystem(&system);
-        irrlichtVis->SetWindowSize(1280, 720);
-        irrlichtVis->SetWindowTitle("F3OF - Decay Test");
-        irrlichtVis->SetCameraVertical(CameraVerticalDir::Z);
-        irrlichtVis->Initialize();
-        irrlichtVis->AddLogo();
-        irrlichtVis->AddSkyBox();
-        irrlichtVis->AddCamera(ChVector<>(0, -50, -10), ChVector<>(0, 0, -10));  // camera position and where it points
-        irrlichtVis->AddTypicalLights();
-        // irrlichtVis->EnableBodyFrameDrawing(true);
-        // irrlichtVis->EnableLinkFrameDrawing(true);
+    // main simulation loop
+    ui.Init(&system, "F3OF - Decay Test");
+    ui.SetCamera(0, -50, -10, 0, 0, -10);
 
-        // add play/pause button
-        bool buttonPressed = false;
-        MyActionReceiver receiver(irrlichtVis.get(), buttonPressed);
-        irrlichtVis->AddUserEventReceiver(&receiver);
-        // ChSparseMatrix M;
-        // main simulation loop
-        while (irrlichtVis->Run() && system.GetChTime() <= simulationDuration) {
-            irrlichtVis->BeginScene();
-            irrlichtVis->Render();
-            irrlichtVis->EndScene();
-            if (buttonPressed) {
-                // system.GetMassMatrix(&M);
-                // std::cout << M << std::endl;
-                // step the simulation forwards
-                system.DoStepDynamics(timestep);
-                // append data to std vector
-                time_vector.push_back(system.GetChTime());
-                base_surge.push_back(base->GetPos().x());
-                base_pitch.push_back(base->GetRot().Q_to_Euler123().y());
-                fore_pitch.push_back(flapFore->GetRot().Q_to_Euler123().y());
-                aft_pitch.push_back(flapAft->GetRot().Q_to_Euler123().y());
-                // force playback to be real-time
-                realtime_timer.Spin(timestep);
-            }
-        }
-    } else {
-#endif  // #ifdef HYDROCHRONO_HAVE_IRRLICHT
-        int frame = 0;
-        while (system.GetChTime() <= simulationDuration) {
-            // append data to std vector
+    while (system.GetChTime() <= simulationDuration) {
+        if (ui.IsRunning(timestep) == false) break;
+
+        if (ui.simulationStarted) {
+            // append data to output vector
             time_vector.push_back(system.GetChTime());
             base_surge.push_back(base->GetPos().x());
             base_pitch.push_back(base->GetRot().Q_to_Euler123().y());
             fore_pitch.push_back(flapFore->GetRot().Q_to_Euler123().y());
             aft_pitch.push_back(flapAft->GetRot().Q_to_Euler123().y());
-            // step the simulation forwards
-            system.DoStepDynamics(timestep);
-
-            frame++;
         }
-#ifdef HYDROCHRONO_HAVE_IRRLICHT
     }
-#endif
 
     if (saveDataOn) {
         std::ofstream outputFile;
@@ -358,5 +292,7 @@ int main(int argc, char* argv[]) {
                        << std::endl;
         outputFile.close();
     }
+
+    std::cout << "Simulation finished." << std::endl;
     return 0;
 }

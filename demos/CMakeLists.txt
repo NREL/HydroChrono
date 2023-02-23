@@ -197,6 +197,7 @@ target_include_directories(
 
 target_link_libraries(f3of
     PRIVATE
+	HydroChronoGUI	
     HydroChrono
 )
 
