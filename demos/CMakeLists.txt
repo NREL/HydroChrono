@@ -163,6 +163,7 @@ target_include_directories(
 
 target_link_libraries(oswec_decay
     PRIVATE
+	HydroChronoGUI
     HydroChrono
 )
 
