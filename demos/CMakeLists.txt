@@ -61,6 +61,7 @@ target_include_directories(
 )
 target_link_libraries(sphere_reg_waves 
     PRIVATE 
+	HydroChronoGUI	
     HydroChrono
 )
 
