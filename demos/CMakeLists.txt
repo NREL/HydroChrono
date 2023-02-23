@@ -95,6 +95,7 @@ target_include_directories(
 
 target_link_libraries(rm3_decay
     PRIVATE 
+	HydroChronoGUI	
     HydroChrono
 )
 
@@ -127,7 +128,8 @@ target_include_directories(
 )
 
 target_link_libraries(rm3_reg_waves 
-    PRIVATE 
+    PRIVATE
+	HydroChronoGUI	
     HydroChrono
 )
 
