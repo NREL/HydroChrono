@@ -279,8 +279,8 @@ int main(int argc, char* argv[]) {
 			<< std::endl;
 		for (int i = 0; i < time_vector.size(); ++i)
 			outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
-			<< std::right << std::setw(16) << std::setprecision(4) << std::fixed << float_heave_position[i]
-			<< std::right << std::setw(16) << std::setprecision(4) << std::fixed << plate_heave_position[i]
+			<< std::right << std::setw(16) << std::setprecision(8) << std::fixed << float_heave_position[i]
+			<< std::right << std::setw(16) << std::setprecision(8) << std::fixed << plate_heave_position[i]
 			<< std::endl;
 		outputFile.close();
 	}

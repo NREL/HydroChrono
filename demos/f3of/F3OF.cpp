@@ -163,7 +163,7 @@ int main(int argc, char* argv[]) {
 
 	// ---------------- Begin specific DT set up, comment out unused tests ----------------------------
 	// ---------------- DT1 set up (surge decay, flaps locked, no waves) ------------------------------
-	// set up pos/rotations
+	//// set up pos/rotations
 	//base->SetPos(ChVector<>(5.0, 0.0, -9.0));
 	//flapFore->SetPos( ChVector<>(5.0 + -12.5, 0.0, -9.0 + 3.5) );
 	//flapAft->SetPos( ChVector<>(5.0 + 12.5, 0.0, -9.0 + 3.5) );

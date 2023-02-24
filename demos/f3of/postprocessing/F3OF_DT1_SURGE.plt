@@ -4,7 +4,7 @@ set output "F3OF_DT1.pdf"
 set samples 100000
 set grid
 set lmargin at screen 0.125
-set multiplot title "F3OF DT1 Surge"
+set multiplot title "F3OF DT1 Surge Decay Test"
 set xrange [0:300]
 # set format y "%g°"
 
@@ -12,6 +12,7 @@ set xrange [0:300]
 # set format x ""
 # unset xlabel
 set ylabel "Surge (m)"
+set xlabel "Time (s)"
 # set key at screen 1, 0.55
 set key rmargin
 # set size 1, .5
