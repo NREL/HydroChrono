@@ -1,98 +1,82 @@
+#include <hydroc/helper.h>
 #include <hydroc/hydro_forces.h>
 
-#include <hydroc/helper.h>
-
 #ifdef HYDROCHRONO_HAVE_IRRLICHT
-	#include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
-	#include "chrono_irrlicht/ChIrrMeshTools.h"
-	// Use the main namespaces of Irrlicht
-	using namespace irr;
-	using namespace irr::core;
-	using namespace irr::scene;
-	using namespace irr::video;
-	using namespace irr::io;
-	using namespace irr::gui;
-	using namespace chrono::irrlicht;
+#include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
+#include "chrono_irrlicht/ChIrrMeshTools.h"
+// Use the main namespaces of Irrlicht
+using namespace irr;
+using namespace irr::core;
+using namespace irr::scene;
+using namespace irr::video;
+using namespace irr::io;
+using namespace irr::gui;
+using namespace chrono::irrlicht;
 #endif
-
 
 #include <chrono/core/ChRealtimeStep.h>
 
-#include <iomanip> // std::setprecision
-#include <chrono> // std::chrono::high_resolution_clock::now
-#include <vector> // std::vector<double>
+#include <chrono>   // std::chrono::high_resolution_clock::now
+#include <iomanip>  // std::setprecision
+#include <vector>   // std::vector<double>
 
 // Use the namespaces of Chrono
 using namespace chrono;
 using namespace chrono::geometry;
 
-
 #ifdef HYDROCHRONO_HAVE_IRRLICHT
 // Define a class to manage user inputs via the GUI (i.e. play/pause button)
 class MyActionReceiver : public IEventReceiver {
-	public:
-		MyActionReceiver(ChVisualSystemIrrlicht* vsys, bool& buttonPressed)
-			: pressed(buttonPressed) {
-			// store pointer application
-			vis = vsys;
+public:
+	MyActionReceiver(ChVisualSystemIrrlicht* vsys, bool& buttonPressed) : pressed(buttonPressed) {
+		// store pointer application
+		vis = vsys;
 
-			// ..add a GUI button to control pause/play
-			pauseButton = vis->GetGUIEnvironment()->addButton(rect<s32>(510, 20, 650, 35));
-			buttonText = vis->GetGUIEnvironment()->addStaticText(L"Paused", rect<s32>(560, 20, 600, 35), false);
-		}
+		// ..add a GUI button to control pause/play
+		pauseButton = vis->GetGUIEnvironment()->addButton(rect<s32>(510, 20, 650, 35));
+		buttonText  = vis->GetGUIEnvironment()->addStaticText(L"Paused", rect<s32>(560, 20, 600, 35), false);
+	}
 
-		bool OnEvent(const SEvent& event) {
-			// check if user clicked button
-			if (event.EventType == EET_GUI_EVENT) {
-				switch (event.GUIEvent.EventType) {
+	bool OnEvent(const SEvent& event) {
+		// check if user clicked button
+		if (event.EventType == EET_GUI_EVENT) {
+			switch (event.GUIEvent.EventType) {
 				case EGET_BUTTON_CLICKED:
 					pressed = !pressed;
 					if (pressed) {
 						buttonText->setText(L"Playing");
-					}
-					else {
+					} else {
 						buttonText->setText(L"Paused");
 					}
 					return pressed;
 					break;
 				default:
 					break;
-				}
 			}
-			return false;
 		}
+		return false;
+	}
 
-	private:
-		ChVisualSystemIrrlicht* vis;
-		IGUIButton* pauseButton;
-		IGUIStaticText* buttonText;
+private:
+	ChVisualSystemIrrlicht* vis;
+	IGUIButton* pauseButton;
+	IGUIStaticText* buttonText;
 
-		bool& pressed;
+	bool& pressed;
 };
 #endif
 
-
 int main(int argc, char* argv[]) {
-	//auto start = std::chrono::high_resolution_clock::now();
+	// auto start = std::chrono::high_resolution_clock::now();
 	GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
+	if (hydroc::setInitialEnvironment(argc, argv) != 0) { return 1; }
 
-    if (hydroc::setInitialEnvironment(argc, argv) != 0) {
-        return 1;
-    }
+	std::filesystem::path DATADIR(hydroc::getDataDir());
 
-    std::filesystem::path DATADIR(hydroc::getDataDir());
-
-	auto body1_meshfame = (DATADIR / "rm3" / "geometry" /"float_cog.obj")
-		.lexically_normal()
-		.generic_string();
-	auto body2_meshfame = (DATADIR / "rm3" / "geometry" /"plate_cog.obj")
-		.lexically_normal()
-		.generic_string();		
-	auto h5fname = (DATADIR / "rm3" / "hydroData" /"rm3.h5")
-		.lexically_normal()
-		.generic_string();
-
+	auto body1_meshfame = (DATADIR / "rm3" / "geometry" / "float_cog.obj").lexically_normal().generic_string();
+	auto body2_meshfame = (DATADIR / "rm3" / "geometry" / "plate_cog.obj").lexically_normal().generic_string();
+	auto h5fname        = (DATADIR / "rm3" / "hydroData" / "rm3.h5").lexically_normal().generic_string();
 
 	// system/solver settings
 	ChSystemNSC system;
@@ -107,8 +91,8 @@ int main(int argc, char* argv[]) {
 
 	// some io/viz options
 	bool visualizationOn = true;
-	bool profilingOn = true;
-	bool saveDataOn = true;
+	bool profilingOn     = true;
+	bool saveDataOn      = true;
 	std::vector<double> time_vector;
 	std::vector<double> float_heave_position;
 	std::vector<double> float_drift_position;
@@ -116,30 +100,30 @@ int main(int argc, char* argv[]) {
 
 	// set up body from a mesh
 	std::cout << "Attempting to open mesh file: " << body1_meshfame << std::endl;
-	std::shared_ptr<ChBody> float_body1 = chrono_types::make_shared<ChBodyEasyMesh>(                   //
-		body1_meshfame,
-		0,                                                                                        // density
-		false,                                                                                    // do not evaluate mass automatically
-		true,                                                                                     // create visualization asset
-		false                                                                                     // collisions
-		);
+	std::shared_ptr<ChBody> float_body1 = chrono_types::make_shared<ChBodyEasyMesh>(  //
+	    body1_meshfame,
+	    0,      // density
+	    false,  // do not evaluate mass automatically
+	    true,   // create visualization asset
+	    false   // collisions
+	);
 
 	std::cout << "Attempting to open mesh file: " << body2_meshfame << std::endl;
-	std::shared_ptr<ChBody> plate_body2 = chrono_types::make_shared<ChBodyEasyMesh>(                   //
-		body2_meshfame, 
-		0,                                                                                        // density
-		false,                                                                                    // do not evaluate mass automatically
-		true,                                                                                     // create visualization asset
-		false                                                                                     // collisions
-		);
+	std::shared_ptr<ChBody> plate_body2 = chrono_types::make_shared<ChBodyEasyMesh>(  //
+	    body2_meshfame,
+	    0,      // density
+	    false,  // do not evaluate mass automatically
+	    true,   // create visualization asset
+	    false   // collisions
+	);
 
 	// define the float's initial conditions
 	system.Add(float_body1);
-	float_body1->SetNameString("body1"); 
+	float_body1->SetNameString("body1");
 	float_body1->SetPos(ChVector<>(0, 0, -0.72));
 	float_body1->SetMass(725834);
 	float_body1->SetInertiaXX(ChVector<>(20907301.0, 21306090.66, 37085481.11));
-	//float_body1->SetCollide(false);
+	// float_body1->SetCollide(false);
 
 	// define the plate's initial conditions
 	system.Add(plate_body2);
@@ -147,11 +131,12 @@ int main(int argc, char* argv[]) {
 	plate_body2->SetPos(ChVector<>(0, 0, (-21.29)));
 	plate_body2->SetMass(886691);
 	plate_body2->SetInertiaXX(ChVector<>(94419614.57, 94407091.24, 28542224.82));
-	//plate_body2->SetCollide(false);
+	// plate_body2->SetCollide(false);
 
 	// add prismatic joint between the two bodies
 	auto prismatic = chrono_types::make_shared<ChLinkLockPrismatic>();
-	prismatic->Initialize(float_body1, plate_body2, false, ChCoordsys<>(ChVector<>(0, 0, -0.72)), ChCoordsys<>(ChVector<>(0, 0, -21.29)));
+	prismatic->Initialize(float_body1, plate_body2, false, ChCoordsys<>(ChVector<>(0, 0, -0.72)),
+	                      ChCoordsys<>(ChVector<>(0, 0, -21.29)));
 	system.AddLink(prismatic);
 
 	auto prismatic_pto = chrono_types::make_shared<ChLinkTSDA>();
@@ -159,18 +144,17 @@ int main(int argc, char* argv[]) {
 	prismatic_pto->SetDampingCoefficient(0.0);
 	system.AddLink(prismatic_pto);
 
-	// define wave parameters 
+	// define wave parameters
 	HydroInputs my_hydro_inputs;
-	my_hydro_inputs.mode = WaveMode::regular;
+	my_hydro_inputs.mode                   = WaveMode::regular;
 	my_hydro_inputs.regular_wave_amplitude = 1.0;
-	my_hydro_inputs.regular_wave_omega = 2.10;
+	my_hydro_inputs.regular_wave_omega     = 2.10;
 
 	// attach hydrodynamic forces to body
 	std::vector<std::shared_ptr<ChBody>> bodies;
 	bodies.push_back(float_body1);
 	bodies.push_back(plate_body2);
 	TestHydro blah(bodies, h5fname, my_hydro_inputs);
-
 
 	// for profiling
 	auto start = std::chrono::high_resolution_clock::now();
@@ -186,7 +170,7 @@ int main(int argc, char* argv[]) {
 		irrlichtVis->Initialize();
 		irrlichtVis->AddLogo();
 		irrlichtVis->AddSkyBox();
-		irrlichtVis->AddCamera(ChVector<>(0, -50, -10), ChVector<>(0, 0, -10)); // camera position and where it points
+		irrlichtVis->AddCamera(ChVector<>(0, -50, -10), ChVector<>(0, 0, -10));  // camera position and where it points
 		irrlichtVis->AddTypicalLights();
 
 		// add play/pause button
@@ -211,9 +195,8 @@ int main(int argc, char* argv[]) {
 				realtime_timer.Spin(timestep);
 			}
 		}
-	}
-	else {
-#endif // #ifdef HYDROCHRONO_HAVE_IRRLICHT
+	} else {
+#endif  // #ifdef HYDROCHRONO_HAVE_IRRLICHT
 		int frame = 0;
 		while (system.GetChTime() <= simulationDuration) {
 			// append data to std vector
@@ -232,7 +215,7 @@ int main(int argc, char* argv[]) {
 #endif
 
 	// for profiling
-	auto end = std::chrono::high_resolution_clock::now();
+	auto end          = std::chrono::high_resolution_clock::now();
 	unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
 	if (profilingOn) {
@@ -240,7 +223,8 @@ int main(int argc, char* argv[]) {
 		profilingFile.open("./results/rm3/reg_waves/duration_ms.txt");
 		if (!profilingFile.is_open()) {
 			if (!std::filesystem::exists("./results/rm3/reg_waves")) {
-				std::cout << "Path " << std::filesystem::absolute("./results/rm3/reg_waves") << " does not exist, creating it now..." << std::endl;
+				std::cout << "Path " << std::filesystem::absolute("./results/rm3/reg_waves")
+				          << " does not exist, creating it now..." << std::endl;
 				std::filesystem::create_directory("./results");
 				std::filesystem::create_directory("./results/rm3");
 				std::filesystem::create_directory("./results/rm3/reg_waves");
@@ -260,7 +244,8 @@ int main(int argc, char* argv[]) {
 		outputFile.open("./results/rm3/reg_waves/rm3_reg_waves.txt");
 		if (!outputFile.is_open()) {
 			if (!std::filesystem::exists("./results/rm3/reg_waves")) {
-				std::cout << "Path " << std::filesystem::absolute("./results/rm3/reg_waves") << " does not exist, creating it now..." << std::endl;
+				std::cout << "Path " << std::filesystem::absolute("./results/rm3/reg_waves")
+				          << " does not exist, creating it now..." << std::endl;
 				std::filesystem::create_directory("./results");
 				std::filesystem::create_directory("./results/rm3");
 				std::filesystem::create_directory("./results/rm3/reg_waves");
@@ -271,17 +256,15 @@ int main(int argc, char* argv[]) {
 				}
 			}
 		}
-		outputFile << std::left << std::setw(10) << "Time (s)"
-			<< std::right << std::setw(16) << "Float Heave (m)"
-			<< std::right << std::setw(16) << "Plate Heave (m)"
-			<< std::right << std::setw(16) << "Float Drift (x) (m)"
-			<< std::endl;
+		outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(16) << "Float Heave (m)"
+		           << std::right << std::setw(16) << "Plate Heave (m)" << std::right << std::setw(16)
+		           << "Float Drift (x) (m)" << std::endl;
 		for (int i = 0; i < time_vector.size(); ++i)
 			outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
-			<< std::right << std::setw(16) << std::setprecision(4) << std::fixed << float_heave_position[i]
-			<< std::right << std::setw(16) << std::setprecision(4) << std::fixed << plate_heave_position[i]
-			<< std::right << std::setw(16) << std::setprecision(4) << std::fixed << float_drift_position[i]
-			<< std::endl;
+			           << std::right << std::setw(16) << std::setprecision(4) << std::fixed << float_heave_position[i]
+			           << std::right << std::setw(16) << std::setprecision(4) << std::fixed << plate_heave_position[i]
+			           << std::right << std::setw(16) << std::setprecision(4) << std::fixed << float_drift_position[i]
+			           << std::endl;
 		outputFile.close();
 	}
 	return 0;
