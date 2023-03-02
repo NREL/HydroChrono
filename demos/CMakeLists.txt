@@ -189,3 +189,36 @@ target_link_libraries(f3of
     PRIVATE
     HydroChrono
 )
+
+
+# =====================
+# DeepCWind
+# =====================
+add_executable(demo_DeepCWind)
+
+target_sources(
+    demo_DeepCWind
+
+    PRIVATE
+    DeepCWind/demo_DeepCWind.cpp
+)
+
+if(HYDROCHRONO_ENABLE_IRRLICHT)
+	target_compile_definitions(demo_DeepCWind
+		PRIVATE
+		HYDROCHRONO_HAVE_IRRLICHT=1
+	)
+endif()
+
+target_include_directories(
+	demo_DeepCWind
+
+	PRIVATE
+	    ${CMAKE_CURRENT_SOURCE_DIR}/
+	    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_link_libraries(demo_DeepCWind
+    PRIVATE
+    HydroChrono
+)
