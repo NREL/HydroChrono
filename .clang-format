@@ -1,21 +1,22 @@
-BasedOnStyle: Google
+BasedOnStyle: Chromium
+
+# Longer lines
 ColumnLimit: 120
-AccessModifierOffset: -4
+
+# Increase indentation
+IndentWidth: 4
+IndentPPDirectives: BeforeHash
+TabWidth: 4
+AccessModifierOffset: -2
+SortUsingDeclarations: true
+SortIncludes: true
 AlignAfterOpenBracket: Align
 AlignConsecutiveAssignments: true
-AlignOperands: true
+AlignOperands: AlignAfterOperator
 AlignTrailingComments: true
-AllowShortBlocksOnASingleLine: true
 AllowShortFunctionsOnASingleLine: Inline
 AllowShortIfStatementsOnASingleLine: true
-AlwaysBreakAfterReturnType: None
-AlwaysBreakTemplateDeclarations: true
 BreakBeforeBraces: Attach
 Cpp11BracedListStyle: true
 IndentCaseLabels: true
-TabWidth: 4
-UseTab: ForIndentation
 PointerAlignment: Left
-IndentWidth: 4
-BreakBeforeTernaryOperators: false
-SpaceAfterCStyleCast: true
