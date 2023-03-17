@@ -6,6 +6,7 @@
 #include <chrono/physics/ChBody.h>
 
 #include <chrono/physics/ChLoad.h>
+#include <chrono/physics/ChSystem.h>
 
 using namespace chrono;
 //using namespace chrono::fea;
@@ -14,8 +15,8 @@ using namespace chrono;
 class ChLoadAddedMass : public chrono::ChLoadCustomMultiple {
 public:
 	ChLoadAddedMass(const std::vector<H5FileInfo>& file,   ///< h5 file to initialize added mass with
-					std::vector<std::shared_ptr<ChLoadable>>& bodies  ///< objects to apply additional inertia to
-					);     
+		std::vector<std::shared_ptr<ChLoadable>>& bodies,  ///< objects to apply additional inertia to
+		ChSystem* system);
 //	/// "Virtual" copy constructor (covariant return type).
 	virtual ChLoadAddedMass* Clone() const override { return new ChLoadAddedMass(*this); }
 //
@@ -44,7 +45,8 @@ public:
 		const double c) override;       ///< a scaling factor
 
 private:
+	ChSystem* system;
 	ChMatrixDynamic<double> infinite_added_mass;       ///< added mass at infinite frequency in global coordinates
-	int nBodies;
+	ChMatrixDynamic<double> infinite_added_mass_system;      ///< added mass at infinite frequency in global coordinates (system matrix)
 	virtual bool IsStiff() override { return true; } // this to force the use of the inertial M, R and K matrices
 };
