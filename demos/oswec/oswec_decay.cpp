@@ -129,7 +129,17 @@ int main(int argc, char* argv[]) {
 	base_body->SetPos(ChVector<>(0, 0, -10.9));
 	base_body->SetMass(999);
 	base_body->SetInertiaXX(ChVector<>(1, 1, 1));
-	base_body->SetBodyFixed(true);
+	 auto ground = chrono_types::make_shared<ChBody>();
+	 system.AddBody(ground);
+	 ground->SetPos(ChVector<>(0, 0, -10.9));
+	 ground->SetIdentifier(-1);
+	 ground->SetBodyFixed(true);
+	 ground->SetCollide(false);
+	// fix base to ground with special constraint (don't use setfixed() because of mass matrix)
+	 auto anchor = chrono_types::make_shared<ChLinkMateGeneric>();
+	 anchor->Initialize(base_body, ground, false, base_body->GetVisualModelFrame(), base_body->GetVisualModelFrame());
+	 system.Add(anchor);
+	 anchor->SetConstrainedCoords(true, true, true, true, true, true);  // x, y, z, Rx, Ry, Rz
 
 	// define base-fore flap joint
 	ChQuaternion<> revoluteRot = Q_from_AngX(CH_C_PI / 2.0);
