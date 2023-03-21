@@ -60,6 +60,37 @@ target_link_libraries(sphere_reg_waves
 
 
 # =====================
+# SPHERE_IRREG_WAVES
+# =====================
+add_executable(sphere_irreg_waves)
+
+target_sources(
+    sphere_irreg_waves
+
+    PRIVATE
+        sphere/sphere_irreg_waves.cpp
+)
+
+if(HYDROCHRONO_ENABLE_IRRLICHT)
+	target_compile_definitions(sphere_irreg_waves 
+		PRIVATE 
+		HYDROCHRONO_HAVE_IRRLICHT=1
+	)
+endif()
+
+target_include_directories(
+	sphere_irreg_waves
+
+	PRIVATE
+	    ${CMAKE_CURRENT_SOURCE_DIR}/
+	    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+target_link_libraries(sphere_irreg_waves 
+    PRIVATE 
+    HydroChrono
+)
+
+# =====================
 # RM3_DECAY
 # =====================
 add_executable(rm3_decay)
