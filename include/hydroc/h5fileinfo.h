@@ -33,16 +33,13 @@ public:
 	double GetHydrostaticStiffness(int i, int j) const;
 	double GetRIRFval(int i, int n, int m) const;
 	int GetRIRFDims(int i) const;
-    int GetExcitationIRFDims(int i) const;
-	std::vector<double> GetRIRFTimeVector() const;
-    std::vector<double> GetExcitationIRFTimeVector() const;
+	std::vector<double> GetRIRFTimeVector() const; // TODO
 	double GetExcitationMagValue(int m, int n, int w) const;
 	double GetExcitationMagInterp(int i, int j, double freq_index_des) const;
 	double GetOmegaDelta() const;
 	double GetOmegaMax() const;
 	double GetExcitationPhaseValue(int m, int n, int w) const;
 	double GetExcitationPhaseInterp(int i, int j, double freq_index_des) const;
-    double GetExcitationIRFval(int dof, int s) const;
 	double GetNumFreqs() const;
 
 	std::vector<double> cg;
@@ -52,9 +49,7 @@ public:
 
 	int bodyNum;
 	chrono::ChMatrixDynamic<double> lin_matrix;
-    
-
-  private:
+private:
 
 	double _rho;
 	double _g;
@@ -75,10 +70,6 @@ public:
 	std::vector<int> im_dims;
 	std::vector<double> excitation_phase_matrix;
 	std::vector<int> excitation_phase_dims;
-    std::vector<double> excitation_irf_matrix;
-    std::vector<int> excitation_irf_dims;
-    std::vector<double> excitation_irf_time_vector;
-
 	std::string h5_file_name;
 	std::string bodyName;
 
