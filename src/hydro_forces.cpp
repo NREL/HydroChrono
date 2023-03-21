@@ -7,6 +7,12 @@
 #include <numeric>  // std::accumulate
 #include <cmath>
 #include <vector>
+#include <random>
+
+#ifndef M_PI
+    #define M_PI 3.14159265358979323846
+#endif
+
 
 // =============================================================================
 // HydroInputs Class Definitions
@@ -27,14 +33,6 @@ HydroInputs::HydroInputs() {
 void HydroInputs::updateNumTimesteps() {
     num_timesteps = static_cast<int>(simulation_duration / simulation_dt) + 1;
 }
-
-//HydroInputs::HydroInputs(double wave_height, double wave_period, double simulation_duration, double simulation_dt)
-//    : wave_height(wave_height),
-//      wave_period(wave_period),
-//      simulation_duration(simulation_duration),
-//      simulation_dt(simulation_dt),
-//      num_timesteps(static_cast<int>(simulation_duration / simulation_dt) + 1) {
-//}
 
 std::vector<double> PiersonMoskowitzSpectrumHz(std::vector<double>& f, double Hs, double Tp) {
     // Sort the frequency vector
@@ -63,15 +61,58 @@ std::vector<double> Linspace(double start, double end, int num_points) {
     return result;
 }
 
+std::vector<double> surface_elevation(const std::vector<double>& freqs_hz,
+                                      const std::vector<double>& spectral_densities,
+                                      const std::vector<double>& time_index,
+                                      int seed = 1) {
+    double delta_f = freqs_hz.back() / freqs_hz.size();
+    std::vector<double> omegas(freqs_hz.size());
+
+    for (size_t i = 0; i < freqs_hz.size(); ++i) {
+        omegas[i] = 2 * M_PI * freqs_hz[i];
+    }
+
+    std::vector<double> A(spectral_densities.size());
+    for (size_t i = 0; i < spectral_densities.size(); ++i) {
+        A[i] = 2 * spectral_densities[i] * delta_f;
+    }
+
+    std::vector<double> sqrt_A(A.size());
+    for (size_t i = 0; i < A.size(); ++i) {
+        sqrt_A[i] = std::sqrt(A[i]);
+    }
+
+    std::vector<std::vector<double>> omegas_t(time_index.size(), std::vector<double>(omegas.size()));
+    for (size_t i = 0; i < time_index.size(); ++i) {
+        for (size_t j = 0; j < omegas.size(); ++j) {
+            omegas_t[i][j] = time_index[i] * omegas[j];
+        }
+    }
+
+    std::mt19937 rng(seed); // Creates an instance of the std::mt19937 random number generator; a Mersenne Twister random number engine.
+                            // The seed parameter is used to initialize the generator's internal state - to control the random sequence produced.
+    std::uniform_real_distribution<double> dist(0.0, 2 * M_PI);
+    std::vector<double> phases(omegas.size());
+    for (size_t i = 0; i < phases.size(); ++i) {
+        phases[i] = dist(rng);
+    }
+
+    std::vector<double> eta(time_index.size(), 0.0);
+    for (size_t i = 0; i < spectral_densities.size(); ++i) {
+        for (size_t j = 0; j < time_index.size(); ++j) {
+            eta[j] += sqrt_A[i] * std::cos(omegas_t[j][i] + phases[i]);
+        }
+    }
+
+    return eta;
+}
+
 void HydroInputs::CreateSpectrum() {
     // Define the frequency vector
     std::vector<double> frequencies = Linspace(0.001, 1.0, 1000);  // TODO make this range accessible to user.
 
     // Calculate the Pierson-Moskowitz Spectrum
     std::vector<double> spectral_densities = PiersonMoskowitzSpectrumHz(frequencies, wave_height, wave_period);
-
-    // Open a file stream for writing
-    std::ofstream outputFile("spectral_densities.txt");
 
     // Create a time index vector (replace this with your actual time values)
     updateNumTimesteps();
@@ -80,6 +121,9 @@ void HydroInputs::CreateSpectrum() {
     // Calculate the surface elevation
     std::vector<double> eta = surface_elevation(frequencies, spectral_densities, time_index);
 
+
+    // Open a file stream for writing
+    std::ofstream outputFile("spectral_densities.txt");
 
     // Check if the file stream is open
     if (outputFile.is_open()) {
@@ -90,6 +134,23 @@ void HydroInputs::CreateSpectrum() {
 
         // Close the file stream
         outputFile.close();
+    } else {
+        std::cerr << "Unable to open file for writing." << std::endl;
+    }
+
+
+    // Open a file stream for writing
+    std::ofstream outputFile2("eta.txt");
+
+    // Check if the file stream is open
+    if (outputFile2.is_open()) {
+        // Write the spectral densities and their corresponding frequencies to the file
+        for (size_t i = 0; i < eta.size(); ++i) {
+            outputFile2 << time_index[i] << " : " << eta[i] << std::endl;
+        }
+
+        // Close the file stream
+        outputFile2.close();
     } else {
         std::cerr << "Unable to open file for writing." << std::endl;
     }
