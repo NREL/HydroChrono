@@ -56,7 +56,7 @@ void H5FileInfo::readH5Data() {
     Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/im", excitation_im_matrix, im_dims);
     Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/phase", excitation_phase_matrix, excitation_phase_dims);
     Init1D(userH5File, bodyName + "/hydro_coeffs/excitation/impulse_response_fun/t", excitation_irf_time);
-    Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/impulse_response_fun/ex_irfs", excitation_irf_matrix, excitation_irf_dims);
+    Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/impulse_response_fun/f", excitation_irf_matrix, excitation_irf_dims);
 
     // use same scalar function to set the int valued body number
     double temp;
