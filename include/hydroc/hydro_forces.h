@@ -113,6 +113,7 @@ public:
 	std::vector<double> ComputeForceRadiationDampingConv(); 
 	std::vector<double> ComputeForceExcitationRegularFreq();
 	//std::vector<double> ComputeForceRegularWaves();
+    std::vector<double> ComputeForceExcitationIrregular();
 	double GetRIRFval(int row, int col, int st);
 	double coordinateFunc(int b, int i);
 	bool convTrapz;
