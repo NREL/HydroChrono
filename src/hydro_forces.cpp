@@ -1,6 +1,5 @@
-#include <chrono/physics/ChLoad.h>
-
 #include "hydroc/hydro_forces.h"
+
 #include <hydroc/chloadaddedmass.h>
 #include <hydroc/h5fileinfo.h>
 
@@ -9,11 +8,11 @@
 #include <cmath>
 #include <vector>
 #include <random>
-#include <memory>
 
 #ifndef M_PI
     #define M_PI 3.14159265358979323846
 #endif
+
 
 // =============================================================================
 // HydroInputs Class Definitions
@@ -117,7 +116,6 @@ void HydroInputs::CreateSpectrum() {
     spectrum_frequencies = Linspace(0.001, 1.0, 1000);  // TODO make this range accessible to user.
 
     // Calculate the Pierson-Moskowitz Spectrum
-    // TODO: add JONSWAP option
     spectral_densities = PiersonMoskowitzSpectrumHz(spectrum_frequencies, wave_height, wave_period);
 
     // Open a file stream for writing
@@ -366,6 +364,10 @@ TestHydro::TestHydro() {
     num_bodies  = 0;
 }
 
+#include <chrono/physics/ChLoad.h>
+
+#include <memory>
+#include <vector>
 
 /*******************************************************************************
  * TestHydro::TestHydro(user_bodies, h5_file_name, user_hydro_inputs)
@@ -701,67 +703,6 @@ std::vector<double> TestHydro::ComputeForceExcitationRegularFreq() {
 //	//}
 //	return force_reg_waves;
 //}
-
-
-std::vector<double> excitation_convolution(const std::vector<double>& eta,
-                                                          const std::vector<double>& irf_new,
-                                                          double sim_dt,
-                                                          const std::vector<double>& t_vec_coarse,
-                                                          const std::vector<double>& t_irf_new) {
-    std::vector<double> force_excitation(t_vec_coarse.size(), 0.0);
-
-    for (size_t i = 0; i < t_vec_coarse.size(); ++i) {
-        double t = t_vec_coarse[i];
-
-        for (size_t j = 0; j < t_irf_new.size(); ++j) {
-            double tau   = t_irf_new[j];
-            double t_tau = t - tau;
-
-            if (0.0 < t_tau && t_tau < t_vec_coarse.back()) {
-                size_t eta_index = static_cast<size_t>(t_tau / sim_dt);
-                double eta_val   = eta[eta_index - 1];
-                force_excitation[i] += irf_new[j] * eta_val * sim_dt;
-            }
-        }
-    }
-
-    return force_excitation;
-}
-
-
-/*******************************************************************************
- * TestHydro::ComputeForceExcitationIrregular()
- * computes the 6N dimensional excitation force for irregular waves - by convolution
- *******************************************************************************/
-std::vector<double> TestHydro::ComputeForceExcitationIrregular() {
-    std::vector<double> force_excitation(6 * num_bodies, 0.0);
-
-    // Compute the surface elevation
-    //std::vector<double> eta = hydro_inputs.surface_elevation(/* ... */);
-
-    //// Read the IRFs and other necessary inputs
-    //std::vector<double> irf_new      = /* ... */;
-    //double sim_dt                    = /* ... */;
-    //std::vector<double> t_vec_coarse = /* ... */;
-    //std::vector<double> t_irf_new    = /* ... */;
-
-    // Loop through the DOFs
-    for (int dof = 0; dof < 6 * num_bodies; ++dof) {
-        // Compute the convolution for the current DOF
-        std::vector<double> force_excitation_dof =
-            excitation_convolution(eta, irf_new_dof[dof], sim_dt, t_vec_coarse, t_irf_new);
-
-        // Update force_excitation with the computed force_excitation_dof
-        for (size_t i = 0; i < force_excitation_dof.size(); ++i) {
-            force_excitation[dof * force_excitation_dof.size() + i] = force_excitation_dof[i];
-        }
-    }
-
-    return force_excitation;
-
-    return force_excitation;
-}
-
 
 /*******************************************************************************
  * TestHydro::TODO
