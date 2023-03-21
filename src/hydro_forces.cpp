@@ -5,6 +5,8 @@
 
 #include <algorithm>
 #include <numeric>  // std::accumulate
+#include <cmath>
+#include <vector>
 
 // =============================================================================
 // HydroInputs Class Definitions
@@ -20,6 +22,58 @@ HydroInputs::HydroInputs() {
     excitation_force_phase.resize(6, 0);
     excitation_force_mag.resize(6, 0);
 }
+
+std::vector<double> PiersonMoskowitzSpectrumHz(std::vector<double>& f, double Hs, double Tp) {
+    // Sort the frequency vector
+    //std::sort(f.begin(), f.end());
+
+    // Initialize the spectral densities vector
+    std::vector<double> spectral_densities(f.size());
+
+    // Calculate the spectral densities
+    for (size_t i = 0; i < f.size(); ++i) {
+        spectral_densities[i] = 1.25 * std::pow(1 / Tp, 4) * std::pow(Hs / 2, 2) * std::pow(f[i], -5) *
+                                std::exp(-1.25 * std::pow(1 / Tp, 4) * std::pow(f[i], -4));
+    }
+
+    return spectral_densities;
+}
+
+std::vector<double> Linspace(double start, double end, int num_points) {
+    std::vector<double> result(num_points);
+    double step = (end - start) / (num_points - 1);
+
+    for (int i = 0; i < num_points; ++i) {
+        result[i] = start + i * step;
+    }
+
+    return result;
+}
+
+void HydroInputs::CreateSpectrum(double wave_height, double wave_period) {
+    // Define the frequency vector (replace this with your actual frequency values)
+    std::vector<double> frequencies = Linspace(0.001, 1.0, 1000);  // TODO make this range accessible to user.
+
+    // Calculate the Pierson-Moskowitz Spectrum
+    std::vector<double> spectral_densities = PiersonMoskowitzSpectrumHz(frequencies, wave_height, wave_period);
+
+    // Open a file stream for writing
+    std::ofstream outputFile("spectral_densities.txt");
+
+    // Check if the file stream is open
+    if (outputFile.is_open()) {
+        // Write the spectral densities and their corresponding frequencies to the file
+        for (size_t i = 0; i < spectral_densities.size(); ++i) {
+            outputFile << frequencies[i] << " : " << spectral_densities[i] << std::endl;
+        }
+
+        // Close the file stream
+        outputFile.close();
+    } else {
+        std::cerr << "Unable to open file for writing." << std::endl;
+    }
+}
+
 
 // =============================================================================
 // ComponentFunc Class Definitions
@@ -302,7 +356,8 @@ void TestHydro::WaveSetUp() {
                 }
             }
             break;
-            // add case: IRREGULAR here TODO
+        case WaveMode::irregular:
+            hydro_inputs.CreateSpectrum(hydro_inputs.wave_height, hydro_inputs.wave_period);
     }
 }
 

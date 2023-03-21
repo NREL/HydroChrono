@@ -23,20 +23,23 @@
 using namespace chrono;
 using namespace chrono::fea;
 
-///@todo eventually add irregular waves mode
 enum class WaveMode {
-	/// @brief No waves
-	noWaveCIC = 0, 
-	/// @brief Regular waves
-	regular = 1
+    /// @brief No waves
+    noWaveCIC = 0,
+    /// @brief Regular waves
+    regular   = 1,
+	irregular = 2
 }; 
 
 // =============================================================================
 struct HydroInputs {
 
 	WaveMode mode;
-	HydroInputs(); 
+	HydroInputs();
+    void CreateSpectrum(double wave_height, double wave_period);
 	double freq_index_des;
+    double wave_height;
+    double wave_period;
 	double regular_wave_amplitude;
 	double regular_wave_omega;
 	double wave_omega_delta;
