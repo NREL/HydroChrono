@@ -28,6 +28,7 @@ enum class WaveMode {
     noWaveCIC = 0,
     /// @brief Regular waves
     regular   = 1,
+    /// @brief Irregular waves
 	irregular = 2
 }; 
 
@@ -124,7 +125,9 @@ public:
 	double GetRIRFval(int row, int col, int st);
 	double coordinateFunc(int b, int i);
 	bool convTrapz;
-private:
+    std::vector<double> t_irf;
+
+  private:
 	std::vector<std::shared_ptr<ChBody>> bodies;
 	std::vector<H5FileInfo> file_info;
 	std::vector<ForceFunc6d> force_per_body;

@@ -1,18 +1,19 @@
 #include "hydroc/hydro_forces.h"
-
 #include <hydroc/chloadaddedmass.h>
 #include <hydroc/h5fileinfo.h>
+
+#include <chrono/physics/ChLoad.h>
 
 #include <algorithm>
 #include <numeric>  // std::accumulate
 #include <cmath>
 #include <vector>
 #include <random>
+#include <memory>
 
 #ifndef M_PI
     #define M_PI 3.14159265358979323846
 #endif
-
 
 // =============================================================================
 // HydroInputs Class Definitions
@@ -22,12 +23,6 @@
  * HydroInputs constructor
  *******************************************************************************/
 HydroInputs::HydroInputs() {
-    // TODO: switch depending on wave option (regular, regularCIC, irregular, noWaveCIC) enum?
-    mode                   = WaveMode::noWaveCIC;
-    regular_wave_amplitude = 0.0;
-    excitation_force_phase.resize(6, 0);
-    excitation_force_mag.resize(6, 0);
-    
 }
 
 void HydroInputs::UpdateNumTimesteps() {
@@ -135,9 +130,69 @@ void HydroInputs::CreateSpectrum() {
     }
 }
 
+std::vector<std::array<double, 3>> CreateFreeSurface3DPts(const std::vector<double>& eta,
+                                                         const std::vector<double>& t_vec) {
+    std::vector<std::array<double, 3>> surface(t_vec.size() * 2);
+
+    for (size_t i = 0; i < t_vec.size(); ++i) {
+        double t = t_vec[i];
+        double z = eta[i];
+
+        surface[2 * i]     = {t, -10.0, z};
+        surface[2 * i + 1] = {t, 10.0, z};
+    }
+
+    return surface;
+}
+
+std::vector<std::array<size_t, 3>> CreateFreeSurfaceTriangles(size_t eta_size) {
+    std::vector<std::array<size_t, 3>> triangles;
+
+    for (size_t i = 0; i < eta_size / 2 - 1; ++i) {
+        triangles.push_back({2 * i, 2 * i + 1, 2 * i + 3});
+        triangles.push_back({2 * i, 2 * i + 3, 2 * i + 2});
+    }
+
+    return triangles;
+}
+
+void write_free_surface_mesh(const std::vector<std::array<double, 3>>& points,
+                             const std::vector<std::array<size_t, 3>>& triangles,
+                             const std::string& file_name) {
+    std::ofstream out(file_name);
+    if (!out) {
+        std::cerr << "Failed to open " << file_name << std::endl;
+        return;
+    }
+
+    out << "2 0" << std::endl;
+    out << std::fixed << std::setprecision(6);
+
+    // Write surface points
+    for (size_t i = 0; i < points.size(); ++i) {
+        out << i + 1 << ' ';
+        out << std::setw(14) << points[i][0] << ' ';
+        out << std::setw(14) << points[i][1] << ' ';
+        out << std::setw(14) << points[i][2] << std::endl;
+    }
+
+    out << "0 0 0 0 0" << std::endl;
+
+    // Write surface triangles (repeat point to 'fake' quad)
+    for (const auto& triangle : triangles) {
+        out << std::setw(9) << triangle[0] + 1;
+        out << std::setw(9) << triangle[1] + 1;
+        out << std::setw(9) << triangle[2] + 1;
+        out << std::setw(9) << triangle[0] + 1 << std::endl;
+    }
+
+    out << "0 0 0 0" << std::endl;
+
+    out.close();
+}
 
 void HydroInputs::CreateFreeSurfaceElevation() {
-    // Create a time index vector (replace this with your actual time values)
+    // Create a time index vector
     UpdateNumTimesteps();
     std::vector<double> time_index = Linspace(0, simulation_duration, num_timesteps);
 
@@ -156,20 +211,23 @@ void HydroInputs::CreateFreeSurfaceElevation() {
     }
 
     // Open a file stream for writing
-    std::ofstream outputFile2("eta.txt");
-
+    std::ofstream eta_output("eta.txt");
     // Check if the file stream is open
-    if (outputFile2.is_open()) {
+    if (eta_output.is_open()) {
         // Write the spectral densities and their corresponding frequencies to the file
         for (size_t i = 0; i < eta.size(); ++i) {
-            outputFile2 << time_index[i] << " : " << eta[i] << std::endl;
+            eta_output << time_index[i] << " : " << eta[i] << std::endl;
         }
-
         // Close the file stream
-        outputFile2.close();
+        eta_output.close();
     } else {
         std::cerr << "Unable to open file for writing." << std::endl;
     }
+
+    std::vector<std::array<double, 3>> free_surface_3d_pts    = CreateFreeSurface3DPts(eta, time_index);
+    std::vector<std::array<size_t, 3>> free_surface_triangles = CreateFreeSurfaceTriangles(time_index.size());
+
+    write_free_surface_mesh(free_surface_3d_pts, free_surface_triangles, "fse_mesh.nemoh");
 }
 
 
@@ -273,7 +331,6 @@ ForceFunc6d::ForceFunc6d(std::shared_ptr<ChBody> object, TestHydro* user_all_for
  * ForceFunc6d copy constructor
  * copy constructor should check to see if this force has been added to this body yet
  * if not, it should add it, if so it shouldnt add the force a second time
- * TODO
  *******************************************************************************/
 ForceFunc6d::ForceFunc6d(const ForceFunc6d& old)
     : forces{{this, 0}, {this, 1}, {this, 2}, {this, 3}, {this, 4}, {this, 5}} {
@@ -364,11 +421,6 @@ TestHydro::TestHydro() {
     num_bodies  = 0;
 }
 
-#include <chrono/physics/ChLoad.h>
-
-#include <memory>
-#include <vector>
-
 /*******************************************************************************
  * TestHydro::TestHydro(user_bodies, h5_file_name, user_hydro_inputs)
  * main constructor for TestHydro class, sets up vector of bodies, h5 file info,
@@ -457,6 +509,7 @@ void TestHydro::WaveSetUp() {
         case WaveMode::irregular:
             hydro_inputs.CreateSpectrum();
             hydro_inputs.CreateFreeSurfaceElevation();
+            t_irf = file_info[0].GetExcitationIRFTimeVector(); // assume t_irf is the same for all hydrodynamic bodies
     }
 }
 
@@ -687,7 +740,6 @@ double TestHydro::ExcitationConvolution(int body,
                                         int dof,
                                         double time,
                                         const std::vector<double>& eta,
-                                        // const std::vector<double>& excitation_irf,
                                         const std::vector<double>& t_irf,
                                         double sim_dt) {
     double f_ex = 0.0;
@@ -717,7 +769,6 @@ std::vector<double> TestHydro::ComputeForceExcitation() {
     force_excitation.resize(total_dofs, 0.0);
 
     for (int body = 0; body < num_bodies; body++) {
-        std::vector<double> t_irf = file_info[body].GetExcitationIRFTimeVector();  // TODO: just call this once at the start.
         // Loop through the DOFs
         for (int dof = 0; dof < 6; ++dof) {
             // Compute the convolution for the current DOF
@@ -729,27 +780,6 @@ std::vector<double> TestHydro::ComputeForceExcitation() {
     }
     return force_excitation;
 }
-
-///*******************************************************************************
-//* TestHydro::ComputeForceExcitationRegularFreq()
-//* computes the 6N dimensional excitation force
-//*******************************************************************************/
-// std::vector<double> TestHydro::ComputeForceRegularWaves() {
-//	//for (int b = 0; b < num_bodies; b++) {
-//	//	int body_offset = 6 * b;
-//	//	for (int rowEx = 0; rowEx < 6; rowEx++) {
-//	//		if (rowEx == 2) {
-//	//			force_excitation_freq[body_offset + rowEx] = hydro_inputs.excitation_force_mag[rowEx]
-//	//				* hydro_inputs.regular_wave_amplitude * cos(hydro_inputs.regular_wave_omega * bodies[0]->GetChTime()
-//	//					+ excitation_force_phase[rowEx]);
-//	//		}
-//	//		else {
-//	//			force_excitation_freq[rowEx] = 0.0;
-//	//		}
-//	//	}
-//	//}
-//	return force_reg_waves;
-//}
 
 /*******************************************************************************
  * TestHydro::TODO
@@ -794,7 +824,7 @@ double TestHydro::coordinateFunc(int b, int i) {
         ComputeForceRadiationDampingConv();
         // sum all forces element by element
         for (int j = 0; j < total_dofs; j++) {
-            total_force[j] = force_hydrostatic[j] - force_radiation_damping[j];  // force_hydrostatic[j] -
+            total_force[j] = force_hydrostatic[j] - force_radiation_damping[j];
         }
     } else if (hydro_inputs.mode == WaveMode::regular) {
         // update required forces:
@@ -814,17 +844,13 @@ double TestHydro::coordinateFunc(int b, int i) {
         for (int j = 0; j < total_dofs; j++) {
             total_force[j] = force_hydrostatic[j] - force_radiation_damping[j] + force_excitation[j];
         }
+        std::ofstream total_force_check;
+        total_force_check.open("total_force_check.txt", std::ios::app);
+        total_force_check << total_force[2] << std::endl;
+        total_force_check.close();
     }
     if (body_num_offset + i < 0 || body_num_offset >= total_dofs) {
         std::cout << "total force accessing out of bounds" << std::endl;
     }
-
-    std::ofstream total_force_check;
-    total_force_check.open("total_force_check.txt");
-    for (int dof = 0; dof < total_dofs; dof++) {
-        total_force_check << total_force[dof] << std::endl;
-    }
-    total_force_check.close();
-
     return total_force[body_num_offset + i];
 }

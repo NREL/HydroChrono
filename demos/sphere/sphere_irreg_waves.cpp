@@ -15,7 +15,7 @@ using namespace chrono::irrlicht;
 #endif
 
 #include <chrono/core/ChRealtimeStep.h>
-
+#include <chrono/assets/ChColor.h>
 #include <chrono>  // std::chrono::high_resolution_clock::now
 #include <filesystem>
 #include <iomanip>  // std::setprecision
@@ -154,12 +154,31 @@ int main(int argc, char* argv[]) {
     // for profiling
     auto start = std::chrono::high_resolution_clock::now();
 
+    // set up free surface from a mesh
+    std::cout << "Attempting to open mesh file: " << "fse_mesh.obj" << std::endl;
+    std::shared_ptr<ChBody> fse_mesh = chrono_types::make_shared<ChBodyEasyMesh>(  //
+        "fse_mesh.obj",                                                              // file name
+        1000,                                                                        // density
+        false,  // do not evaluate mass automatically
+        true,   // create visualization asset
+        false   // do not collide
+    );
+    fse_mesh->SetMass(0.0);
+    fse_mesh->SetPos_dt(ChVector<>(-1.0, 0, 0));
+    system.Add(fse_mesh);
+
 #ifdef HYDROCHRONO_HAVE_IRRLICHT
     if (visualizationOn) {
         // Create a visualization material
         auto cadet_blue = chrono_types::make_shared<ChVisualMaterial>();
         cadet_blue->SetDiffuseColor(ChColor(0.3f, 0.1f, 0.1f));
         sphereBody->GetVisualShape(0)->SetMaterial(0, cadet_blue);
+
+        // Create a visualization material
+        auto fse_texture = chrono_types::make_shared<ChVisualMaterial>();
+        fse_texture->SetDiffuseColor(ChColor(0.3f, 0.1f, 0.1f));
+        fse_texture->SetOpacity(0.5);
+        fse_mesh->GetVisualShape(0)->SetMaterial(0, fse_texture);
 
         // create the irrlicht application for visualizing
         auto irrlichtVis = chrono_types::make_shared<ChVisualSystemIrrlicht>();
