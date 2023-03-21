@@ -145,6 +145,7 @@ int main(int argc, char* argv[]) {
     my_hydro_inputs.wave_period            = 10.0;
     my_hydro_inputs.simulation_duration    = simulationDuration;
     my_hydro_inputs.simulation_dt          = timestep;
+    my_hydro_inputs.ramp_duration          = 15.0;
 
     std::vector<std::shared_ptr<ChBody>> bodies;
     bodies.push_back(sphereBody);
