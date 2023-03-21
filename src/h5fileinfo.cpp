@@ -39,22 +39,24 @@ void H5FileInfo::readH5Data() {
 
     InitScalar(userH5File, "simulation_parameters/rho", _rho);
     InitScalar(userH5File, "simulation_parameters/g", _g);
+    Init1D(userH5File, "simulation_parameters/w", freq_list);
     InitScalar(userH5File, bodyName + "/properties/disp_vol", _disp_vol);
-
-    Init1D(userH5File, bodyName + "/hydro_coeffs/radiation_damping/impulse_response_fun/t", rirf_time_vector);
     Init1D(userH5File, bodyName + "/properties/cb", cb);
     Init1D(userH5File, bodyName + "/properties/cg", cg);
-    Init1D(userH5File, "simulation_parameters/w", freq_list);
-
+    
     Init2D(userH5File, bodyName + "/hydro_coeffs/linear_restoring_stiffness", lin_matrix);
     Init2D(userH5File, bodyName + "/hydro_coeffs/added_mass/inf_freq", inf_added_mass);
 
+    Init1D(userH5File, bodyName + "/hydro_coeffs/radiation_damping/impulse_response_fun/t", rirf_time_vector);
+    Init3D(userH5File, bodyName + "/hydro_coeffs/radiation_damping/impulse_response_fun/K", rirf_matrix, rirf_dims);
+    Init3D(userH5File, bodyName + "/hydro_coeffs/radiation_damping/all", radiation_damping_matrix, Bw_dims);
+    
     Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/mag", excitation_mag_matrix, excitation_mag_dims);
     Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/re", excitation_re_matrix, re_dims);
     Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/im", excitation_im_matrix, im_dims);
-    Init3D(userH5File, bodyName + "/hydro_coeffs/radiation_damping/impulse_response_fun/K", rirf_matrix, rirf_dims);
-    Init3D(userH5File, bodyName + "/hydro_coeffs/radiation_damping/all", radiation_damping_matrix, Bw_dims);
     Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/phase", excitation_phase_matrix, excitation_phase_dims);
+    Init1D(userH5File, bodyName + "/hydro_coeffs/excitation/impulse_response_fun/t", excitation_irf_time);
+    Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/impulse_response_fun/ex_irfs", excitation_irf_matrix, excitation_irf_dims);
 
     // use same scalar function to set the int valued body number
     double temp;
@@ -193,6 +195,14 @@ int H5FileInfo::GetRIRFDims(int i) const {
 }
 
 /*******************************************************************************
+ * H5FileInfo::GetRIRFDims(int i) returns the i-th component of the dimensions of radiation_damping_matrix
+ * i = [0,1,2] -> [number of rows, number of columns, number of matrices]
+ *******************************************************************************/
+int H5FileInfo::GetExcitationIRFDims(int i) const {
+    return excitation_irf_dims[i];
+}
+
+/*******************************************************************************
  * H5FileInfo::GetHydrostaticStiffness()
  * returns the linear restoring stiffness matrix element in row i , column j
  *******************************************************************************/
@@ -304,4 +314,26 @@ double H5FileInfo::GetExcitationPhaseInterp(int i, int j, double freq_index_des)
     double excitationPhase = (freq_interp_val * (excitationPhaseCeil - excitationPhaseFloor)) + excitationPhaseFloor;
 
     return excitationPhase;
+}
+
+/*******************************************************************************
+ * H5FileInfo::GetExcitationIRFval()
+ * returns rirf val for DoF: 0,...,5; col: 0,...,6N-1; s: 0,...,1001 excitation_irf_dims[2]
+ *******************************************************************************/
+double H5FileInfo::GetExcitationIRFval(int dof, int col, int s) const {
+    int index = s + excitation_irf_dims[2] * (col + dof * excitation_irf_dims[1]);  // TODO check index
+    if (index < 0 || index >= excitation_irf_dims[0] * rirf_dims[1] * excitation_irf_dims[2]) {
+        std::cout << "out of bounds IRF\n";
+        return 0;
+    } else {
+        return excitation_irf_matrix[index] * _rho * _g;  // scale radiation force by rho
+    }
+}
+
+/*******************************************************************************
+ * H5FileInfo::GetExcitationIRFTimeVector()
+ * returns the std::vector of rirf_time_vector from h5 file
+ *******************************************************************************/
+std::vector<double> H5FileInfo::GetExcitationIRFTimeVector() const {
+    return excitation_irf_time;
 }

@@ -42,6 +42,7 @@ struct HydroInputs {
     void CreateFreeSurfaceElevation();
     std::vector<double> spectrum_frequencies;
     std::vector<double> spectral_densities;
+    std::vector<double> eta; 
     double ramp_duration;
 	double freq_index_des;
     double wave_height;
@@ -112,7 +113,14 @@ public:
 	std::vector<double> ComputeForceHydrostatics();
 	std::vector<double> ComputeForceRadiationDampingConv(); 
 	std::vector<double> ComputeForceExcitationRegularFreq();
-	//std::vector<double> ComputeForceRegularWaves();
+    double ExcitationConvolution(int body,
+                                 int dof,
+                                 double t,
+                                 const std::vector<double>& eta,
+                                 // const std::vector<double>& excitation_irf,
+                                 const std::vector<double>& t_irf_new,
+                                 double sim_dt);
+    std::vector<double> ComputeForceExcitation();
 	double GetRIRFval(int row, int col, int st);
 	double coordinateFunc(int b, int i);
 	bool convTrapz;
@@ -125,6 +133,7 @@ private:
 	std::vector<double> force_hydrostatic;
 	std::vector<double> force_radiation_damping;
 	std::vector<double> force_excitation_freq;
+    std::vector<double> force_excitation;
 	//std::vector<double> force_reg_waves;
 	std::vector<double> total_force;
 	int num_bodies;
