@@ -21,11 +21,24 @@ HydroInputs::HydroInputs() {
     regular_wave_amplitude = 0.0;
     excitation_force_phase.resize(6, 0);
     excitation_force_mag.resize(6, 0);
+    
 }
+
+void HydroInputs::updateNumTimesteps() {
+    num_timesteps = static_cast<int>(simulation_duration / simulation_dt) + 1;
+}
+
+//HydroInputs::HydroInputs(double wave_height, double wave_period, double simulation_duration, double simulation_dt)
+//    : wave_height(wave_height),
+//      wave_period(wave_period),
+//      simulation_duration(simulation_duration),
+//      simulation_dt(simulation_dt),
+//      num_timesteps(static_cast<int>(simulation_duration / simulation_dt) + 1) {
+//}
 
 std::vector<double> PiersonMoskowitzSpectrumHz(std::vector<double>& f, double Hs, double Tp) {
     // Sort the frequency vector
-    //std::sort(f.begin(), f.end());
+    std::sort(f.begin(), f.end());
 
     // Initialize the spectral densities vector
     std::vector<double> spectral_densities(f.size());
@@ -50,8 +63,8 @@ std::vector<double> Linspace(double start, double end, int num_points) {
     return result;
 }
 
-void HydroInputs::CreateSpectrum(double wave_height, double wave_period) {
-    // Define the frequency vector (replace this with your actual frequency values)
+void HydroInputs::CreateSpectrum() {
+    // Define the frequency vector
     std::vector<double> frequencies = Linspace(0.001, 1.0, 1000);  // TODO make this range accessible to user.
 
     // Calculate the Pierson-Moskowitz Spectrum
@@ -59,6 +72,14 @@ void HydroInputs::CreateSpectrum(double wave_height, double wave_period) {
 
     // Open a file stream for writing
     std::ofstream outputFile("spectral_densities.txt");
+
+    // Create a time index vector (replace this with your actual time values)
+    updateNumTimesteps();
+    std::vector<double> time_index = Linspace(0, simulation_duration, num_timesteps);
+
+    // Calculate the surface elevation
+    std::vector<double> eta = surface_elevation(frequencies, spectral_densities, time_index);
+
 
     // Check if the file stream is open
     if (outputFile.is_open()) {
@@ -357,7 +378,7 @@ void TestHydro::WaveSetUp() {
             }
             break;
         case WaveMode::irregular:
-            hydro_inputs.CreateSpectrum(hydro_inputs.wave_height, hydro_inputs.wave_period);
+            hydro_inputs.CreateSpectrum();
     }
 }
 
