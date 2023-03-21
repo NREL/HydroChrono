@@ -35,11 +35,15 @@ enum class WaveMode {
 struct HydroInputs {
 
 	WaveMode mode;
-	HydroInputs();
-    void CreateSpectrum(double wave_height, double wave_period);
+    HydroInputs();
+    void updateNumTimesteps();
+    void CreateSpectrum();
 	double freq_index_des;
     double wave_height;
     double wave_period;
+    double simulation_duration;
+    double simulation_dt;
+    int num_timesteps;
 	double regular_wave_amplitude;
 	double regular_wave_omega;
 	double wave_omega_delta;

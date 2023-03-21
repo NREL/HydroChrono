@@ -143,6 +143,8 @@ int main(int argc, char* argv[]) {
     my_hydro_inputs.mode                   = WaveMode::irregular;                     // uses regular wave mode
     my_hydro_inputs.wave_height            = 1.0;
     my_hydro_inputs.wave_period            = 10.0;
+    my_hydro_inputs.simulation_duration    = simulationDuration;
+    my_hydro_inputs.simulation_dt          = timestep;
 
     std::vector<std::shared_ptr<ChBody>> bodies;
     bodies.push_back(sphereBody);
