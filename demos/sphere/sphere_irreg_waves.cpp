@@ -130,7 +130,7 @@ int main(int argc, char* argv[]) {
     // specified in the body relative frames.
     double rest_length  = 3.0;
     double spring_coef  = 0.0;
-    double damping_coef = task10dampings[reg_wave_num - 1];
+    double damping_coef = 0.0;
     auto spring_1       = chrono_types::make_shared<ChLinkTSDA>();
     spring_1->Initialize(sphereBody, ground, false, ChVector<>(0, 0, -2),
                          ChVector<>(0, 0, -5));  // false means positions are in global frame
@@ -239,7 +239,7 @@ int main(int argc, char* argv[]) {
 
     if (saveDataOn) {
         std::string out_dir  = "results/sphere_irregular_waves/";
-        std::string out_file = "irreg_H_" + my_hydro_inputs.wave_height + "_T_" + my_hydro_inputs.wave_period + ".txt ";
+        std::string out_file = "irreg_test.txt"; //"irreg_H_" + my_hydro_inputs.wave_height + "_T_" + my_hydro_inputs.wave_period + ".txt ";
         std::ofstream outputFile(out_dir + out_file);
         if (!outputFile.is_open()) {
             if (!std::filesystem::exists(out_dir)) {
