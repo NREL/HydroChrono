@@ -142,7 +142,7 @@ void HydroInputs::CreateFreeSurfaceElevation() {
     std::vector<double> time_index = Linspace(0, simulation_duration, num_timesteps);
 
     // Calculate the surface elevation
-    std::vector<double> eta = FreeSurfaceElevation(spectrum_frequencies, spectral_densities, time_index);
+    eta = FreeSurfaceElevation(spectrum_frequencies, spectral_densities, time_index);
 
     // Apply ramp if ramp_duration is greater than 0
     if (ramp_duration > 0.0) {
@@ -683,6 +683,53 @@ std::vector<double> TestHydro::ComputeForceExcitationRegularFreq() {
     return force_excitation_freq;
 }
 
+double TestHydro::ExcitationConvolution(int body,
+                                        int dof,
+                                        double time,
+                                        const std::vector<double>& eta,
+                                        // const std::vector<double>& excitation_irf,
+                                        const std::vector<double>& t_irf,
+                                        double sim_dt) {
+    double f_ex = 0.0;
+
+    for (size_t j = 0; j < t_irf.size(); ++j) {
+        double tau        = t_irf[j];
+        double t_tau      = time - tau;
+        double ex_irf_val = file_info[body].GetExcitationIRFval(dof, 0, j);
+        if (0.0 < t_tau && t_tau < eta.size() * sim_dt) {
+            size_t eta_index = static_cast<size_t>(t_tau / sim_dt);
+            double eta_val   = eta[eta_index - 1];
+            f_ex += ex_irf_val * eta_val * sim_dt;
+        }
+    }
+
+    return f_ex;
+}
+
+/*******************************************************************************
+ * TestHydro::ComputeForceExcitation()
+ * computes the 6N dimensional excitation force
+ *******************************************************************************/
+std::vector<double> TestHydro::ComputeForceExcitation() {
+    double time = bodies[0]->GetChTime();
+    
+    int total_dofs = 6 * num_bodies;
+    force_excitation.resize(total_dofs, 0.0);
+
+    for (int body = 0; body < num_bodies; body++) {
+        std::vector<double> t_irf = file_info[body].GetExcitationIRFTimeVector();  // TODO: just call this once at the start.
+        // Loop through the DOFs
+        for (int dof = 0; dof < 6; ++dof) {
+            // Compute the convolution for the current DOF
+            double force_excitation_dof =
+                ExcitationConvolution(body, dof, time, hydro_inputs.eta, t_irf, hydro_inputs.simulation_dt); 
+            int force_excitation_index               = body * 6 + dof;
+            force_excitation[force_excitation_index] = force_excitation_dof;
+        }
+    }
+    return force_excitation;
+}
+
 ///*******************************************************************************
 //* TestHydro::ComputeForceExcitationRegularFreq()
 //* computes the 6N dimensional excitation force
@@ -744,34 +791,11 @@ double TestHydro::coordinateFunc(int b, int i) {
     if (hydro_inputs.mode == WaveMode::noWaveCIC) {
         // update required forces:
         ComputeForceHydrostatics();
-
-        std::ofstream hydrostaticsCheck;
-        hydrostaticsCheck.open("./results/f3of/debugging/fhs.txt");
-        for (int dof = 0; dof < total_dofs; dof++) {
-            hydrostaticsCheck << force_hydrostatic[dof] << std::endl;
-        }
-        hydrostaticsCheck.close();
-
         ComputeForceRadiationDampingConv();
-
-        std::ofstream radiationCheck;
-        radiationCheck.open("./results/f3of/debugging/frad.txt");
-        for (int dof = 0; dof < total_dofs; dof++) {
-            radiationCheck << force_radiation_damping[dof] << std::endl;
-        }
-        radiationCheck.close();
-
         // sum all forces element by element
         for (int j = 0; j < total_dofs; j++) {
             total_force[j] = force_hydrostatic[j] - force_radiation_damping[j];  // force_hydrostatic[j] -
         }
-
-        std::ofstream totalForceCheck;
-        totalForceCheck.open("./results/f3of/debugging/ftotal.txt");
-        for (int dof = 0; dof < total_dofs; dof++) {
-            totalForceCheck << total_force[dof] << std::endl;
-        }
-        totalForceCheck.close();
     } else if (hydro_inputs.mode == WaveMode::regular) {
         // update required forces:
         ComputeForceHydrostatics();
@@ -781,10 +805,26 @@ double TestHydro::coordinateFunc(int b, int i) {
         for (int j = 0; j < total_dofs; j++) {
             total_force[j] = force_hydrostatic[j] - force_radiation_damping[j] + force_excitation_freq[j];
         }
+    } else if (hydro_inputs.mode == WaveMode::irregular) {
+        // update required forces:
+        ComputeForceHydrostatics();
+        ComputeForceRadiationDampingConv();
+        ComputeForceExcitation();
+        // sum all forces element by element
+        for (int j = 0; j < total_dofs; j++) {
+            total_force[j] = force_hydrostatic[j] - force_radiation_damping[j] + force_excitation[j];
+        }
     }
     if (body_num_offset + i < 0 || body_num_offset >= total_dofs) {
         std::cout << "total force accessing out of bounds" << std::endl;
     }
+
+    std::ofstream total_force_check;
+    total_force_check.open("total_force_check.txt");
+    for (int dof = 0; dof < total_dofs; dof++) {
+        total_force_check << total_force[dof] << std::endl;
+    }
+    total_force_check.close();
 
     return total_force[body_num_offset + i];
 }

@@ -32,8 +32,11 @@ public:
 	chrono::ChMatrixDynamic<double> GetInfAddedMassMatrix() const;
 	double GetHydrostaticStiffness(int i, int j) const;
 	double GetRIRFval(int i, int n, int m) const;
+    double GetExcitationIRFval(int i, int n, int m) const;
 	int GetRIRFDims(int i) const;
-	std::vector<double> GetRIRFTimeVector() const; // TODO
+    int GetExcitationIRFDims(int i) const;
+	std::vector<double> GetRIRFTimeVector() const;
+    std::vector<double> GetExcitationIRFTimeVector() const;
 	double GetExcitationMagValue(int m, int n, int w) const;
 	double GetExcitationMagInterp(int i, int j, double freq_index_des) const;
 	double GetOmegaDelta() const;
@@ -72,6 +75,10 @@ private:
 	std::vector<int> excitation_phase_dims;
 	std::string h5_file_name;
 	std::string bodyName;
+
+	std::vector<double> excitation_irf_time;
+    std::vector<double> excitation_irf_matrix;
+    std::vector<int> excitation_irf_dims;
 
 
 	void InitScalar(H5::H5File& file, std::string data_name, double& var);
