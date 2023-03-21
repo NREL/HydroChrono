@@ -30,8 +30,12 @@ HydroInputs::HydroInputs() {
     
 }
 
-void HydroInputs::updateNumTimesteps() {
+void HydroInputs::UpdateNumTimesteps() {
     num_timesteps = static_cast<int>(simulation_duration / simulation_dt) + 1;
+}
+
+void HydroInputs::UpdateRampTimesteps() {
+    ramp_timesteps = static_cast<int>(ramp_duration / simulation_dt) + 1;
 }
 
 std::vector<double> PiersonMoskowitzSpectrumHz(std::vector<double>& f, double Hs, double Tp) {
@@ -61,7 +65,7 @@ std::vector<double> Linspace(double start, double end, int num_points) {
     return result;
 }
 
-std::vector<double> surface_elevation(const std::vector<double>& freqs_hz,
+std::vector<double> FreeSurfaceElevation(const std::vector<double>& freqs_hz,
                                       const std::vector<double>& spectral_densities,
                                       const std::vector<double>& time_index,
                                       int seed = 1) {
@@ -109,18 +113,10 @@ std::vector<double> surface_elevation(const std::vector<double>& freqs_hz,
 
 void HydroInputs::CreateSpectrum() {
     // Define the frequency vector
-    std::vector<double> frequencies = Linspace(0.001, 1.0, 1000);  // TODO make this range accessible to user.
+    spectrum_frequencies = Linspace(0.001, 1.0, 1000);  // TODO make this range accessible to user.
 
     // Calculate the Pierson-Moskowitz Spectrum
-    std::vector<double> spectral_densities = PiersonMoskowitzSpectrumHz(frequencies, wave_height, wave_period);
-
-    // Create a time index vector (replace this with your actual time values)
-    updateNumTimesteps();
-    std::vector<double> time_index = Linspace(0, simulation_duration, num_timesteps);
-
-    // Calculate the surface elevation
-    std::vector<double> eta = surface_elevation(frequencies, spectral_densities, time_index);
-
+    spectral_densities = PiersonMoskowitzSpectrumHz(spectrum_frequencies, wave_height, wave_period);
 
     // Open a file stream for writing
     std::ofstream outputFile("spectral_densities.txt");
@@ -129,7 +125,7 @@ void HydroInputs::CreateSpectrum() {
     if (outputFile.is_open()) {
         // Write the spectral densities and their corresponding frequencies to the file
         for (size_t i = 0; i < spectral_densities.size(); ++i) {
-            outputFile << frequencies[i] << " : " << spectral_densities[i] << std::endl;
+            outputFile << spectrum_frequencies[i] << " : " << spectral_densities[i] << std::endl;
         }
 
         // Close the file stream
@@ -137,7 +133,27 @@ void HydroInputs::CreateSpectrum() {
     } else {
         std::cerr << "Unable to open file for writing." << std::endl;
     }
+}
 
+
+void HydroInputs::CreateFreeSurfaceElevation() {
+    // Create a time index vector (replace this with your actual time values)
+    UpdateNumTimesteps();
+    std::vector<double> time_index = Linspace(0, simulation_duration, num_timesteps);
+
+    // Calculate the surface elevation
+    std::vector<double> eta = FreeSurfaceElevation(spectrum_frequencies, spectral_densities, time_index);
+
+    // Apply ramp if ramp_duration is greater than 0
+    if (ramp_duration > 0.0) {
+        UpdateRampTimesteps();
+        ramp_timesteps = static_cast<int>(ramp_duration / simulation_dt) + 1;
+        ramp           = Linspace(0.0, 1.0, ramp_timesteps);
+
+        for (size_t i = 0; i < ramp.size(); ++i) {
+            eta[i] *= ramp[i];
+        }
+    }
 
     // Open a file stream for writing
     std::ofstream outputFile2("eta.txt");
@@ -440,6 +456,7 @@ void TestHydro::WaveSetUp() {
             break;
         case WaveMode::irregular:
             hydro_inputs.CreateSpectrum();
+            hydro_inputs.CreateFreeSurfaceElevation();
     }
 }
 
