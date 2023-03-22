@@ -2,6 +2,7 @@
 #include <hydroc/chloadaddedmass.h>
 #include <hydroc/h5fileinfo.h>
 
+#include <unsupported/Eigen/Splines>
 #include <chrono/physics/ChLoad.h>
 
 #include <algorithm>
@@ -16,21 +17,91 @@
 #endif
 
 // =============================================================================
-// HydroInputs Class Definitions
+// Misc functions
 // =============================================================================
 
-/*******************************************************************************
- * HydroInputs constructor
- *******************************************************************************/
-HydroInputs::HydroInputs() {
+#include <Eigen/Dense>
+#include <fstream>
+#include <iostream>
+#include <vector>
+
+template <typename Container>
+void WriteContainerToFile(const Container& container, const std::string& file_name);
+
+template <>
+void WriteContainerToFile<std::vector<double>>(const std::vector<double>& container, const std::string& file_name) {
+    std::ofstream output_file(file_name);
+
+    if (!output_file) {
+        std::cerr << "Error: Unable to open the file: " << file_name << std::endl;
+        return;
+    }
+
+    for (const double value : container) {
+        output_file << value << std::endl;
+    }
+
+    output_file.close();
 }
 
-void HydroInputs::UpdateNumTimesteps() {
-    num_timesteps = static_cast<int>(simulation_duration / simulation_dt) + 1;
+template <>
+void WriteContainerToFile<Eigen::VectorXd>(const Eigen::VectorXd& container, const std::string& file_name) {
+    std::ofstream output_file(file_name);
+
+    if (!output_file) {
+        std::cerr << "Error: Unable to open the file: " << file_name << std::endl;
+        return;
+    }
+
+    for (int i = 0; i < container.size(); ++i) {
+        output_file << container[i] << std::endl;
+    }
+
+    output_file.close();
 }
 
-void HydroInputs::UpdateRampTimesteps() {
-    ramp_timesteps = static_cast<int>(ramp_duration / simulation_dt) + 1;
+std::vector<double> Linspace(double start, double end, int num_points) {
+    std::vector<double> result(num_points);
+    double step = (end - start) / (num_points - 1);
+
+    for (int i = 0; i < num_points; ++i) {
+        result[i] = start + i * step;
+    }
+
+    return result;
+}
+
+std::pair<Eigen::VectorXd, Eigen::VectorXd> ResampleTimeSeries(const Eigen::VectorXd& time_series,
+                                                               double dt_old,
+                                                               double dt_new) {
+    if (dt_new == dt_old) {
+        // If the new time resolution is the same as the original, return the original time series
+        Eigen::VectorXd t_old = Eigen::VectorXd::LinSpaced(time_series.size(), 0, (time_series.size() - 1) * dt_old);
+        t_old.array() -= 0.5 * t_old[t_old.size() - 1];
+        return {t_old, time_series};
+    }
+
+    // Calculate the new time vector
+    int newSize           = static_cast<int>(ceil(time_series.size() * dt_old / dt_new));
+    Eigen::VectorXd t_new = Eigen::VectorXd::LinSpaced(newSize, 0, (time_series.size() - 1) * dt_old);
+
+    // Create the original time vector
+    Eigen::VectorXd t_old = Eigen::VectorXd::LinSpaced(time_series.size(), 0, (time_series.size() - 1) * dt_old);
+
+    Eigen::VectorXd time_series_new(newSize);
+
+    // Interpolate using cubic spline interpolation
+    Eigen::Spline<double, 1> spline =
+        Eigen::SplineFitting<Eigen::Spline<double, 1>>::Interpolate(time_series.transpose(), 3, t_old);
+
+    for (int i = 0; i < newSize; i++) {
+        time_series_new[i] = spline(t_new[i])[0];
+    }
+
+    // Shift t_new to the left by half of the max value of t_old
+    t_new.array() -= 0.5 * t_old[t_old.size() - 1];
+
+    return {t_new, time_series_new};
 }
 
 std::vector<double> PiersonMoskowitzSpectrumHz(std::vector<double>& f, double Hs, double Tp) {
@@ -49,21 +120,10 @@ std::vector<double> PiersonMoskowitzSpectrumHz(std::vector<double>& f, double Hs
     return spectral_densities;
 }
 
-std::vector<double> Linspace(double start, double end, int num_points) {
-    std::vector<double> result(num_points);
-    double step = (end - start) / (num_points - 1);
-
-    for (int i = 0; i < num_points; ++i) {
-        result[i] = start + i * step;
-    }
-
-    return result;
-}
-
 std::vector<double> FreeSurfaceElevation(const std::vector<double>& freqs_hz,
-                                      const std::vector<double>& spectral_densities,
-                                      const std::vector<double>& time_index,
-                                      int seed = 1) {
+                                         const std::vector<double>& spectral_densities,
+                                         const std::vector<double>& time_index,
+                                         int seed = 1) {
     double delta_f = freqs_hz.back() / freqs_hz.size();
     std::vector<double> omegas(freqs_hz.size());
 
@@ -88,8 +148,9 @@ std::vector<double> FreeSurfaceElevation(const std::vector<double>& freqs_hz,
         }
     }
 
-    std::mt19937 rng(seed); // Creates an instance of the std::mt19937 random number generator; a Mersenne Twister random number engine.
-                            // The seed parameter is used to initialize the generator's internal state - to control the random sequence produced.
+    std::mt19937 rng(seed);  // Creates an instance of the std::mt19937 random number generator; a Mersenne Twister
+                             // random number engine. The seed parameter is used to initialize the generator's internal
+                             // state - to control the random sequence produced.
     std::uniform_real_distribution<double> dist(0.0, 2 * M_PI);
     std::vector<double> phases(omegas.size());
     for (size_t i = 0; i < phases.size(); ++i) {
@@ -106,36 +167,12 @@ std::vector<double> FreeSurfaceElevation(const std::vector<double>& freqs_hz,
     return eta;
 }
 
-void HydroInputs::CreateSpectrum() {
-    // Define the frequency vector
-    spectrum_frequencies = Linspace(0.001, 1.0, 1000);  // TODO make this range accessible to user.
-
-    // Calculate the Pierson-Moskowitz Spectrum
-    spectral_densities = PiersonMoskowitzSpectrumHz(spectrum_frequencies, wave_height, wave_period);
-
-    // Open a file stream for writing
-    std::ofstream outputFile("spectral_densities.txt");
-
-    // Check if the file stream is open
-    if (outputFile.is_open()) {
-        // Write the spectral densities and their corresponding frequencies to the file
-        for (size_t i = 0; i < spectral_densities.size(); ++i) {
-            outputFile << spectrum_frequencies[i] << " : " << spectral_densities[i] << std::endl;
-        }
-
-        // Close the file stream
-        outputFile.close();
-    } else {
-        std::cerr << "Unable to open file for writing." << std::endl;
-    }
-}
-
 std::vector<std::array<double, 3>> CreateFreeSurface3DPts(const std::vector<double>& eta,
-                                                         const std::vector<double>& t_vec) {
+                                                          const std::vector<double>& t_vec) {
     std::vector<std::array<double, 3>> surface(t_vec.size() * 2);
 
     for (size_t i = 0; i < t_vec.size(); ++i) {
-        double t = t_vec[i];
+        double t = -1*t_vec[i];
         double z = eta[i];
 
         surface[2 * i]     = {t, -10.0, z};
@@ -227,6 +264,48 @@ void WriteFreeSurfaceMeshObj(const std::vector<std::array<double, 3>>& points,
     }
 
     out.close();
+}
+
+// =============================================================================
+// HydroInputs Class Definitions
+// =============================================================================
+
+/*******************************************************************************
+ * HydroInputs constructor
+ *******************************************************************************/
+HydroInputs::HydroInputs() {
+}
+
+void HydroInputs::UpdateNumTimesteps() {
+    num_timesteps = static_cast<int>(simulation_duration / simulation_dt) + 1;
+}
+
+void HydroInputs::UpdateRampTimesteps() {
+    ramp_timesteps = static_cast<int>(ramp_duration / simulation_dt) + 1;
+}
+
+void HydroInputs::CreateSpectrum() {
+    // Define the frequency vector
+    spectrum_frequencies = Linspace(0.001, 1.0, 1000);  // TODO make this range accessible to user.
+
+    // Calculate the Pierson-Moskowitz Spectrum
+    spectral_densities = PiersonMoskowitzSpectrumHz(spectrum_frequencies, wave_height, wave_period);
+
+    // Open a file stream for writing
+    std::ofstream outputFile("spectral_densities.txt");
+
+    // Check if the file stream is open
+    if (outputFile.is_open()) {
+        // Write the spectral densities and their corresponding frequencies to the file
+        for (size_t i = 0; i < spectral_densities.size(); ++i) {
+            outputFile << spectrum_frequencies[i] << " : " << spectral_densities[i] << std::endl;
+        }
+
+        // Close the file stream
+        outputFile.close();
+    } else {
+        std::cerr << "Unable to open file for writing." << std::endl;
+    }
 }
 
 void HydroInputs::CreateFreeSurfaceElevation() {

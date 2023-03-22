@@ -3,6 +3,8 @@
 
 #include <filesystem>
 
+#include <unsupported/Eigen/Splines>
+
 using namespace chrono;
 
 // =============================================================================
@@ -26,6 +28,8 @@ H5FileInfo::H5FileInfo(std::string file, std::string Name) {
         std::cout << "h5 file does not exist, absolute file location: " << std::filesystem::absolute(file) << std::endl;
     }
     readH5Data();
+
+    ResampleExcitationIRFTime();
 }
 
 /*******************************************************************************
@@ -336,4 +340,55 @@ double H5FileInfo::GetExcitationIRFval(int dof, int col, int s) const {
  *******************************************************************************/
 std::vector<double> H5FileInfo::GetExcitationIRFTimeVector() const {
     return excitation_irf_time;
+}
+
+std::pair<Eigen::VectorXd, Eigen::VectorXd> H5FileInfo::ResampleExcitationIRF(double dt_new) {
+    Eigen::VectorXd excitation_irf(excitation_irf_matrix.size());
+    for (size_t i = 0; i < excitation_irf_matrix.size(); i++) {
+        excitation_irf[i] = excitation_irf_matrix[i];
+    }
+    double excitation_irf_dt = excitation_irf_time[1] - excitation_irf_time[0];
+    return ResampleTimeSeries(excitation_irf, excitation_irf_dt, dt_new);
+}
+
+std::pair<Eigen::VectorXd, Eigen::VectorXd> H5FileInfo::ResampleExcitationIRFTime(double dt_new) {
+    Eigen::VectorXd excitation_irf_t(excitation_irf_time.size());
+    for (size_t i = 0; i < excitation_irf_time.size(); i++) {
+        excitation_irf_t[i] = excitation_irf_time[i];
+    }
+    double excitation_irf_dt = excitation_irf_time[1] - excitation_irf_time[0];
+    return ResampleTimeSeries(excitation_irf_t, excitation_irf_dt, dt_new);
+}
+
+std::pair<Eigen::VectorXd, Eigen::VectorXd> ResampleTimeSeries(const Eigen::VectorXd& time_series,
+                                                               double dt_old,
+                                                               double dt_new) {
+    if (dt_new == dt_old) {
+        // If the new time resolution is the same as the original, return the original time series
+        Eigen::VectorXd t_old = Eigen::VectorXd::LinSpaced(time_series.size(), 0, (time_series.size() - 1) * dt_old);
+        t_old.array() -= 0.5 * t_old[t_old.size() - 1];
+        return {t_old, time_series};
+    }
+
+    // Calculate the new time vector
+    int newSize           = static_cast<int>(ceil(time_series.size() * dt_old / dt_new));
+    Eigen::VectorXd t_new = Eigen::VectorXd::LinSpaced(newSize, 0, (time_series.size() - 1) * dt_old);
+
+    // Create the original time vector
+    Eigen::VectorXd t_old = Eigen::VectorXd::LinSpaced(time_series.size(), 0, (time_series.size() - 1) * dt_old);
+
+    Eigen::VectorXd time_series_new(newSize);
+
+    // Interpolate using cubic spline interpolation
+    Eigen::Spline<double, 1> spline =
+        Eigen::SplineFitting<Eigen::Spline<double, 1>>::Interpolate(time_series.transpose(), 3, t_old);
+
+    for (int i = 0; i < newSize; i++) {
+        time_series_new[i] = spline(t_new[i])[0];
+    }
+
+    // Shift t_new to the left by half of the max value of t_old
+    t_new.array() -= 0.5 * t_old[t_old.size() - 1];
+
+    return {t_new, time_series_new};
 }
