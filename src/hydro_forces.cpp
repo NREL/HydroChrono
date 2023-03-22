@@ -156,9 +156,9 @@ std::vector<std::array<size_t, 3>> CreateFreeSurfaceTriangles(size_t eta_size) {
     return triangles;
 }
 
-void WriteFreeSurfaceMesh(const std::vector<std::array<double, 3>>& points,
-                             const std::vector<std::array<size_t, 3>>& triangles,
-                             const std::string& file_name) {
+void WriteFreeSurfaceMeshNemoh(const std::vector<std::array<double, 3>>& points,
+                               const std::vector<std::array<size_t, 3>>& triangles,
+                               const std::string& file_name) {
     std::ofstream out(file_name);
     if (!out) {
         std::cerr << "Failed to open " << file_name << std::endl;
@@ -187,6 +187,44 @@ void WriteFreeSurfaceMesh(const std::vector<std::array<double, 3>>& points,
     }
 
     out << "0 0 0 0" << std::endl;
+
+    out.close();
+}
+
+void WriteFreeSurfaceMeshObj(const std::vector<std::array<double, 3>>& points,
+                             const std::vector<std::array<size_t, 3>>& triangles,
+                             const std::string& file_name) {
+    std::ofstream out(file_name);
+    if (!out) {
+        std::cerr << "Failed to open " << file_name << std::endl;
+        return;
+    }
+
+    // Write header
+    auto t  = std::time(nullptr);
+    auto tm = *std::localtime(&t);
+    out << "# Wavefront OBJ file exported by HydroChrono" << std::endl;
+    out << "# File Created: " << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << std::endl << std::endl;
+
+    // Write vertices
+    out << "# Vertices: " << points.size() << std::endl << std::endl;
+    out << std::fixed << std::setprecision(6);
+    for (const auto& point : points) {
+        out << "v ";
+        out << std::setw(14) << point[0] << ' ';
+        out << std::setw(14) << point[1] << ' ';
+        out << std::setw(14) << point[2] << std::endl;
+    }
+    out << std::endl;
+
+    // Write faces
+    out << "# Faces: " << triangles.size() << std::endl << std::endl;
+    for (const auto& triangle : triangles) {
+        out << "f ";
+        out << std::setw(9) << triangle[0] + 1;
+        out << std::setw(9) << triangle[1] + 1;
+        out << std::setw(9) << triangle[2] + 1 << std::endl;
+    }
 
     out.close();
 }
@@ -227,7 +265,7 @@ void HydroInputs::CreateFreeSurfaceElevation() {
     std::vector<std::array<double, 3>> free_surface_3d_pts    = CreateFreeSurface3DPts(eta, time_index);
     std::vector<std::array<size_t, 3>> free_surface_triangles = CreateFreeSurfaceTriangles(time_index.size());
 
-    WriteFreeSurfaceMesh(free_surface_3d_pts, free_surface_triangles, "fse_mesh.nemoh");
+    WriteFreeSurfaceMeshObj(free_surface_3d_pts, free_surface_triangles, "fse_mesh.obj");
 }
 
 
