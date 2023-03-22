@@ -156,7 +156,7 @@ std::vector<std::array<size_t, 3>> CreateFreeSurfaceTriangles(size_t eta_size) {
     return triangles;
 }
 
-void write_free_surface_mesh(const std::vector<std::array<double, 3>>& points,
+void WriteFreeSurfaceMesh(const std::vector<std::array<double, 3>>& points,
                              const std::vector<std::array<size_t, 3>>& triangles,
                              const std::string& file_name) {
     std::ofstream out(file_name);
@@ -227,7 +227,7 @@ void HydroInputs::CreateFreeSurfaceElevation() {
     std::vector<std::array<double, 3>> free_surface_3d_pts    = CreateFreeSurface3DPts(eta, time_index);
     std::vector<std::array<size_t, 3>> free_surface_triangles = CreateFreeSurfaceTriangles(time_index.size());
 
-    write_free_surface_mesh(free_surface_3d_pts, free_surface_triangles, "fse_mesh.nemoh");
+    WriteFreeSurfaceMesh(free_surface_3d_pts, free_surface_triangles, "fse_mesh.nemoh");
 }
 
 
