@@ -50,6 +50,9 @@ public:
 	double GetRho() const { return _rho;}
 	double GetDispVol() const  { return _disp_vol;}
 
+	std::pair<Eigen::VectorXd, Eigen::VectorXd> ResampleExcitationIRF(double dt_new);
+    std::pair<Eigen::VectorXd, Eigen::VectorXd> ResampleExcitationIRFTime(double dt_new);
+
 	int bodyNum;
 	chrono::ChMatrixDynamic<double> lin_matrix;
 private:

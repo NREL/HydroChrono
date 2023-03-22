@@ -87,7 +87,7 @@ int main(int argc, char* argv[]) {
     system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
     system.SetStep(timestep);
     ChRealtimeStepTimer realtime_timer;
-    double simulationDuration = 40.0;
+    double simulationDuration = 100.0;
 
     // Setup Ground
     auto ground = chrono_types::make_shared<ChBody>();
@@ -141,8 +141,8 @@ int main(int argc, char* argv[]) {
 
     HydroInputs my_hydro_inputs;
     my_hydro_inputs.mode                   = WaveMode::irregular;                     // uses regular wave mode
-    my_hydro_inputs.wave_height            = 1.0;
-    my_hydro_inputs.wave_period            = 10.0;
+    my_hydro_inputs.wave_height            = 3.0;
+    my_hydro_inputs.wave_period            = 9.0;
     my_hydro_inputs.simulation_duration    = simulationDuration;
     my_hydro_inputs.simulation_dt          = timestep;
     my_hydro_inputs.ramp_duration          = 15.0;
@@ -169,7 +169,7 @@ int main(int argc, char* argv[]) {
         false   // do not collide
     );
     fse_mesh->SetMass(1.0);
-    fse_mesh->SetPos_dt(ChVector<>(-0.45, 0, 0));
+    fse_mesh->SetPos_dt(ChVector<>(0.9, 0, 0));
     system.Add(fse_mesh);
     auto fse_prismatic = chrono_types::make_shared<ChLinkLockPrismatic>();
     fse_prismatic->Initialize(fse_plane, fse_mesh, ChCoordsys<>(ChVector<>(1.0, 0.0, 0.0), Q_from_AngY(CH_C_PI_2)));
@@ -184,8 +184,8 @@ int main(int argc, char* argv[]) {
 
         // Create a visualization material
         auto fse_texture = chrono_types::make_shared<ChVisualMaterial>();
-        fse_texture->SetDiffuseColor(ChColor(0.3f, 0.1f, 0.1f));
-        fse_texture->SetOpacity(0.5);
+        fse_texture->SetDiffuseColor(ChColor(0.1f, 0.1f, 0.8f));
+        fse_texture->SetOpacity(0.75);
         fse_mesh->GetVisualShape(0)->SetMaterial(0, fse_texture);
 
         // create the irrlicht application for visualizing
