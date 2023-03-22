@@ -155,6 +155,11 @@ int main(int argc, char* argv[]) {
     auto start = std::chrono::high_resolution_clock::now();
 
     // set up free surface from a mesh
+    auto fse_plane = chrono_types::make_shared<ChBody>();
+    fse_plane->SetPos(ChVector<>(0, 0, 0));
+    fse_plane->SetBodyFixed(true);
+    fse_plane->SetCollide(false);
+    system.AddBody(fse_plane);
     std::cout << "Attempting to open mesh file: " << "fse_mesh.obj" << std::endl;
     std::shared_ptr<ChBody> fse_mesh = chrono_types::make_shared<ChBodyEasyMesh>(  //
         "fse_mesh.obj",                                                              // file name
@@ -163,9 +168,12 @@ int main(int argc, char* argv[]) {
         true,   // create visualization asset
         false   // do not collide
     );
-    fse_mesh->SetMass(0.0);
-    fse_mesh->SetPos_dt(ChVector<>(-1.0, 0, 0));
+    fse_mesh->SetMass(1.0);
+    fse_mesh->SetPos_dt(ChVector<>(-0.45, 0, 0));
     system.Add(fse_mesh);
+    auto fse_prismatic = chrono_types::make_shared<ChLinkLockPrismatic>();
+    fse_prismatic->Initialize(fse_plane, fse_mesh, ChCoordsys<>(ChVector<>(1.0, 0.0, 0.0), Q_from_AngY(CH_C_PI_2)));
+    system.AddLink(fse_prismatic);
 
 #ifdef HYDROCHRONO_HAVE_IRRLICHT
     if (visualizationOn) {
