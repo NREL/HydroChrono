@@ -527,16 +527,16 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
     rirf_time_vector = file_info[0].GetRIRFTimeVector();
     rirf_timestep    = rirf_time_vector[1] - rirf_time_vector[0];  // TODO is this the same for all bodies?
 
-    std::vector<double> ex_irf_time = file_info[0].GetExcitationIRFTime();
-    WriteContainerToFile(ex_irf_time, "ex_irf_time.txt");
+    //std::vector<double> ex_irf = file_info[0].GetExcitationIRF();
+    //WriteContainerToFile(ex_irf, "ex_irf.txt");
 
     // resample excitation IRF time series
     for (int b = 0; b < num_bodies; b++) {
-        file_info[b].ResampleExcitationIRFTime(user_hydro_inputs.simulation_dt);
+        file_info[b].ResampleExcitationIRF(user_hydro_inputs.simulation_dt);
     }
 
-    Eigen::VectorXd ex_irf_time_resampled = file_info[0].GetExcitationIRFTimeResampled();
-    WriteContainerToFile(ex_irf_time_resampled, "ex_irf_time_resampled.txt");
+    //Eigen::VectorXd ex_irf_resampled = file_info[0].GetExcitationIRFResampled();
+    //WriteContainerToFile(ex_irf_resampled, "ex_irf_resampled.txt");
 
     // simplify 6* num_bodies to be the system's total number of dofs, makes expressions later easier to read
     unsigned total_dofs = 6 * num_bodies;
@@ -605,7 +605,7 @@ void TestHydro::WaveSetUp() {
         case WaveMode::irregular:
             hydro_inputs.CreateSpectrum();
             hydro_inputs.CreateFreeSurfaceElevation();
-            t_irf = file_info[0].GetExcitationIRFTime(); // assume t_irf is the same for all hydrodynamic bodies
+            t_irf = file_info[0].GetExcitationIRFTime();//Resampled();  // assume t_irf is the same for all hydrodynamic bodies
     }
 }
 
@@ -843,7 +843,7 @@ double TestHydro::ExcitationConvolution(int body,
     for (size_t j = 0; j < t_irf.size(); ++j) {
         double tau        = t_irf[j];
         double t_tau      = time - tau;
-        double ex_irf_val = file_info[body].GetExcitationIRFval(dof, 0, j);
+        double ex_irf_val = file_info[body].GetExcitationIRFVal(dof, 0, j);
         if (0.0 < t_tau && t_tau < eta.size() * sim_dt) {
             size_t eta_index = static_cast<size_t>(t_tau / sim_dt);
             double eta_val   = eta[eta_index - 1];

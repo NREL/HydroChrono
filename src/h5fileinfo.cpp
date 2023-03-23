@@ -8,6 +8,24 @@
 using namespace chrono;
 
 // =============================================================================
+// Misc
+// =============================================================================
+
+template <typename T>
+void WriteDataToFile(const std::vector<T>& data, const std::string& filename) {
+    std::ofstream outFile(filename);
+    if (outFile.is_open()) {
+        for (const auto& item : data) {
+            outFile << item << std::endl;
+        }
+        outFile.close();
+    } else {
+        std::cerr << "Unable to open the file for writing: " << filename << std::endl;
+    }
+}
+
+
+// =============================================================================
 // H5FileInfo Class Definitions
 // =============================================================================
 
@@ -45,20 +63,21 @@ void H5FileInfo::readH5Data() {
     InitScalar(userH5File, bodyName + "/properties/disp_vol", _disp_vol);
     Init1D(userH5File, bodyName + "/properties/cb", cb);
     Init1D(userH5File, bodyName + "/properties/cg", cg);
-    
+
     Init2D(userH5File, bodyName + "/hydro_coeffs/linear_restoring_stiffness", lin_matrix);
     Init2D(userH5File, bodyName + "/hydro_coeffs/added_mass/inf_freq", inf_added_mass);
 
     Init1D(userH5File, bodyName + "/hydro_coeffs/radiation_damping/impulse_response_fun/t", rirf_time_vector);
     Init3D(userH5File, bodyName + "/hydro_coeffs/radiation_damping/impulse_response_fun/K", rirf_matrix, rirf_dims);
     Init3D(userH5File, bodyName + "/hydro_coeffs/radiation_damping/all", radiation_damping_matrix, Bw_dims);
-    
+
     Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/mag", excitation_mag_matrix, excitation_mag_dims);
     Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/re", excitation_re_matrix, re_dims);
     Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/im", excitation_im_matrix, im_dims);
     Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/phase", excitation_phase_matrix, excitation_phase_dims);
     Init1D(userH5File, bodyName + "/hydro_coeffs/excitation/impulse_response_fun/t", excitation_irf_time);
-    Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/impulse_response_fun/f", excitation_irf_matrix, excitation_irf_dims);
+    Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/impulse_response_fun/f", excitation_irf_matrix,
+           excitation_irf_dims);
 
     // use same scalar function to set the int valued body number
     double temp;
@@ -67,6 +86,8 @@ void H5FileInfo::readH5Data() {
 
     //_rirf_timestep = rirf_time_vector[1] - rirf_time_vector[0]; //N.B. assumes RIRF has fixed timestep.
     userH5File.close();
+    WriteDataToFile(excitation_irf_dims, "excitation_irf_dims.txt");
+    WriteDataToFile(excitation_irf_matrix, "excitation_irf_matrix.txt");
 }
 
 /*******************************************************************************
@@ -197,7 +218,7 @@ int H5FileInfo::GetRIRFDims(int i) const {
 }
 
 /*******************************************************************************
- * H5FileInfo::GetRIRFDims(int i) returns the i-th component of the dimensions of radiation_damping_matrix
+ * H5FileInfo::GetExcitationIRFDims(int i) returns the i-th component of the dimensions of excitation_irf_matrix
  * i = [0,1,2] -> [number of rows, number of columns, number of matrices]
  *******************************************************************************/
 int H5FileInfo::GetExcitationIRFDims(int i) const {
@@ -322,7 +343,7 @@ double H5FileInfo::GetExcitationPhaseInterp(int i, int j, double freq_index_des)
  * H5FileInfo::GetExcitationIRFval()
  * returns rirf val for DoF: 0,...,5; col: 0,...,6N-1; s: 0,...,1001 excitation_irf_dims[2]
  *******************************************************************************/
-double H5FileInfo::GetExcitationIRFval(int dof, int col, int s) const {
+double H5FileInfo::GetExcitationIRFVal(int dof, int col, int s) const {
     int index = s + excitation_irf_dims[2] * (col + dof * excitation_irf_dims[1]);  // TODO check index
     if (index < 0 || index >= excitation_irf_dims[0] * rirf_dims[1] * excitation_irf_dims[2]) {
         std::cout << "out of bounds IRF\n";
@@ -333,11 +354,19 @@ double H5FileInfo::GetExcitationIRFval(int dof, int col, int s) const {
 }
 
 /*******************************************************************************
- * H5FileInfo::GetExcitationIRFTimeVector()
+ * H5FileInfo::GetExcitationIRFTime()
  * returns the std::vector of rirf_time_vector from h5 file
  *******************************************************************************/
 std::vector<double> H5FileInfo::GetExcitationIRFTime() const {
     return excitation_irf_time;
+}
+
+/*******************************************************************************
+ * H5FileInfo::GetExcitationIRF()
+ * returns the std::vector of excitation_irf_matrix from h5 file
+ *******************************************************************************/
+std::vector<double> H5FileInfo::GetExcitationIRF() const {
+    return excitation_irf_matrix;
 }
 
 std::pair<Eigen::VectorXd, Eigen::VectorXd> ResampleTimeSeries(const Eigen::VectorXd& time_series,
@@ -373,16 +402,6 @@ std::pair<Eigen::VectorXd, Eigen::VectorXd> ResampleTimeSeries(const Eigen::Vect
     return {t_new, time_series_new};
 }
 
-std::pair<Eigen::VectorXd, Eigen::VectorXd> H5FileInfo::ResampleExcitationIRF(double dt_new) {
-    Eigen::VectorXd excitation_irf(excitation_irf_matrix.size());
-    for (size_t i = 0; i < excitation_irf_matrix.size(); i++) {
-        excitation_irf[i] = excitation_irf_matrix[i];
-    }
-    double excitation_irf_dt = excitation_irf_time[1] - excitation_irf_time[0];
-    return ResampleTimeSeries(excitation_irf, excitation_irf_dt, dt_new);
-}
-
-
 void H5FileInfo::ResampleExcitationIRFTime(double dt_new) {
     Eigen::VectorXd excitation_irf_t(excitation_irf_time.size());
     for (size_t i = 0; i < excitation_irf_time.size(); i++) {
@@ -391,15 +410,37 @@ void H5FileInfo::ResampleExcitationIRFTime(double dt_new) {
     double excitation_irf_dt = excitation_irf_time[1] - excitation_irf_time[0];
     std::pair<Eigen::VectorXd, Eigen::VectorXd> resampled_excitation_irf_time =
         ResampleTimeSeries(excitation_irf_t, excitation_irf_dt, dt_new);
-    excitation_irf_time_resampled = resampled_excitation_irf_time.first;
+    excitation_irf_time_resampled    = resampled_excitation_irf_time.first;
     is_excitation_irf_time_resampled = true;
 }
 
+// std::pair<Eigen::VectorXd, Eigen::VectorXd> H5FileInfo::ResampleExcitationIRF(double dt_new) {
+//    Eigen::VectorXd excitation_irf(excitation_irf_matrix.size());
+//    for (size_t i = 0; i < excitation_irf_matrix.size(); i++) {
+//        excitation_irf[i] = excitation_irf_matrix[i];
+//    }
+//    double excitation_irf_dt = excitation_irf_time[1] - excitation_irf_time[0];
+//    return ResampleTimeSeries(excitation_irf, excitation_irf_dt, dt_new);
+//}
+
+void H5FileInfo::ResampleExcitationIRF(double dt_new) {
+    Eigen::VectorXd excitation_irf(excitation_irf_matrix.size());
+    for (size_t i = 0; i < excitation_irf_matrix.size(); i++) {
+        excitation_irf[i] = excitation_irf_matrix[i];
+    }
+    double excitation_irf_dt = excitation_irf_time[1] - excitation_irf_time[0];
+    std::pair<Eigen::VectorXd, Eigen::VectorXd> resampled_excitation_irf =
+        ResampleTimeSeries(excitation_irf, excitation_irf_dt, dt_new);
+    excitation_irf_time_resampled    = resampled_excitation_irf.first;
+    excitation_irf_resampled         = resampled_excitation_irf.second;
+    is_excitation_irf_time_resampled = true;
+    is_excitation_irf_resampled      = true;
+}
 
 /*******************************************************************************
-* H5FileInfo::GetExcitationIRFTimeResampled()
-* returns the Eigen::VectorXd of excitation_irf_time_resampled (ResampleExcitationIRFTime() needs to be called first)
-*******************************************************************************/
+ * H5FileInfo::GetExcitationIRFTimeResampled()
+ * returns the Eigen::VectorXd of excitation_irf_time_resampled (ResampleExcitationIRFTime() needs to be called first)
+ *******************************************************************************/
 Eigen::VectorXd H5FileInfo::GetExcitationIRFTimeResampled() const {
     if (!is_excitation_irf_time_resampled) {
         std::cerr << "Warning: ResampleExcitationIRFTime() has not been called before accessing resampled data. "
@@ -411,4 +452,35 @@ Eigen::VectorXd H5FileInfo::GetExcitationIRFTimeResampled() const {
         return excitation_irf_time_eigen;
     }
     return excitation_irf_time_resampled;
+}
+
+/*******************************************************************************
+ * H5FileInfo::GetExcitationIRFResampled()
+ * returns the Eigen::VectorXd of excitation_irf_time_resampled (ResampleExcitationIRFTime() needs to be called first)
+ *******************************************************************************/
+Eigen::VectorXd H5FileInfo::GetExcitationIRFResampled() const {
+    if (!is_excitation_irf_resampled) {
+        std::cerr << "Warning: ResampleExcitationIRFTime() has not been called before accessing resampled data. "
+                     "Returning original excitation IRF time vector.\n";
+        Eigen::VectorXd excitation_irf_eigen(excitation_irf_matrix.size());
+        for (size_t i = 0; i < excitation_irf_matrix.size(); i++) {
+            excitation_irf_eigen[i] = excitation_irf_matrix[i];
+        }
+        return excitation_irf_eigen;
+    }
+    return excitation_irf_resampled;
+}
+
+/*******************************************************************************
+ * H5FileInfo::GetExcitationIRFResampledVal()
+ * returns rirf val for DoF: 0,...,5; col: 0,...,6N-1; s: 0,...,1001 excitation_irf_dims[2]
+ *******************************************************************************/
+double H5FileInfo::GetExcitationIRFResampledVal(int dof, int col, int s) const {
+    int index = s + excitation_irf_dims[2] * (col + dof * excitation_irf_dims[1]);  // TODO check index
+    if (index < 0 || index >= excitation_irf_dims[0] * rirf_dims[1] * excitation_irf_dims[2]) {
+        std::cout << "out of bounds IRF\n";
+        return 0;
+    } else {
+        return excitation_irf_matrix[index] * _rho * _g;  // scale radiation force by rho
+    }
 }
