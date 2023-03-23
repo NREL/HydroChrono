@@ -71,39 +71,6 @@ std::vector<double> Linspace(double start, double end, int num_points) {
     return result;
 }
 
-std::pair<Eigen::VectorXd, Eigen::VectorXd> ResampleTimeSeries(const Eigen::VectorXd& time_series,
-                                                               double dt_old,
-                                                               double dt_new) {
-    if (dt_new == dt_old) {
-        // If the new time resolution is the same as the original, return the original time series
-        Eigen::VectorXd t_old = Eigen::VectorXd::LinSpaced(time_series.size(), 0, (time_series.size() - 1) * dt_old);
-        t_old.array() -= 0.5 * t_old[t_old.size() - 1];
-        return {t_old, time_series};
-    }
-
-    // Calculate the new time vector
-    int newSize           = static_cast<int>(ceil(time_series.size() * dt_old / dt_new));
-    Eigen::VectorXd t_new = Eigen::VectorXd::LinSpaced(newSize, 0, (time_series.size() - 1) * dt_old);
-
-    // Create the original time vector
-    Eigen::VectorXd t_old = Eigen::VectorXd::LinSpaced(time_series.size(), 0, (time_series.size() - 1) * dt_old);
-
-    Eigen::VectorXd time_series_new(newSize);
-
-    // Interpolate using cubic spline interpolation
-    Eigen::Spline<double, 1> spline =
-        Eigen::SplineFitting<Eigen::Spline<double, 1>>::Interpolate(time_series.transpose(), 3, t_old);
-
-    for (int i = 0; i < newSize; i++) {
-        time_series_new[i] = spline(t_new[i])[0];
-    }
-
-    // Shift t_new to the left by half of the max value of t_old
-    t_new.array() -= 0.5 * t_old[t_old.size() - 1];
-
-    return {t_new, time_series_new};
-}
-
 std::vector<double> PiersonMoskowitzSpectrumHz(std::vector<double>& f, double Hs, double Tp) {
     // Sort the frequency vector
     std::sort(f.begin(), f.end());
@@ -559,6 +526,18 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
     // set up time vector (should be the same for each body, so just use the first always)
     rirf_time_vector = file_info[0].GetRIRFTimeVector();
     rirf_timestep    = rirf_time_vector[1] - rirf_time_vector[0];  // TODO is this the same for all bodies?
+
+    std::vector<double> ex_irf_time = file_info[0].GetExcitationIRFTime();
+    WriteContainerToFile(ex_irf_time, "ex_irf_time.txt");
+
+    // resample excitation IRF time series
+    for (int b = 0; b < num_bodies; b++) {
+        file_info[b].ResampleExcitationIRFTime(user_hydro_inputs.simulation_dt);
+    }
+
+    Eigen::VectorXd ex_irf_time_resampled = file_info[0].GetExcitationIRFTimeResampled();
+    WriteContainerToFile(ex_irf_time_resampled, "ex_irf_time_resampled.txt");
+
     // simplify 6* num_bodies to be the system's total number of dofs, makes expressions later easier to read
     unsigned total_dofs = 6 * num_bodies;
     // resize and initialize velocity history vector to all zeros
@@ -626,7 +605,7 @@ void TestHydro::WaveSetUp() {
         case WaveMode::irregular:
             hydro_inputs.CreateSpectrum();
             hydro_inputs.CreateFreeSurfaceElevation();
-            t_irf = file_info[0].GetExcitationIRFTimeVector(); // assume t_irf is the same for all hydrodynamic bodies
+            t_irf = file_info[0].GetExcitationIRFTime(); // assume t_irf is the same for all hydrodynamic bodies
     }
 }
 

@@ -36,7 +36,8 @@ public:
 	int GetRIRFDims(int i) const;
     int GetExcitationIRFDims(int i) const;
 	std::vector<double> GetRIRFTimeVector() const;
-    std::vector<double> GetExcitationIRFTimeVector() const;
+    std::vector<double> GetExcitationIRFTime() const;
+    Eigen::VectorXd GetExcitationIRFTimeResampled() const;
 	double GetExcitationMagValue(int m, int n, int w) const;
 	double GetExcitationMagInterp(int i, int j, double freq_index_des) const;
 	double GetOmegaDelta() const;
@@ -51,7 +52,7 @@ public:
 	double GetDispVol() const  { return _disp_vol;}
 
 	std::pair<Eigen::VectorXd, Eigen::VectorXd> ResampleExcitationIRF(double dt_new);
-    std::pair<Eigen::VectorXd, Eigen::VectorXd> ResampleExcitationIRFTime(double dt_new);
+    void ResampleExcitationIRFTime(double dt_new);
 
 	int bodyNum;
 	chrono::ChMatrixDynamic<double> lin_matrix;
@@ -80,8 +81,10 @@ private:
 	std::string bodyName;
 
 	std::vector<double> excitation_irf_time;
+    Eigen::VectorXd excitation_irf_time_resampled;
     std::vector<double> excitation_irf_matrix;
     std::vector<int> excitation_irf_dims;
+    bool is_excitation_irf_time_resampled = false;
 
 
 	void InitScalar(H5::H5File& file, std::string data_name, double& var);
