@@ -125,6 +125,7 @@ public:
 	double GetRIRFval(int row, int col, int st);
 	double coordinateFunc(int b, int i);
 	bool convTrapz;
+    //Eigen::VectorXd t_irf;
     std::vector<double> t_irf;
 
   private:

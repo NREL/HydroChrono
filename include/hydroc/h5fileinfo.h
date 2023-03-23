@@ -32,12 +32,15 @@ public:
 	chrono::ChMatrixDynamic<double> GetInfAddedMassMatrix() const;
 	double GetHydrostaticStiffness(int i, int j) const;
 	double GetRIRFval(int i, int n, int m) const;
-    double GetExcitationIRFval(int i, int n, int m) const;
+    double GetExcitationIRFVal(int i, int n, int m) const;
+    double GetExcitationIRFResampledVal(int i, int n, int m) const;
 	int GetRIRFDims(int i) const;
     int GetExcitationIRFDims(int i) const;
+    std::vector<double> GetExcitationIRF() const;
 	std::vector<double> GetRIRFTimeVector() const;
     std::vector<double> GetExcitationIRFTime() const;
     Eigen::VectorXd GetExcitationIRFTimeResampled() const;
+    Eigen::VectorXd GetExcitationIRFResampled() const;
 	double GetExcitationMagValue(int m, int n, int w) const;
 	double GetExcitationMagInterp(int i, int j, double freq_index_des) const;
 	double GetOmegaDelta() const;
@@ -51,13 +54,12 @@ public:
 	double GetRho() const { return _rho;}
 	double GetDispVol() const  { return _disp_vol;}
 
-	std::pair<Eigen::VectorXd, Eigen::VectorXd> ResampleExcitationIRF(double dt_new);
+	void ResampleExcitationIRF(double dt_new);
     void ResampleExcitationIRFTime(double dt_new);
 
 	int bodyNum;
 	chrono::ChMatrixDynamic<double> lin_matrix;
 private:
-
 	double _rho;
 	double _g;
 	double _disp_vol;
@@ -82,10 +84,12 @@ private:
 
 	std::vector<double> excitation_irf_time;
     Eigen::VectorXd excitation_irf_time_resampled;
+    Eigen::VectorXd excitation_irf_resampled;
     std::vector<double> excitation_irf_matrix;
     std::vector<int> excitation_irf_dims;
+    int excitation_irf_time_resampled_len;
     bool is_excitation_irf_time_resampled = false;
-
+    bool is_excitation_irf_resampled = false;
 
 	void InitScalar(H5::H5File& file, std::string data_name, double& var);
 	void Init1D(H5::H5File& file, std::string data_name, std::vector<double>& var);
