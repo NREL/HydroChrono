@@ -28,8 +28,6 @@ H5FileInfo::H5FileInfo(std::string file, std::string Name) {
         std::cout << "h5 file does not exist, absolute file location: " << std::filesystem::absolute(file) << std::endl;
     }
     readH5Data();
-
-    ResampleExcitationIRFTime();
 }
 
 /*******************************************************************************
@@ -338,26 +336,8 @@ double H5FileInfo::GetExcitationIRFval(int dof, int col, int s) const {
  * H5FileInfo::GetExcitationIRFTimeVector()
  * returns the std::vector of rirf_time_vector from h5 file
  *******************************************************************************/
-std::vector<double> H5FileInfo::GetExcitationIRFTimeVector() const {
+std::vector<double> H5FileInfo::GetExcitationIRFTime() const {
     return excitation_irf_time;
-}
-
-std::pair<Eigen::VectorXd, Eigen::VectorXd> H5FileInfo::ResampleExcitationIRF(double dt_new) {
-    Eigen::VectorXd excitation_irf(excitation_irf_matrix.size());
-    for (size_t i = 0; i < excitation_irf_matrix.size(); i++) {
-        excitation_irf[i] = excitation_irf_matrix[i];
-    }
-    double excitation_irf_dt = excitation_irf_time[1] - excitation_irf_time[0];
-    return ResampleTimeSeries(excitation_irf, excitation_irf_dt, dt_new);
-}
-
-std::pair<Eigen::VectorXd, Eigen::VectorXd> H5FileInfo::ResampleExcitationIRFTime(double dt_new) {
-    Eigen::VectorXd excitation_irf_t(excitation_irf_time.size());
-    for (size_t i = 0; i < excitation_irf_time.size(); i++) {
-        excitation_irf_t[i] = excitation_irf_time[i];
-    }
-    double excitation_irf_dt = excitation_irf_time[1] - excitation_irf_time[0];
-    return ResampleTimeSeries(excitation_irf_t, excitation_irf_dt, dt_new);
 }
 
 std::pair<Eigen::VectorXd, Eigen::VectorXd> ResampleTimeSeries(const Eigen::VectorXd& time_series,
@@ -391,4 +371,44 @@ std::pair<Eigen::VectorXd, Eigen::VectorXd> ResampleTimeSeries(const Eigen::Vect
     t_new.array() -= 0.5 * t_old[t_old.size() - 1];
 
     return {t_new, time_series_new};
+}
+
+std::pair<Eigen::VectorXd, Eigen::VectorXd> H5FileInfo::ResampleExcitationIRF(double dt_new) {
+    Eigen::VectorXd excitation_irf(excitation_irf_matrix.size());
+    for (size_t i = 0; i < excitation_irf_matrix.size(); i++) {
+        excitation_irf[i] = excitation_irf_matrix[i];
+    }
+    double excitation_irf_dt = excitation_irf_time[1] - excitation_irf_time[0];
+    return ResampleTimeSeries(excitation_irf, excitation_irf_dt, dt_new);
+}
+
+
+void H5FileInfo::ResampleExcitationIRFTime(double dt_new) {
+    Eigen::VectorXd excitation_irf_t(excitation_irf_time.size());
+    for (size_t i = 0; i < excitation_irf_time.size(); i++) {
+        excitation_irf_t[i] = excitation_irf_time[i];
+    }
+    double excitation_irf_dt = excitation_irf_time[1] - excitation_irf_time[0];
+    std::pair<Eigen::VectorXd, Eigen::VectorXd> resampled_excitation_irf_time =
+        ResampleTimeSeries(excitation_irf_t, excitation_irf_dt, dt_new);
+    excitation_irf_time_resampled = resampled_excitation_irf_time.first;
+    is_excitation_irf_time_resampled = true;
+}
+
+
+/*******************************************************************************
+* H5FileInfo::GetExcitationIRFTimeResampled()
+* returns the Eigen::VectorXd of excitation_irf_time_resampled (ResampleExcitationIRFTime() needs to be called first)
+*******************************************************************************/
+Eigen::VectorXd H5FileInfo::GetExcitationIRFTimeResampled() const {
+    if (!is_excitation_irf_time_resampled) {
+        std::cerr << "Warning: ResampleExcitationIRFTime() has not been called before accessing resampled data. "
+                     "Returning original excitation IRF time vector.\n";
+        Eigen::VectorXd excitation_irf_time_eigen(excitation_irf_time.size());
+        for (size_t i = 0; i < excitation_irf_time.size(); i++) {
+            excitation_irf_time_eigen[i] = excitation_irf_time[i];
+        }
+        return excitation_irf_time_eigen;
+    }
+    return excitation_irf_time_resampled;
 }
