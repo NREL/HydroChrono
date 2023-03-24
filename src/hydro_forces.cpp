@@ -1,6 +1,7 @@
 #include "hydroc/hydro_forces.h"
 #include <hydroc/chloadaddedmass.h>
 #include <hydroc/h5fileinfo.h>
+#include <hydroc/wave_types.h>
 
 #include <unsupported/Eigen/Splines>
 #include <chrono/physics/ChLoad.h>

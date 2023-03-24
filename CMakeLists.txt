@@ -97,6 +97,7 @@ set(HYDROCHRONO_SOURCES
 	src/chloadaddedmass.cpp
 	src/hydro_forces.cpp
 	src/helper.cpp
+	src/wave_types.cpp
 
 )
 
