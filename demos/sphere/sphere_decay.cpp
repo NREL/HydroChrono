@@ -3,14 +3,11 @@
 
 #include <hydroc/gui/guihelper.h>
 
-
 #include "chrono/core/ChRealtimeStep.h"
 
 // Use the namespaces of Chrono
 using namespace chrono;
 using namespace chrono::geometry;
-
-
 
 // the main program to be executed:
 int main(int argc, char* argv[]) {
@@ -26,31 +23,31 @@ int main(int argc, char* argv[]) {
         (DATADIR / "sphere" / "geometry" / "oes_task10_sphere.obj").lexically_normal().generic_string();
     auto h5fname = (DATADIR / "sphere" / "hydroData" / "sphere.h5").lexically_normal().generic_string();
 
-	// system/solver settings
-	ChSystemNSC system;
+    // system/solver settings
+    ChSystemNSC system;
 
-	system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
+    system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
 
-	double timestep = 0.015;
-	system.SetSolverType(ChSolver::Type::GMRES);
-	system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
-	system.SetStep(timestep);
-	ChRealtimeStepTimer realtime_timer;
-	double simulationDuration = 40.0;
+    double timestep = 0.015;
+    system.SetSolverType(ChSolver::Type::GMRES);
+    system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
+    system.SetStep(timestep);
+    ChRealtimeStepTimer realtime_timer;
+    double simulationDuration = 40.0;
 
-	// Create user interface
-	bool visualizationOn = true;
+    // Create user interface
+    bool visualizationOn = true;
 
-	std::shared_ptr<hydroc::gui::UI> pui = hydroc::gui::CreateUI(visualizationOn);
+    std::shared_ptr<hydroc::gui::UI> pui = hydroc::gui::CreateUI(visualizationOn);
 
-	hydroc::gui::UI& ui = *pui.get();
+    hydroc::gui::UI& ui = *pui.get();
 
-	bool profilingOn = true;
-	bool saveDataOn = true;
+    bool profilingOn = true;
+    bool saveDataOn  = true;
 
-	// Output timeseries
-	std::vector<double> time_vector;
-	std::vector<double> heave_position;
+    // Output timeseries
+    std::vector<double> time_vector;
+    std::vector<double> heave_position;
 
     // set up body from a mesh
     std::cout << "Attempting to open mesh file: " << body1_meshfame << std::endl;
@@ -62,18 +59,17 @@ int main(int argc, char* argv[]) {
         false   // do not collide
     );
 
-	// define the body's initial conditions
-	sphereBody->SetNameString("body1"); // must set body name correctly! (must match .h5 file)
-	sphereBody->SetPos(ChVector<>(0, 0, -1));
-	sphereBody->SetMass(261.8e3);
+    // define the body's initial conditions
+    sphereBody->SetNameString("body1");  // must set body name correctly! (must match .h5 file)
+    sphereBody->SetPos(ChVector<>(0, 0, -1));
+    sphereBody->SetMass(261.8e3);
 
-	// Create a visualization material
-	auto cadet_blue = chrono_types::make_shared<ChVisualMaterial>();
-	cadet_blue->SetDiffuseColor(ChColor(0.3f, 0.1f, 0.1f));
-	sphereBody->GetVisualShape(0)->SetMaterial(0, cadet_blue);
+    // Create a visualization material
+    auto cadet_blue = chrono_types::make_shared<ChVisualMaterial>();
+    cadet_blue->SetDiffuseColor(ChColor(0.3f, 0.1f, 0.1f));
+    sphereBody->GetVisualShape(0)->SetMaterial(0, cadet_blue);
 
-	system.Add(sphereBody);
-
+    system.Add(sphereBody);
 
     // define wave parameters (not used in this demo)
     // Todo define a way to use TestHydro without hydro_inputs/waves
@@ -82,32 +78,27 @@ int main(int argc, char* argv[]) {
     // my_hydro_inputs.regular_wave_amplitude = 0.022;
     // my_hydro_inputs.regular_wave_omega = 2.10;
 
-	// attach hydrodynamic forces to body
-	std::vector<std::shared_ptr<ChBody>> bodies;
-	bodies.push_back(sphereBody);
+    // attach hydrodynamic forces to body
+    std::vector<std::shared_ptr<ChBody>> bodies;
+    bodies.push_back(sphereBody);
 
-
-	TestHydro blah(bodies, h5fname, my_hydro_inputs);
+    TestHydro blah(bodies, h5fname, my_hydro_inputs);
 
     // for profilingvisualizationOn = false;
     auto start = std::chrono::high_resolution_clock::now();
 
-	// main simulation loop
-	ui.Init(&system, "Sphere - Decay Test"); 
+    // main simulation loop
+    ui.Init(&system, "Sphere - Decay Test");
 
-	while (system.GetChTime() <= simulationDuration) {
+    while (system.GetChTime() <= simulationDuration) {
+        if (ui.IsRunning(timestep) == false) break;
 
-		if(ui.IsRunning(timestep) == false) break;
-		
-		if (ui.simulationStarted) {
-
-			// append data to output vector
-			time_vector.push_back(system.GetChTime());
-			heave_position.push_back(sphereBody->GetPos().z());
-
-		}
-	}
-
+        if (ui.simulationStarted) {
+            // append data to output vector
+            time_vector.push_back(system.GetChTime());
+            heave_position.push_back(sphereBody->GetPos().z());
+        }
+    }
 
     // for profiling
     auto end          = std::chrono::high_resolution_clock::now();
@@ -161,6 +152,6 @@ int main(int argc, char* argv[]) {
         outputFile.close();
     }
 
-	std::cout << "Simulation finished." << std::endl;
-	return 0;
+    std::cout << "Simulation finished." << std::endl;
+    return 0;
 }
