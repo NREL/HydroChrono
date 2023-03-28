@@ -500,11 +500,11 @@ void ForceFunc6d::ApplyForceAndTorqueToBody() {
  * default constructor to initialize just a few variables
  * called from actual constructor
  *******************************************************************************/
-TestHydro::TestHydro() {
-    prev_time   = -1;
-    offset_rirf = 0;
-    num_bodies  = 0;
-}
+// TestHydro::TestHydro() {
+//    prev_time   = -1;
+//    offset_rirf = 0;
+//    num_bodies  = 0;
+//}
 
 /*******************************************************************************
  * TestHydro::TestHydro(user_bodies, h5_file_name, user_hydro_inputs)
@@ -516,16 +516,15 @@ TestHydro::TestHydro() {
 TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
                      std::string h5_file_name,
                      HydroInputs& user_hydro_inputs)
-    : TestHydro() {
-    bodies     = user_bodies;  // 0 indexed
-    num_bodies = bodies.size();
+    : bodies(user_bodies), num_bodies(bodies.size()), file_info(H5FileInfo(h5_file_name, num_bodies).readH5Data()) {
+    prev_time   = -1;
+    offset_rirf = 0;
 
-    for (int b = 0; b < num_bodies; b++) {
-        file_info.emplace_back(h5_file_name, bodies[b]->GetNameString());  // set up vector of file infos for each body
-    }
+    /*H5FileInfo h5_file_reader(h5_file_name, num_bodies);
+    file_info = h5_file_reader.readH5Data();*/
 
     // set up time vector (should be the same for each body, so just use the first always)
-    rirf_time_vector = file_info[0].GetRIRFTimeVector();
+    rirf_time_vector = file_info.GetRIRFTimeVector();
     rirf_timestep    = rirf_time_vector[1] - rirf_time_vector[0];  // TODO is this the same for all bodies?
 
     //std::vector<double> ex_irf = file_info[0].GetExcitationIRF();
@@ -540,9 +539,9 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
     //WriteContainerToFile(ex_irf_resampled, "ex_irf_resampled.txt");
 
     // simplify 6* num_bodies to be the system's total number of dofs, makes expressions later easier to read
-    unsigned total_dofs = 6 * num_bodies;
+    int total_dofs = 6 * num_bodies;
     // resize and initialize velocity history vector to all zeros
-    velocity_history.resize(file_info[0].GetRIRFDims(2) * total_dofs, 0.0);  // resize and fill with 0s
+    velocity_history.resize(file_info.GetRIRFDims(2) * total_dofs, 0.0);  // resize and fill with 0s
     // resize and initialize all persistent forces to all 0s
     force_hydrostatic.resize(total_dofs, 0.0);
     force_radiation_damping.resize(total_dofs, 0.0);
@@ -552,10 +551,11 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
     cb_minus_cg.resize(3 * num_bodies, 0.0);  // cb-cg has 3 components for each body
     for (int b = 0; b < num_bodies; b++) {
         for (int i = 0; i < 3; i++) {
-            unsigned equilibrium_idx     = i + 6 * b;
-            unsigned c_idx               = i + 3 * b;
-            equilibrium[equilibrium_idx] = file_info[b].cg[i];  // positional equilib is cg, leave rotational bit 0
-            cb_minus_cg[c_idx]           = file_info[b].cb[i] - file_info[b].cg[i];
+            unsigned equilibrium_idx = i + 6 * b;
+            unsigned c_idx           = i + 3 * b;
+            // positional equilib is cg, leave rotational bit 0
+            equilibrium[equilibrium_idx] = file_info.GetCGVector(b)[i];
+            cb_minus_cg[c_idx]           = file_info.GetCBVector(b)[i] - file_info.GetCGVector(b)[i];
         }
     }
 
@@ -573,7 +573,8 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
         loadables[i] = bodies[i];
     }
 
-    my_loadbodyinertia = chrono_types::make_shared<ChLoadAddedMass>(file_info, loadables, bodies[0]->GetSystem());
+    my_loadbodyinertia =
+        chrono_types::make_shared<ChLoadAddedMass>(file_info.GetBodyInfos(), loadables, bodies[0]->GetSystem());
     bodies[0]->GetSystem()->Add(my_loadcontainer);
     my_loadcontainer->Add(my_loadbodyinertia);
 
@@ -591,15 +592,15 @@ void TestHydro::WaveSetUp() {
             hydro_inputs.excitation_force_mag.resize(total_dofs, 0.0);
             hydro_inputs.excitation_force_phase.resize(total_dofs, 0.0);
             force_excitation_freq.resize(total_dofs, 0.0);
-            hydro_inputs.wave_omega_delta = file_info[0].GetOmegaDelta();
+            hydro_inputs.wave_omega_delta = file_info.GetOmegaDelta();
             hydro_inputs.freq_index_des   = (hydro_inputs.regular_wave_omega / hydro_inputs.wave_omega_delta) - 1;
             for (int b = 0; b < num_bodies; b++) {
                 for (int rowEx = 0; rowEx < 6; rowEx++) {
                     int body_offset = 6 * b;
                     hydro_inputs.excitation_force_mag[body_offset + rowEx] =
-                        file_info[b].GetExcitationMagInterp(rowEx, 0, hydro_inputs.freq_index_des);
+                        file_info.GetExcitationMagInterp(b, rowEx, 0, hydro_inputs.freq_index_des);
                     hydro_inputs.excitation_force_phase[body_offset + rowEx] =
-                        file_info[b].GetExcitationPhaseInterp(rowEx, 0, hydro_inputs.freq_index_des);
+                        file_info.GetExcitationPhaseInterp(b, rowEx, 0, hydro_inputs.freq_index_des);
                 }
             }
             break;
@@ -618,18 +619,18 @@ void TestHydro::WaveSetUp() {
  *    dof for each body...3 bodies c would be [0,1,...,17])
  *******************************************************************************/
 double TestHydro::getVelHistoryVal(int step, int c) const {
-    if (step < 0 || step >= file_info[0].GetRIRFDims(2) || c < 0 || c >= num_bodies * 6) {
+    if (step < 0 || step >= file_info.GetRIRFDims(2) || c < 0 || c >= num_bodies * 6) {
         std::cout << "wrong vel history index " << std::endl;
         return 0;
     }
     int index = c % 6;
     int b     = c / 6;  // 0 indexed
-    if (index + 6 * b + 6 * num_bodies * step >= num_bodies * 6 * file_info[0].GetRIRFDims(2) ||
+    if (index + 6 * b + 6 * num_bodies * step >= num_bodies * 6 * file_info.GetRIRFDims(2) ||
         index + 6 * b + 6 * num_bodies * step < 0) {
         std::cout << "bad vel history math" << std::endl;
         return 0;
     }
-    return velocity_history[index + 6 * b + 6 * num_bodies * step];
+    return velocity_history[index + (6 * b) + (6 * num_bodies * step)];
 }
 
 /*******************************************************************************
@@ -641,16 +642,16 @@ double TestHydro::getVelHistoryVal(int step, int c) const {
  * index: [0,1,2,3,4,5] (0 indexed, always 0-5 for force+torque vector indexing)
  *******************************************************************************/
 double TestHydro::setVelHistory(double val, int step, int b_num, int index) {
-    if (step < 0 || step >= file_info[0].GetRIRFDims(2) || b_num < 1 || b_num > num_bodies || index < 0 || index >= 6) {
+    if (step < 0 || step >= file_info.GetRIRFDims(2) || b_num < 1 || b_num > num_bodies || index < 0 || index >= 6) {
         std::cout << "bad set vel history indexing" << std::endl;
         return 0;
     }
     if (index + 6 * (b_num - 1) + 6 * num_bodies * step < 0 ||
-        index + 6 * (b_num - 1) + 6 * num_bodies * step >= num_bodies * 6 * file_info[0].GetRIRFDims(2)) {
+        index + 6 * (b_num - 1) + 6 * num_bodies * step >= num_bodies * 6 * file_info.GetRIRFDims(2)) {
         std::cout << "bad set vel history math" << std::endl;
         return 0;
     }
-    velocity_history[index + 6 * (b_num - 1) + 6 * num_bodies * step] = val;
+    velocity_history[index + (6 * (b_num - 1)) + (6 * num_bodies * step)] = val;
     return val;
 }
 
@@ -664,10 +665,10 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
     for (int b = 0; b < num_bodies; b++) {
         // initialize variables
         std::shared_ptr<chrono::ChBody> body = bodies[b];
-        H5FileInfo& body_h5file              = file_info[b];
-        double rho                           = body_h5file.GetRho();
-        unsigned b_offset =
-            6 * b;  // force_hydrostatic has 6 elements for each body so to skip to the next body we move 6 spaces
+        // H5FileInfo& body_h5file              = file_info[b];
+        double rho   = file_info.GetRhoVal();
+        int b_offset = 6 * b;
+        // force_hydrostatic has 6 elements for each body so to skip to the next body we move 6 spaces
         double* body_force_hydrostatic = &force_hydrostatic[b_offset];
         double* body_equilibrium       = &equilibrium[b_offset];
         double gg                      = body->GetSystem()->Get_G_acc().Length();
@@ -682,7 +683,7 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
             body_displacement[ii + 3] = body_rotation[ii] - body_equilibrium[ii + 3];
         }
         // calculate force
-        chrono::ChVectorN<double, 6> force_offset = -gg * rho * body_h5file.lin_matrix * body_displacement;
+        chrono::ChVectorN<double, 6> force_offset = -gg * rho * file_info.GetLinMatrix(b) * body_displacement;
         // add to force_hydrostatic
         for (int dof = 0; dof < 6; dof++) {
             body_force_hydrostatic[dof] += force_offset[dof];
@@ -692,13 +693,13 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
         // TODO: move to prestep (shouldn't be calculated at each time step)
         // translational
         chrono::ChVector<> buoyancy =
-            rho * (-body->GetSystem()->Get_G_acc()) * body_h5file.GetDispVol();  // buoyancy = rho*g*Vdisp
+            rho * (-body->GetSystem()->Get_G_acc()) * file_info.GetDispVolVal(b);  // buoyancy = rho*g*Vdisp
         body_force_hydrostatic[0] += buoyancy[0];
         body_force_hydrostatic[1] += buoyancy[1];
         body_force_hydrostatic[2] += buoyancy[2];
         // rotational
-        unsigned r_offset =
-            3 * b;  // cb_minus_cg has 3 elements for each body so to skip to the next body we move 3 spaces
+        int r_offset = 3 * b;
+        // cb_minus_cg has 3 elements for each body so to skip to the next body we move 3 spaces
         auto cg2cb =
             chrono::ChVector<double>(cb_minus_cg[0 + r_offset], cb_minus_cg[1 + r_offset], cb_minus_cg[2 + r_offset]);
         chrono::ChVector<> buoyancy2 = cg2cb % buoyancy;
@@ -714,7 +715,7 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
  * computes the 6N dimensional Radiation Damping force with convolution history
  *******************************************************************************/
 std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
-    int size = file_info[0].GetRIRFDims(2);
+    int size = file_info.GetRIRFDims(2);
     int nDoF = 6;
     // "shift" everything left 1
     offset_rirf--;  // starts as 0 before timestep change
@@ -729,9 +730,9 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
     double* tmp_s      = new double[numRows * size];
     // define shortcuts for accessing 1D arrays as 3D (or 2D) arrays
     // TIMESERIES is for each row in RIRF, element wise multipy velocity history by RIRF slab
-#define TIMESERIES(row, col, step) timeseries[(row)*numCols * size + (col)*size + (step)]
+#define TIMESERIES(row, col, step) timeseries[(row * numCols * size) + (col * size) + (step)]
     // TMP_S ends up being a sum over the columns of TIMESERIES (total_dofs aka LDOF
-#define TMP_S(row, step) tmp_s[(row)*size + (step)]
+#define TMP_S(row, step) tmp_s[((row)*size) + (step)]
     // set last entry as velocity
     for (int i = 0; i < 3; i++) {
         for (int b = 1; b < num_bodies + 1; b++) {  // body index being 1 indexed here is right
@@ -806,14 +807,14 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
  *******************************************************************************/
 double TestHydro::GetRIRFval(int row, int col, int st) {
     if (row < 0 || row >= 6 * num_bodies || col < 0 || col >= 6 * num_bodies || st < 0 ||
-        st >= file_info[0].GetRIRFDims(2)) {
+        st >= file_info.GetRIRFDims(2)) {
         std::cout << "rirfval index bad from testhydro" << std::endl;
         return 0;
     }
     int b = row / 6;  // 0 indexed, which body to get matrix info from
     int c = col % 6;  // which dof across column, 0,..,11 for 2 bodies, 0,...,6N-1 for N
     int r = row % 6;  // which dof 0,..,5 in individual body RIRF matrix
-    return file_info[b].GetRIRFval(r, col, st);
+    return file_info.GetRIRFVal(b, r, col, st);
 }
 
 /*******************************************************************************
@@ -888,8 +889,8 @@ std::vector<double> TestHydro::ComputeForceExcitation() {
  * calls computeForce type functions
  *******************************************************************************/
 double TestHydro::coordinateFunc(int b, int i) {
-    unsigned body_num_offset = 6 * (b - 1);  // b_num from ForceFunc6d is 1 indexed, TODO: make all b_num 0 indexed
-    unsigned total_dofs      = 6 * num_bodies;
+    int body_num_offset = 6 * (b - 1);  // b_num from ForceFunc6d is 1 indexed, TODO: make all b_num 0 indexed
+    int total_dofs      = 6 * num_bodies;
     if (i < 0 || i > 5 || b < 1 || b > num_bodies) {
         std::cout << "wrong index somewhere\nsetting coordinateFunc to 0" << std::endl;
         return 0;
@@ -919,6 +920,7 @@ double TestHydro::coordinateFunc(int b, int i) {
         // update required forces:
         ComputeForceHydrostatics();
         ComputeForceRadiationDampingConv();
+
         // sum all forces element by element
         for (int j = 0; j < total_dofs; j++) {
             total_force[j] = force_hydrostatic[j] - force_radiation_damping[j];

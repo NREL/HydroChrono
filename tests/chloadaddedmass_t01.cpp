@@ -41,9 +41,7 @@ int main(int argc, char* argv[]) {
         chrono_types::make_shared<chrono::ChBodyEasyMesh>(b2Meshfname,  // file name
                                                           density, evaluate_mass, create_visu_mesh, detect_collision);
 
-    std::vector<H5FileInfo> infos;
-    infos.emplace_back(h5fname, "body1");
-    infos.emplace_back(h5fname, "body2");  // reopen the file
+    HydroData infos = H5FileInfo(h5fname, 2).readH5Data();
 
     std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia;
 
@@ -57,7 +55,7 @@ int main(int argc, char* argv[]) {
 
     ChSystemSMC my_system;
 
-    my_loadbodyinertia = chrono_types::make_shared<ChLoadAddedMass>(infos, loadables, &my_system);
+    my_loadbodyinertia = chrono_types::make_shared<ChLoadAddedMass>(infos.GetBodyInfos(), loadables, &my_system);
 
     std::cout << "End" << std::endl;
     return 0;

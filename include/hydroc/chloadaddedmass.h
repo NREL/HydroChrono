@@ -14,7 +14,13 @@ using namespace chrono;
 // =============================================================================
 class ChLoadAddedMass : public chrono::ChLoadCustomMultiple {
 public:
-	ChLoadAddedMass(const std::vector<H5FileInfo>& file,   ///< h5 file to initialize added mass with
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="body_info_struct">h5 file to initialize added mass with</param>
+    /// <param name="bodies"></param>
+    /// <param name="system"></param>
+    ChLoadAddedMass(const std::vector<HydroData::BodyInfo>& body_info_struct,      ///< 
 		std::vector<std::shared_ptr<ChLoadable>>& bodies,  ///< objects to apply additional inertia to
 		ChSystem* system);
 //	/// "Virtual" copy constructor (covariant return type).
