@@ -3,15 +3,15 @@
 #include <hydroc/h5fileinfo.h>
 #include <hydroc/wave_types.h>
 
-#include <unsupported/Eigen/Splines>
 #include <chrono/physics/ChLoad.h>
+#include <unsupported/Eigen/Splines>
 
 #include <algorithm>
-#include <numeric>  // std::accumulate
 #include <cmath>
-#include <vector>
-#include <random>
 #include <memory>
+#include <numeric>  // std::accumulate
+#include <random>
+#include <vector>
 
 #ifndef M_PI
     #define M_PI 3.14159265358979323846
@@ -108,7 +108,7 @@ std::vector<double> FreeSurfaceElevation(const std::vector<double>& freqs_hz,
     for (size_t i = 0; i < A.size(); ++i) {
         sqrt_A[i] = std::sqrt(A[i]);
     }
-
+    // TODO fix this vector of vecotrs
     std::vector<std::vector<double>> omegas_t(time_index.size(), std::vector<double>(omegas.size()));
     for (size_t i = 0; i < time_index.size(); ++i) {
         for (size_t j = 0; j < omegas.size(); ++j) {
@@ -140,7 +140,7 @@ std::vector<std::array<double, 3>> CreateFreeSurface3DPts(const std::vector<doub
     std::vector<std::array<double, 3>> surface(t_vec.size() * 2);
 
     for (size_t i = 0; i < t_vec.size(); ++i) {
-        double t = -1*t_vec[i];
+        double t = -1 * t_vec[i];
         double z = eta[i];
 
         surface[2 * i]     = {t, -10.0, z};
@@ -241,8 +241,7 @@ void WriteFreeSurfaceMeshObj(const std::vector<std::array<double, 3>>& points,
 /*******************************************************************************
  * HydroInputs constructor
  *******************************************************************************/
-HydroInputs::HydroInputs() {
-}
+HydroInputs::HydroInputs() {}
 
 void HydroInputs::UpdateNumTimesteps() {
     num_timesteps = static_cast<int>(simulation_duration / simulation_dt) + 1;
@@ -314,7 +313,6 @@ void HydroInputs::CreateFreeSurfaceElevation() {
 
     WriteFreeSurfaceMeshObj(free_surface_3d_pts, free_surface_triangles, "fse_mesh.obj");
 }
-
 
 // =============================================================================
 // ComponentFunc Class Definitions
@@ -496,47 +494,34 @@ void ForceFunc6d::ApplyForceAndTorqueToBody() {
 // TestHydro Class Definitions
 // =============================================================================
 /*******************************************************************************
- * TestHydro::TestHydro()
- * default constructor to initialize just a few variables
- * called from actual constructor
- *******************************************************************************/
-// TestHydro::TestHydro() {
-//    prev_time   = -1;
-//    offset_rirf = 0;
-//    num_bodies  = 0;
-//}
-
-/*******************************************************************************
  * TestHydro::TestHydro(user_bodies, h5_file_name, user_hydro_inputs)
  * main constructor for TestHydro class, sets up vector of bodies, h5 file info,
  * and hydro inputs
  * also initializes many persistent variables for force calculations
- * calls default constructor
+ * TODO add other constructor that has the waves as an argument and calls addwaves
  *******************************************************************************/
-TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
-                     std::string h5_file_name,
-                     HydroInputs& user_hydro_inputs)
+TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::string h5_file_name)
     : bodies(user_bodies), num_bodies(bodies.size()), file_info(H5FileInfo(h5_file_name, num_bodies).readH5Data()) {
     prev_time   = -1;
     offset_rirf = 0;
-
-    /*H5FileInfo h5_file_reader(h5_file_name, num_bodies);
-    file_info = h5_file_reader.readH5Data();*/
 
     // set up time vector (should be the same for each body, so just use the first always)
     rirf_time_vector = file_info.GetRIRFTimeVector();
     rirf_timestep    = rirf_time_vector[1] - rirf_time_vector[0];  // TODO is this the same for all bodies?
 
-    //std::vector<double> ex_irf = file_info[0].GetExcitationIRF();
-    //WriteContainerToFile(ex_irf, "ex_irf.txt");
+    // std::vector<double> ex_irf = file_info[0].GetExcitationIRF();
+    // WriteContainerToFile(ex_irf, "ex_irf.txt");
 
     // resample excitation IRF time series
-    for (int b = 0; b < num_bodies; b++) {
-        file_info[b].ResampleExcitationIRF(user_hydro_inputs.simulation_dt);
-    }
+    // h5 file irf has different timestep, want to resample with interpolation (cubic spline?) once at start no
+    // interpolation in convolution integral part
+    // different one for each body it's 6x1x1000 so maybe switch to 2d reading
+    // for (int b = 0; b < num_bodies; b++) {
+    //    file_info.ResampleExcitationIRF(b, user_hydro_inputs.simulation_dt);
+    //}
 
-    //Eigen::VectorXd ex_irf_resampled = file_info[0].GetExcitationIRFResampled();
-    //WriteContainerToFile(ex_irf_resampled, "ex_irf_resampled.txt");
+    // Eigen::VectorXd ex_irf_resampled = file_info[0].GetExcitationIRFResampled();
+    // WriteContainerToFile(ex_irf_resampled, "ex_irf_resampled.txt");
 
     // simplify 6* num_bodies to be the system's total number of dofs, makes expressions later easier to read
     int total_dofs = 6 * num_bodies;
@@ -579,37 +564,51 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
     my_loadcontainer->Add(my_loadbodyinertia);
 
     // set up hydro inputs stuff
-    hydro_inputs = user_hydro_inputs;
-    WaveSetUp();
+    // hydro_inputs = user_hydro_inputs;
+    // WaveSetUp();
+
+    user_waves = std::static_pointer_cast<WaveBase>(std::make_shared<NoWave>());
 }
 
-void TestHydro::WaveSetUp() {
-    int total_dofs = 6 * num_bodies;
-    switch (hydro_inputs.mode) {
-        case WaveMode::noWaveCIC:
-            break;
-        case WaveMode::regular:
-            hydro_inputs.excitation_force_mag.resize(total_dofs, 0.0);
-            hydro_inputs.excitation_force_phase.resize(total_dofs, 0.0);
-            force_excitation_freq.resize(total_dofs, 0.0);
-            hydro_inputs.wave_omega_delta = file_info.GetOmegaDelta();
-            hydro_inputs.freq_index_des   = (hydro_inputs.regular_wave_omega / hydro_inputs.wave_omega_delta) - 1;
-            for (int b = 0; b < num_bodies; b++) {
-                for (int rowEx = 0; rowEx < 6; rowEx++) {
-                    int body_offset = 6 * b;
-                    hydro_inputs.excitation_force_mag[body_offset + rowEx] =
-                        file_info.GetExcitationMagInterp(b, rowEx, 0, hydro_inputs.freq_index_des);
-                    hydro_inputs.excitation_force_phase[body_offset + rowEx] =
-                        file_info.GetExcitationPhaseInterp(b, rowEx, 0, hydro_inputs.freq_index_des);
-                }
-            }
-            break;
-        case WaveMode::irregular:
-            hydro_inputs.CreateSpectrum();
-            hydro_inputs.CreateFreeSurfaceElevation();
-            t_irf = file_info[0].GetExcitationIRFTime();//Resampled();  // assume t_irf is the same for all hydrodynamic bodies
+void TestHydro::AddWaves(std::shared_ptr<WaveBase> waves) {
+    user_waves = waves;
+    if (user_waves->GetWaveMode() == WaveMode::regular) {
+        std::shared_ptr<RegularWave> reg = std::static_pointer_cast<RegularWave>(user_waves);
+        reg->AddH5Data(file_info.GetRegularWaveInfos());
+    } else if (user_waves->GetWaveMode() == WaveMode::irregular) {
+        std::shared_ptr<IrregularWave> irreg = std::static_pointer_cast<IrregularWave>(user_waves);
+        irreg->AddH5Data(file_info.GetIrregularWaveInfos());
     }
+    user_waves->Initialize();
 }
+
+// void TestHydro::WaveSetUp() {
+//    int total_dofs = 6 * num_bodies;
+//    switch (hydro_inputs.mode) {
+//        case WaveMode::noWaveCIC:
+//            break;
+//        case WaveMode::regular:
+//            // hydro_inputs.excitation_force_mag.resize(total_dofs, 0.0);
+//            // hydro_inputs.excitation_force_phase.resize(total_dofs, 0.0);
+//            // force_waves.resize(total_dofs, 0.0);
+//            // hydro_inputs.wave_omega_delta = file_info.GetOmegaDelta();
+//            // hydro_inputs.freq_index_des   = (hydro_inputs.regular_wave_omega / hydro_inputs.wave_omega_delta) - 1;
+//            // for (int b = 0; b < num_bodies; b++) {
+//            //    for (int rowEx = 0; rowEx < 6; rowEx++) {
+//            //        int body_offset = 6 * b;
+//            //        hydro_inputs.excitation_force_mag[body_offset + rowEx] =
+//            //            file_info.GetExcitationMagInterp(b, rowEx, 0, hydro_inputs.freq_index_des);
+//            //        hydro_inputs.excitation_force_phase[body_offset + rowEx] =
+//            //            file_info.GetExcitationPhaseInterp(b, rowEx, 0, hydro_inputs.freq_index_des);
+//            //    }
+//            //}
+//            break;
+//        case WaveMode::irregular:
+//            hydro_inputs.CreateSpectrum();
+//            hydro_inputs.CreateFreeSurfaceElevation();
+//            t_irf = file_info.GetExcitationIRFTime();  // assume t_irf is the same for all hydrodynamic bodies
+//    }
+//}
 
 /*******************************************************************************
  * TestHydro::getVelHistoryVal(int step, int c) const
@@ -821,62 +820,73 @@ double TestHydro::GetRIRFval(int row, int col, int st) {
  * TestHydro::ComputeForceExcitationRegularFreq()
  * computes the 6N dimensional excitation force
  *******************************************************************************/
-std::vector<double> TestHydro::ComputeForceExcitationRegularFreq() {
-    for (int b = 0; b < num_bodies; b++) {
-        int body_offset = 6 * b;
-        for (int rowEx = 0; rowEx < 6; rowEx++) {
-            force_excitation_freq[body_offset + rowEx] = hydro_inputs.excitation_force_mag[body_offset + rowEx] *
-                                                         hydro_inputs.regular_wave_amplitude *
-                                                         cos(hydro_inputs.regular_wave_omega * bodies[0]->GetChTime() +
-                                                             hydro_inputs.excitation_force_phase[rowEx]);
-        }
-    }
-    return force_excitation_freq;
-}
+// TODO delete this function
+// std::vector<double> TestHydro::ComputeForceExcitationRegularFreq() {
+//    for (int b = 0; b < num_bodies; b++) {
+//        int body_offset = 6 * b;
+//        for (int rowEx = 0; rowEx < 6; rowEx++) {
+//            force_waves[body_offset + rowEx] = hydro_inputs.excitation_force_mag[body_offset + rowEx] *
+//                                                         hydro_inputs.regular_wave_amplitude *
+//                                                         cos(hydro_inputs.regular_wave_omega * bodies[0]->GetChTime()
+//                                                         +
+//                                                             hydro_inputs.excitation_force_phase[rowEx]);
+//        }
+//    }
+//    return force_waves;
+//}
 
-double TestHydro::ExcitationConvolution(int body,
-                                        int dof,
-                                        double time,
-                                        const std::vector<double>& eta,
-                                        const std::vector<double>& t_irf,
-                                        double sim_dt) {
-    double f_ex = 0.0;
-
-    for (size_t j = 0; j < t_irf.size(); ++j) {
-        double tau        = t_irf[j];
-        double t_tau      = time - tau;
-        double ex_irf_val = file_info[body].GetExcitationIRFVal(dof, 0, j);
-        if (0.0 < t_tau && t_tau < eta.size() * sim_dt) {
-            size_t eta_index = static_cast<size_t>(t_tau / sim_dt);
-            double eta_val   = eta[eta_index - 1];
-            f_ex += ex_irf_val * eta_val * sim_dt;
-        }
-    }
-
-    return f_ex;
-}
+// double TestHydro::ExcitationConvolution(int body,
+//                                        int dof,
+//                                        double time,
+//                                        const std::vector<double>& eta,
+//                                        const Eigen::VectorXd& t_irf,
+//                                        double sim_dt) {
+//    double f_ex = 0.0;
+//
+//    for (size_t j = 0; j < t_irf.size(); ++j) {
+//        double tau        = t_irf[j];
+//        double t_tau      = time - tau;
+//        double ex_irf_val = file_info.GetExcitationIRFVal(body, dof, j);  // needs to be resampled version TODO
+//        if (0.0 < t_tau && t_tau < eta.size() * sim_dt) {
+//            size_t eta_index = static_cast<size_t>(t_tau / sim_dt);
+//            double eta_val   = eta[eta_index - 1];
+//            f_ex += ex_irf_val * eta_val * sim_dt;  // eta is wave elevation
+//        }
+//    }
+//
+//    return f_ex;
+//}
 
 /*******************************************************************************
  * TestHydro::ComputeForceExcitation()
  * computes the 6N dimensional excitation force
  *******************************************************************************/
-std::vector<double> TestHydro::ComputeForceExcitation() {
-    double time = bodies[0]->GetChTime();
-    
-    int total_dofs = 6 * num_bodies;
-    force_excitation.resize(total_dofs, 0.0);
+// TODO delete this
+// std::vector<double> TestHydro::ComputeForceExcitation() {
+//    double time = bodies[0]->GetChTime();
+//
+//    int total_dofs = 6 * num_bodies;
+//    force_excitation.resize(total_dofs, 0.0);
+//
+//    for (int body = 0; body < num_bodies; body++) {
+//        // Loop through the DOFs
+//        for (int dof = 0; dof < 6; ++dof) {
+//            // Compute the convolution for the current DOF
+//            double force_excitation_dof =
+//                ExcitationConvolution(body, dof, time, hydro_inputs.eta, t_irf, hydro_inputs.simulation_dt);
+//            int force_excitation_index               = body * 6 + dof;
+//            force_excitation[force_excitation_index] = force_excitation_dof;
+//        }
+//    }
+//    return force_excitation;
+//}
 
-    for (int body = 0; body < num_bodies; body++) {
-        // Loop through the DOFs
-        for (int dof = 0; dof < 6; ++dof) {
-            // Compute the convolution for the current DOF
-            double force_excitation_dof =
-                ExcitationConvolution(body, dof, time, hydro_inputs.eta, t_irf, hydro_inputs.simulation_dt); 
-            int force_excitation_index               = body * 6 + dof;
-            force_excitation[force_excitation_index] = force_excitation_dof;
-        }
-    }
-    return force_excitation;
+// make force function call look the same as other compute force functions:
+Eigen::VectorXd TestHydro::ComputeForceWaves() {
+    Eigen::VectorXd wf(num_bodies * 6);
+    wf          = user_waves->GetForceAtTime(bodies[0]->GetChTime());
+    force_waves = wf;
+    return force_waves;
 }
 
 /*******************************************************************************
@@ -908,46 +918,24 @@ double TestHydro::coordinateFunc(int b, int i) {
     prev_time = bodies[0]->GetChTime();
 
     // reset forces to 0
+    // TODO change forces to Eigen::VectorXd types, might need to force evaluation of eigen at some point?
     std::fill(total_force.begin(), total_force.end(), 0.0);
     std::fill(force_hydrostatic.begin(), force_hydrostatic.end(), 0.0);
     std::fill(force_radiation_damping.begin(), force_radiation_damping.end(), 0.0);
-    std::fill(force_excitation_freq.begin(), force_excitation_freq.end(), 0.0);
+    std::fill(force_waves.begin(), force_waves.end(), 0.0);
 
     // call compute forces
     convTrapz = true;  // use trapeziodal rule or assume fixed dt.
 
-    if (hydro_inputs.mode == WaveMode::noWaveCIC) {
-        // update required forces:
-        ComputeForceHydrostatics();
-        ComputeForceRadiationDampingConv();
+    force_hydrostatic       = ComputeForceHydrostatics();
+    force_radiation_damping = ComputeForceRadiationDampingConv();
+    force_waves             = ComputeForceWaves();
 
-        // sum all forces element by element
-        for (int j = 0; j < total_dofs; j++) {
-            total_force[j] = force_hydrostatic[j] - force_radiation_damping[j];
-        }
-    } else if (hydro_inputs.mode == WaveMode::regular) {
-        // update required forces:
-        ComputeForceHydrostatics();
-        ComputeForceRadiationDampingConv();
-        ComputeForceExcitationRegularFreq();
-        // sum all forces element by element
-        for (int j = 0; j < total_dofs; j++) {
-            total_force[j] = force_hydrostatic[j] - force_radiation_damping[j] + force_excitation_freq[j];
-        }
-    } else if (hydro_inputs.mode == WaveMode::irregular) {
-        // update required forces:
-        ComputeForceHydrostatics();
-        ComputeForceRadiationDampingConv();
-        ComputeForceExcitation();
-        // sum all forces element by element
-        for (int j = 0; j < total_dofs; j++) {
-            total_force[j] = force_hydrostatic[j] - force_radiation_damping[j] + force_excitation[j];
-        }
-        std::ofstream total_force_check;
-        total_force_check.open("total_force_check.txt", std::ios::app);
-        total_force_check << total_force[2] << std::endl;
-        total_force_check.close();
+    // TODO once all force components are Eigen, remove this from being a loop
+    for (int i = 0; i < total_dofs; i++) {
+        total_force[i] = force_hydrostatic[i] - force_radiation_damping[i] + force_waves[i];
     }
+
     if (body_num_offset + i < 0 || body_num_offset >= total_dofs) {
         std::cout << "total force accessing out of bounds" << std::endl;
     }

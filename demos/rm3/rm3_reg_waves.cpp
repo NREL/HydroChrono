@@ -147,16 +147,16 @@ int main(int argc, char* argv[]) {
     system.AddLink(prismatic_pto);
 
     // define wave parameters
-    HydroInputs my_hydro_inputs;
-    my_hydro_inputs.mode                   = WaveMode::regular;
-    my_hydro_inputs.regular_wave_amplitude = 1.0;
-    my_hydro_inputs.regular_wave_omega     = 2.10;
+    auto my_hydro_inputs                    = std::make_shared<RegularWave>();
+    my_hydro_inputs->regular_wave_amplitude = 1.0;
+    my_hydro_inputs->regular_wave_omega     = 2.10;
 
     // attach hydrodynamic forces to body
     std::vector<std::shared_ptr<ChBody>> bodies;
     bodies.push_back(float_body1);
     bodies.push_back(plate_body2);
-    TestHydro blah(bodies, h5fname, my_hydro_inputs);
+    TestHydro hydro_forces(bodies, h5fname);
+    hydro_forces.AddWaves(my_hydro_inputs);
 
     // for profiling
     auto start = std::chrono::high_resolution_clock::now();

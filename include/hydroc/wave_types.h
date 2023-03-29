@@ -1,4 +1,5 @@
 #pragma once
+#include <hydroc/h5fileinfo.h>
 #include <Eigen/Dense>
 
 enum class WaveMode {
@@ -14,9 +15,9 @@ enum class WaveMode {
 // use only Eigen3 types
 class WaveBase {
   public:
-    virtual void Initialize() = 0;
+    virtual void Initialize()                        = 0;
     virtual Eigen::VectorXd GetForceAtTime(double t) = 0;
-    virtual WaveMode GetWaveMode() = 0;
+    virtual WaveMode GetWaveMode()                   = 0;
 };
 
 // class to intstantiate WaveBase for no waves
@@ -24,7 +25,7 @@ class NoWave : public WaveBase {
   public:
     NoWave() { num_bodies = 1; }
     NoWave(unsigned int num_b) { num_bodies = num_b; }
-    void Initialize() override { }
+    void Initialize() override {}
     Eigen::VectorXd GetForceAtTime(double t) override;
     WaveMode GetWaveMode() override { return mode; }
 
@@ -42,9 +43,26 @@ class RegularWave : public WaveBase {
     Eigen::VectorXd GetForceAtTime(double t) override;
     WaveMode GetWaveMode() override { return mode; }
 
+    // user input variables
+    double regular_wave_amplitude;
+    double regular_wave_omega;
+    // double freq_index_des;
+    // double wave_omega_delta;
+    // Eigen::VectorXd excitation_force_mag;
+    // Eigen::VectorXd excitation_force_phase;
+
+    void AddH5Data(std::vector<HydroData::RegularWaveInfo>& reg_h5_data);
+
   private:
-    unsigned int num_bodies;
+    unsigned int num_bodies;  // TODO is this needed?
     const WaveMode mode = WaveMode::regular;
+    std::vector<HydroData::RegularWaveInfo> info;
+    Eigen::VectorXd excitation_force_mag;
+    Eigen::VectorXd excitation_force_phase;
+    Eigen::VectorXd force;
+    double GetOmegaDelta() const;
+    double GetExcitationMagInterp(int b, int i, int j, double freq_index_des) const;
+    double GetExcitationPhaseInterp(int b, int i, int j, double freq_index_des) const;
 };
 
 // class to instantiate WaveBase for irregular waves
@@ -57,13 +75,17 @@ class IrregularWave : public WaveBase {
     WaveMode GetWaveMode() override { return mode; }
     // add more helper functions for calculations here:
 
+    void AddH5Data(std::vector<HydroData::IrregularWaveInfo>& irreg_h5_data);
+
   private:
     unsigned int num_bodies;
     const WaveMode mode = WaveMode::irregular;
+    std::vector<HydroData::IrregularWaveInfo> info;
 };
 
 // =============================================================================
 class HydroInputs {
+  public:
     WaveMode mode;
     HydroInputs();
     void UpdateNumTimesteps();

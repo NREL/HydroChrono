@@ -144,17 +144,11 @@ int main(int argc, char* argv[]) {
     prismatic_pto->SetDampingCoefficient(0.0);
     system.AddLink(prismatic_pto);
 
-    // define wave parameters (not used in this demo)
-    HydroInputs my_hydro_inputs;
-    my_hydro_inputs.mode = WaveMode::noWaveCIC;  // or 'regular' or 'regularCIC' or 'irregular';
-    // my_hydro_inputs.regular_wave_amplitude = 0.022;
-    // my_hydro_inputs.regular_wave_omega = 2.10;
-
     // attach hydrodynamic forces to body
     std::vector<std::shared_ptr<ChBody>> bodies;
     bodies.push_back(float_body1);
     bodies.push_back(plate_body2);
-    TestHydro blah(bodies, h5fname, my_hydro_inputs);
+    TestHydro hydroForces(bodies, h5fname);
 
     //// Debug printing added mass matrix and system mass matrix
     // ChSparseMatrix M;

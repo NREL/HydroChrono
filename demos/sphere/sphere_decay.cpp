@@ -119,15 +119,18 @@ int main(int argc, char* argv[]) {
 
     // define wave parameters (not used in this demo)
     // Todo define a way to use TestHydro without hydro_inputs/waves
-    HydroInputs my_hydro_inputs;
-    my_hydro_inputs.mode = WaveMode::noWaveCIC;
+    //HydroInputs my_hydro_inputs;
+    //my_hydro_inputs.mode = WaveMode::noWaveCIC;
     // my_hydro_inputs.regular_wave_amplitude = 0.022;
     // my_hydro_inputs.regular_wave_omega = 2.10;
+
+    auto default_dont_add_waves = std::make_shared<NoWave>(1);
 
     // attach hydrodynamic forces to body
     std::vector<std::shared_ptr<ChBody>> bodies;
     bodies.push_back(sphereBody);
-    TestHydro blah(bodies, h5fname, my_hydro_inputs);
+    TestHydro hydro_forces(bodies, h5fname);
+    hydro_forces.AddWaves(default_dont_add_waves);
 
     // for profilingvisualizationOn = false;
     auto start = std::chrono::high_resolution_clock::now();
