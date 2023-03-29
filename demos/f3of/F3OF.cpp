@@ -232,15 +232,13 @@ int main(int argc, char* argv[]) {
     // ---------------- End DT specific set up, now add hydro forces ----------------------------------
 
     // define wave parameters (not used in this demo TODO have hydroforces constructor without hydro inputs)
-    HydroInputs my_hydro_inputs;
-    my_hydro_inputs.mode = WaveMode::noWaveCIC;
 
     // set up hydro forces
     std::vector<std::shared_ptr<ChBody>> bodies;
     bodies.push_back(base);
     bodies.push_back(flapFore);
     bodies.push_back(flapAft);
-    TestHydro hydroforces(bodies, h5fname, my_hydro_inputs);
+    TestHydro hydroforces(bodies, h5fname);
 
     // for profiling
     auto start = std::chrono::high_resolution_clock::now();

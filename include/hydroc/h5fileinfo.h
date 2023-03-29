@@ -50,6 +50,12 @@ class HydroData {
         // Eigen::Vector3i re_dims;
         // Eigen::Tensor<double, 3> excitation_im_matrix;
         // Eigen::Vector3i im_dims;
+        Eigen::VectorXd excitation_irf_time;
+        Eigen::MatrixXd excitation_irf_matrix;  // TODO needs to be tensor?
+
+        // see std::optional documentation for how to use
+        std::optional<Eigen::MatrixXd> excitation_irf_resampled;  // TODO needs to be tensor?
+        std::optional<Eigen::MatrixXd> excitation_irf_time_resampled;
     };
 
   private:
@@ -77,21 +83,22 @@ class HydroData {
     double GetDispVolVal(int b) const { return body_data[b].disp_vol; }
     Eigen::VectorXd GetCGVector(int b) const { return body_data[b].cg; }
     Eigen::VectorXd GetCBVector(int b) const { return body_data[b].cb; }
-    double GetExcitationMagVal(int b, int m, int n, int w) const;
-    double GetExcitationMagInterp(int b, int i, int j, double freq_index_des) const;
-    double GetExcitationPhaseVal(int b, int m, int n, int w) const;
-    double GetExcitationPhaseInterp(int b, int i, int j, double freq_index_des) const;
+    double GetExcitationIRFVal(int b, int dof, int s) const;
+    Eigen::MatrixXd GetExcitationIRF(int b) const;
+    Eigen::VectorXd ResampleExcitationIRFTime(double dt_new);
+    Eigen::MatrixXd GetExcitationIRFResampled(int b) const;
+    std::pair<Eigen::VectorXd, Eigen::VectorXd> ResampleExcitationIRF(int b, double dt_new);
 
     // things that are the same no matter the body, don't need body argument
     int GetRIRFDims(int i) const;
     Eigen::VectorXd GetRIRFTimeVector() const;  // TODO
     double GetRhoVal() const { return sim_data.rho; }
-    double GetOmegaDelta() const;
-    double GetOmegaMax() const;
-    double GetNumFreqs() const;
+    Eigen::VectorXd HydroData::GetExcitationIRFTime() const;
 
     // getters for individual structs
-    const std::vector<BodyInfo>& GetBodyInfos() const { return body_data; }
+    std::vector<BodyInfo>& GetBodyInfos() { return body_data; }
+    std::vector<RegularWaveInfo>& GetRegularWaveInfos() { return reg_wave_data; }
+    std::vector<IrregularWaveInfo>& GetIrregularWaveInfos() { return irreg_wave_data; }
 };
 
 class H5FileInfo {
@@ -119,4 +126,5 @@ class H5FileInfo {
     void Init1D(H5::H5File& file, std::string data_name, Eigen::VectorXd& var);
     void Init2D(H5::H5File& file, std::string data_name, Eigen::MatrixXd& var);
     void Init3D(H5::H5File& file, std::string data_name, Eigen::Tensor<double, 3>& var /*, std::vector<int>& dims*/);
+    Eigen::MatrixXd squeeze_mid(Eigen::Tensor<double, 3> to_be_squeezed);
 };

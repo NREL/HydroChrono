@@ -18,31 +18,35 @@
 #include <chrono/fea/ChMeshFileLoader.h>
 
 #include <hydroc/h5fileinfo.h>
+#include <hydroc/wave_types.h>
 
 using namespace chrono;
 using namespace chrono::fea;
 
-///@todo eventually add irregular waves mode
-enum class WaveMode {
-    /// @brief No waves
-    noWaveCIC = 0,
-    /// @brief Regular waves
-    regular = 1
-};
+/////@todo eventually add irregular waves mode
+// enum class WaveMode {
+//    /// @brief No waves
+//    noWaveCIC = 0,
+//    /// @brief Regular waves
+//    regular = 1,
+//    /// @brief Irregular waves
+//    irregular = 2
+//};
 
 // =============================================================================
-struct HydroInputs {
-    WaveMode mode;
-    HydroInputs();
-    double freq_index_des;
-    double regular_wave_amplitude;
-    double regular_wave_omega;
-    double wave_omega_delta;
-    std::vector<double> excitation_force_mag;
-    std::vector<double> excitation_force_phase;
-    HydroInputs(HydroInputs& old) = default;
-    HydroInputs& operator=(const HydroInputs& rhs) = default;
-};
+// old HydroInputs struct (reg wave details here)
+// struct HydroInputs {
+//    WaveMode mode;
+//    HydroInputs();
+//    double freq_index_des;
+//    double regular_wave_amplitude;
+//    double regular_wave_omega;
+//    double wave_omega_delta;
+//    std::vector<double> excitation_force_mag;
+//    std::vector<double> excitation_force_phase;
+//    HydroInputs(HydroInputs& old) = default;
+//    HydroInputs& operator=(const HydroInputs& rhs) = default;
+//};
 
 // =============================================================================
 class ForceFunc6d;
@@ -90,27 +94,27 @@ class TestHydro {
   public:
     bool printed = false;
     TestHydro()  = delete;
-    TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
-              std::string h5_file_name,
-              HydroInputs& users_hydro_inputs);
+    TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::string h5_file_name);
     TestHydro(const TestHydro& old) = delete;
     TestHydro operator=(const TestHydro& rhs) = delete;
+    void AddWaves(std::shared_ptr<WaveBase> waves);
     void WaveSetUp();
     std::vector<double> ComputeForceHydrostatics();
     std::vector<double> ComputeForceRadiationDampingConv();
-    std::vector<double> ComputeForceExcitationRegularFreq();
-    double ExcitationConvolution(int body,
-                                 int dof,
-                                 double t,
-                                 const std::vector<double>& eta,
-                                 // const std::vector<double>& excitation_irf,
-                                 const std::vector<double>& t_irf_new,
-                                 double sim_dt);
-    std::vector<double> ComputeForceExcitation();
+    Eigen::VectorXd ComputeForceWaves();
+    // std::vector<double> ComputeForceExcitationRegularFreq();
+    // double ExcitationConvolution(int body,
+    //                             int dof,
+    //                             double t,
+    //                             const std::vector<double>& eta,
+    //                             // const std::vector<double>& excitation_irf,
+    //                             const Eigen::VectorXd& t_irf_new,
+    //                             double sim_dt);
+    // std::vector<double> ComputeForceExcitation();
     double GetRIRFval(int row, int col, int st);
     double coordinateFunc(int b, int i);
     bool convTrapz;
-        std::vector<double> t_irf;
+    Eigen::VectorXd t_irf;
 
   private:
     std::vector<std::shared_ptr<ChBody>> bodies;
@@ -118,11 +122,12 @@ class TestHydro {
     HydroData file_info;
     std::vector<ForceFunc6d> force_per_body;
     double sumVelHistoryAndRIRF;
-    HydroInputs hydro_inputs;
+    // HydroInputs hydro_inputs;
+    std::shared_ptr<WaveBase> user_waves;
     std::vector<double> force_hydrostatic;
     std::vector<double> force_radiation_damping;
-    std::vector<double> force_excitation_freq;
-    std::vector<double> force_excitation;
+    Eigen::VectorXd force_waves;
+    // std::vector<double> force_excitation;
     std::vector<double> total_force;
     std::vector<double> equilibrium;
     std::vector<double> cb_minus_cg;

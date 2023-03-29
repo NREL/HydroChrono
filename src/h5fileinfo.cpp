@@ -24,7 +24,6 @@ void WriteDataToFile(const std::vector<T>& data, const std::string& filename) {
     }
 }
 
-
 // =============================================================================
 // H5FileInfo Class Definitions
 // =============================================================================
@@ -61,6 +60,8 @@ HydroData H5FileInfo::readH5Data() {
     // simparams first
     InitScalar(userH5File, "simulation_parameters/rho", data_to_init.sim_data.rho);
     InitScalar(userH5File, "simulation_parameters/g", data_to_init.sim_data.g);
+    double rho = data_to_init.sim_data.rho;
+    double g   = data_to_init.sim_data.g;
 
     // for each body things
     for (int i = 0; i < num_bodies; i++) {
@@ -72,11 +73,6 @@ HydroData H5FileInfo::readH5Data() {
         InitScalar(userH5File, bodyName + "/properties/disp_vol", data_to_init.body_data[i].disp_vol);
         Init1D(userH5File, bodyName + "/hydro_coeffs/radiation_damping/impulse_response_fun/t",
                data_to_init.body_data[i].rirf_time_vector);
-
-        // TODO add these in after the merge
-    // Init1D(userH5File, bodyName + "/hydro_coeffs/excitation/impulse_response_fun/t", excitation_irf_time);
-    // Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/impulse_response_fun/f", excitation_irf_matrix,
-    //       excitation_irf_dims);
 
         // do not need rirf_timestep?
         data_to_init.body_data[i].rirf_timestep =
@@ -95,18 +91,47 @@ HydroData H5FileInfo::readH5Data() {
         Init1D(userH5File, "simulation_parameters/w", data_to_init.reg_wave_data[i].freq_list);
         Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/mag",
                data_to_init.reg_wave_data[i].excitation_mag_matrix);
+
+        // scale by rho * g
+        data_to_init.reg_wave_data[i].excitation_mag_matrix = data_to_init.reg_wave_data[i]
+                                                                  .excitation_mag_matrix * 
+            data_to_init.reg_wave_data[i].excitation_mag_matrix.constant(rho * g);
         Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/phase",
-               data_to_init.reg_wave_data[i].excitation_phase_matrix);
+               data_to_init.reg_wave_data[i].excitation_phase_matrix); // TODO does this also need to be scaled by rho * g?
 
         // irreg wave
         // Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/re", excitation_re_matrix, re_dims);
         // Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/im", excitation_im_matrix, im_dims);
+        Init1D(userH5File, bodyName + "/hydro_coeffs/excitation/impulse_response_fun/t",
+               data_to_init.irreg_wave_data[i].excitation_irf_time);
+        // TODO change this to a temp tensor and manip it into a 2d matrix for ecitation_irf_matrix?
+        // TODO look up Eigen resize and map to make this temp conversion better
+        Eigen::Tensor<double, 3> temp;
+        Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/impulse_response_fun/f",
+               temp);
+        data_to_init.irreg_wave_data[i].excitation_irf_matrix = squeeze_mid(temp);
+
     }
 
     userH5File.close();
     // WriteDataToFile(excitation_irf_dims, "excitation_irf_dims.txt");
     // WriteDataToFile(excitation_irf_matrix, "excitation_irf_matrix.txt");
     return data_to_init;
+}
+
+// squeezes the middle dimension of 1 out
+Eigen::MatrixXd H5FileInfo::squeeze_mid(Eigen::Tensor<double,3> to_be_squeezed) {
+    assert(to_be_squeezed.dimension(1));
+    int dof  = to_be_squeezed.dimension(0);
+    int size = to_be_squeezed.dimension(2);
+    Eigen::MatrixXd squozen(dof, size);
+    for (int i = 0; i < dof; i++) {
+        for (int j = 0; j < size; j++) {
+            // squeeze 6x1x1000 or whatever into 6x1000 matrix
+            squozen(i, j) = to_be_squeezed(i, 0, j);
+        }
+    }
+    return squozen;
 }
 
 /*******************************************************************************
@@ -297,102 +322,36 @@ Eigen::VectorXd HydroData::GetRIRFTimeVector() const {
 }
 
 /*******************************************************************************
- * HydroData::GetOmegaDelta()
- * returns omega step size
+ * HydroData::GetExcitationIRFval()
+ * returns rirf val for DoF: 0,...,5; s: 0,...,1001 excitation_irf_dims[2]
  *******************************************************************************/
-double HydroData::GetOmegaDelta() const {
-    return GetOmegaMax() / GetNumFreqs();
+double HydroData::GetExcitationIRFVal(int b, int dof, int s) const {
+    // int index = s + excitation_irf_dims[2] * (col + dof * excitation_irf_dims[1]);  // TODO check index
+    // if (index < 0 || index >= excitation_irf_dims[0] * rirf_dims[1] * excitation_irf_dims[2]) {
+    //    std::cout << "out of bounds IRF\n";
+    //    return 0;
+    //} else {
+    return irreg_wave_data[b].excitation_irf_matrix(dof, s) * sim_data.rho * sim_data.g;
+    //}
 }
 
 /*******************************************************************************
- * HydroData::GetOmegaMax()
- * returns max value of omega
- *******************************************************************************/
-double HydroData::GetOmegaMax() const {
-    return reg_wave_data[0].freq_list[reg_wave_data[0].freq_list.size() - 1];
-}
-
-/*******************************************************************************
- * HydroData::GetNumFreqs()
- * returns number of frequencies computed
- *******************************************************************************/
-double HydroData::GetNumFreqs() const {
-    return reg_wave_data[0].freq_list.size();
-}
-
-/*******************************************************************************
- * HydroData::GetExcitationMagInterp()
- * returns excitation magnitudes for body b, row i, column j, frequency ix k
- *******************************************************************************/
-double HydroData::GetExcitationMagInterp(int b, int i, int j, double freq_index_des) const {
-    double freq_interp_val    = freq_index_des - floor(freq_index_des);
-    double excitationMagFloor = GetExcitationMagVal(b, i, j, floor(freq_index_des));
-    double excitationMagCeil  = GetExcitationMagVal(b, i, j, floor(freq_index_des) + 1);
-    double excitationMag      = (freq_interp_val * (excitationMagCeil - excitationMagFloor)) + excitationMagFloor;
-
-    return excitationMag;
-}
-
-/*******************************************************************************
- * HydroData::GetExcitationMagValue()
- * returns excitation magnitudes for row i, column j, frequency ix k
- *******************************************************************************/
-double HydroData::GetExcitationMagVal(int b, int i, int j, int k) const {
-    int indexExMag = k + reg_wave_data[b].excitation_mag_matrix.dimension(2) * i;
-    return reg_wave_data[b].excitation_mag_matrix(i, j, k) * sim_data.rho * sim_data.g;
-}
-
-/*******************************************************************************
- * HydroData::GetExcitationPhaseValue()
- * returns excitation phases for row i, column j, frequency k
- *******************************************************************************/
-double HydroData::GetExcitationPhaseVal(int b, int i, int j, int k) const {
-    return reg_wave_data[b].excitation_phase_matrix(i, j, k);
-}
-
-/*******************************************************************************
- * HydroData::GetExcitationPhaseInterp()
- * returns excitation phases for row i, column j, frequency ix k
- *******************************************************************************/
-double HydroData::GetExcitationPhaseInterp(int b, int i, int j, double freq_index_des) const {
-    double freq_interp_val      = freq_index_des - floor(freq_index_des);
-    double excitationPhaseFloor = GetExcitationPhaseVal(b, i, j, floor(freq_index_des));
-    double excitationPhaseCeil  = GetExcitationPhaseVal(b, i, j, floor(freq_index_des) + 1);
-    double excitationPhase = (freq_interp_val * (excitationPhaseCeil - excitationPhaseFloor)) + excitationPhaseFloor;
-
-    return excitationPhase;
-}
-
-/*******************************************************************************
- * H5FileInfo::GetExcitationIRFval()
- * returns rirf val for DoF: 0,...,5; col: 0,...,6N-1; s: 0,...,1001 excitation_irf_dims[2]
- *******************************************************************************/
-double H5FileInfo::GetExcitationIRFVal(int dof, int col, int s) const {
-    int index = s + excitation_irf_dims[2] * (col + dof * excitation_irf_dims[1]);  // TODO check index
-    if (index < 0 || index >= excitation_irf_dims[0] * rirf_dims[1] * excitation_irf_dims[2]) {
-        std::cout << "out of bounds IRF\n";
-        return 0;
-    } else {
-        return excitation_irf_matrix[index] * _rho * _g;  // scale radiation force by rho
-    }
-}
-
-/*******************************************************************************
- * H5FileInfo::GetExcitationIRFTime()
+ * HydroData::GetExcitationIRFTime()
  * returns the std::vector of rirf_time_vector from h5 file
  *******************************************************************************/
-std::vector<double> H5FileInfo::GetExcitationIRFTime() const {
-    return excitation_irf_time;
+Eigen::VectorXd HydroData::GetExcitationIRFTime() const {
+    return irreg_wave_data[0].excitation_irf_time;
 }
 
 /*******************************************************************************
- * H5FileInfo::GetExcitationIRF()
+ * HydroData::GetExcitationIRF()
  * returns the std::vector of excitation_irf_matrix from h5 file
  *******************************************************************************/
-std::vector<double> H5FileInfo::GetExcitationIRF() const {
-    return excitation_irf_matrix;
+Eigen::MatrixXd HydroData::GetExcitationIRF(int b) const {
+    return irreg_wave_data[b].excitation_irf_matrix;
 }
 
+// this function bad allocs TODO
 std::pair<Eigen::VectorXd, Eigen::VectorXd> ResampleTimeSeries(const Eigen::VectorXd& time_series,
                                                                double dt_old,
                                                                double dt_new) {
@@ -426,85 +385,88 @@ std::pair<Eigen::VectorXd, Eigen::VectorXd> ResampleTimeSeries(const Eigen::Vect
     return {t_new, time_series_new};
 }
 
-void H5FileInfo::ResampleExcitationIRFTime(double dt_new) {
-    Eigen::VectorXd excitation_irf_t(excitation_irf_time.size());
-    for (size_t i = 0; i < excitation_irf_time.size(); i++) {
-        excitation_irf_t[i] = excitation_irf_time[i];
+// TODO move excitation_irf_time(_resampled) to sim_data as optional?
+Eigen::VectorXd HydroData::ResampleExcitationIRFTime(double dt_new) {
+    Eigen::VectorXd excitation_irf_t(irreg_wave_data[0].excitation_irf_time.size());
+    for (size_t i = 0; i < irreg_wave_data[0].excitation_irf_time.size(); i++) {
+        excitation_irf_t[i] = irreg_wave_data[0].excitation_irf_time[i];
     }
-    double excitation_irf_dt = excitation_irf_time[1] - excitation_irf_time[0];
+    double excitation_irf_dt = irreg_wave_data[0].excitation_irf_time[1] - irreg_wave_data[0].excitation_irf_time[0];
+
     std::pair<Eigen::VectorXd, Eigen::VectorXd> resampled_excitation_irf_time =
         ResampleTimeSeries(excitation_irf_t, excitation_irf_dt, dt_new);
-    excitation_irf_time_resampled    = resampled_excitation_irf_time.first;
-    is_excitation_irf_time_resampled = true;
+
+    irreg_wave_data[0].excitation_irf_time_resampled = resampled_excitation_irf_time.first;
+    return excitation_irf_t;
 }
 
-// std::pair<Eigen::VectorXd, Eigen::VectorXd> H5FileInfo::ResampleExcitationIRF(double dt_new) {
+ std::pair<Eigen::VectorXd, Eigen::VectorXd> HydroData::ResampleExcitationIRF(int b, double dt_new) {
+    Eigen::VectorXd excitation_irf(irreg_wave_data[b].excitation_irf_matrix.size());
+     for (size_t i = 0; i < irreg_wave_data[b].excitation_irf_matrix.size(); i++) {
+        excitation_irf[i] = irreg_wave_data[b].excitation_irf_matrix(0,0); // TODO this probably isn't 0 always
+    }
+     double excitation_irf_dt = irreg_wave_data[0].excitation_irf_time[1] - irreg_wave_data[0].excitation_irf_time[0];
+    return ResampleTimeSeries(excitation_irf, excitation_irf_dt, dt_new);
+}
+
+// void H5FileInfo::ResampleExcitationIRF(double dt_new) {
 //    Eigen::VectorXd excitation_irf(excitation_irf_matrix.size());
 //    for (size_t i = 0; i < excitation_irf_matrix.size(); i++) {
 //        excitation_irf[i] = excitation_irf_matrix[i];
 //    }
 //    double excitation_irf_dt = excitation_irf_time[1] - excitation_irf_time[0];
-//    return ResampleTimeSeries(excitation_irf, excitation_irf_dt, dt_new);
+//    std::pair<Eigen::VectorXd, Eigen::VectorXd> resampled_excitation_irf =
+//        ResampleTimeSeries(excitation_irf, excitation_irf_dt, dt_new);
+//    excitation_irf_time_resampled    = resampled_excitation_irf.first;
+//    excitation_irf_resampled         = resampled_excitation_irf.second;
+//    is_excitation_irf_time_resampled = true;
+//    is_excitation_irf_resampled      = true;
 //}
-
-void H5FileInfo::ResampleExcitationIRF(double dt_new) {
-    Eigen::VectorXd excitation_irf(excitation_irf_matrix.size());
-    for (size_t i = 0; i < excitation_irf_matrix.size(); i++) {
-        excitation_irf[i] = excitation_irf_matrix[i];
-    }
-    double excitation_irf_dt = excitation_irf_time[1] - excitation_irf_time[0];
-    std::pair<Eigen::VectorXd, Eigen::VectorXd> resampled_excitation_irf =
-        ResampleTimeSeries(excitation_irf, excitation_irf_dt, dt_new);
-    excitation_irf_time_resampled    = resampled_excitation_irf.first;
-    excitation_irf_resampled         = resampled_excitation_irf.second;
-    is_excitation_irf_time_resampled = true;
-    is_excitation_irf_resampled      = true;
-}
 
 /*******************************************************************************
  * H5FileInfo::GetExcitationIRFTimeResampled()
  * returns the Eigen::VectorXd of excitation_irf_time_resampled (ResampleExcitationIRFTime() needs to be called first)
  *******************************************************************************/
-Eigen::VectorXd H5FileInfo::GetExcitationIRFTimeResampled() const {
-    if (!is_excitation_irf_time_resampled) {
-        std::cerr << "Warning: ResampleExcitationIRFTime() has not been called before accessing resampled data. "
-                     "Returning original excitation IRF time vector.\n";
-        Eigen::VectorXd excitation_irf_time_eigen(excitation_irf_time.size());
-        for (size_t i = 0; i < excitation_irf_time.size(); i++) {
-            excitation_irf_time_eigen[i] = excitation_irf_time[i];
-        }
-        return excitation_irf_time_eigen;
-    }
-    return excitation_irf_time_resampled;
-}
+// Eigen::VectorXd H5FileInfo::GetExcitationIRFTimeResampled() const {
+//    if (!is_excitation_irf_time_resampled) {
+//        std::cerr << "Warning: ResampleExcitationIRFTime() has not been called before accessing resampled data. "
+//                     "Returning original excitation IRF time vector.\n";
+//        Eigen::VectorXd excitation_irf_time_eigen(excitation_irf_time.size());
+//        for (size_t i = 0; i < excitation_irf_time.size(); i++) {
+//            excitation_irf_time_eigen[i] = excitation_irf_time[i];
+//        }
+//        return excitation_irf_time_eigen;
+//    }
+//    return excitation_irf_time_resampled;
+//}
 
 /*******************************************************************************
- * H5FileInfo::GetExcitationIRFResampled()
+ * HydroData::GetExcitationIRFResampled()
  * returns the Eigen::VectorXd of excitation_irf_time_resampled (ResampleExcitationIRFTime() needs to be called first)
  *******************************************************************************/
-Eigen::VectorXd H5FileInfo::GetExcitationIRFResampled() const {
-    if (!is_excitation_irf_resampled) {
-        std::cerr << "Warning: ResampleExcitationIRFTime() has not been called before accessing resampled data. "
-                     "Returning original excitation IRF time vector.\n";
-        Eigen::VectorXd excitation_irf_eigen(excitation_irf_matrix.size());
-        for (size_t i = 0; i < excitation_irf_matrix.size(); i++) {
-            excitation_irf_eigen[i] = excitation_irf_matrix[i];
-        }
-        return excitation_irf_eigen;
-    }
-    return excitation_irf_resampled;
+Eigen::MatrixXd HydroData::GetExcitationIRFResampled(int b) const {
+    // if (!is_excitation_irf_resampled) {
+    //    std::cerr << "Warning: ResampleExcitationIRFTime() has not been called before accessing resampled data. "
+    //                 "Returning original excitation IRF time vector.\n";
+    //    Eigen::VectorXd excitation_irf_eigen(excitation_irf_matrix.size());
+    //    for (size_t i = 0; i < excitation_irf_matrix.size(); i++) {
+    //        excitation_irf_eigen[i] = excitation_irf_matrix[i];
+    //    }
+    //    return excitation_irf_eigen;
+    //} // TODO put this back
+    return irreg_wave_data[b].excitation_irf_resampled.value();
 }
 
 /*******************************************************************************
  * H5FileInfo::GetExcitationIRFResampledVal()
  * returns rirf val for DoF: 0,...,5; col: 0,...,6N-1; s: 0,...,1001 excitation_irf_dims[2]
  *******************************************************************************/
-double H5FileInfo::GetExcitationIRFResampledVal(int dof, int col, int s) const {
-    int index = s + excitation_irf_dims[2] * (col + dof * excitation_irf_dims[1]);  // TODO check index
-    if (index < 0 || index >= excitation_irf_dims[0] * rirf_dims[1] * excitation_irf_dims[2]) {
-        std::cout << "out of bounds IRF\n";
-        return 0;
-    } else {
-        return excitation_irf_matrix[index] * _rho * _g;  // scale radiation force by rho
-    }
-}
+// double H5FileInfo::GetExcitationIRFResampledVal(int dof, int col, int s) const {
+//    int index = s + excitation_irf_dims[2] * (col + dof * excitation_irf_dims[1]);  // TODO check index
+//    if (index < 0 || index >= excitation_irf_dims[0] * rirf_dims[1] * excitation_irf_dims[2]) {
+//        std::cout << "out of bounds IRF\n";
+//        return 0;
+//    } else {
+//        return excitation_irf_matrix[index] * _rho * _g;  // scale radiation force by rho
+//    }
+//}
