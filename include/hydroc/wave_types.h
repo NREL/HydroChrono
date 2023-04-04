@@ -75,12 +75,21 @@ class IrregularWave : public WaveBase {
     WaveMode GetWaveMode() override { return mode; }
     // add more helper functions for calculations here:
 
+    double wave_height;
+    double wave_period;
+    double simulation_duration;
+    double simulation_dt;
+    double ramp_duration;
+
     void AddH5Data(std::vector<HydroData::IrregularWaveInfo>& irreg_h5_data);
 
   private:
     unsigned int num_bodies;
     const WaveMode mode = WaveMode::irregular;
     std::vector<HydroData::IrregularWaveInfo> info;
+    Eigen::MatrixXd GetExcitationIRF(int b) const;
+    Eigen::VectorXd ResampleTime(const Eigen::VectorXd& t_old, const double dt_new);
+    Eigen::MatrixXd ResampleVals(const Eigen::VectorXd& t_old, Eigen::MatrixXd& vals_old, const Eigen::VectorXd& t_new);
 };
 
 // =============================================================================

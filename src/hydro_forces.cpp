@@ -500,7 +500,9 @@ void ForceFunc6d::ApplyForceAndTorqueToBody() {
  * also initializes many persistent variables for force calculations
  * TODO add other constructor that has the waves as an argument and calls addwaves
  *******************************************************************************/
-TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::string h5_file_name)
+TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
+                     std::string h5_file_name,
+                     std::shared_ptr<WaveBase> waves)
     : bodies(user_bodies), num_bodies(bodies.size()), file_info(H5FileInfo(h5_file_name, num_bodies).readH5Data()) {
     prev_time   = -1;
     offset_rirf = 0;
@@ -509,25 +511,12 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::stri
     rirf_time_vector = file_info.GetRIRFTimeVector();
     rirf_timestep    = rirf_time_vector[1] - rirf_time_vector[0];  // TODO is this the same for all bodies?
 
-    // std::vector<double> ex_irf = file_info[0].GetExcitationIRF();
-    // WriteContainerToFile(ex_irf, "ex_irf.txt");
-
-    // resample excitation IRF time series
-    // h5 file irf has different timestep, want to resample with interpolation (cubic spline?) once at start no
-    // interpolation in convolution integral part
-    // different one for each body it's 6x1x1000 so maybe switch to 2d reading
-    // for (int b = 0; b < num_bodies; b++) {
-    //    file_info.ResampleExcitationIRF(b, user_hydro_inputs.simulation_dt);
-    //}
-
-    // Eigen::VectorXd ex_irf_resampled = file_info[0].GetExcitationIRFResampled();
-    // WriteContainerToFile(ex_irf_resampled, "ex_irf_resampled.txt");
-
     // simplify 6* num_bodies to be the system's total number of dofs, makes expressions later easier to read
     int total_dofs = 6 * num_bodies;
     // resize and initialize velocity history vector to all zeros
     velocity_history.resize(file_info.GetRIRFDims(2) * total_dofs, 0.0);  // resize and fill with 0s
     // resize and initialize all persistent forces to all 0s
+    // TODO rephrase for Eigen::VectorXd eventually
     force_hydrostatic.resize(total_dofs, 0.0);
     force_radiation_damping.resize(total_dofs, 0.0);
     total_force.resize(total_dofs, 0.0);
@@ -566,8 +555,8 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::stri
     // set up hydro inputs stuff
     // hydro_inputs = user_hydro_inputs;
     // WaveSetUp();
-
-    user_waves = std::static_pointer_cast<WaveBase>(std::make_shared<NoWave>());
+    user_waves = waves;
+    AddWaves(user_waves);
 }
 
 void TestHydro::AddWaves(std::shared_ptr<WaveBase> waves) {
@@ -855,30 +844,6 @@ double TestHydro::GetRIRFval(int row, int col, int st) {
 //    }
 //
 //    return f_ex;
-//}
-
-/*******************************************************************************
- * TestHydro::ComputeForceExcitation()
- * computes the 6N dimensional excitation force
- *******************************************************************************/
-// TODO delete this
-// std::vector<double> TestHydro::ComputeForceExcitation() {
-//    double time = bodies[0]->GetChTime();
-//
-//    int total_dofs = 6 * num_bodies;
-//    force_excitation.resize(total_dofs, 0.0);
-//
-//    for (int body = 0; body < num_bodies; body++) {
-//        // Loop through the DOFs
-//        for (int dof = 0; dof < 6; ++dof) {
-//            // Compute the convolution for the current DOF
-//            double force_excitation_dof =
-//                ExcitationConvolution(body, dof, time, hydro_inputs.eta, t_irf, hydro_inputs.simulation_dt);
-//            int force_excitation_index               = body * 6 + dof;
-//            force_excitation[force_excitation_index] = force_excitation_dof;
-//        }
-//    }
-//    return force_excitation;
 //}
 
 // make force function call look the same as other compute force functions:
