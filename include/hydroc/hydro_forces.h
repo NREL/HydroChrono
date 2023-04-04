@@ -94,7 +94,11 @@ class TestHydro {
   public:
     bool printed = false;
     TestHydro()  = delete;
-    TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::string h5_file_name);
+    TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
+              std::string h5_file_name,
+              std::shared_ptr<WaveBase> waves);
+    TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::string h5_file_name)
+        : TestHydro(user_bodies, h5_file_name, std::static_pointer_cast<WaveBase>(std::make_shared<NoWave>())) {}
     TestHydro(const TestHydro& old) = delete;
     TestHydro operator=(const TestHydro& rhs) = delete;
     void AddWaves(std::shared_ptr<WaveBase> waves);
