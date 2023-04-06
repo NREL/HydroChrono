@@ -85,15 +85,15 @@ class HydroData {
     Eigen::VectorXd GetCBVector(int b) const { return body_data[b].cb; }
     double GetExcitationIRFVal(int b, int dof, int s) const;
     Eigen::MatrixXd GetExcitationIRF(int b) const;
-    Eigen::VectorXd ResampleExcitationIRFTime(double dt_new);
-    Eigen::MatrixXd GetExcitationIRFResampled(int b) const;
-    std::pair<Eigen::VectorXd, Eigen::VectorXd> ResampleExcitationIRF(int b, double dt_new);
+    //Eigen::VectorXd ResampleExcitationIRFTime(double dt_new);
+    //Eigen::MatrixXd GetExcitationIRFResampled(int b) const;
+    //std::pair<Eigen::VectorXd, Eigen::VectorXd> ResampleExcitationIRF(int b, double dt_new);
 
     // things that are the same no matter the body, don't need body argument
     int GetRIRFDims(int i) const;
     Eigen::VectorXd GetRIRFTimeVector() const;  // TODO
     double GetRhoVal() const { return sim_data.rho; }
-    Eigen::VectorXd HydroData::GetExcitationIRFTime() const;
+    //Eigen::VectorXd HydroData::GetExcitationIRFTime() const;
 
     // getters for individual structs
     std::vector<BodyInfo>& GetBodyInfos() { return body_data; }

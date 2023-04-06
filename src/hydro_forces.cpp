@@ -88,52 +88,52 @@ std::vector<double> PiersonMoskowitzSpectrumHz(std::vector<double>& f, double Hs
     return spectral_densities;
 }
 
-std::vector<double> FreeSurfaceElevation(const std::vector<double>& freqs_hz,
-                                         const std::vector<double>& spectral_densities,
-                                         const std::vector<double>& time_index,
-                                         int seed = 1) {
-    double delta_f = freqs_hz.back() / freqs_hz.size();
-    std::vector<double> omegas(freqs_hz.size());
-
-    for (size_t i = 0; i < freqs_hz.size(); ++i) {
-        omegas[i] = 2 * M_PI * freqs_hz[i];
-    }
-
-    std::vector<double> A(spectral_densities.size());
-    for (size_t i = 0; i < spectral_densities.size(); ++i) {
-        A[i] = 2 * spectral_densities[i] * delta_f;
-    }
-
-    std::vector<double> sqrt_A(A.size());
-    for (size_t i = 0; i < A.size(); ++i) {
-        sqrt_A[i] = std::sqrt(A[i]);
-    }
-    // TODO fix this vector of vecotrs
-    std::vector<std::vector<double>> omegas_t(time_index.size(), std::vector<double>(omegas.size()));
-    for (size_t i = 0; i < time_index.size(); ++i) {
-        for (size_t j = 0; j < omegas.size(); ++j) {
-            omegas_t[i][j] = time_index[i] * omegas[j];
-        }
-    }
-
-    std::mt19937 rng(seed);  // Creates an instance of the std::mt19937 random number generator; a Mersenne Twister
-                             // random number engine. The seed parameter is used to initialize the generator's internal
-                             // state - to control the random sequence produced.
-    std::uniform_real_distribution<double> dist(0.0, 2 * M_PI);
-    std::vector<double> phases(omegas.size());
-    for (size_t i = 0; i < phases.size(); ++i) {
-        phases[i] = dist(rng);
-    }
-
-    std::vector<double> eta(time_index.size(), 0.0);
-    for (size_t i = 0; i < spectral_densities.size(); ++i) {
-        for (size_t j = 0; j < time_index.size(); ++j) {
-            eta[j] += sqrt_A[i] * std::cos(omegas_t[j][i] + phases[i]);
-        }
-    }
-
-    return eta;
-}
+//std::vector<double> FreeSurfaceElevation(const std::vector<double>& freqs_hz,
+//                                         const std::vector<double>& spectral_densities,
+//                                         const std::vector<double>& time_index,
+//                                         int seed = 1) {
+//    double delta_f = freqs_hz.back() / freqs_hz.size();
+//    std::vector<double> omegas(freqs_hz.size());
+//
+//    for (size_t i = 0; i < freqs_hz.size(); ++i) {
+//        omegas[i] = 2 * M_PI * freqs_hz[i];
+//    }
+//
+//    std::vector<double> A(spectral_densities.size());
+//    for (size_t i = 0; i < spectral_densities.size(); ++i) {
+//        A[i] = 2 * spectral_densities[i] * delta_f;
+//    }
+//
+//    std::vector<double> sqrt_A(A.size());
+//    for (size_t i = 0; i < A.size(); ++i) {
+//        sqrt_A[i] = std::sqrt(A[i]);
+//    }
+//    // TODO fix this vector of vecotrs
+//    std::vector<std::vector<double>> omegas_t(time_index.size(), std::vector<double>(omegas.size()));
+//    for (size_t i = 0; i < time_index.size(); ++i) {
+//        for (size_t j = 0; j < omegas.size(); ++j) {
+//            omegas_t[i][j] = time_index[i] * omegas[j];
+//        }
+//    }
+//
+//    std::mt19937 rng(seed);  // Creates an instance of the std::mt19937 random number generator; a Mersenne Twister
+//                             // random number engine. The seed parameter is used to initialize the generator's internal
+//                             // state - to control the random sequence produced.
+//    std::uniform_real_distribution<double> dist(0.0, 2 * M_PI);
+//    std::vector<double> phases(omegas.size());
+//    for (size_t i = 0; i < phases.size(); ++i) {
+//        phases[i] = dist(rng);
+//    }
+//
+//    std::vector<double> eta(time_index.size(), 0.0);
+//    for (size_t i = 0; i < spectral_densities.size(); ++i) {
+//        for (size_t j = 0; j < time_index.size(); ++j) {
+//            eta[j] += sqrt_A[i] * std::cos(omegas_t[j][i] + phases[i]);
+//        }
+//    }
+//
+//    return eta;
+//}
 
 std::vector<std::array<double, 3>> CreateFreeSurface3DPts(const std::vector<double>& eta,
                                                           const std::vector<double>& t_vec) {
@@ -243,76 +243,77 @@ void WriteFreeSurfaceMeshObj(const std::vector<std::array<double, 3>>& points,
  *******************************************************************************/
 HydroInputs::HydroInputs() {}
 
-void HydroInputs::UpdateNumTimesteps() {
-    num_timesteps = static_cast<int>(simulation_duration / simulation_dt) + 1;
-}
+// TODO cut this, why is this a whole function
+//void HydroInputs::UpdateNumTimesteps() {
+//    num_timesteps = static_cast<int>(simulation_duration / simulation_dt) + 1;
+//}
 
-void HydroInputs::UpdateRampTimesteps() {
-    ramp_timesteps = static_cast<int>(ramp_duration / simulation_dt) + 1;
-}
+//void HydroInputs::UpdateRampTimesteps() {
+//    ramp_timesteps = static_cast<int>(ramp_duration / simulation_dt) + 1;
+//}
+//
+//void HydroInputs::CreateSpectrum() {
+//    // Define the frequency vector
+//    spectrum_frequencies = Linspace(0.001, 1.0, 1000);  // TODO make this range accessible to user.
+//
+//    // Calculate the Pierson-Moskowitz Spectrum
+//    spectral_densities = PiersonMoskowitzSpectrumHz(spectrum_frequencies, wave_height, wave_period);
+//
+//    // Open a file stream for writing
+//    std::ofstream outputFile("spectral_densities.txt");
+//
+//    // Check if the file stream is open
+//    if (outputFile.is_open()) {
+//        // Write the spectral densities and their corresponding frequencies to the file
+//        for (size_t i = 0; i < spectral_densities.size(); ++i) {
+//            outputFile << spectrum_frequencies[i] << " : " << spectral_densities[i] << std::endl;
+//        }
+//
+//        // Close the file stream
+//        outputFile.close();
+//    } else {
+//        std::cerr << "Unable to open file for writing." << std::endl;
+//    }
+//}
 
-void HydroInputs::CreateSpectrum() {
-    // Define the frequency vector
-    spectrum_frequencies = Linspace(0.001, 1.0, 1000);  // TODO make this range accessible to user.
-
-    // Calculate the Pierson-Moskowitz Spectrum
-    spectral_densities = PiersonMoskowitzSpectrumHz(spectrum_frequencies, wave_height, wave_period);
-
-    // Open a file stream for writing
-    std::ofstream outputFile("spectral_densities.txt");
-
-    // Check if the file stream is open
-    if (outputFile.is_open()) {
-        // Write the spectral densities and their corresponding frequencies to the file
-        for (size_t i = 0; i < spectral_densities.size(); ++i) {
-            outputFile << spectrum_frequencies[i] << " : " << spectral_densities[i] << std::endl;
-        }
-
-        // Close the file stream
-        outputFile.close();
-    } else {
-        std::cerr << "Unable to open file for writing." << std::endl;
-    }
-}
-
-void HydroInputs::CreateFreeSurfaceElevation() {
-    // Create a time index vector
-    UpdateNumTimesteps();
-    std::vector<double> time_index = Linspace(0, simulation_duration, num_timesteps);
-
-    // Calculate the surface elevation
-    eta = FreeSurfaceElevation(spectrum_frequencies, spectral_densities, time_index);
-
-    // Apply ramp if ramp_duration is greater than 0
-    if (ramp_duration > 0.0) {
-        UpdateRampTimesteps();
-        ramp_timesteps = static_cast<int>(ramp_duration / simulation_dt) + 1;
-        ramp           = Linspace(0.0, 1.0, ramp_timesteps);
-
-        for (size_t i = 0; i < ramp.size(); ++i) {
-            eta[i] *= ramp[i];
-        }
-    }
-
-    // Open a file stream for writing
-    std::ofstream eta_output("eta.txt");
-    // Check if the file stream is open
-    if (eta_output.is_open()) {
-        // Write the spectral densities and their corresponding frequencies to the file
-        for (size_t i = 0; i < eta.size(); ++i) {
-            eta_output << time_index[i] << " : " << eta[i] << std::endl;
-        }
-        // Close the file stream
-        eta_output.close();
-    } else {
-        std::cerr << "Unable to open file for writing." << std::endl;
-    }
-
-    std::vector<std::array<double, 3>> free_surface_3d_pts    = CreateFreeSurface3DPts(eta, time_index);
-    std::vector<std::array<size_t, 3>> free_surface_triangles = CreateFreeSurfaceTriangles(time_index.size());
-
-    WriteFreeSurfaceMeshObj(free_surface_3d_pts, free_surface_triangles, "fse_mesh.obj");
-}
+//void HydroInputs::CreateFreeSurfaceElevation() {
+//    // Create a time index vector
+//    UpdateNumTimesteps();
+//    std::vector<double> time_index = Linspace(0, simulation_duration, num_timesteps);
+//
+//    // Calculate the surface elevation
+//    eta = FreeSurfaceElevation(spectrum_frequencies, spectral_densities, time_index);
+//
+//    // Apply ramp if ramp_duration is greater than 0
+//    if (ramp_duration > 0.0) {
+//        UpdateRampTimesteps();
+//        ramp_timesteps = static_cast<int>(ramp_duration / simulation_dt) + 1;
+//        ramp           = Linspace(0.0, 1.0, ramp_timesteps);
+//
+//        for (size_t i = 0; i < ramp.size(); ++i) {
+//            eta[i] *= ramp[i];
+//        }
+//    }
+//
+//    // Open a file stream for writing
+//    std::ofstream eta_output("eta.txt");
+//    // Check if the file stream is open
+//    if (eta_output.is_open()) {
+//        // Write the spectral densities and their corresponding frequencies to the file
+//        for (size_t i = 0; i < eta.size(); ++i) {
+//            eta_output << time_index[i] << " : " << eta[i] << std::endl;
+//        }
+//        // Close the file stream
+//        eta_output.close();
+//    } else {
+//        std::cerr << "Unable to open file for writing." << std::endl;
+//    }
+//
+//    std::vector<std::array<double, 3>> free_surface_3d_pts    = CreateFreeSurface3DPts(eta, time_index);
+//    std::vector<std::array<size_t, 3>> free_surface_triangles = CreateFreeSurfaceTriangles(time_index.size());
+//
+//    WriteFreeSurfaceMeshObj(free_surface_3d_pts, free_surface_triangles, "fse_mesh.obj");
+//}
 
 // =============================================================================
 // ComponentFunc Class Definitions
@@ -824,27 +825,7 @@ double TestHydro::GetRIRFval(int row, int col, int st) {
 //    return force_waves;
 //}
 
-// double TestHydro::ExcitationConvolution(int body,
-//                                        int dof,
-//                                        double time,
-//                                        const std::vector<double>& eta,
-//                                        const Eigen::VectorXd& t_irf,
-//                                        double sim_dt) {
-//    double f_ex = 0.0;
-//
-//    for (size_t j = 0; j < t_irf.size(); ++j) {
-//        double tau        = t_irf[j];
-//        double t_tau      = time - tau;
-//        double ex_irf_val = file_info.GetExcitationIRFVal(body, dof, j);  // needs to be resampled version TODO
-//        if (0.0 < t_tau && t_tau < eta.size() * sim_dt) {
-//            size_t eta_index = static_cast<size_t>(t_tau / sim_dt);
-//            double eta_val   = eta[eta_index - 1];
-//            f_ex += ex_irf_val * eta_val * sim_dt;  // eta is wave elevation
-//        }
-//    }
-//
-//    return f_ex;
-//}
+
 
 // make force function call look the same as other compute force functions:
 Eigen::VectorXd TestHydro::ComputeForceWaves() {

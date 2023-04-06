@@ -339,9 +339,9 @@ Eigen::VectorXd HydroData::GetRIRFTimeVector() const {
  * HydroData::GetExcitationIRFTime()
  * returns the std::vector of rirf_time_vector from h5 file
  *******************************************************************************/
-Eigen::VectorXd HydroData::GetExcitationIRFTime() const {
-    return irreg_wave_data[0].excitation_irf_time;
-}
+//Eigen::VectorXd HydroData::GetExcitationIRFTime() const {
+//    return irreg_wave_data[0].excitation_irf_time;
+//}
 
 ///*******************************************************************************
 // * HydroData::GetExcitationIRF()
@@ -352,62 +352,62 @@ Eigen::VectorXd HydroData::GetExcitationIRFTime() const {
 //}
 
 // this function bad allocs TODO
-std::pair<Eigen::VectorXd, Eigen::VectorXd> ResampleTimeSeries(const Eigen::VectorXd& time_series,
-                                                               double dt_old,
-                                                               double dt_new) {
-    if (dt_new == dt_old) {
-        // If the new time resolution is the same as the original, return the original time series
-        Eigen::VectorXd t_old = Eigen::VectorXd::LinSpaced(time_series.size(), 0, (time_series.size() - 1) * dt_old);
-        t_old.array() -= 0.5 * t_old[t_old.size() - 1];
-        return {t_old, time_series};
-    }
-
-    // Calculate the new time vector
-    int newSize           = static_cast<int>(ceil(time_series.size() * dt_old / dt_new));
-    Eigen::VectorXd t_new = Eigen::VectorXd::LinSpaced(newSize, 0, (time_series.size() - 1) * dt_old);
-
-    // Create the original time vector  
-    Eigen::VectorXd t_old = Eigen::VectorXd::LinSpaced(time_series.size(), 0, (time_series.size() - 1) * dt_old);
-
-    Eigen::VectorXd time_series_new(newSize);
-
-    // Interpolate using cubic spline interpolation
-    Eigen::Spline<double, 1> spline =
-        Eigen::SplineFitting<Eigen::Spline<double, 1>>::Interpolate(time_series.transpose(), 3, t_old);
-
-    for (int i = 0; i < newSize; i++) {
-        time_series_new[i] = spline(t_new[i])[0];
-    }
-
-    // Shift t_new to the left by half of the max value of t_old
-    t_new.array() -= 0.5 * t_old[t_old.size() - 1];
-
-    return {t_new, time_series_new};
-}
+//std::pair<Eigen::VectorXd, Eigen::VectorXd> ResampleTimeSeries(const Eigen::VectorXd& time_series,
+//                                                               double dt_old,
+//                                                               double dt_new) {
+//    if (dt_new == dt_old) {
+//        // If the new time resolution is the same as the original, return the original time series
+//        Eigen::VectorXd t_old = Eigen::VectorXd::LinSpaced(time_series.size(), 0, (time_series.size() - 1) * dt_old);
+//        t_old.array() -= 0.5 * t_old[t_old.size() - 1];
+//        return {t_old, time_series};
+//    }
+//
+//    // Calculate the new time vector
+//    int newSize           = static_cast<int>(ceil(time_series.size() * dt_old / dt_new));
+//    Eigen::VectorXd t_new = Eigen::VectorXd::LinSpaced(newSize, 0, (time_series.size() - 1) * dt_old);
+//
+//    // Create the original time vector  
+//    Eigen::VectorXd t_old = Eigen::VectorXd::LinSpaced(time_series.size(), 0, (time_series.size() - 1) * dt_old);
+//
+//    Eigen::VectorXd time_series_new(newSize);
+//
+//    // Interpolate using cubic spline interpolation
+//    Eigen::Spline<double, 1> spline =
+//        Eigen::SplineFitting<Eigen::Spline<double, 1>>::Interpolate(time_series.transpose(), 3, t_old);
+//
+//    for (int i = 0; i < newSize; i++) {
+//        time_series_new[i] = spline(t_new[i])[0];
+//    }
+//
+//    // Shift t_new to the left by half of the max value of t_old
+//    t_new.array() -= 0.5 * t_old[t_old.size() - 1];
+//
+//    return {t_new, time_series_new};
+//}
 
 // TODO move excitation_irf_time(_resampled) to sim_data as optional?
-Eigen::VectorXd HydroData::ResampleExcitationIRFTime(double dt_new) {
-    Eigen::VectorXd excitation_irf_t(irreg_wave_data[0].excitation_irf_time.size());
-    for (size_t i = 0; i < irreg_wave_data[0].excitation_irf_time.size(); i++) {
-        excitation_irf_t[i] = irreg_wave_data[0].excitation_irf_time[i];
-    }
-    double excitation_irf_dt = irreg_wave_data[0].excitation_irf_time[1] - irreg_wave_data[0].excitation_irf_time[0];
-
-    std::pair<Eigen::VectorXd, Eigen::VectorXd> resampled_excitation_irf_time =
-        ResampleTimeSeries(excitation_irf_t, excitation_irf_dt, dt_new);
-
-    irreg_wave_data[0].excitation_irf_time_resampled = resampled_excitation_irf_time.first;
-    return excitation_irf_t;
-}
-
- std::pair<Eigen::VectorXd, Eigen::VectorXd> HydroData::ResampleExcitationIRF(int b, double dt_new) {
-    Eigen::VectorXd excitation_irf(irreg_wave_data[b].excitation_irf_matrix.size());
-     for (size_t i = 0; i < irreg_wave_data[b].excitation_irf_matrix.size(); i++) {
-        excitation_irf[i] = irreg_wave_data[b].excitation_irf_matrix(0,0); // TODO this probably isn't 0 always
-    }
-     double excitation_irf_dt = irreg_wave_data[0].excitation_irf_time[1] - irreg_wave_data[0].excitation_irf_time[0];
-    return ResampleTimeSeries(excitation_irf, excitation_irf_dt, dt_new);
-}
+//Eigen::VectorXd HydroData::ResampleExcitationIRFTime(double dt_new) {
+//    Eigen::VectorXd excitation_irf_t(irreg_wave_data[0].excitation_irf_time.size());
+//    for (size_t i = 0; i < irreg_wave_data[0].excitation_irf_time.size(); i++) {
+//        excitation_irf_t[i] = irreg_wave_data[0].excitation_irf_time[i];
+//    }
+//    double excitation_irf_dt = irreg_wave_data[0].excitation_irf_time[1] - irreg_wave_data[0].excitation_irf_time[0];
+//
+//    std::pair<Eigen::VectorXd, Eigen::VectorXd> resampled_excitation_irf_time =
+//        ResampleTimeSeries(excitation_irf_t, excitation_irf_dt, dt_new);
+//
+//    irreg_wave_data[0].excitation_irf_time_resampled = resampled_excitation_irf_time.first;
+//    return excitation_irf_t;
+//}
+//
+// std::pair<Eigen::VectorXd, Eigen::VectorXd> HydroData::ResampleExcitationIRF(int b, double dt_new) {
+//    Eigen::VectorXd excitation_irf(irreg_wave_data[b].excitation_irf_matrix.size());
+//     for (size_t i = 0; i < irreg_wave_data[b].excitation_irf_matrix.size(); i++) {
+//        excitation_irf[i] = irreg_wave_data[b].excitation_irf_matrix(0,0); // TODO this probably isn't 0 always
+//    }
+//     double excitation_irf_dt = irreg_wave_data[0].excitation_irf_time[1] - irreg_wave_data[0].excitation_irf_time[0];
+//    return ResampleTimeSeries(excitation_irf, excitation_irf_dt, dt_new);
+//}
 
 // void H5FileInfo::ResampleExcitationIRF(double dt_new) {
 //    Eigen::VectorXd excitation_irf(excitation_irf_matrix.size());
