@@ -145,7 +145,10 @@ int main(int argc, char* argv[]) {
     my_hydro_inputs->wave_period            = 9.0;
     my_hydro_inputs->simulation_duration    = simulationDuration;
     my_hydro_inputs->simulation_dt          = timestep;
-    my_hydro_inputs->ramp_duration          = 15.0;
+    //my_hydro_inputs->ramp_duration          = 15.0;
+    my_hydro_inputs->ramp_duration = 0.0;
+    my_hydro_inputs->SetSpectrumFrequencies(0.001, 1.0, 1000);
+    //TODO add option for PiersonMoskowitzSpectrumHz or other spectrum, have a default, do PM for now
 
     std::vector<std::shared_ptr<ChBody>> bodies;
     bodies.push_back(sphereBody);

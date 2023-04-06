@@ -2,6 +2,17 @@
 #include <hydroc/h5fileinfo.h>
 #include <Eigen/Dense>
 
+#ifndef M_PI
+    #define M_PI 3.14159265358979323846
+#endif
+
+// todo move this helper function somewhere else?
+Eigen::VectorXd PiersonMoskowitzSpectrumHz(Eigen::VectorXd& f, double Hs, double Tp);
+Eigen::VectorXd FreeSurfaceElevation(const Eigen::VectorXd& freqs_hz,
+                                         const Eigen::VectorXd& spectral_densities,
+                                         const Eigen::VectorXd& time_index,
+                                         int seed = 1);
+
 enum class WaveMode {
     /// @brief No waves
     noWaveCIC = 0,
@@ -73,6 +84,7 @@ class IrregularWave : public WaveBase {
     void Initialize() override;  // call any set up functions from here
     Eigen::VectorXd GetForceAtTime(double t) override;
     WaveMode GetWaveMode() override { return mode; }
+    Eigen::VectorXd SetSpectrumFrequencies(double start, double end, int num_steps);
     // add more helper functions for calculations here:
 
     double wave_height;
@@ -80,6 +92,7 @@ class IrregularWave : public WaveBase {
     double simulation_duration;
     double simulation_dt;
     double ramp_duration;
+    Eigen::VectorXd eta;
 
     void AddH5Data(std::vector<HydroData::IrregularWaveInfo>& irreg_h5_data);
 
@@ -87,11 +100,20 @@ class IrregularWave : public WaveBase {
     unsigned int num_bodies;
     const WaveMode mode = WaveMode::irregular;
     std::vector<HydroData::IrregularWaveInfo> info;
+    std::vector<Eigen::MatrixXd> ex_irf_resampled;
+    std::vector<Eigen::VectorXd> ex_irf_time_resampled;
+    Eigen::VectorXd spectrum_frequencies;
+    Eigen::VectorXd spectral_densities;
+
     Eigen::MatrixXd GetExcitationIRF(int b) const;
     Eigen::VectorXd ResampleTime(const Eigen::VectorXd& t_old, const double dt_new);
     Eigen::MatrixXd ResampleVals(const Eigen::VectorXd& t_old, Eigen::MatrixXd& vals_old, const Eigen::VectorXd& t_new);
-};
+    double ExcitationConvolution(int body, int dof, double time);
 
+    void CreateSpectrum();
+    void IrregularWave::CreateFreeSurfaceElevation();
+    friend Eigen::VectorXd PiersonMoskowitzSpectrumHz(Eigen::VectorXd& f, double Hs, double Tp);
+};
 // =============================================================================
 class HydroInputs {
   public:
