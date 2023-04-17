@@ -115,31 +115,31 @@ class IrregularWave : public WaveBase {
     friend Eigen::VectorXd PiersonMoskowitzSpectrumHz(Eigen::VectorXd& f, double Hs, double Tp);
 };
 // =============================================================================
-class HydroInputs {
-  public:
-    WaveMode mode;
-    HydroInputs();
-    void UpdateNumTimesteps();
-    void UpdateRampTimesteps();
-    void CreateSpectrum();
-    void CreateFreeSurfaceElevation();
-    std::vector<double> spectrum_frequencies;
-    std::vector<double> spectral_densities;
-    std::vector<double> eta;
-    double ramp_duration;
-    double freq_index_des;
-    double wave_height;
-    double wave_period;
-    double simulation_duration;
-    double simulation_dt;
-    int num_timesteps;
-    int ramp_timesteps;
-    std::vector<double> ramp;
-    double regular_wave_amplitude;
-    double regular_wave_omega;
-    double wave_omega_delta;
-    std::vector<double> excitation_force_mag;
-    std::vector<double> excitation_force_phase;
-    HydroInputs(HydroInputs& old) = default;
-    HydroInputs& operator=(const HydroInputs& rhs) = default;
-};
+//class HydroInputs {
+//  public:
+//    WaveMode mode;
+//    HydroInputs();
+//    void UpdateNumTimesteps();
+//    void UpdateRampTimesteps();
+//    void CreateSpectrum();
+//    void CreateFreeSurfaceElevation();
+//    std::vector<double> spectrum_frequencies;
+//    std::vector<double> spectral_densities;
+//    std::vector<double> eta;
+//    double ramp_duration;
+//    double freq_index_des;
+//    double wave_height;
+//    double wave_period;
+//    double simulation_duration;
+//    double simulation_dt;
+//    int num_timesteps;
+//    int ramp_timesteps;
+//    std::vector<double> ramp;
+//    double regular_wave_amplitude;
+//    double regular_wave_omega;
+//    double wave_omega_delta;
+//    std::vector<double> excitation_force_mag;
+//    std::vector<double> excitation_force_phase;
+//    HydroInputs(HydroInputs& old) = default;
+//    HydroInputs& operator=(const HydroInputs& rhs) = default;
+//};

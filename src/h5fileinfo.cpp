@@ -3,7 +3,7 @@
 
 #include <filesystem>
 
-#include <unsupported/Eigen/Splines>
+//#include <unsupported/Eigen/Splines>
 
 using namespace chrono;
 
@@ -110,6 +110,7 @@ HydroData H5FileInfo::readH5Data() {
         Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/impulse_response_fun/f",
                temp);
         data_to_init.irreg_wave_data[i].excitation_irf_matrix = squeeze_mid(temp);
+        data_to_init.irreg_wave_data[i].excitation_irf_matrix *= rho * g;
 
     }
 
