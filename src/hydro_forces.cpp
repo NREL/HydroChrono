@@ -72,21 +72,21 @@ std::vector<double> Linspace(double start, double end, int num_points) {
     return result;
 }
 
-std::vector<double> PiersonMoskowitzSpectrumHz(std::vector<double>& f, double Hs, double Tp) {
-    // Sort the frequency vector
-    std::sort(f.begin(), f.end());
-
-    // Initialize the spectral densities vector
-    std::vector<double> spectral_densities(f.size());
-
-    // Calculate the spectral densities
-    for (size_t i = 0; i < f.size(); ++i) {
-        spectral_densities[i] = 1.25 * std::pow(1 / Tp, 4) * std::pow(Hs / 2, 2) * std::pow(f[i], -5) *
-                                std::exp(-1.25 * std::pow(1 / Tp, 4) * std::pow(f[i], -4));
-    }
-
-    return spectral_densities;
-}
+//std::vector<double> PiersonMoskowitzSpectrumHz(std::vector<double>& f, double Hs, double Tp) {
+//    // Sort the frequency vector
+//    std::sort(f.begin(), f.end());
+//
+//    // Initialize the spectral densities vector
+//    std::vector<double> spectral_densities(f.size());
+//
+//    // Calculate the spectral densities
+//    for (size_t i = 0; i < f.size(); ++i) {
+//        spectral_densities[i] = 1.25 * std::pow(1 / Tp, 4) * std::pow(Hs / 2, 2) * std::pow(f[i], -5) *
+//                                std::exp(-1.25 * std::pow(1 / Tp, 4) * std::pow(f[i], -4));
+//    }
+//
+//    return spectral_densities;
+//}
 
 //std::vector<double> FreeSurfaceElevation(const std::vector<double>& freqs_hz,
 //                                         const std::vector<double>& spectral_densities,
@@ -241,7 +241,7 @@ void WriteFreeSurfaceMeshObj(const std::vector<std::array<double, 3>>& points,
 /*******************************************************************************
  * HydroInputs constructor
  *******************************************************************************/
-HydroInputs::HydroInputs() {}
+//HydroInputs::HydroInputs() {}
 
 // TODO cut this, why is this a whole function
 //void HydroInputs::UpdateNumTimesteps() {
@@ -874,13 +874,18 @@ double TestHydro::coordinateFunc(int b, int i) {
     convTrapz = true;  // use trapeziodal rule or assume fixed dt.
 
     force_hydrostatic       = ComputeForceHydrostatics();
-    force_radiation_damping = ComputeForceRadiationDampingConv();
+    force_radiation_damping = ComputeForceRadiationDampingConv(); // TODO non convolution option
     force_waves             = ComputeForceWaves();
 
     // TODO once all force components are Eigen, remove this from being a loop
     for (int i = 0; i < total_dofs; i++) {
         total_force[i] = force_hydrostatic[i] - force_radiation_damping[i] + force_waves[i];
     }
+
+    //std::cout << "force_waves\n";
+    //for (int i = 0; i < total_dofs; i++) {
+    //    std::cout << force_waves[i] << std::endl;
+    //}
 
     if (body_num_offset + i < 0 || body_num_offset >= total_dofs) {
         std::cout << "total force accessing out of bounds" << std::endl;
