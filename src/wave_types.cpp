@@ -138,40 +138,16 @@ Eigen::MatrixXd IrregularWave::ResampleVals(const Eigen::VectorXd& t_old,
     assert(vals_old.rows() == 6);
 
     Eigen::MatrixXd vals_new(6, t_new.size());
-    // we need to ensure the old times used start at 0, since the new times will
-    double dt_old = t_old[1] - t_old[0];
-    // Eigen::VectorXd t_old_shifted = Eigen::VectorXd::LinSpaced(t_old.size(), 0, (t_old.size() - 1) * dt_old);
+    // we need to scale t to be [0,1] for spline use
+    // TODO: change this to accomodate variable dt instead of const dt
+    Eigen::VectorXd t_old_scaled = Eigen::VectorXd::LinSpaced(t_old.size(), 0, 1);
+    Eigen::VectorXd t_new_scaled = Eigen::VectorXd::LinSpaced(t_new.size(), 0, 1);
 
-    // interpolate the irf over each dof separately, 1 row at a time
-    for (int dof = 0; dof < 6; dof++) {
-        //Eigen::Spline<double, 1> spline =
-        //    Eigen::SplineFitting<Eigen::Spline<double, 1>>::Interpolate(vals_old.row(dof).transpose(), 3, t_old);
-        Eigen::Spline<double, 1> spline =
-            Eigen::SplineFitting<Eigen::Spline<double, 1>>::Interpolate(vals_old.row(dof), 3, t_old);
-        for (int i = 0; i < t_new.size(); i++) {
-            vals_new(dof, i) = spline(t_new[i])[0];
-        }
+    Eigen::Spline<double, 6> spline =
+        Eigen::SplineFitting<Eigen::Spline<double, 6>>::Interpolate(vals_old, 3, t_old_scaled);
+    for (int i = 0; i < t_new.rows(); i++) {
+        vals_new.col(i) = spline(t_new_scaled[i]);
     }
-
-    std::ofstream out("resample.txt");
-    // print for testing if it gets this far:
-    for (int i = 0; i < t_new.size(); i++) {
-        out << t_new[i];
-        for (int dof = 0; dof < 6; dof++) {
-            out << " " << vals_new(dof, i);
-        }
-        out << std::endl;
-    }
-    out.close();
-    out.open("compare.txt");
-    for (int i = 0; i < t_old.size(); i++) {
-        out << t_old[i];
-        for (int dof = 0; dof < 6; dof++) {
-            out << " " << vals_old(dof, i);
-        }
-        out << std::endl;
-    }
-    out.close();
 
     return vals_new;
 }
@@ -245,7 +221,7 @@ Eigen::MatrixXd IrregularWave::GetExcitationIRF(int b) const {
 double IrregularWave::ExcitationConvolution(int body, int dof, double time) {
     double f_ex  = 0.0;
     double width = ex_irf_time_resampled[body][1] - ex_irf_time_resampled[body][0];
-    std::cout << "width=" << width << std::endl; 
+    std::cout << "width=" << width << std::endl;
 
     for (size_t j = 0; j < ex_irf_time_resampled[0].size(); ++j) {
         double tau        = ex_irf_time_resampled[0][j];
