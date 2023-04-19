@@ -253,6 +253,8 @@ int main(int argc, char* argv[]) {
         if (ui.IsRunning(timestep) == false) break;
 
         if (ui.simulationStarted) {
+            system.DoStepDynamics(timestep);
+
             // append data to output vector
             time_vector.push_back(system.GetChTime());
             base_surge.push_back(base->GetPos().x());

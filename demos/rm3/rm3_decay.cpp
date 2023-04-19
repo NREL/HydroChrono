@@ -147,6 +147,8 @@ int main(int argc, char* argv[]) {
         if (ui.IsRunning(timestep) == false) break;
 
         if (ui.simulationStarted) {
+            system.DoStepDynamics(timestep);
+
             // append data to output vector
             time_vector.push_back(system.GetChTime());
             float_heave_position.push_back(float_body1->GetPos().z());

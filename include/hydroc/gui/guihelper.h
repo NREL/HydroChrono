@@ -42,12 +42,15 @@ struct UI {
 	*/
 	virtual bool IsRunning(double timestep);
 
+	/**@brief return the internal system. 
+	 * 
+	 * Should be called after init.
+	*/
+	chrono::ChSystem* GetSystem() const {return pSystem; }
 
 	bool simulationStarted = true;
 
 protected:
-
-	int frame = 0;
 
 	chrono::ChSystem* pSystem = nullptr; // Do not manage the memory
 

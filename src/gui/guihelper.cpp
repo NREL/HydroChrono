@@ -26,13 +26,6 @@ void UI::Init(chrono::ChSystem* system, const char* title) {
 void UI::SetCamera(double x, double y, double z, double dirx, double diry, double dirz) {}
 
 bool UI::IsRunning(double timestep) {
-    if (simulationStarted) {
-        // step the simulation forwards
-        pSystem->DoStepDynamics(timestep);
-
-        frame++;
-    }
-
     return true;
 }
 
