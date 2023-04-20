@@ -1,4 +1,5 @@
 #include <hydroc/wave_types.h>
+#include <unsupported/Eigen/Splines>
 
 // NoWave class definitions:
 Eigen::VectorXd NoWave::GetForceAtTime(double t) {
@@ -129,8 +130,6 @@ void IrregularWave::Initialize() {
     CreateSpectrum();              // output in spectral_densities.txt
     CreateFreeSurfaceElevation();  // eta initialized in here, and output to eta.txt
 }
-
-#include <unsupported/Eigen/Splines>
 
 Eigen::MatrixXd IrregularWave::ResampleVals(const Eigen::VectorXd& t_old,
                                             Eigen::MatrixXd& vals_old,
