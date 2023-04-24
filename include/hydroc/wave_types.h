@@ -9,9 +9,9 @@
 // todo move this helper function somewhere else?
 Eigen::VectorXd PiersonMoskowitzSpectrumHz(Eigen::VectorXd& f, double Hs, double Tp);
 Eigen::VectorXd FreeSurfaceElevation(const Eigen::VectorXd& freqs_hz,
-                                         const Eigen::VectorXd& spectral_densities,
-                                         const Eigen::VectorXd& time_index,
-                                         int seed = 1);
+                                     const Eigen::VectorXd& spectral_densities,
+                                     const Eigen::VectorXd& time_index,
+                                     int seed = 1);
 
 enum class WaveMode {
     /// @brief No waves
@@ -85,6 +85,9 @@ class IrregularWave : public WaveBase {
     Eigen::VectorXd GetForceAtTime(double t) override;
     WaveMode GetWaveMode() override { return mode; }
     Eigen::VectorXd SetSpectrumFrequencies(double start, double end, int num_steps);
+    void SetUpWaveMesh(std::string filename = "fse_mesh.obj");
+    std::string GetMeshFile();
+    Eigen::Vector3<double> GetWaveMeshVelocity();
     // add more helper functions for calculations here:
 
     double wave_height;
@@ -104,6 +107,7 @@ class IrregularWave : public WaveBase {
     std::vector<Eigen::VectorXd> ex_irf_time_resampled;
     Eigen::VectorXd spectrum_frequencies;
     Eigen::VectorXd spectral_densities;
+    std::string mesh_file_name;
 
     Eigen::MatrixXd GetExcitationIRF(int b) const;
     Eigen::VectorXd ResampleTime(const Eigen::VectorXd& t_old, const double dt_new);
@@ -114,8 +118,14 @@ class IrregularWave : public WaveBase {
     void IrregularWave::CreateFreeSurfaceElevation();
     friend Eigen::VectorXd PiersonMoskowitzSpectrumHz(Eigen::VectorXd& f, double Hs, double Tp);
 };
-// =============================================================================
-//class HydroInputs {
+
+void WriteFreeSurfaceMeshObj(const std::vector<std::array<double, 3>>& points,
+                             const std::vector<std::array<size_t, 3>>& triangles,
+                             const std::string& file_name);
+std::vector<std::array<size_t, 3>> CreateFreeSurfaceTriangles(size_t eta_size);
+std::vector<std::array<double, 3>> CreateFreeSurface3DPts(const Eigen::VectorXd& eta, const Eigen::VectorXd& t_vec);
+    // =============================================================================
+// class HydroInputs {
 //  public:
 //    WaveMode mode;
 //    HydroInputs();
