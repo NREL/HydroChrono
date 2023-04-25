@@ -528,5 +528,6 @@ std::string IrregularWave::GetMeshFile() {
 }
 
 Eigen::Vector3<double> IrregularWave::GetWaveMeshVelocity() {
+    // TODO actually calculate mesh velocity
     return Eigen::Vector3d(0.9, 0, 0);
 }
