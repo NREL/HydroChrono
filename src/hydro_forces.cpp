@@ -431,7 +431,7 @@ void TestHydro::AddWaves(std::shared_ptr<WaveBase> waves) {
         reg->AddH5Data(file_info.GetRegularWaveInfos());
     } else if (user_waves->GetWaveMode() == WaveMode::irregular) {
         std::shared_ptr<IrregularWave> irreg = std::static_pointer_cast<IrregularWave>(user_waves);
-        irreg->AddH5Data(file_info.GetIrregularWaveInfos());
+        irreg->AddH5Data(file_info.GetIrregularWaveInfos(), file_info.GetSimulationInfo());
     }
     user_waves->Initialize();
 }

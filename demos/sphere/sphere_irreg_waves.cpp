@@ -87,7 +87,7 @@ int main(int argc, char* argv[]) {
     system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
     system.SetStep(timestep);
     ChRealtimeStepTimer realtime_timer;
-    double simulationDuration = 100.0;
+    double simulationDuration = 600.0;
 
     // Setup Ground
     auto ground = chrono_types::make_shared<ChBody>();
@@ -141,11 +141,11 @@ int main(int argc, char* argv[]) {
 
     auto my_hydro_inputs = std::make_shared<IrregularWave>();
     //my_hydro_inputs->mode                   = WaveMode::irregular;                     // uses regular wave mode
-    my_hydro_inputs->wave_height            = 3.0;
-    my_hydro_inputs->wave_period            = 9.0;
+    my_hydro_inputs->wave_height            = 2.0;
+    my_hydro_inputs->wave_period            = 12.0;
     my_hydro_inputs->simulation_duration    = simulationDuration;
     my_hydro_inputs->simulation_dt          = timestep;
-    my_hydro_inputs->ramp_duration          = 15.0;
+    my_hydro_inputs->ramp_duration          = 60.0;
     //my_hydro_inputs->ramp_duration = 0.0;
     //my_hydro_inputs->SetSpectrumFrequencies(0.001, 1.0, 1000);
     //TODO add option for PiersonMoskowitzSpectrumHz or other spectrum, have a default, do PM for now
@@ -184,14 +184,14 @@ int main(int argc, char* argv[]) {
 #ifdef HYDROCHRONO_HAVE_IRRLICHT
     if (visualizationOn) {
         // Create a visualization material
-        auto cadet_blue = chrono_types::make_shared<ChVisualMaterial>();
-        cadet_blue->SetDiffuseColor(ChColor(0.3f, 0.1f, 0.1f));
-        sphereBody->GetVisualShape(0)->SetMaterial(0, cadet_blue);
+        auto yellow = chrono_types::make_shared<ChVisualMaterial>();
+        yellow->SetDiffuseColor(ChColor(0.244f, 0.225f, 0.072f));
+        sphereBody->GetVisualShape(0)->SetMaterial(0, yellow);
 
         // Create a visualization material
         auto fse_texture = chrono_types::make_shared<ChVisualMaterial>();
-        fse_texture->SetDiffuseColor(ChColor(0.1f, 0.1f, 0.8f));
-        fse_texture->SetOpacity(0.75);
+        fse_texture->SetDiffuseColor(ChColor(0.026f, 0.084f, 0.168f));
+        fse_texture->SetOpacity(0.1);
         fse_mesh->GetVisualShape(0)->SetMaterial(0, fse_texture);
 
         // create the irrlicht application for visualizing
@@ -224,7 +224,6 @@ int main(int argc, char* argv[]) {
                             ChCoordsys<>(ChVector<>(0, 0.0, 0), Q_from_AngZ(CH_C_PI_2)), chrono::ChColor(.1f, .1f, .1f),
                             true);
 
-            irrlichtVis->EndScene();
             if (buttonPressed) {
                 // step simulation forward
                 system.DoStepDynamics(timestep);
@@ -233,6 +232,7 @@ int main(int argc, char* argv[]) {
                 heave_position.push_back(sphereBody->GetPos().z());
                 frame++;
             }
+            irrlichtVis->EndScene();
         }
     } else {
 #endif  // #ifdef HYDROCHRONO_HAVE_IRRLICHT

@@ -60,6 +60,7 @@ HydroData H5FileInfo::readH5Data() {
     // simparams first
     InitScalar(userH5File, "simulation_parameters/rho", data_to_init.sim_data.rho);
     InitScalar(userH5File, "simulation_parameters/g", data_to_init.sim_data.g);
+    InitScalar(userH5File, "simulation_parameters/water_depth", data_to_init.sim_data.water_depth);
     double rho = data_to_init.sim_data.rho;
     double g   = data_to_init.sim_data.g;
 
@@ -142,17 +143,47 @@ Eigen::MatrixXd H5FileInfo::squeeze_mid(Eigen::Tensor<double,3> to_be_squeezed) 
  * var - member variable to store the information in data_name in
  * Reads a double type variable from data_name DataSet in file, stores it in var
  *******************************************************************************/
+//void H5FileInfo::InitScalar(H5::H5File& file, std::string data_name, double& var) {
+//    H5::DataSet dataset     = file.openDataSet(data_name);
+//    H5::DataSpace filespace = dataset.getSpace();
+//    hsize_t dims[2]         = {0, 0};
+//    int rank                = filespace.getSimpleExtentDims(dims);
+//    H5::DataSpace mspace1   = H5::DataSpace(rank, dims);
+//    double* temp            = new double[dims[0] * dims[1]];
+//    dataset.read(temp, H5::PredType::NATIVE_DOUBLE, mspace1, filespace);
+//    var = temp[0];
+//    dataset.close();
+//    delete[] temp;
+//}
 void H5FileInfo::InitScalar(H5::H5File& file, std::string data_name, double& var) {
-    H5::DataSet dataset     = file.openDataSet(data_name);
-    H5::DataSpace filespace = dataset.getSpace();
-    hsize_t dims[2]         = {0, 0};
-    int rank                = filespace.getSimpleExtentDims(dims);
-    H5::DataSpace mspace1   = H5::DataSpace(rank, dims);
-    double* temp            = new double[dims[0] * dims[1]];
-    dataset.read(temp, H5::PredType::NATIVE_DOUBLE, mspace1, filespace);
-    var = temp[0];
+    H5::DataSet dataset   = file.openDataSet(data_name);
+    H5::DataType datatype = dataset.getDataType();
+
+    if (H5::PredType::NATIVE_FLOAT == datatype || H5::PredType::NATIVE_DOUBLE == datatype) {
+        H5::DataSpace filespace = dataset.getSpace();
+        hsize_t dims[2]         = {0, 0};
+        int rank                = filespace.getSimpleExtentDims(dims);
+        H5::DataSpace mspace1   = H5::DataSpace(rank, dims);
+        dataset.read(&var, H5::PredType::NATIVE_DOUBLE, mspace1, filespace);
+    } else if (H5::PredType::C_S1 == datatype) {
+        H5::DataSpace filespace = dataset.getSpace();
+        hsize_t size            = dataset.getStorageSize();
+        char* temp              = new char[size + 1];
+        dataset.read(temp, datatype, filespace, filespace);
+        temp[size] = '\0';
+        std::string str(temp);
+        delete[] temp;
+
+        if (str == "infinite") {
+            var = std::numeric_limits<double>::infinity();
+        } else {
+            // Handle unexpected string values if necessary
+        }
+    } else {
+        // Handle unexpected data types if necessary
+    }
+
     dataset.close();
-    delete[] temp;
 }
 
 /*******************************************************************************
