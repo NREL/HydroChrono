@@ -11,6 +11,7 @@ Eigen::VectorXd PiersonMoskowitzSpectrumHz(Eigen::VectorXd& f, double Hs, double
 Eigen::VectorXd FreeSurfaceElevation(const Eigen::VectorXd& freqs_hz,
                                      const Eigen::VectorXd& spectral_densities,
                                      const Eigen::VectorXd& time_index,
+                                     double water_depth,
                                      int seed = 1);
 
 enum class WaveMode {
@@ -67,7 +68,7 @@ class RegularWave : public WaveBase {
   private:
     unsigned int num_bodies;  // TODO is this needed?
     const WaveMode mode = WaveMode::regular;
-    std::vector<HydroData::RegularWaveInfo> info;
+    std::vector<HydroData::RegularWaveInfo> wave_info;
     Eigen::VectorXd excitation_force_mag;
     Eigen::VectorXd excitation_force_phase;
     Eigen::VectorXd force;
@@ -97,12 +98,13 @@ class IrregularWave : public WaveBase {
     double ramp_duration;
     Eigen::VectorXd eta;
 
-    void AddH5Data(std::vector<HydroData::IrregularWaveInfo>& irreg_h5_data);
+    void AddH5Data(std::vector<HydroData::IrregularWaveInfo>& irreg_h5_data, HydroData::SimulationParameters& sim_data);
 
   private:
     unsigned int num_bodies;
     const WaveMode mode = WaveMode::irregular;
-    std::vector<HydroData::IrregularWaveInfo> info;
+    std::vector<HydroData::IrregularWaveInfo> wave_info;
+    HydroData::SimulationParameters sim_data;
     std::vector<Eigen::MatrixXd> ex_irf_resampled;
     std::vector<Eigen::VectorXd> ex_irf_time_resampled;
     Eigen::VectorXd spectrum_frequencies;

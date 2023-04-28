@@ -3,13 +3,14 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <variant>
+#include <limits>
 
 namespace H5 {
 class H5File;
 }
 
 #include <chrono/core/ChMatrix.h>
-
 #include <unsupported/Eigen/CXX11/Tensor>
 
 /**@brief Extract bemio formated hdf5 data
@@ -39,6 +40,7 @@ class HydroData {
         std::string h5_file_name;
         double rho;
         double g;
+        double water_depth;
     };
     struct RegularWaveInfo {
         Eigen::VectorXd freq_list;
@@ -97,6 +99,7 @@ class HydroData {
 
     // getters for individual structs
     std::vector<BodyInfo>& GetBodyInfos() { return body_data; }
+    SimulationParameters& GetSimulationInfo() { return sim_data; }
     std::vector<RegularWaveInfo>& GetRegularWaveInfos() { return reg_wave_data; }
     std::vector<IrregularWaveInfo>& GetIrregularWaveInfos() { return irreg_wave_data; }
 };
@@ -122,7 +125,8 @@ class H5FileInfo {
     std::string h5_file_name;
     int num_bodies;
 
-    void InitScalar(H5::H5File& file, std::string data_name, double& var);
+    //void InitScalar(H5::H5File& file, std::string data_name, double& var);
+    void H5FileInfo::InitScalar(H5::H5File& file, std::string data_name, double& var);
     void Init1D(H5::H5File& file, std::string data_name, Eigen::VectorXd& var);
     void Init2D(H5::H5File& file, std::string data_name, Eigen::MatrixXd& var);
     void Init3D(H5::H5File& file, std::string data_name, Eigen::Tensor<double, 3>& var /*, std::vector<int>& dims*/);
