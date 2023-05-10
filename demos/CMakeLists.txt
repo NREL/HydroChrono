@@ -24,7 +24,13 @@ target_include_directories(
 	    ${CMAKE_CURRENT_SOURCE_DIR}/
 	    ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
-target_link_libraries(sphere_decay HydroChrono)
+
+target_link_libraries(sphere_decay 
+	PRIVATE
+	HydroChronoGUI
+	HydroChrono
+	
+)
 
 
 # =====================
@@ -55,6 +61,7 @@ target_include_directories(
 )
 target_link_libraries(sphere_reg_waves 
     PRIVATE 
+	HydroChronoGUI	
     HydroChrono
 )
 
@@ -119,6 +126,7 @@ target_include_directories(
 
 target_link_libraries(rm3_decay
     PRIVATE 
+	HydroChronoGUI	
     HydroChrono
 )
 
@@ -151,7 +159,8 @@ target_include_directories(
 )
 
 target_link_libraries(rm3_reg_waves 
-    PRIVATE 
+    PRIVATE
+	HydroChronoGUI	
     HydroChrono
 )
 
@@ -185,6 +194,7 @@ target_include_directories(
 
 target_link_libraries(oswec_decay
     PRIVATE
+	HydroChronoGUI
     HydroChrono
 )
 
@@ -218,6 +228,7 @@ target_include_directories(
 
 target_link_libraries(f3of
     PRIVATE
+	HydroChronoGUI	
     HydroChrono
 )
 

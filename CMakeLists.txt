@@ -38,16 +38,18 @@ project(HydroChrono
 	LANGUAGES CXX
 )
 
+# Add the cmake folder so the FindSphinx module is found
+set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
+
 # ===================
 # OPTIONS
 # ===================
 option (HYDROCHRONO_ENABLE_TESTS "Enable tests" ON)
 option (HYDROCHRONO_ENABLE_IRRLICHT "Enable irrlicht visualization library" ON)
 option (HYDROCHRONO_ENABLE_DEMOS "Enable demo executables" ON)
+option (HYDROCHRONO_ENABLE_USER_DOC "User's documentation" OFF)
+option (HYDROCHRONO_ENABLE_PROG_DOC "Programmer's documentation" OFF)
 
-# ===================
-# External Libraries
-# ===================
 # find required packages and libraries to make HydroChrono library
 set (LIB_TYPE STATIC) # or SHARED
 string(TOLOWER ${LIB_TYPE} SEARCH_TYPE)
@@ -149,6 +151,57 @@ target_link_libraries(HydroChrono
 
 )
 
+# ====================
+# Irrlicht GUI helper
+# ====================
+if(HYDROCHRONO_ENABLE_IRRLICHT)
+
+	add_library(HydroChronoGUI)
+
+	target_sources(
+		HydroChronoGUI
+
+		PUBLIC
+		src/gui/guihelper.cpp
+	)
+
+	target_compile_features(HydroChronoGUI PUBLIC cxx_std_17)
+
+
+	target_include_directories(
+		HydroChronoGUI
+
+		PUBLIC
+		
+		$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+		$<INSTALL_INTERFACE:include>
+		${CHRONO_INCLUDE_DIRS} 		
+	)
+
+	target_compile_definitions(HydroChronoGUI
+		PUBLIC
+			CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\"
+		PRIVATE
+			HYDROCHRONO_HAVE_IRRLICHT=1			
+	)
+
+	target_compile_options(HydroChronoGUI BEFORE 
+		PUBLIC
+			${CHRONO_CXX_FLAGS}
+	)
+
+	target_link_options(HydroChronoGUI BEFORE 
+		PUBLIC
+			${CHRONO_LINKER_FLAGS}
+	)
+
+	target_link_libraries(HydroChronoGUI 
+		PRIVATE
+			${CHRONO_LIBRARIES}
+	)
+
+
+endif(HYDROCHRONO_ENABLE_IRRLICHT)
 
 # ====================
 # DEMOS
@@ -225,3 +278,8 @@ export(
     FILE "${CMAKE_CURRENT_BINARY_DIR}/cmake/HydroChronoTargets.cmake"
     NAMESPACE HydroChrono::
 )
+
+# ================
+# Documentation
+# ================
+add_subdirectory(doc)

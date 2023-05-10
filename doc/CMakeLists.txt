@@ -1,0 +1,6 @@
+if(HYDROCHRONO_ENABLE_USER_DOC) 
+    add_subdirectory(user)
+endif()
+if(HYDROCHRONO_ENABLE_PROG_DOC) 
+    add_subdirectory(prog)
+endif()

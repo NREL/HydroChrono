@@ -1,75 +1,36 @@
+#include <hydroc/gui/guihelper.h>
 #include <hydroc/helper.h>
 #include <hydroc/hydro_forces.h>
-//#include "./src/hydro_forces.h"
+
+#include <chrono/core/ChRealtimeStep.h>
+
 #include <chrono>   // std::chrono::high_resolution_clock::now
 #include <iomanip>  // std::setprecision
 #include <vector>   // std::vector<double>
 
-#include "chrono/core/ChRealtimeStep.h"
-#include "chrono/physics/ChLinkMate.h"
-#include "chrono_irrlicht/ChIrrMeshTools.h"
-#include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
-
 // Use the namespaces of Chrono
 using namespace chrono;
 using namespace chrono::geometry;
-using namespace chrono::irrlicht;
 
-// Use the main namespaces of Irrlicht
-using namespace irr;
-using namespace irr::core;
-using namespace irr::scene;
-using namespace irr::video;
-using namespace irr::io;
-using namespace irr::gui;
-
-class MyActionReceiver : public IEventReceiver {
-  public:
-    MyActionReceiver(ChVisualSystemIrrlicht* vsys, bool& buttonPressed) : pressed(buttonPressed) {
-        // store pointer application
-        vis = vsys;
-
-        // ..add a GUI button to control pause/play
-        pauseButton = vis->GetGUIEnvironment()->addButton(rect<s32>(510, 20, 650, 35));
-        buttonText  = vis->GetGUIEnvironment()->addStaticText(L"Paused", rect<s32>(560, 20, 600, 35), false);
-    }
-
-    bool OnEvent(const SEvent& event) {
-        // check if user clicked button
-        if (event.EventType == EET_GUI_EVENT) {
-            switch (event.GUIEvent.EventType) {
-                case EGET_BUTTON_CLICKED:
-                    pressed = !pressed;
-                    if (pressed) {
-                        buttonText->setText(L"Playing");
-                    } else {
-                        buttonText->setText(L"Paused");
-                    }
-                    return pressed;
-                    break;
-                default:
-                    break;
-            }
-        }
-        return false;
-    }
-
-  private:
-    ChVisualSystemIrrlicht* vis;
-    IGUIButton* pauseButton;
-    IGUIStaticText* buttonText;
-
-    bool& pressed;
-};
-
+// usage: ./<demos>.exe [DATADIR] [--nogui]
+//
+// If no argument is given user can set HYDROCHRONO_DATA_DIR
+// environment variable to give the data_directory.
+//
 int main(int argc, char* argv[]) {
-    // auto start = std::chrono::high_resolution_clock::now();
     GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
     if (hydroc::setInitialEnvironment(argc, argv) != 0) {
         return 1;
     }
 
+    // Check if --nogui option is set as 2nd argument
+    bool visualizationOn = true;
+    if (argc > 2 && std::string("--nogui").compare(argv[2]) == 0) {
+        visualizationOn = false;
+    }
+
+    // Get model file names
     std::filesystem::path DATADIR(hydroc::getDataDir());
 
     auto body1_meshfame = (DATADIR / "oswec" / "geometry" / "flap.obj").lexically_normal().generic_string();
@@ -78,6 +39,7 @@ int main(int argc, char* argv[]) {
 
     // system/solver settings
     ChSystemNSC system;
+
     system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
     double timestep = 0.03;
     // system.SetTimestepperType(ChTimestepper::Type::HHT);
@@ -87,10 +49,13 @@ int main(int argc, char* argv[]) {
     ChRealtimeStepTimer realtime_timer;
     double simulationDuration = 400.0;
 
+    // Create user interface
+    std::shared_ptr<hydroc::gui::UI> pui = hydroc::gui::CreateUI(visualizationOn);
+    hydroc::gui::UI& ui                  = *pui.get();
+
     // some io/viz options
-    bool visualizationOn = true;
-    bool profilingOn     = false;
-    bool saveDataOn      = true;
+    bool profilingOn = false;
+    bool saveDataOn  = true;
     std::vector<double> time_vector;
     std::vector<double> flap_rot;
 
@@ -104,15 +69,10 @@ int main(int argc, char* argv[]) {
         false   // collisions
     );
 
-    // set up body from a mesh
-    std::cout << "Attempting to open mesh file: " << body2_meshfame << std::endl;
-    std::shared_ptr<ChBody> base_body = chrono_types::make_shared<ChBodyEasyMesh>(  //
-        body2_meshfame,
-        1000,   // density
-        false,  // do not evaluate mass automatically
-        true,   // create visualization asset
-        false   // collisions
-    );
+    // Create a visualization material
+    auto red = chrono_types::make_shared<ChVisualMaterial>();
+    red->SetDiffuseColor(ChColor(0.3f, 0.1f, 0.1f));
+    flap_body->GetVisualShape(0)->SetMaterial(0, red);
 
     // define the float's initial conditions
     system.Add(flap_body);
@@ -125,23 +85,28 @@ int main(int argc, char* argv[]) {
     flap_body->SetInertiaXX(ChVector<>(1.85e6, 1.85e6, 1.85e6));
     // notes: mass and inertia added to added mass and system mass correctly.
 
+    // set up body from a mesh
+    std::cout << "Attempting to open mesh file: " << body2_meshfame << std::endl;
+    std::shared_ptr<ChBody> base_body = chrono_types::make_shared<ChBodyEasyMesh>(  //
+        body2_meshfame,
+        1000,   // density
+        false,  // do not evaluate mass automatically
+        true,   // create visualization asset
+        false   // collisions
+    );
+
+    // Create a visualization material
+    auto blue = chrono_types::make_shared<ChVisualMaterial>();
+    blue->SetDiffuseColor(ChColor(0.3f, 0.1f, 0.6f));
+    base_body->GetVisualShape(0)->SetMaterial(0, blue);
+
     // define the plate's initial conditions
     system.Add(base_body);
     base_body->SetNameString("body2");
     base_body->SetPos(ChVector<>(0, 0, -10.9));
     base_body->SetMass(999);
     base_body->SetInertiaXX(ChVector<>(1, 1, 1));
-    auto ground = chrono_types::make_shared<ChBody>();
-    system.AddBody(ground);
-    ground->SetPos(ChVector<>(0, 0, -10.9));
-    ground->SetIdentifier(-1);
-    ground->SetBodyFixed(true);
-    ground->SetCollide(false);
-    // fix base to ground with special constraint (don't use setfixed() because of mass matrix)
-    auto anchor = chrono_types::make_shared<ChLinkMateGeneric>();
-    anchor->Initialize(base_body, ground, false, base_body->GetVisualModelFrame(), base_body->GetVisualModelFrame());
-    system.Add(anchor);
-    anchor->SetConstrainedCoords(true, true, true, true, true, true);  // x, y, z, Rx, Ry, Rz
+    base_body->SetBodyFixed(true);
 
     // define base-fore flap joint
     ChQuaternion<> revoluteRot = Q_from_AngX(CH_C_PI / 2.0);
@@ -158,58 +123,21 @@ int main(int argc, char* argv[]) {
     // for profiling
     auto start = std::chrono::high_resolution_clock::now();
 
-#ifdef HYDROCHRONO_HAVE_IRRLICHT
-    if (visualizationOn) {
-        // create the irrlicht application for visualizing
-        auto irrlichtVis = chrono_types::make_shared<ChVisualSystemIrrlicht>();
-        irrlichtVis->AttachSystem(&system);
-        irrlichtVis->SetWindowSize(1280, 720);
-        irrlichtVis->SetWindowTitle("OSWEC - Decay Test");
-        irrlichtVis->SetCameraVertical(CameraVerticalDir::Z);
-        irrlichtVis->Initialize();
-        irrlichtVis->AddLogo();
-        irrlichtVis->AddSkyBox();
-        irrlichtVis->AddCamera(ChVector<>(0, -50, -10), ChVector<>(0, 0, -10));  // camera position and where it points
-        irrlichtVis->AddTypicalLights();
+    // main simulation loop
+    ui.Init(&system, "OSWEC - Decay Test");
+    ui.SetCamera(0, -50, -10, 0, 0, -10);
 
-        // add play/pause button
-        bool buttonPressed = false;
-        MyActionReceiver receiver(irrlichtVis.get(), buttonPressed);
-        irrlichtVis->AddUserEventReceiver(&receiver);
+    while (system.GetChTime() <= simulationDuration) {
+        if (ui.IsRunning(timestep) == false) break;
 
-        // main simulation loop
-        while (irrlichtVis->Run() && system.GetChTime() <= simulationDuration) {
-            irrlichtVis->BeginScene();
-            irrlichtVis->Render();
-            irrlicht::tools::drawAllCOGs(irrlichtVis.get(), 10.0);
-            irrlichtVis->EndScene();
-            if (buttonPressed) {
-                // step the simulation forwards
-                system.DoStepDynamics(timestep);
-                // append data to std vector
-                time_vector.push_back(system.GetChTime());
-                flap_rot.push_back(flap_body->GetRot().Q_to_Euler123().y());
-                // force playback to be real-time
-                realtime_timer.Spin(timestep);
-                // ChSparseMatrix M;
-                // system.GetMassMatrix(&M);
-                // std::cout << M << std::endl;
-            }
-        }
-    } else {
-#endif  // #ifdef HYDROCHRONO_HAVE_IRRLICHT
-        int frame = 0;
-        while (system.GetChTime() <= simulationDuration) {
-            // append data to std vector
+        if (ui.simulationStarted) {
+            system.DoStepDynamics(timestep);
+
+            // append data to output vector
             time_vector.push_back(system.GetChTime());
             flap_rot.push_back(flap_body->GetRot().Q_to_Euler123().y());
-            // step the simulation forwards
-            system.DoStepDynamics(timestep);
-            frame++;
         }
-#ifdef HYDROCHRONO_HAVE_IRRLICHT
     }
-#endif
 
     // for profiling
     auto end          = std::chrono::high_resolution_clock::now();
