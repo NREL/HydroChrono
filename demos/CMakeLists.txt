@@ -1,31 +1,31 @@
 # =====================
 # SPHERE_DECAY
 # =====================
-add_executable(sphere_decay)
+add_executable(demo_sphere_decay)
 
 target_sources(
-    sphere_decay
+    demo_sphere_decay
 
     PRIVATE
-        sphere/sphere_decay.cpp
+        sphere/demo_sphere_decay.cpp
 )
 
 if(HYDROCHRONO_ENABLE_IRRLICHT)
-	target_compile_definitions(sphere_decay 
+	target_compile_definitions(demo_sphere_decay 
 		PRIVATE 
 		HYDROCHRONO_HAVE_IRRLICHT=1
 	)
 endif()
 
 target_include_directories(
-	sphere_decay
+	demo_sphere_decay
 
 	PRIVATE
 	    ${CMAKE_CURRENT_SOURCE_DIR}/
 	    ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-target_link_libraries(sphere_decay 
+target_link_libraries(demo_sphere_decay 
 	PRIVATE
 	HydroChronoGUI
 	HydroChrono
@@ -36,30 +36,30 @@ target_link_libraries(sphere_decay
 # =====================
 # SPHERE_REG_WAVES
 # =====================
-add_executable(sphere_reg_waves)
+add_executable(demo_sphere_reg_waves)
 
 target_sources(
-    sphere_reg_waves
+    demo_sphere_reg_waves
 
     PRIVATE
-        sphere/sphere_reg_waves.cpp
+        sphere/demo_sphere_reg_waves.cpp
 )
 
 if(HYDROCHRONO_ENABLE_IRRLICHT)
-	target_compile_definitions(sphere_reg_waves 
+	target_compile_definitions(demo_sphere_reg_waves 
 		PRIVATE 
 		HYDROCHRONO_HAVE_IRRLICHT=1
 	)
 endif()
 
 target_include_directories(
-	sphere_reg_waves
+	demo_sphere_reg_waves
 
 	PRIVATE
 	    ${CMAKE_CURRENT_SOURCE_DIR}/
 	    ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
-target_link_libraries(sphere_reg_waves 
+target_link_libraries(demo_sphere_reg_waves 
     PRIVATE 
 	HydroChronoGUI	
     HydroChrono
@@ -69,30 +69,30 @@ target_link_libraries(sphere_reg_waves
 # =====================
 # SPHERE_IRREG_WAVES
 # =====================
-add_executable(sphere_irreg_waves)
+add_executable(demo_sphere_irreg_waves)
 
 target_sources(
-    sphere_irreg_waves
+    demo_sphere_irreg_waves
 
     PRIVATE
-        sphere/sphere_irreg_waves.cpp
+        sphere/demo_sphere_irreg_waves.cpp
 )
 
 if(HYDROCHRONO_ENABLE_IRRLICHT)
-	target_compile_definitions(sphere_irreg_waves 
+	target_compile_definitions(demo_sphere_irreg_waves 
 		PRIVATE 
 		HYDROCHRONO_HAVE_IRRLICHT=1
 	)
 endif()
 
 target_include_directories(
-	sphere_irreg_waves
+	demo_sphere_irreg_waves
 
 	PRIVATE
 	    ${CMAKE_CURRENT_SOURCE_DIR}/
 	    ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
-target_link_libraries(sphere_irreg_waves 
+target_link_libraries(demo_sphere_irreg_waves 
     PRIVATE 
     HydroChrono
 )
@@ -100,31 +100,31 @@ target_link_libraries(sphere_irreg_waves
 # =====================
 # RM3_DECAY
 # =====================
-add_executable(rm3_decay)
+add_executable(demo_rm3_decay)
 
 target_sources(
-    rm3_decay
+    demo_rm3_decay
 
     PRIVATE
-    rm3/rm3_decay.cpp
+    rm3/demo_rm3_decay.cpp
 )
 
 if(HYDROCHRONO_ENABLE_IRRLICHT)
-	target_compile_definitions(rm3_decay
+	target_compile_definitions(demo_rm3_decay
 		PRIVATE 
 		HYDROCHRONO_HAVE_IRRLICHT=1
 	)
 endif()
 
 target_include_directories(
-	rm3_decay
+	demo_rm3_decay
 
 	PRIVATE
 	    ${CMAKE_CURRENT_SOURCE_DIR}/
 	    ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-target_link_libraries(rm3_decay
+target_link_libraries(demo_rm3_decay
     PRIVATE 
 	HydroChronoGUI	
     HydroChrono
@@ -134,31 +134,31 @@ target_link_libraries(rm3_decay
 # =====================
 # RM3_REG_WAVES
 # =====================
-add_executable(rm3_reg_waves)
+add_executable(demo_rm3_reg_waves)
 
 target_sources(
-    rm3_reg_waves
+    demo_rm3_reg_waves
 
     PRIVATE
-    rm3/rm3_reg_waves.cpp
+    rm3/demo_rm3_reg_waves.cpp
 )
 
 if(HYDROCHRONO_ENABLE_IRRLICHT)
-	target_compile_definitions(rm3_reg_waves
+	target_compile_definitions(demo_rm3_reg_waves
 		PRIVATE 
 		HYDROCHRONO_HAVE_IRRLICHT=1
 	)
 endif()
 
 target_include_directories(
-	rm3_reg_waves
+	demo_rm3_reg_waves
 
 	PRIVATE
 	    ${CMAKE_CURRENT_SOURCE_DIR}/
 	    ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-target_link_libraries(rm3_reg_waves 
+target_link_libraries(demo_rm3_reg_waves 
     PRIVATE
 	HydroChronoGUI	
     HydroChrono
@@ -168,31 +168,31 @@ target_link_libraries(rm3_reg_waves
 # =====================
 # OSWEC_DECAY
 # =====================
-add_executable(oswec_decay)
+add_executable(demo_oswec_decay)
 
 target_sources(
-    oswec_decay
+    demo_oswec_decay
 
     PRIVATE
-    oswec/oswec_decay.cpp
+    oswec/demo_oswec_decay.cpp
 )
 
 if(HYDROCHRONO_ENABLE_IRRLICHT)
-	target_compile_definitions(oswec_decay
+	target_compile_definitions(demo_oswec_decay
 		PRIVATE 
 		HYDROCHRONO_HAVE_IRRLICHT=1
 	)
 endif()
 
 target_include_directories(
-	oswec_decay
+	demo_oswec_decay
 
 	PRIVATE
 	    ${CMAKE_CURRENT_SOURCE_DIR}/
 	    ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-target_link_libraries(oswec_decay
+target_link_libraries(demo_oswec_decay
     PRIVATE
 	HydroChronoGUI
     HydroChrono
@@ -202,31 +202,31 @@ target_link_libraries(oswec_decay
 # =====================
 # F3OF
 # =====================
-add_executable(f3of)
+add_executable(demo_f3of_decay)
 
 target_sources(
-    f3of
+    demo_f3of_decay
 
     PRIVATE
-    f3of/F3OF.cpp
+    f3of/demo_F3OF_decay.cpp
 )
 
 if(HYDROCHRONO_ENABLE_IRRLICHT)
-	target_compile_definitions(f3of
+	target_compile_definitions(demo_f3of_decay
 		PRIVATE
 		HYDROCHRONO_HAVE_IRRLICHT=1
 	)
 endif()
 
 target_include_directories(
-	f3of
+	demo_f3of_decay
 
 	PRIVATE
 	    ${CMAKE_CURRENT_SOURCE_DIR}/
 	    ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-target_link_libraries(f3of
+target_link_libraries(demo_f3of_decay
     PRIVATE
 	HydroChronoGUI	
     HydroChrono
@@ -236,31 +236,31 @@ target_link_libraries(f3of
 # =====================
 # DeepCWind
 # =====================
-add_executable(demo_DeepCWind)
+add_executable(demo_DeepCWind_decay)
 
 target_sources(
-    demo_DeepCWind
+    demo_DeepCWind_decay
 
     PRIVATE
-    DeepCWind/demo_DeepCWind.cpp
+    DeepCWind/demo_DeepCWind_decay.cpp
 )
 
 if(HYDROCHRONO_ENABLE_IRRLICHT)
-	target_compile_definitions(demo_DeepCWind
+	target_compile_definitions(demo_DeepCWind_decay
 		PRIVATE
 		HYDROCHRONO_HAVE_IRRLICHT=1
 	)
 endif()
 
 target_include_directories(
-	demo_DeepCWind
+	demo_DeepCWind_decay
 
 	PRIVATE
 	    ${CMAKE_CURRENT_SOURCE_DIR}/
 	    ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-target_link_libraries(demo_DeepCWind
+target_link_libraries(demo_DeepCWind_decay
     PRIVATE
     HydroChrono
 )

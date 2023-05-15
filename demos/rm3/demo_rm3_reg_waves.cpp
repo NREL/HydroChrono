@@ -157,36 +157,32 @@ int main(int argc, char* argv[]) {
 
     if (profilingOn) {
         std::ofstream profilingFile;
-        profilingFile.open("./results/rm3/reg_waves/duration_ms.txt");
+        profilingFile.open("./results/rm3_reg_waves_duration.txt");
         if (!profilingFile.is_open()) {
-            if (!std::filesystem::exists("./results/rm3/reg_waves")) {
-                std::cout << "Path " << std::filesystem::absolute("./results/rm3/reg_waves")
+            if (!std::filesystem::exists("./results")) {
+                std::cout << "Path " << std::filesystem::absolute("./results")
                           << " does not exist, creating it now..." << std::endl;
                 std::filesystem::create_directory("./results");
-                std::filesystem::create_directory("./results/rm3");
-                std::filesystem::create_directory("./results/rm3/reg_waves");
-                profilingFile.open("./results/rm3/reg_waves/duration_ms.txt");
+                profilingFile.open("./results/rm3_reg_waves_duration.txt");
                 if (!profilingFile.is_open()) {
                     std::cout << "Still cannot open file, ending program" << std::endl;
                     return 0;
                 }
             }
         }
-        profilingFile << duration << "\n";
+        profilingFile << duration << " ms\n";
         profilingFile.close();
     }
 
     if (saveDataOn) {
         std::ofstream outputFile;
-        outputFile.open("./results/rm3/reg_waves/rm3_reg_waves.txt");
+        outputFile.open("./results/rm3_reg_waves.txt");
         if (!outputFile.is_open()) {
-            if (!std::filesystem::exists("./results/rm3/reg_waves")) {
-                std::cout << "Path " << std::filesystem::absolute("./results/rm3/reg_waves")
+            if (!std::filesystem::exists("./results")) {
+                std::cout << "Path " << std::filesystem::absolute("./results")
                           << " does not exist, creating it now..." << std::endl;
                 std::filesystem::create_directory("./results");
-                std::filesystem::create_directory("./results/rm3");
-                std::filesystem::create_directory("./results/rm3/reg_waves");
-                outputFile.open("./results/rm3/reg_waves/rm3_decay.txt");
+                outputFile.open("./results/rm3_decay.txt");
                 if (!outputFile.is_open()) {
                     std::cout << "Still cannot open file, ending program" << std::endl;
                     return 0;
