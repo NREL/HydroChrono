@@ -17,15 +17,11 @@ int main(int argc, char* argv[]) {
 
     auto h5fname = (DATADIR / "rm3" / "hydroData" / "rm3.h5").lexically_normal().generic_string();
 
-    // H5FileInfo(h5fname, "body1");
+    HydroData infos = H5FileInfo(h5fname, 2).readH5Data();
 
-    std::vector<H5FileInfo> infos;
-    infos.emplace_back(h5fname, "body1");  // Use move constructor
-    infos.emplace_back(h5fname, "body2");  // reopen the file
+    auto rirf_time_vector = infos.GetRIRFTimeVector();
 
-    auto rirf_time_vector = infos[0].GetRIRFTimeVector();
-
-    std::vector<H5FileInfo> infos2 = infos;  // Use move assignement operator
+    HydroData infos2 = infos;  // Use move assignement operator
 
     /* for(auto time: rirf_time_vector) {
          std::cout << time << "\n";

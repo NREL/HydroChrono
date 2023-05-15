@@ -12,7 +12,7 @@
  * ChLoadAddedMass constructor
  * initializes body to have load applied to and added mass matrix from h5 file object
  *******************************************************************************/
-ChLoadAddedMass::ChLoadAddedMass(const std::vector<H5FileInfo>& user_h5_body_data,
+ChLoadAddedMass::ChLoadAddedMass(const std::vector<HydroData::BodyInfo>& user_h5_body_data,
                                  std::vector<std::shared_ptr<ChLoadable>>& bodies,
                                  ChSystem* system)
     : ChLoadCustomMultiple(bodies), system(system) {
@@ -20,7 +20,7 @@ ChLoadAddedMass::ChLoadAddedMass(const std::vector<H5FileInfo>& user_h5_body_dat
 
     infinite_added_mass.setZero(6 * nBodies, 6 * nBodies);
     for (int i = 0; i < nBodies; i++) {
-        infinite_added_mass.block(i * 6, 0, 6, nBodies * 6) = user_h5_body_data[i].GetInfAddedMassMatrix();
+        infinite_added_mass.block(i * 6, 0, 6, nBodies * 6) = user_h5_body_data[i].inf_added_mass;
     }
 
     // initialize added mass matrix for whole system
