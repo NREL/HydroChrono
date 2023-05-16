@@ -1,21 +1,9 @@
+#include <hydroc/gui/guihelper.h>
 #include <hydroc/helper.h>
 #include <hydroc/hydro_forces.h>
 
-#ifdef HYDROCHRONO_HAVE_IRRLICHT
-    #include "chrono_irrlicht/ChIrrMeshTools.h"
-    #include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
-// Use the main namespaces of Irrlicht
-using namespace irr;
-using namespace irr::core;
-using namespace irr::scene;
-using namespace irr::video;
-using namespace irr::io;
-using namespace irr::gui;
-using namespace chrono::irrlicht;
-#endif
-
-#include <chrono/core/ChRealtimeStep.h>
 #include <chrono/assets/ChColor.h>
+#include <chrono/core/ChRealtimeStep.h>
 #include <chrono>  // std::chrono::high_resolution_clock::now
 #include <filesystem>
 #include <iomanip>  // std::setprecision
@@ -25,52 +13,22 @@ using namespace chrono::irrlicht;
 using namespace chrono;
 using namespace chrono::geometry;
 
-#ifdef HYDROCHRONO_HAVE_IRRLICHT
-class MyActionReceiver : public IEventReceiver {
-  public:
-    MyActionReceiver(ChVisualSystemIrrlicht* vsys, bool& buttonPressed) : pressed(buttonPressed) {
-        // store pointer application
-        vis = vsys;
-
-        // ..add a GUI button to control pause/play
-        pauseButton = vis->GetGUIEnvironment()->addButton(rect<s32>(510, 20, 650, 35));
-        buttonText  = vis->GetGUIEnvironment()->addStaticText(L"Paused", rect<s32>(560, 20, 600, 35), false);
-    }
-
-    bool OnEvent(const SEvent& event) {
-        // check if user clicked button
-        if (event.EventType == EET_GUI_EVENT) {
-            switch (event.GUIEvent.EventType) {
-                case EGET_BUTTON_CLICKED:
-                    pressed = !pressed;
-                    if (pressed) {
-                        buttonText->setText(L"Playing");
-                    } else {
-                        buttonText->setText(L"Paused");
-                    }
-                    return pressed;
-                    break;
-                default:
-                    break;
-            }
-        }
-        return false;
-    }
-
-  private:
-    ChVisualSystemIrrlicht* vis;
-    IGUIButton* pauseButton;
-    IGUIStaticText* buttonText;
-
-    bool& pressed;
-};
-#endif
-
+// usage: ./<demos>.exe [DATADIR] [--nogui]
+//
+// If no argument is given user can set HYDROCHRONO_DATA_DIR
+// environment variable to give the data_directory.
+//
 int main(int argc, char* argv[]) {
     GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
     if (hydroc::setInitialEnvironment(argc, argv) != 0) {
         return 1;
+    }
+
+    // Check if --nogui option is set as 2nd argument
+    bool visualizationOn = true;
+    if (argc > 2 && std::string("--nogui").compare(argv[2]) == 0) {
+        visualizationOn = false;
     }
 
     std::filesystem::path DATADIR(hydroc::getDataDir());
@@ -89,6 +47,11 @@ int main(int argc, char* argv[]) {
     ChRealtimeStepTimer realtime_timer;
     double simulationDuration = 600.0;
 
+    // Create user interface
+    std::shared_ptr<hydroc::gui::UI> pui = hydroc::gui::CreateUI(visualizationOn);
+
+    hydroc::gui::UI& ui = *pui.get();
+
     // Setup Ground
     auto ground = chrono_types::make_shared<ChBody>();
     system.AddBody(ground);
@@ -98,7 +61,6 @@ int main(int argc, char* argv[]) {
     ground->SetCollide(false);
 
     // some io/viz options
-    bool visualizationOn = true;
     bool profilingOn     = true;
     bool saveDataOn      = true;
     std::vector<double> time_vector;
@@ -120,6 +82,11 @@ int main(int argc, char* argv[]) {
     sphereBody->SetPos(ChVector<>(0, 0, -2));
     sphereBody->SetMass(261.8e3);
 
+    // Create a visualization material
+    auto yellow = chrono_types::make_shared<ChVisualMaterial>();
+    yellow->SetDiffuseColor(ChColor(0.244f, 0.225f, 0.072f));
+    sphereBody->GetVisualShape(0)->SetMaterial(0, yellow);
+
     // add prismatic joint between sphere and ground (limit to heave motion only)
     auto prismatic = chrono_types::make_shared<ChLinkLockPrismatic>();
     prismatic->Initialize(sphereBody, ground, false, ChCoordsys<>(ChVector<>(0, 0, -2)),
@@ -140,26 +107,22 @@ int main(int argc, char* argv[]) {
     system.AddLink(spring_1);
 
     auto my_hydro_inputs = std::make_shared<IrregularWave>();
-    //my_hydro_inputs->mode                   = WaveMode::irregular;                     // uses regular wave mode
-    my_hydro_inputs->wave_height            = 2.0;
-    my_hydro_inputs->wave_period            = 12.0;
-    my_hydro_inputs->simulation_duration    = simulationDuration;
-    my_hydro_inputs->simulation_dt          = timestep;
-    my_hydro_inputs->ramp_duration          = 60.0;
-    //my_hydro_inputs->ramp_duration = 0.0;
-    //my_hydro_inputs->SetSpectrumFrequencies(0.001, 1.0, 1000);
-    //TODO add option for PiersonMoskowitzSpectrumHz or other spectrum, have a default, do PM for now
+    my_hydro_inputs->wave_height         = 2.0;
+    my_hydro_inputs->wave_period         = 12.0;
+    my_hydro_inputs->simulation_duration = simulationDuration;
+    my_hydro_inputs->simulation_dt       = timestep;
+    my_hydro_inputs->ramp_duration       = 60.0;
+    // my_hydro_inputs->ramp_duration = 0.0;
+    // my_hydro_inputs->SetSpectrumFrequencies(0.001, 1.0, 1000);
+    // TODO add option for PiersonMoskowitzSpectrumHz or other spectrum, have a default, do PM for now
 
     std::vector<std::shared_ptr<ChBody>> bodies;
     bodies.push_back(sphereBody);
-    //TestHydro hydro_forces(bodies, h5fname, my_hydro_inputs);
+    // TestHydro hydro_forces(bodies, h5fname, my_hydro_inputs);
     TestHydro hydro_forces(bodies, h5fname);
     hydro_forces.AddWaves(my_hydro_inputs);
 
-    // for profiling
-    auto start = std::chrono::high_resolution_clock::now();
-
-    // set up free surface from a mesh 
+    // set up free surface from a mesh
     auto fse_plane = chrono_types::make_shared<ChBody>();
     fse_plane->SetPos(ChVector<>(0, 0, 0));
     fse_plane->SetBodyFixed(true);
@@ -168,11 +131,11 @@ int main(int argc, char* argv[]) {
 
     my_hydro_inputs->SetUpWaveMesh();
     std::shared_ptr<ChBody> fse_mesh = chrono_types::make_shared<ChBodyEasyMesh>(  //
-        my_hydro_inputs->GetMeshFile(),                                                              // file name
-        1000,                                                                        // density
-        false,  // do not evaluate mass automatically
-        true,   // create visualization asset
-        false   // do not collide
+        my_hydro_inputs->GetMeshFile(),                                            // file name
+        1000,                                                                      // density
+        false,                                                                     // do not evaluate mass automatically
+        true,                                                                      // create visualization asset
+        false                                                                      // do not collide
     );
     fse_mesh->SetMass(1.0);
     fse_mesh->SetPos_dt(my_hydro_inputs->GetWaveMeshVelocity());
@@ -181,108 +144,63 @@ int main(int argc, char* argv[]) {
     fse_prismatic->Initialize(fse_plane, fse_mesh, ChCoordsys<>(ChVector<>(1.0, 0.0, 0.0), Q_from_AngY(CH_C_PI_2)));
     system.AddLink(fse_prismatic);
 
-#ifdef HYDROCHRONO_HAVE_IRRLICHT
-    if (visualizationOn) {
-        // Create a visualization material
-        auto yellow = chrono_types::make_shared<ChVisualMaterial>();
-        yellow->SetDiffuseColor(ChColor(0.244f, 0.225f, 0.072f));
-        sphereBody->GetVisualShape(0)->SetMaterial(0, yellow);
+    // Create a visualization material
+    auto fse_texture = chrono_types::make_shared<ChVisualMaterial>();
+    fse_texture->SetDiffuseColor(ChColor(0.026f, 0.084f, 0.168f));
+    fse_texture->SetOpacity(0.1);
+    fse_mesh->GetVisualShape(0)->SetMaterial(0, fse_texture);
 
-        // Create a visualization material
-        auto fse_texture = chrono_types::make_shared<ChVisualMaterial>();
-        fse_texture->SetDiffuseColor(ChColor(0.026f, 0.084f, 0.168f));
-        fse_texture->SetOpacity(0.1);
-        fse_mesh->GetVisualShape(0)->SetMaterial(0, fse_texture);
+    // for profiling
+    auto start = std::chrono::high_resolution_clock::now();
+    // main simulation loop
+    ui.Init(&system, "Sphere - Irregular Waves Test");
+    ui.SetCamera(8, -25, 15, 0, 0, 0);
 
-        // create the irrlicht application for visualizing
-        auto irrlichtVis = chrono_types::make_shared<ChVisualSystemIrrlicht>();
+    while (system.GetChTime() <= simulationDuration) {
+        if (ui.IsRunning(timestep) == false) break;
 
-        irrlichtVis->AttachSystem(&system);
-        irrlichtVis->SetWindowSize(1280, 720);
-        irrlichtVis->SetWindowTitle("Sphere - Irregular Waves Test");
-        irrlichtVis->SetCameraVertical(CameraVerticalDir::Z);
-        irrlichtVis->Initialize();
-
-        irrlichtVis->AddLogo();
-        irrlichtVis->AddSkyBox();
-        irrlichtVis->AddCamera(ChVector<>(8, -25, 15), ChVector<>(0, 0, 0));
-        irrlichtVis->AddTypicalLights();
-
-        // add play/pause button
-        bool buttonPressed = false;
-        MyActionReceiver receiver(irrlichtVis.get(), buttonPressed);
-        irrlichtVis->AddUserEventReceiver(&receiver);
-
-        // Main simulation loop
-        int frame = 0;
-        while (irrlichtVis->Run() && system.GetChTime() <= simulationDuration) {
-            irrlichtVis->BeginScene();
-            irrlichtVis->Render();
-
-            // Add grid to materialize horizontal plane
-            tools::drawGrid(irrlichtVis.get(), 1, 1, 30, 30,
-                            ChCoordsys<>(ChVector<>(0, 0.0, 0), Q_from_AngZ(CH_C_PI_2)), chrono::ChColor(.1f, .1f, .1f),
-                            true);
-
-            if (buttonPressed) {
-                // step simulation forward
-                system.DoStepDynamics(timestep);
-                // append data to std vector
-                time_vector.push_back(system.GetChTime());
-                heave_position.push_back(sphereBody->GetPos().z());
-                frame++;
-            }
-            irrlichtVis->EndScene();
-        }
-    } else {
-#endif  // #ifdef HYDROCHRONO_HAVE_IRRLICHT
-        int frame = 0;
-        while (system.GetChTime() <= simulationDuration) {
-            // step the simulation forwards
+        if (ui.simulationStarted) {
             system.DoStepDynamics(timestep);
-            // append data to std vector
+
+            // append data to output vector
             time_vector.push_back(system.GetChTime());
             heave_position.push_back(sphereBody->GetPos().z());
-            frame++;
         }
-#ifdef HYDROCHRONO_HAVE_IRRLICHT
     }
-#endif
+
 
     // for profiling
     auto end          = std::chrono::high_resolution_clock::now();
     unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
     if (profilingOn) {
-        std::string out_dir  = "results/sphere_irregular_waves/";
-        std::string out_file = "duration_ms.txt";
-        std::ofstream profilingFile(out_dir + out_file);
+        std::string out_file = "results/sphere_irregular_waves_duration.txt";
+        std::ofstream profilingFile(out_file);
         if (!profilingFile.is_open()) {
-            if (!std::filesystem::exists(out_dir)) {
-                std::cout << "Path " << std::filesystem::absolute(out_dir) << " does not exist, creating it now..."
+            if (!std::filesystem::exists("./results")) {
+                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
                           << std::endl;
-                std::filesystem::create_directories(out_dir);
-                profilingFile.open(out_dir + out_file);
+                std::filesystem::create_directories("./results");
+                profilingFile.open(out_file);
                 if (!profilingFile.is_open()) {
                     std::cout << "Still cannot open file, ending program" << std::endl;
                     return 0;
                 }
             }
         }
-        profilingFile << duration << "\n";
+        profilingFile << duration << "ms\n";
         profilingFile.close();
     }
 
     if (saveDataOn) {
-        std::string out_dir  = "results/sphere_irregular_waves/";
-        std::string out_file = "irreg_test.txt"; //"irreg_H_" + my_hydro_inputs.wave_height + "_T_" + my_hydro_inputs.wave_period + ".txt ";
-        std::ofstream outputFile(out_dir + out_file);
+        std::string out_file = "results/sphere_irreg_waves.txt";
+        std::ofstream outputFile(out_file);
         if (!outputFile.is_open()) {
-            if (!std::filesystem::exists(out_dir)) {
-                std::cout << "Path " << std::filesystem::absolute(out_dir) << " does not exist, creating it now..."
+            if (!std::filesystem::exists("./results")) {
+                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
                           << std::endl;
-                std::filesystem::create_directories(out_dir);
-                outputFile.open(out_dir + out_file);
+                std::filesystem::create_directories("./results");
+                outputFile.open(out_file);
                 if (!outputFile.is_open()) {
                     std::cout << "Still cannot open file, ending program" << std::endl;
                     return 0;
