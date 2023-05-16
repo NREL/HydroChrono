@@ -134,7 +134,7 @@ int main(int argc, char* argv[]) {
     auto start = std::chrono::high_resolution_clock::now();
 
     // main simulation loop
-    ui.Init(&system, "Sphere Reg Waves - Decay Test");
+    ui.Init(&system, "Sphere - Regular Waves Test");
     ui.SetCamera(8, -25, 15, 0, 0, 0);
 
     while (system.GetChTime() <= simulationDuration) {
@@ -154,15 +154,14 @@ int main(int argc, char* argv[]) {
     unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
     if (profilingOn) {
-        std::string out_dir  = "results/sphere_regular_waves/";
-        std::string out_file = "duration_ms.txt";
-        std::ofstream profilingFile(out_dir + out_file);
+        std::ofstream profilingFile;
+        profilingFile.open("./results/sphere_reg_waves_duration.txt");
         if (!profilingFile.is_open()) {
-            if (!std::filesystem::exists(out_dir)) {
-                std::cout << "Path " << std::filesystem::absolute(out_dir) << " does not exist, creating it now..."
+            if (!std::filesystem::exists("./results")) {
+                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
                           << std::endl;
-                std::filesystem::create_directories(out_dir);
-                profilingFile.open(out_dir + out_file);
+                std::filesystem::create_directories("./results");
+                profilingFile.open("./results/sphere_reg_waves_duration.txt");
                 if (!profilingFile.is_open()) {
                     std::cout << "Still cannot open file, ending program" << std::endl;
                     return 0;
@@ -174,15 +173,14 @@ int main(int argc, char* argv[]) {
     }
 
     if (saveDataOn) {
-        std::string out_dir  = "results/sphere_regular_waves/";
-        std::string out_file = "regwave_" + std::to_string(reg_wave_num) + ".txt";
-        std::ofstream outputFile(out_dir + out_file);
+        std::string out_file = "./results/sphere_reg_waves_" + std::to_string(reg_wave_num) + ".txt";
+        std::ofstream outputFile(out_file);
         if (!outputFile.is_open()) {
-            if (!std::filesystem::exists(out_dir)) {
-                std::cout << "Path " << std::filesystem::absolute(out_dir) << " does not exist, creating it now..."
+            if (!std::filesystem::exists("./results")) {
+                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
                           << std::endl;
-                std::filesystem::create_directories(out_dir);
-                outputFile.open(out_dir + out_file);
+                std::filesystem::create_directories("./results");
+                outputFile.open(out_file);
                 if (!outputFile.is_open()) {
                     std::cout << "Still cannot open file, ending program" << std::endl;
                     return 0;

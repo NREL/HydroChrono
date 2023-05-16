@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
     system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
     system.SetStep(timestep);
     ChRealtimeStepTimer realtime_timer;
-    double simulationDuration = 300.0;
+    double simulationDuration = 40.0;
 
     // Create user interface
     std::shared_ptr<hydroc::gui::UI> pui = hydroc::gui::CreateUI(visualizationOn);
@@ -56,7 +56,7 @@ int main(int argc, char* argv[]) {
     hydroc::gui::UI& ui = *pui.get();
 
     // some io/viz options
-    bool profilingOn = false;
+    bool profilingOn = true;
     bool saveDataOn  = true;
     std::vector<double> time_vector;
     std::vector<double> float_heave_position;
@@ -119,11 +119,13 @@ int main(int argc, char* argv[]) {
     prismatic_pto->SetDampingCoefficient(0.0);
     system.AddLink(prismatic_pto);
 
+    auto default_dont_add_waves = std::make_shared<NoWave>(2);
+
     // attach hydrodynamic forces to body
     std::vector<std::shared_ptr<ChBody>> bodies;
     bodies.push_back(float_body1);
     bodies.push_back(plate_body2);
-    TestHydro hydroForces(bodies, h5fname);
+    TestHydro hydroForces(bodies, h5fname, default_dont_add_waves);
 
     //// Debug printing added mass matrix and system mass matrix
     // ChSparseMatrix M;
@@ -156,15 +158,13 @@ int main(int argc, char* argv[]) {
 
     if (profilingOn) {
         std::ofstream profilingFile;
-        profilingFile.open("./results/rm3/decay/duration_ms.txt");
+        profilingFile.open("./results/rm3_decay_duration_ms.txt");
         if (!profilingFile.is_open()) {
-            if (!std::filesystem::exists("./results/rm3/decay")) {
-                std::cout << "Path " << std::filesystem::absolute("./results/rm3/decay")
+            if (!std::filesystem::exists("./results")) {
+                std::cout << "Path " << std::filesystem::absolute("./results")
                           << " does not exist, creating it now..." << std::endl;
                 std::filesystem::create_directory("./results");
-                std::filesystem::create_directory("./results/rm3");
-                std::filesystem::create_directory("./results/rm3/decay");
-                profilingFile.open("./results/rm3/decay/duration_ms.txt");
+                profilingFile.open("./results/rm3_duration_ms.txt");
                 if (!profilingFile.is_open()) {
                     std::cout << "Still cannot open file, ending program" << std::endl;
                     return 0;
@@ -177,15 +177,13 @@ int main(int argc, char* argv[]) {
 
     if (saveDataOn) {
         std::ofstream outputFile;
-        outputFile.open("./results/rm3/decay/rm3_decay.txt");
+        outputFile.open("./results/rm3_decay.txt");
         if (!outputFile.is_open()) {
-            if (!std::filesystem::exists("./results/rm3/decay")) {
-                std::cout << "Path " << std::filesystem::absolute("./results/rm3/decay")
+            if (!std::filesystem::exists("./results")) {
+                std::cout << "Path " << std::filesystem::absolute("./results")
                           << " does not exist, creating it now..." << std::endl;
                 std::filesystem::create_directory("./results");
-                std::filesystem::create_directory("./results/rm3");
-                std::filesystem::create_directory("./results/rm3/decay");
-                outputFile.open("./results/rm3/decay/rm3_decay.txt");
+                outputFile.open("./results/rm3_decay.txt");
                 if (!outputFile.is_open()) {
                     std::cout << "Still cannot open file, ending program" << std::endl;
                     return 0;
