@@ -201,38 +201,102 @@ target_link_libraries(demo_oswec_decay
 
 
 # =====================
-# F3OF
+# F3OF DT 1
 # =====================
-add_executable(demo_f3of_decay)
+add_executable(demo_f3of_DT1)
 
 target_sources(
-    demo_f3of_decay
+    demo_f3of_DT1
 
     PRIVATE
-    f3of/demo_F3OF_decay.cpp
+    f3of/demo_F3OF_DT1.cpp
 )
 
 if(HYDROCHRONO_ENABLE_IRRLICHT)
-	target_compile_definitions(demo_f3of_decay
+	target_compile_definitions(demo_f3of_DT1
 		PRIVATE
 		HYDROCHRONO_HAVE_IRRLICHT=1
 	)
 endif()
 
 target_include_directories(
-	demo_f3of_decay
+	demo_f3of_DT1
 
 	PRIVATE
 	    ${CMAKE_CURRENT_SOURCE_DIR}/
 	    ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-target_link_libraries(demo_f3of_decay
+target_link_libraries(demo_f3of_DT1
     PRIVATE
 	HydroChronoGUI	
     HydroChrono
 )
 
+# =====================
+# F3OF DT 2
+# =====================
+add_executable(demo_f3of_DT2)
+
+target_sources(
+    demo_f3of_DT2
+
+    PRIVATE
+    f3of/demo_F3OF_DT2.cpp
+)
+
+if(HYDROCHRONO_ENABLE_IRRLICHT)
+	target_compile_definitions(demo_f3of_DT2
+		PRIVATE
+		HYDROCHRONO_HAVE_IRRLICHT=1
+	)
+endif()
+
+target_include_directories(
+	demo_f3of_DT2
+
+	PRIVATE
+	    ${CMAKE_CURRENT_SOURCE_DIR}/
+	    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_link_libraries(demo_f3of_DT2
+    PRIVATE
+	HydroChronoGUI	
+    HydroChrono
+)
+# =====================
+# F3OF DT 3
+# =====================
+add_executable(demo_f3of_DT3)
+
+target_sources(
+    demo_f3of_DT3
+
+    PRIVATE
+    f3of/demo_F3OF_DT3.cpp
+)
+
+if(HYDROCHRONO_ENABLE_IRRLICHT)
+	target_compile_definitions(demo_f3of_DT3
+		PRIVATE
+		HYDROCHRONO_HAVE_IRRLICHT=1
+	)
+endif()
+
+target_include_directories(
+	demo_f3of_DT3
+
+	PRIVATE
+	    ${CMAKE_CURRENT_SOURCE_DIR}/
+	    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_link_libraries(demo_f3of_DT3
+    PRIVATE
+	HydroChronoGUI	
+    HydroChrono
+)
 
 # =====================
 # DeepCWind
