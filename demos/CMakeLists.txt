@@ -94,6 +94,7 @@ target_include_directories(
 )
 target_link_libraries(demo_sphere_irreg_waves 
     PRIVATE 
+    HydroChronoGUI
     HydroChrono
 )
 
