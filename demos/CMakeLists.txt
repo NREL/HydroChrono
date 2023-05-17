@@ -327,5 +327,6 @@ target_include_directories(
 
 target_link_libraries(demo_DeepCWind_decay
     PRIVATE
+    HydroChronoGUI
     HydroChrono
 )
