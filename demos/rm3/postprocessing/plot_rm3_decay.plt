@@ -1,5 +1,5 @@
 set terminal pdf size 6in,4.5in
-set output "rm3.pdf"
+set output "rm3_decay.pdf"
 
 set samples 100000
 set grid
