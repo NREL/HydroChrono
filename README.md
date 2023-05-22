@@ -1,7 +1,7 @@
 # Building HydroChrono with Project Chrono and HDF5 files
 
 ## Prerequisites 
-1. Chrono installed and built in RelWithDebInfo mode (currently using dev branch see note below) (built with Irrlicht module) and Chrono dependencies (see [Chrono Install/Build Guide for details](https://api.projectchrono.org/tutorial_install_chrono.html) ). This includes items like
+1. Chrono installed and built in RelWithDebInfo mode v8.0.0 (built with Irrlicht module) and Chrono dependencies (see [Chrono Install/Build Guide for details](https://api.projectchrono.org/tutorial_install_chrono.html) ). This includes items like
 	* C++ Compiler (Visual Studio 2019 or newer required, 2019 recommended)
 	* Eigen3 (3.3.0 or newer required, 3.4.0 recommended)
 	* Irrlicht Engine (1.8.4)
@@ -24,8 +24,7 @@
 * (optional) Gnuplot [Gnuplot Home](http://www.gnuplot.info/) or other plotting software
 
 ## Building HydroChrono (and demos)
-1. Install and build above requirements.
-	* N.B. We are currently using Chrono commit 9eed26df8ca4c5e84e7affa6222989d8260add2f, please revert to this commit of Project Chrono for best results.
+1. Install and build above requirements, exact versions listed are required for proper functionality.
 2. Now to build HydroChrono library: 
 	1. Clone this project into a directory, and set up a build folder (i.e. clone project into HydroChrono directory and set up HydroChrono_build adjacent directory). 
 	2. Just like when building Project Chrono, open CMake GUI specifying the location of the source files and built binaries for HydroChrono (HydroChrono and HydroChrono_build respectively). Configure and generate the solution setting 
@@ -46,7 +45,7 @@
 5. Navigate to `HydroChrono_build/demos/RelWithDebInfo` and run demos.
 	* When running demos, a command line argument is needed for the location of input files. To set this, run demo executables from the command line with the command argument for the absolute file location for `<path>/HydroChrono/demos` (Ex: the command `> ./sphere_decay.exe C:\Users\USERNAME\HydroChrono\demos` when executed from the `HydroChrono_build/demos/RelWithDebInfo` file will run the sphere heave decay test demo with the proper input file locations.)
 		* Alternatively, set the command line argument for debug mode in a demo's properties. Do this in Visual Studio 2019 by navigating to the solution explorer, right clicking a demo, select `properties > Configuration Properties > Debugging` and set the option for Command Arguments to `C:\Users\USERNAME\HydroChrono\demos`.
-	* Optionally copy plot files into results files and generate plots. (TODO: have cmake copy these over automatically)
+	* Optionally copy plot files into results files and generate plots.
 
 ## Files
 * src - contains source code for HydroChrono library
