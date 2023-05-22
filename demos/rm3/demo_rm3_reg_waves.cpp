@@ -41,14 +41,13 @@ int main(int argc, char* argv[]) {
     ChSystemNSC system;
 
     system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
-
     double timestep = 0.01;
     system.SetTimestepperType(ChTimestepper::Type::HHT);
     system.SetSolverType(ChSolver::Type::GMRES);
     system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
     system.SetStep(timestep);
     ChRealtimeStepTimer realtime_timer;
-    double simulationDuration = 300.0;
+    double simulationDuration = 40.0;
 
     // Create user interface
     std::shared_ptr<hydroc::gui::UI> pui = hydroc::gui::CreateUI(visualizationOn);
@@ -56,10 +55,11 @@ int main(int argc, char* argv[]) {
     hydroc::gui::UI& ui = *pui.get();
 
     // some io/viz options
-    bool profilingOn = false;
+    bool profilingOn = true;
     bool saveDataOn  = true;
     std::vector<double> time_vector;
     std::vector<double> float_heave_position;
+    std::vector<double> float_drift_position;
     std::vector<double> plate_heave_position;
 
     // set up body from a mesh
@@ -75,7 +75,7 @@ int main(int argc, char* argv[]) {
     // define the float's initial conditions
     system.Add(float_body1);
     float_body1->SetNameString("body1");
-    float_body1->SetPos(ChVector<>(0, 0, (-0.72 + 0.1)));
+    float_body1->SetPos(ChVector<>(0, 0, -0.72));
     float_body1->SetMass(725834);
     float_body1->SetInertiaXX(ChVector<>(20907301.0, 21306090.66, 37085481.11));
     // float_body1->SetCollide(false);
@@ -85,7 +85,6 @@ int main(int argc, char* argv[]) {
     red->SetDiffuseColor(ChColor(0.3f, 0.1f, 0.1f));
     float_body1->GetVisualShape(0)->SetMaterial(0, red);
 
-    // Plate
     std::cout << "Attempting to open mesh file: " << body2_meshfame << std::endl;
     std::shared_ptr<ChBody> plate_body2 = chrono_types::make_shared<ChBodyEasyMesh>(  //
         body2_meshfame,
@@ -119,22 +118,23 @@ int main(int argc, char* argv[]) {
     prismatic_pto->SetDampingCoefficient(0.0);
     system.AddLink(prismatic_pto);
 
+    // define wave parameters
+    auto my_hydro_inputs                    = std::make_shared<RegularWave>();
+    my_hydro_inputs->regular_wave_amplitude = 1.0;
+    my_hydro_inputs->regular_wave_omega     = 2.10;
+
     // attach hydrodynamic forces to body
     std::vector<std::shared_ptr<ChBody>> bodies;
     bodies.push_back(float_body1);
     bodies.push_back(plate_body2);
-    TestHydro hydroForces(bodies, h5fname);
-
-    //// Debug printing added mass matrix and system mass matrix
-    // ChSparseMatrix M;
-    // system.GetMassMatrix(&M);
-    // std::cout << M << std::endl;
+    TestHydro hydro_forces(bodies, h5fname);
+    hydro_forces.AddWaves(my_hydro_inputs);
 
     // for profiling
     auto start = std::chrono::high_resolution_clock::now();
 
     // main simulation loop
-    ui.Init(&system, "RM3 - Decay Test");
+    ui.Init(&system, "RM3 - Regular Wave Test");
     ui.SetCamera(0, -50, -10, 0, 0, -10);
 
     while (system.GetChTime() <= simulationDuration) {
@@ -146,6 +146,7 @@ int main(int argc, char* argv[]) {
             // append data to output vector
             time_vector.push_back(system.GetChTime());
             float_heave_position.push_back(float_body1->GetPos().z());
+            float_drift_position.push_back(float_body1->GetPos().x());
             plate_heave_position.push_back(plate_body2->GetPos().z());
         }
     }
@@ -156,36 +157,32 @@ int main(int argc, char* argv[]) {
 
     if (profilingOn) {
         std::ofstream profilingFile;
-        profilingFile.open("./results/rm3/decay/duration_ms.txt");
+        profilingFile.open("./results/rm3_reg_waves_duration.txt");
         if (!profilingFile.is_open()) {
-            if (!std::filesystem::exists("./results/rm3/decay")) {
-                std::cout << "Path " << std::filesystem::absolute("./results/rm3/decay")
+            if (!std::filesystem::exists("./results")) {
+                std::cout << "Path " << std::filesystem::absolute("./results")
                           << " does not exist, creating it now..." << std::endl;
                 std::filesystem::create_directory("./results");
-                std::filesystem::create_directory("./results/rm3");
-                std::filesystem::create_directory("./results/rm3/decay");
-                profilingFile.open("./results/rm3/decay/duration_ms.txt");
+                profilingFile.open("./results/rm3_reg_waves_duration.txt");
                 if (!profilingFile.is_open()) {
                     std::cout << "Still cannot open file, ending program" << std::endl;
                     return 0;
                 }
             }
         }
-        profilingFile << duration << "\n";
+        profilingFile << duration << " ms\n";
         profilingFile.close();
     }
 
     if (saveDataOn) {
         std::ofstream outputFile;
-        outputFile.open("./results/rm3/decay/rm3_decay.txt");
+        outputFile.open("./results/rm3_reg_waves.txt");
         if (!outputFile.is_open()) {
-            if (!std::filesystem::exists("./results/rm3/decay")) {
-                std::cout << "Path " << std::filesystem::absolute("./results/rm3/decay")
+            if (!std::filesystem::exists("./results")) {
+                std::cout << "Path " << std::filesystem::absolute("./results")
                           << " does not exist, creating it now..." << std::endl;
                 std::filesystem::create_directory("./results");
-                std::filesystem::create_directory("./results/rm3");
-                std::filesystem::create_directory("./results/rm3/decay");
-                outputFile.open("./results/rm3/decay/rm3_decay.txt");
+                outputFile.open("./results/rm3_decay.txt");
                 if (!outputFile.is_open()) {
                     std::cout << "Still cannot open file, ending program" << std::endl;
                     return 0;
@@ -193,11 +190,13 @@ int main(int argc, char* argv[]) {
             }
         }
         outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(16) << "Float Heave (m)"
-                   << std::right << std::setw(16) << "Plate Heave (m)" << std::endl;
+                   << std::right << std::setw(16) << "Plate Heave (m)" << std::right << std::setw(16)
+                   << "Float Drift (x) (m)" << std::endl;
         for (int i = 0; i < time_vector.size(); ++i)
             outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
-                       << std::right << std::setw(16) << std::setprecision(8) << std::fixed << float_heave_position[i]
-                       << std::right << std::setw(16) << std::setprecision(8) << std::fixed << plate_heave_position[i]
+                       << std::right << std::setw(16) << std::setprecision(4) << std::fixed << float_heave_position[i]
+                       << std::right << std::setw(16) << std::setprecision(4) << std::fixed << plate_heave_position[i]
+                       << std::right << std::setw(16) << std::setprecision(4) << std::fixed << float_drift_position[i]
                        << std::endl;
         outputFile.close();
     }

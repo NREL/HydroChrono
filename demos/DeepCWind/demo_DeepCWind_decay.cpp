@@ -1,18 +1,6 @@
+#include <hydroc/gui/guihelper.h>
 #include <hydroc/helper.h>
 #include <hydroc/hydro_forces.h>
-
-#ifdef HYDROCHRONO_HAVE_IRRLICHT
-    #include <chrono_irrlicht/ChIrrMeshTools.h>
-    #include <chrono_irrlicht/ChVisualSystemIrrlicht.h>
-// Use the main namespaces of Irrlicht
-using namespace irr;
-using namespace irr::core;
-using namespace irr::scene;
-using namespace irr::video;
-using namespace irr::io;
-using namespace irr::gui;
-using namespace chrono::irrlicht;
-#endif
 
 #include <chrono/core/ChRealtimeStep.h>
 #include <chrono/physics/ChLinkMate.h>
@@ -25,54 +13,23 @@ using namespace chrono::irrlicht;
 using namespace chrono;
 using namespace chrono::geometry;
 
-#ifdef HYDROCHRONO_HAVE_IRRLICHT
-// Define a class to manage user inputs via the GUI (i.e. play/pause button)
-class MyActionReceiver : public IEventReceiver {
-  public:
-    MyActionReceiver(ChVisualSystemIrrlicht* vsys, bool& buttonPressed) : pressed(buttonPressed) {
-        // store pointer application
-        vis = vsys;
-
-        // ..add a GUI button to control pause/play
-        pauseButton = vis->GetGUIEnvironment()->addButton(rect<s32>(510, 20, 650, 35));
-        buttonText  = vis->GetGUIEnvironment()->addStaticText(L"Paused", rect<s32>(560, 20, 600, 35), false);
-    }
-
-    bool OnEvent(const SEvent& event) {
-        // check if user clicked button
-        if (event.EventType == EET_GUI_EVENT) {
-            switch (event.GUIEvent.EventType) {
-                case EGET_BUTTON_CLICKED:
-                    pressed = !pressed;
-                    if (pressed) {
-                        buttonText->setText(L"Playing");
-                    } else {
-                        buttonText->setText(L"Paused");
-                    }
-                    return pressed;
-                    break;
-                default:
-                    break;
-            }
-        }
-        return false;
-    }
-
-  private:
-    ChVisualSystemIrrlicht* vis;
-    IGUIButton* pauseButton;
-    IGUIStaticText* buttonText;
-
-    bool& pressed;
-};
-#endif
-
+// usage: ./sphere_deca.exe [DATADIR] [--nogui]
+//
+// If no argument is given user can set HYDROCHRONO_DATA_DIR
+// environment variable to give the data_directory.
+//
 int main(int argc, char* argv[]) {
     // auto start = std::chrono::high_resolution_clock::now();
     GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
     if (hydroc::setInitialEnvironment(argc, argv) != 0) {
         return 1;
+    }
+
+    // Check if --nogui option is set as 2nd argument
+    bool visualizationOn = true;
+    if (argc > 2 && std::string("--nogui").compare(argv[2]) == 0) {
+        visualizationOn = false;
     }
 
     std::filesystem::path DATADIR(hydroc::getDataDir());
@@ -88,11 +45,13 @@ int main(int argc, char* argv[]) {
     system.SetSolverType(ChSolver::Type::GMRES);
     system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
     system.SetStep(timestep);
-    ChRealtimeStepTimer realtime_timer;
     double simulationDuration = 1000.0;
 
+    // Create user interface
+    std::shared_ptr<hydroc::gui::UI> pui = hydroc::gui::CreateUI(visualizationOn);
+    hydroc::gui::UI& ui = *pui.get();
+
     // some io/viz options
-    bool visualizationOn = true;
     bool profilingOn     = true;
     bool saveDataOn      = true;
     std::vector<double> time_vector;
@@ -148,70 +107,56 @@ int main(int argc, char* argv[]) {
     // for profiling
     auto start = std::chrono::high_resolution_clock::now();
 
-#ifdef HYDROCHRONO_HAVE_IRRLICHT
-    if (visualizationOn) {
-        // create the irrlicht application for visualizing
-        auto irrlichtVis = chrono_types::make_shared<ChVisualSystemIrrlicht>();
-        irrlichtVis->AttachSystem(&system);
-        irrlichtVis->SetWindowSize(1280, 720);
-        irrlichtVis->SetWindowTitle("DeepCwind Verification");
-        irrlichtVis->SetCameraVertical(CameraVerticalDir::Z);
-        irrlichtVis->Initialize();
-        irrlichtVis->AddLogo();
-        irrlichtVis->AddSkyBox();
-        irrlichtVis->AddCamera(ChVector<>(0, -70, -10), ChVector<>(0, 0, -10));
-        irrlichtVis->AddTypicalLights();
-        // irrlichtVis->EnableBodyFrameDrawing(true);
-        // irrlichtVis->EnableLinkFrameDrawing(true);
+    // main simulation loop
+    ui.Init(&system, "DeepCWind pitch decay test");
+    ui.SetCamera(0, -70, -10, 0, 0, -10);
 
-        // add play/pause button
-        bool buttonPressed = false;
-        MyActionReceiver receiver(irrlichtVis.get(), buttonPressed);
-        irrlichtVis->AddUserEventReceiver(&receiver);
-        // ChSparseMatrix M;
-        // main simulation loop
-        while (irrlichtVis->Run() && system.GetChTime() <= simulationDuration) {
-            irrlichtVis->BeginScene();
-            irrlichtVis->Render();
-            irrlichtVis->EndScene();
-            if (buttonPressed) {
-                // system.GetMassMatrix(&M);
-                // std::cout << M << std::endl;
-                // step the simulation forwards
-                system.DoStepDynamics(timestep);
-                // append data to std vector
-                time_vector.push_back(system.GetChTime());
-                base_surge.push_back(base->GetPos().x());
-                base_pitch.push_back(base->GetRot().Q_to_Euler123().y());
-                // force playback to be real-time
-                realtime_timer.Spin(timestep);
-            }
-        }
-    } else {
-#endif  // #ifdef HYDROCHRONO_HAVE_IRRLICHT
-        while (system.GetChTime() <= simulationDuration) {
-            // append data to std vector
+    while (system.GetChTime() <= simulationDuration) {
+        if (ui.IsRunning(timestep) == false) break;
+
+        if (ui.simulationStarted) {
+            system.DoStepDynamics(timestep);
+
+            // append data to output vector
             time_vector.push_back(system.GetChTime());
             base_surge.push_back(base->GetPos().x());
             base_pitch.push_back(base->GetRot().Q_to_Euler123().y());
-            // step the simulation forwards
-            system.DoStepDynamics(timestep);
         }
-#ifdef HYDROCHRONO_HAVE_IRRLICHT
     }
-#endif
+
+    // for profiling
+    auto end          = std::chrono::high_resolution_clock::now();
+    unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+    if (profilingOn) {
+        std::ofstream profilingFile;
+        profilingFile.open("./results/DeepCWind_decay_duration.txt");
+        if (!profilingFile.is_open()) {
+            if (!std::filesystem::exists("./results")) {
+                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
+                          << std::endl;
+                std::filesystem::create_directory("./results");
+                profilingFile.open("./results/DeepCWind_decay_duration.txt");
+                if (!profilingFile.is_open()) {
+                    // TODO instead of ending program, skip to next saveDataOn if statment
+                    std::cout << "Still cannot open file, ending program" << std::endl;
+                    return 0;
+                }
+            }
+        }
+        profilingFile << duration << " ms\n";
+        profilingFile.close();
+    }
 
     if (saveDataOn) {
         std::ofstream outputFile;
-        outputFile.open("./results/DeepCWind/decay/DeepCWind_decay.txt");
+        outputFile.open("./results/DeepCWind_decay.txt");
         if (!outputFile.is_open()) {
-            if (!std::filesystem::exists("./results/DeepCWind/decay")) {
-                std::cout << "Path " << std::filesystem::absolute("./results/DeepCWind/decay")
+            if (!std::filesystem::exists("./results")) {
+                std::cout << "Path " << std::filesystem::absolute("./results")
                           << " does not exist, creating it now..." << std::endl;
                 std::filesystem::create_directory("./results");
-                std::filesystem::create_directory("./results/DeepCWind");
-                std::filesystem::create_directory("./results/DeepCWind/decay");
-                outputFile.open("./results/DeepCWind/decay/DeepCWind_decay.txt");
+                outputFile.open("./results/DeepCWind_decay.txt");
                 if (!outputFile.is_open()) {
                     std::cout << "Still cannot open file, ending program" << std::endl;
                     return 0;

@@ -124,127 +124,52 @@ int main(int argc, char* argv[]) {
     flapAft->SetMass(179250.0);
     flapAft->SetInertiaXX(ChVector<>(100000000.0, 1300000.0, 100000000.0));
 
-    // ---------------- Begin specific DT set up, comment out unused tests ----------------------------
-    // ---------------- DT1 set up (surge decay, flaps locked, no waves) ------------------------------
-    //// set up pos/rotations
-    // base->SetPos(ChVector<>(5.0, 0.0, -9.0));
-    // flapFore->SetPos( ChVector<>(5.0 + -12.5, 0.0, -9.0 + 3.5) );
-    // flapAft->SetPos( ChVector<>(5.0 + 12.5, 0.0, -9.0 + 3.5) );
-    //// set up revolute joints and lock them
-    // auto revoluteFore = chrono_types::make_shared<ChLinkLockRevolute>();
-    // auto revoluteAft = chrono_types::make_shared<ChLinkLockRevolute>();
-    // ChQuaternion<> revoluteRot = Q_from_AngX(CH_C_PI / 2.0); // do not change
-    // revoluteFore->Initialize(base, flapFore, ChCoordsys<>(ChVector<>(5.0 - 12.5, 0.0, -9.0), revoluteRot));
-    // system.AddLink(revoluteFore);
-    // revoluteAft->Initialize(base, flapAft, ChCoordsys<>(ChVector<>(5.0 + 12.5, 0.0, -9.0), revoluteRot));
-    // system.AddLink(revoluteAft);
-    // revoluteFore->Lock(true);
-    // revoluteAft->Lock(true);
-    //// create ground
-    // auto ground = chrono_types::make_shared<ChBody>();
-    // system.AddBody(ground);
-    // ground->SetPos(ChVector<>(0, 0, -9.0));
-    // ground->SetIdentifier(-1);
-    // ground->SetBodyFixed(true);
-    // ground->SetCollide(false);
-    //// add prismatic joint between the base and ground
-    // auto prismatic = chrono_types::make_shared<ChLinkLockPrismatic>();
-    // prismatic->Initialize(ground, base, ChCoordsys<>(ChVector<>(0.0, 0.0, -9.0), Q_from_AngY(CH_C_PI_2)));
-    // system.AddLink(prismatic);
-    //// add damping to prismatic joint
-    // auto prismatic_pto = chrono_types::make_shared<ChLinkTSDA>();
-    // prismatic_pto->Initialize(ground, base, true, ChVector<>(0.0, 0.0, 0.0), ChVector<>(0.0, 0.0, 0.0));
-    // prismatic_pto->SetSpringCoefficient(1e5);
-    // prismatic_pto->SetRestLength(0.0);
-    // system.AddLink(prismatic_pto);
-    // ---------------- DT2 set up (flaps locked, base pitch decay, no waves) ---------------------------------
-    // adjust initial pitch here only, rotations and positions calcuated from this:
-    double ang_rad = CH_C_PI / 18.0;
-    // set up pos/rotations
+    // ---------------- DT3 set up (flap decay, base fixed, no waves) ---------------------------------
     base->SetPos(ChVector<>(0.0, 0.0, -9.0));
-    base->SetRot(Q_from_AngAxis(ang_rad, VECT_Y));
-    flapFore->SetRot(Q_from_AngAxis(ang_rad, VECT_Y));
-    flapAft->SetRot(Q_from_AngAxis(ang_rad, VECT_Y));
-    flapFore->SetPos(ChVector<>(-12.5 * std::cos(ang_rad) + 3.5 * std::sin(ang_rad), 0.0,
-                                -9.0 + 12.5 * std::sin(ang_rad) + 3.5 * std::cos(ang_rad)));
-    flapAft->SetPos(ChVector<>(12.5 * std::cos(ang_rad) + 3.5 * std::sin(ang_rad), 0.0,
-                               -9.0 - 12.5 * std::sin(ang_rad) + 3.5 * std::cos(ang_rad)));
-
-    // set up revolute joints and lock them
+    double fore_ang_rad = CH_C_PI / 18.0;  // fore flap starts with 10 degree initial rotation
+    flapFore->SetRot(Q_from_AngAxis(fore_ang_rad, VECT_Y));
+    flapFore->SetPos(ChVector<>(-12.5 + 3.5 * std::cos(CH_C_PI / 2.0 - fore_ang_rad), 0.0,
+                                -9.0 + 3.5 * std::sin(CH_C_PI / 2.0 - fore_ang_rad)));
+    double aft_ang_rad = 0.0;
+    flapAft->SetRot(Q_from_AngAxis(aft_ang_rad, VECT_Y));
+    flapAft->SetPos(ChVector<>(12.5 + 3.5 * std::cos(CH_C_PI / 2.0 - aft_ang_rad), 0.0,
+                               -9.0 + 3.5 * std::sin(CH_C_PI / 2.0 - fore_ang_rad)));
+    // set up revolute joints with damping for each flap
     auto revoluteFore          = chrono_types::make_shared<ChLinkLockRevolute>();
     auto revoluteAft           = chrono_types::make_shared<ChLinkLockRevolute>();
     ChQuaternion<> revoluteRot = Q_from_AngX(CH_C_PI / 2.0);  // do not change
-    revoluteFore->Initialize(
-        base, flapFore,
-        ChCoordsys<>(ChVector<>(-12.5 * std::cos(ang_rad), 0.0, -9.0 + 12.5 * std::sin(ang_rad)), revoluteRot));
+    revoluteFore->Initialize(base, flapFore, ChCoordsys<>(ChVector<>(-12.5, 0.0, -9.0), revoluteRot));
     system.AddLink(revoluteFore);
-    revoluteAft->Initialize(
-        base, flapAft,
-        ChCoordsys<>(ChVector<>(12.5 * std::cos(ang_rad), 0.0, -9.0 - 12.5 * std::sin(ang_rad)), revoluteRot));
+    revoluteAft->Initialize(base, flapAft, ChCoordsys<>(ChVector<>(12.5, 0.0, -9.0), revoluteRot));
     system.AddLink(revoluteAft);
-    revoluteFore->Lock(true);
-    revoluteAft->Lock(true);
     // create ground
     auto ground = chrono_types::make_shared<ChBody>();
     system.AddBody(ground);
-    ground->SetPos(ChVector<>(0, 0, -9.0));
+    ground->SetPos(ChVector<>(0, 0, -12.0));
     ground->SetIdentifier(-1);
     ground->SetBodyFixed(true);
     ground->SetCollide(false);
-    // add revolute joint between the base and ground
-    auto base_rev = chrono_types::make_shared<ChLinkLockRevolute>();
-    base_rev->Initialize(base, ground, ChCoordsys<>(ChVector<>(0.0, 0.0, -9.0), revoluteRot));
-    system.AddLink(base_rev);
-
-    // ---------------- DT3 set up (flap decay, base fixed, no waves) ---------------------------------
-    // base->SetPos(ChVector<>(0.0, 0.0, -9.0));
-    // double fore_ang_rad = CH_C_PI / 18.0; // fore flap starts with 10 degree initial rotation
-    // flapFore->SetRot(Q_from_AngAxis(fore_ang_rad, VECT_Y));
-    // flapFore->SetPos(ChVector<>(-12.5 + 3.5 * std::cos(CH_C_PI / 2.0 - fore_ang_rad),
-    //	0.0,
-    //	-9.0 + 3.5 * std::sin(CH_C_PI / 2.0 - fore_ang_rad)));
-    // double aft_ang_rad = 0.0;
-    // flapAft->SetRot(Q_from_AngAxis(aft_ang_rad, VECT_Y));
-    // flapAft->SetPos(ChVector<>(12.5 + 3.5 * std::cos(CH_C_PI / 2.0 - aft_ang_rad),
-    //	0.0,
-    //	-9.0 + 3.5 * std::sin(CH_C_PI / 2.0 - fore_ang_rad)));
-    //// set up revolute joints with damping for each flap
-    // auto revoluteFore = chrono_types::make_shared<ChLinkLockRevolute>();
-    // auto revoluteAft = chrono_types::make_shared<ChLinkLockRevolute>();
-    // ChQuaternion<> revoluteRot = Q_from_AngX(CH_C_PI / 2.0); // do not change
-    // revoluteFore->Initialize(base, flapFore, ChCoordsys<>(ChVector<>(-12.5, 0.0, -9.0), revoluteRot));
-    // system.AddLink(revoluteFore);
-    // revoluteAft->Initialize(base, flapAft, ChCoordsys<>(ChVector<>(12.5, 0.0, -9.0), revoluteRot));
-    // system.AddLink(revoluteAft);
-    //// create ground
-    // auto ground = chrono_types::make_shared<ChBody>();
-    // system.AddBody(ground);
-    // ground->SetPos(ChVector<>(0, 0, -12.0));
-    // ground->SetIdentifier(-1);
-    // ground->SetBodyFixed(true);
-    // ground->SetCollide(false);
-    //// fix base to ground with special constraint (don't use setfixed() because of mass matrix)
-    // auto anchor = chrono_types::make_shared<ChLinkMateGeneric>();
-    // anchor->Initialize(base, ground, false, base->GetVisualModelFrame(), base->GetVisualModelFrame());
-    // system.Add(anchor);
-    // anchor->SetConstrainedCoords(true, true, true, true, true, true);  // x, y, z, Rx, Ry, Rz
-
-    // ---------------- End DT specific set up, now add hydro forces ----------------------------------
+    // fix base to ground with special constraint (don't use setfixed() because of mass matrix)
+    auto anchor = chrono_types::make_shared<ChLinkMateGeneric>();
+    anchor->Initialize(base, ground, false, base->GetVisualModelFrame(), base->GetVisualModelFrame());
+    system.Add(anchor);
+    anchor->SetConstrainedCoords(true, true, true, true, true, true);  // x, y, z, Rx, Ry, Rz
 
     // define wave parameters (not used in this demo TODO have hydroforces constructor without hydro inputs)
+    auto default_dont_add_waves = std::make_shared<NoWave>(3);
 
     // set up hydro forces
     std::vector<std::shared_ptr<ChBody>> bodies;
     bodies.push_back(base);
     bodies.push_back(flapFore);
     bodies.push_back(flapAft);
-    TestHydro hydroforces(bodies, h5fname);
+    TestHydro hydroforces(bodies, h5fname, default_dont_add_waves);
 
     // for profiling
     auto start = std::chrono::high_resolution_clock::now();
 
     // main simulation loop
-    ui.Init(&system, "F3OF - Decay Test");
+    ui.Init(&system, "F3OF - Decay Test 3, Base locked flap decay");
     ui.SetCamera(0, -50, -10, 0, 0, -10);
 
     while (system.GetChTime() <= simulationDuration) {
@@ -262,17 +187,38 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    // for profiling
+    auto end          = std::chrono::high_resolution_clock::now();
+    unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+    if (profilingOn) {
+        std::ofstream profilingFile;
+        profilingFile.open("./results/F3OF_DT3_duration.txt");
+        if (!profilingFile.is_open()) {
+            if (!std::filesystem::exists("./results")) {
+                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
+                          << std::endl;
+                std::filesystem::create_directory("./results");
+                profilingFile.open("./results/F3OF_DT3_duration.txt");
+                if (!profilingFile.is_open()) {
+                    // TODO instead of ending program, skip to next saveDataOn if statment
+                    std::cout << "Still cannot open file, ending program" << std::endl;
+                    return 0;
+                }
+            }
+        }
+        profilingFile << duration << " ms\n";
+        profilingFile.close();
+    }
     if (saveDataOn) {
         std::ofstream outputFile;
-        outputFile.open("./results/f3of/decay/f3of_decay.txt");
+        outputFile.open("./results/CHRONO_F3OF_DT3_PITCH.txt");
         if (!outputFile.is_open()) {
-            if (!std::filesystem::exists("./results/f3of/decay")) {
-                std::cout << "Path " << std::filesystem::absolute("./results/f3of/decay")
+            if (!std::filesystem::exists("./results")) {
+                std::cout << "Path " << std::filesystem::absolute("./results")
                           << " does not exist, creating it now..." << std::endl;
                 std::filesystem::create_directory("./results");
-                std::filesystem::create_directory("./results/f3of");
-                std::filesystem::create_directory("./results/f3of/decay");
-                outputFile.open("./results/f3of/decay/f3of_decay.txt");
+                outputFile.open("./results/CHRONO_F3OF_DT3_PITCH.txt");
                 if (!outputFile.is_open()) {
                     std::cout << "Still cannot open file, ending program" << std::endl;
                     return 0;
