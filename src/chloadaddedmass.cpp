@@ -41,27 +41,28 @@ void ChLoadAddedMass::ComputeJacobian(ChState* state_x,       ///< state positio
     // The following ensures that the added mass matrix matches the size of the ChSystem mass matrix. It is necessary
     // for systems that have both hydro and non-hydro bodies when adding a system-wide load.
     // @todo if possible, remove hack by using initialiazer function called AFTER the ChSystem is assembled.
-
     // get mass matrix size
-    auto mmrows = system->GetNcoords_w();  // number of rows in system mass matrix
+    ChSparseMatrix mm;
+    system->GetMassMatrix(&mm);
+    auto mmrows = mm.rows();
     // check if ChSystem mass matrix size different from added mass matrix size
     if (mmrows != infinite_added_mass_system.rows() && mmrows > 0) {
         // initialize/update system matrix;
         infinite_added_mass_system.setZero(mmrows, mmrows);
         auto amrows                                            = infinite_added_mass.rows();
         infinite_added_mass_system.block(0, 0, amrows, amrows) = infinite_added_mass;
-
-        // set mass matrix here
-        jacobians->M = infinite_added_mass_system;
-
-        // R gyroscopic damping matrix terms (6Nx6N)
-        // 0 for added mass
-        jacobians->R.setZero();
-
-        // K inertial stiffness matrix terms (6Nx6N)
-        // 0 for added mass
-        jacobians->K.setZero();
     }
+
+    // set mass matrix here
+    jacobians->M = infinite_added_mass_system;
+
+    // R gyroscopic damping matrix terms (6Nx6N)
+    // 0 for added mass
+    jacobians->R.setZero();
+
+    // K inertial stiffness matrix terms (6Nx6N)
+    // 0 for added mass
+    jacobians->K.setZero();
 }
 
 /*******************************************************************************
