@@ -17,7 +17,49 @@ using namespace chrono::geometry;
 //
 // If no argument is given user can set HYDROCHRONO_DATA_DIR
 // environment variable to give the data_directory.
-//
+
+// Function to compute cross product
+std::array<double, 3> cross(std::array<double, 3> v1, std::array<double, 3> v2) {
+    return {v1[1] * v2[2] - v1[2] * v2[1], v1[2] * v2[0] - v1[0] * v2[2], v1[0] * v2[1] - v1[1] * v2[0]};
+}
+
+// Function to compute dot product
+double dot(std::array<double, 3> v1, std::array<double, 3> v2) {
+    return v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2];
+}
+
+// Function to normalize a vector
+std::array<double, 3> normalize(std::array<double, 3> v) {
+    double norm = sqrt(dot(v, v));
+    return {v[0] / norm, v[1] / norm, v[2] / norm};
+}
+
+// Function to rotate a vector
+std::array<double, 3> rotate_vector_3d(std::array<double, 3> vector,
+                                       std::array<double, 3> axis,
+                                       double angle_in_degrees) {
+    // Convert the angle from degrees to radians
+    double angle_in_radians = angle_in_degrees * M_PI / 180.0;
+
+    // Normalize the axis vector
+    axis = normalize(axis);
+
+    // Apply the rotation to the vector
+    std::array<double, 3> rotated_vector;
+    for (int i = 0; i < 3; i++) {
+        rotated_vector[i] = vector[i] * cos(angle_in_radians) + cross(axis, vector)[i] * sin(angle_in_radians) +
+                            axis[i] * dot(axis, vector) * (1 - cos(angle_in_radians));
+    }
+
+    return rotated_vector;
+}
+
+// Function to add two vectors
+std::array<double, 3> add_vectors(std::array<double, 3> v1, std::array<double, 3> v2) {
+    return {v1[0] + v2[0], v1[1] + v2[1], v1[2] + v2[2]};
+}
+
+
 int main(int argc, char* argv[]) {
     GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
@@ -55,10 +97,26 @@ int main(int argc, char* argv[]) {
     hydroc::gui::UI& ui                  = *pui.get();
 
     // some io/viz options
-    bool profilingOn = false;
+    bool profilingOn = true;
     bool saveDataOn  = true;
     std::vector<double> time_vector;
     std::vector<double> flap_rot;
+
+    std::array<double, 3> origin_to_hinge = {0, 0, -8.9};
+    std::array<double, 3> hinge_to_cg     = {0, 0, 5};
+    std::array<double, 3> axis            = {0, 1, 0};
+    double angle_in_degrees               = 10;
+
+    std::array<double, 3> rotated_hinge_to_cg = rotate_vector_3d(hinge_to_cg, axis, angle_in_degrees);
+
+    std::array<double, 3> new_cg = add_vectors(origin_to_hinge, rotated_hinge_to_cg);
+
+    std::cout << "The original vector is [" << hinge_to_cg[0] << ", " << hinge_to_cg[1] << ", " << hinge_to_cg[2] << "]"
+              << std::endl;
+    std::cout << "The rotated vector is [" << rotated_hinge_to_cg[0] << ", " << rotated_hinge_to_cg[1] << ", "
+              << rotated_hinge_to_cg[2] << "]" << std::endl;
+    std::cout << "The rotated vector is [" << new_cg[0] << ", " << new_cg[1] << ", " << new_cg[2] << "]" << std::endl;
+
 
     // set up body from a mesh
     std::cout << "Attempting to open mesh file: " << body1_meshfame << std::endl;
@@ -79,8 +137,7 @@ int main(int argc, char* argv[]) {
     system.Add(flap_body);
     flap_body->SetNameString("body1");
     auto ang_rad = CH_C_PI / 18.0;
-    flap_body->SetPos(
-        ChVector<>(6.1 * std::cos(CH_C_PI / 2.0 - ang_rad), 0.0, -10.0 + 6.1 * std::sin(CH_C_PI / 2.0 - ang_rad)));
+    flap_body->SetPos(ChVector<>(new_cg[0], new_cg[1], new_cg[2]));
     flap_body->SetRot(Q_from_AngAxis(ang_rad, VECT_Y));
     flap_body->SetMass(127000.0);
     flap_body->SetInertiaXX(ChVector<>(1.85e6, 1.85e6, 1.85e6));
@@ -104,7 +161,7 @@ int main(int argc, char* argv[]) {
     // define the plate's initial conditions
     system.Add(base_body);
     base_body->SetNameString("body2");
-    base_body->SetPos(ChVector<>(0, 0, -10.9));
+    base_body->SetPos(ChVector<>(0, 0, -10.15));
     base_body->SetMass(999);
     base_body->SetInertiaXX(ChVector<>(1, 1, 1));
     // base_body->SetBodyFixed(true);
@@ -112,7 +169,7 @@ int main(int argc, char* argv[]) {
     // create ground
     auto ground = chrono_types::make_shared<ChBody>();
     system.AddBody(ground);
-    ground->SetPos(ChVector<>(0, 0, -10.9));
+    ground->SetPos(ChVector<>(0, 0, -10.15));
     ground->SetIdentifier(-1);
     ground->SetBodyFixed(true);
     ground->SetCollide(false);
@@ -125,7 +182,7 @@ int main(int argc, char* argv[]) {
     // define base-fore flap joint
     ChQuaternion<> revoluteRot = Q_from_AngX(CH_C_PI / 2.0);
     auto revolute              = chrono_types::make_shared<ChLinkLockRevolute>();
-    revolute->Initialize(base_body, flap_body, ChCoordsys<>(ChVector<>(0.0, 0.0, -10.0), revoluteRot));
+    revolute->Initialize(base_body, flap_body, ChCoordsys<>(ChVector<>(0.0, 0.0, -8.9), revoluteRot));
     system.AddLink(revolute);
 
     auto default_dont_add_waves = std::make_shared<NoWave>(2);
