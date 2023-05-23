@@ -3,6 +3,7 @@
 #include <hydroc/hydro_forces.h>
 
 #include <chrono/core/ChRealtimeStep.h>
+#include <chrono/physics/ChLinkMate.h>  // fixed body uses link
 
 #include <chrono>   // std::chrono::high_resolution_clock::now
 #include <iomanip>  // std::setprecision
@@ -106,7 +107,20 @@ int main(int argc, char* argv[]) {
     base_body->SetPos(ChVector<>(0, 0, -10.9));
     base_body->SetMass(999);
     base_body->SetInertiaXX(ChVector<>(1, 1, 1));
-    base_body->SetBodyFixed(true);
+    // base_body->SetBodyFixed(true);
+
+    // create ground
+    auto ground = chrono_types::make_shared<ChBody>();
+    system.AddBody(ground);
+    ground->SetPos(ChVector<>(0, 0, -10.9));
+    ground->SetIdentifier(-1);
+    ground->SetBodyFixed(true);
+    ground->SetCollide(false);
+    // fix base to ground with special constraint (don't use setfixed() because of mass matrix)
+    auto anchor = chrono_types::make_shared<ChLinkMateGeneric>();
+    anchor->Initialize(base_body, ground, false, base_body->GetVisualModelFrame(), base_body->GetVisualModelFrame());
+    system.Add(anchor);
+    anchor->SetConstrainedCoords(true, true, true, true, true, true);  // x, y, z, Rx, Ry, Rz
 
     // define base-fore flap joint
     ChQuaternion<> revoluteRot = Q_from_AngX(CH_C_PI / 2.0);
@@ -147,15 +161,13 @@ int main(int argc, char* argv[]) {
 
     if (profilingOn) {
         std::ofstream profilingFile;
-        profilingFile.open("./results/oswec/decay/duration_ms.txt");
+        profilingFile.open("./results/oswec_duration.txt");
         if (!profilingFile.is_open()) {
-            if (!std::filesystem::exists("./results/oswec/decay")) {
-                std::cout << "Path " << std::filesystem::absolute("./results/oswec/decay")
+            if (!std::filesystem::exists("./results")) {
+                std::cout << "Path " << std::filesystem::absolute("./results")
                           << " does not exist, creating it now..." << std::endl;
-                std::filesystem::create_directory("./results");
-                std::filesystem::create_directory("./results/oswec");
-                std::filesystem::create_directory("./results/oswec/decay");
-                profilingFile.open("./results/oswec/decay/duration_ms.txt");
+                std::filesystem::create_directory("./results/");
+                profilingFile.open("./results/oswec_duration.txt");
                 if (!profilingFile.is_open()) {
                     std::cout << "Still cannot open file, ending program" << std::endl;
                     return 0;
@@ -168,15 +180,13 @@ int main(int argc, char* argv[]) {
 
     if (saveDataOn) {
         std::ofstream outputFile;
-        outputFile.open("./results/oswec/decay/oswec_decay.txt");
+        outputFile.open("./results/oswec_decay.txt");
         if (!outputFile.is_open()) {
-            if (!std::filesystem::exists("./results/oswec/decay")) {
-                std::cout << "Path " << std::filesystem::absolute("./results/oswec/decay")
+            if (!std::filesystem::exists("./results")) {
+                std::cout << "Path " << std::filesystem::absolute("./results")
                           << " does not exist, creating it now..." << std::endl;
-                std::filesystem::create_directory("./results");
-                std::filesystem::create_directory("./results/oswec");
-                std::filesystem::create_directory("./results/oswec/decay");
-                outputFile.open("./results/oswec/decay/oswec_decay.txt");
+                std::filesystem::create_directory("./results/");
+                outputFile.open("./results/oswec_decay.txt");
                 if (!outputFile.is_open()) {
                     std::cout << "Still cannot open file, ending program" << std::endl;
                     return 0;

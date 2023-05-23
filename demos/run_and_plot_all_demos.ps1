@@ -20,6 +20,14 @@ Copy-Item "$ROOT_DIR\demos\rm3\postprocessing\rm3_WECSim_decay.txt" -Destination
 Set-Location $BUILD_DIR\demos\results
 gnuplot plot_rm3_decay.plt
 
+Write-Output "================================== OSWEC Decay =================================="
+Set-Location $BUILD_DIR\demos
+Invoke-Expression -Command "$BUILD_DIR\demos\RelWithDebInfo\demo_oswec_decay.exe $ROOT_DIR\demos --nogui"
+Copy-Item "$ROOT_DIR\demos\oswec\postprocessing\plot_oswec_decay.plt" "$BUILD_DIR\demos\results\"
+Copy-Item "$ROOT_DIR\demos\oswec\postprocessing\wecsim_oswec_decay.txt" -Destination "$BUILD_DIR\demos\results\"
+Set-Location $BUILD_DIR\demos\results
+gnuplot plot_oswec_decay.plt
+
 Write-Output "================================== F3OF DT1 =================================="
 Set-Location $BUILD_DIR\demos
 Invoke-Expression -Command "$BUILD_DIR\demos\RelWithDebInfo\demo_F3OF_DT1.exe $ROOT_DIR\demos --nogui"
