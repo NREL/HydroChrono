@@ -50,18 +50,17 @@ void ChLoadAddedMass::ComputeJacobian(ChState* state_x,       ///< state positio
         infinite_added_mass_system.setZero(mmrows, mmrows);
         auto amrows                                            = infinite_added_mass.rows();
         infinite_added_mass_system.block(0, 0, amrows, amrows) = infinite_added_mass;
-
-        // set mass matrix here
-        jacobians->M = infinite_added_mass_system;
-
-        // R gyroscopic damping matrix terms (6Nx6N)
-        // 0 for added mass
-        jacobians->R.setZero();
-
-        // K inertial stiffness matrix terms (6Nx6N)
-        // 0 for added mass
-        jacobians->K.setZero();
     }
+    // set mass matrix here
+    jacobians->M = infinite_added_mass_system;
+
+    // R gyroscopic damping matrix terms (6Nx6N)
+    // 0 for added mass
+    jacobians->R.setZero();
+
+    // K inertial stiffness matrix terms (6Nx6N)
+    // 0 for added mass
+    jacobians->K.setZero();
 }
 
 /*******************************************************************************
