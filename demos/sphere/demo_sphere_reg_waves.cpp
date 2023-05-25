@@ -19,13 +19,17 @@ using namespace chrono::geometry;
 // environment variable to give the data_directory.
 //
 int main(int argc, char* argv[]) {
+    std::vector<double> task10_wave_amps_0005 = {0.044, 0.078, 0.095, 0.123, 0.177, 0.24, 0.314, 0.397, 0.491, 0.594};
+    std::vector<double> task10_wave_amps_002  = {0.177, 0.314, 0.380, 0.491, 0.706, 0.961, 1.256, 1.589, 1.962, 2.374};
+    std::vector<double> task10_wave_amps = task10_wave_amps_002;
 
-    double task10_wave_amps[]   = {0.044, 0.078, 0.095, 0.123, 0.177, 0.24, 0.314, 0.397, 0.491, 0.594};
-    double task10_wave_omegas[] = {2.094395102, 1.570796327, 1.427996661, 1.256637061, 1.047197551,
-                                   0.897597901, 0.785398163, 0.698131701, 0.628318531, 0.571198664};
-    double task10dampings[]     = {398736.034, 118149.758, 90080.857,  161048.558, 322292.419,
-                               479668.979, 633979.761, 784083.286, 932117.647, 1077123.445};
-    int reg_wave_num_max        = sizeof(task10_wave_amps) / sizeof(task10_wave_amps[0]);
+    double task10_wave_omegas[]    = {2.094395102, 1.570796327, 1.427996661, 1.256637061, 1.047197551,
+                                      0.897597901, 0.785398163, 0.698131701, 0.628318531, 0.571198664};
+    double task10_damping_coeffs[] = {398736.034, 118149.758, 90080.857,  161048.558, 322292.419,
+                                      479668.979, 633979.761, 784083.286, 932117.647, 1077123.445};
+    int reg_wave_num_max           = task10_wave_amps.size();
+
+    std::cout << reg_wave_num_max;
 
     for (int reg_wave_num = 1; reg_wave_num <= reg_wave_num_max; ++reg_wave_num) {
 
@@ -110,7 +114,7 @@ int main(int argc, char* argv[]) {
         // specified in the body relative frames.
         double rest_length  = 3.0;
         double spring_coef  = 0.0;
-        double damping_coef = task10dampings[reg_wave_num - 1];
+        double damping_coef = task10_damping_coeffs[reg_wave_num - 1];
         auto spring_1       = chrono_types::make_shared<ChLinkTSDA>();
         spring_1->Initialize(sphereBody, ground, false, ChVector<>(0, 0, -2),
                              ChVector<>(0, 0, -5));  // false means positions are in global frame

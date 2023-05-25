@@ -20,6 +20,9 @@ filenames.sort(key=natural_keys)
 num_plots = len(filenames)  # Adjust the number of subplots according to the number of files
 fig, axs = plt.subplots(num_plots, figsize=(10, 2 * num_plots))
 
+# Read the RAO comparison data
+rao_data = pd.read_excel('RAO_dat.xlsx', sheet_name='PTO_S=0.002')
+
 for i, filename in enumerate(filenames):
     try:
         df = pd.read_csv(os.path.join(results_directory, filename), skiprows=4, delim_whitespace=True, header=None, names=['Time (s)', 'Heave (m)'], dtype={'Time (s)': float, 'Heave (m)': float})
@@ -71,9 +74,18 @@ for i, filename in enumerate(filenames):
 
 # Plotting the RAO
 plt.figure(figsize=(10,6))
-plt.plot(wave_periods, response_amplitudes, 'o-')
+
+# Plotting the RAO comparison data
+plt.plot(rao_data['Wave Period (s)'], rao_data['InWave-HOTINT'], 'x--', label='InWave-HOTINT')
+plt.plot(rao_data['Wave Period (s)'], rao_data['InWave (Lin)'], 'x--', label='InWave (Lin)')
+plt.plot(rao_data['Wave Period (s)'], rao_data['Marin (NLin)'], 'x--', label='Marin (NLin)')
+plt.plot(rao_data['Wave Period (s)'], rao_data['NREL (NLin)'], 'x--', label='NREL (NLin)')
+plt.plot(rao_data['Wave Period (s)'], rao_data['ProteusDS (Lin)'], 'x--', label='ProteusDS (Lin)')
+plt.plot(wave_periods, response_amplitudes, 'o-', label='Simulation Data', color='black')
+
 plt.xlabel('Wave Period (s)')
 plt.ylabel('RAO (m/m)')
 plt.title('Response Amplitude Operator (RAO)')
+plt.legend()
 plt.grid(True)
 plt.show()
