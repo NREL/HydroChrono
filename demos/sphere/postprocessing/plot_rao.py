@@ -81,7 +81,7 @@ plt.plot(rao_data['Wave Period (s)'], rao_data['InWave (Lin)'], 'x--', label='In
 plt.plot(rao_data['Wave Period (s)'], rao_data['Marin (NLin)'], 'x--', label='Marin (NLin)')
 plt.plot(rao_data['Wave Period (s)'], rao_data['NREL (NLin)'], 'x--', label='NREL (NLin)')
 plt.plot(rao_data['Wave Period (s)'], rao_data['ProteusDS (Lin)'], 'x--', label='ProteusDS (Lin)')
-plt.plot(wave_periods, response_amplitudes, 'o-', label='Simulation Data', color='black')
+plt.plot(wave_periods, response_amplitudes, 'o-', label='HydroChrono', color='black')
 
 plt.xlabel('Wave Period (s)')
 plt.ylabel('RAO (m/m)')

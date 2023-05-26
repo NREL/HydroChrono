@@ -83,7 +83,7 @@ plt.figure(figsize=(10,6))
 # plt.plot(rao_data['Wave Period (s)'], rao_data['Marin (NLin)'], 'x--', label='Marin (NLin)')
 # plt.plot(rao_data['Wave Period (s)'], rao_data['NREL (NLin)'], 'x--', label='NREL (NLin)')
 
-plt.plot(wave_periods, response_amplitudes, 'o-', label='Simulation Data', color='black')
+plt.plot(wave_periods, response_amplitudes, 'o-', label='HydroChrono', color='black')
 plt.plot(rao_data['Wave Period (s)'], rao_data['RAO']*2, 'x--', label='WEC-Sim')
 
 plt.xlabel('Wave Period (s)')
