@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
         // Get model file names
         std::filesystem::path DATADIR(hydroc::getDataDir());
 
-        auto body1_meshfame =
+        auto body1_meshfname =
             (DATADIR / "sphere" / "geometry" / "oes_task10_sphere.obj").lexically_normal().generic_string();
         auto h5fname = (DATADIR / "sphere" / "hydroData" / "sphere.h5").lexically_normal().generic_string();
 
@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
         system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
         system.SetStep(timestep);
         ChRealtimeStepTimer realtime_timer;
-        double simulationDuration = 600.0;
+        double simulation_duration = 600.0;
 
         // Create user interface
         std::shared_ptr<hydroc::gui::UI> pui = hydroc::gui::CreateUI(visualizationOn);
@@ -84,9 +84,9 @@ int main(int argc, char* argv[]) {
         std::vector<double> heave_position;
 
         // set up body from a mesh
-        std::cout << "Attempting to open mesh file: " << body1_meshfame << std::endl;
+        std::cout << "Attempting to open mesh file: " << body1_meshfname << std::endl;
         std::shared_ptr<ChBody> sphereBody = chrono_types::make_shared<ChBodyEasyMesh>(  //
-            body1_meshfame,                                                              // file name
+            body1_meshfname,                                                             // file name
             1000,                                                                        // density
             false,  // do not evaluate mass automatically
             true,   // create visualization asset
@@ -138,7 +138,7 @@ int main(int argc, char* argv[]) {
         ui.Init(&system, "Sphere - Regular Waves Test");
         ui.SetCamera(8, -25, 15, 0, 0, 0);
 
-        while (system.GetChTime() <= simulationDuration) {
+        while (system.GetChTime() <= simulation_duration) {
             if (ui.IsRunning(timestep) == false) break;
 
             if (ui.simulationStarted) {
