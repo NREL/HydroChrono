@@ -2,7 +2,7 @@
  * @file  h5fileinfo.cpp
  *
  * @brief implementation file of HydroData main class and helper class \
- * H5FileInfo
+ * H5FileInfo.
  *********************************************************************/
 // TODO: this include statement list looks good
 #include <H5Cpp.h>

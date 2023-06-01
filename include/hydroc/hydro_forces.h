@@ -258,7 +258,7 @@ class TestHydro {
      *
      * @param b body number, it is 1 indexed here since it comes from ForcFunc6d TODO: make 0 indexed
      * @param i index or Degree of Freedom (dof) ranges [0,...5]
-     * 
+     *
      * @return component of force vector for body b (1 indexed) and degree of freedom i
      */
     double coordinateFunc(int b, int i);
@@ -289,20 +289,20 @@ class TestHydro {
      * @brief finds and returns the component of velocity history for given step and dof.
      *
      * helper function for ComputeForceRadiationDampingConv(), use to access vel history.
-     * 
+     *
      * @param step [0,1,...,1000] (timesteps from h5 file, one velocity per step
      * @param c column [0,..,num_bodies-1,...,numbodies*6-1] (in order of bodies, iterates over dof for each body...3 \
      * bodies c would be one of [0,1,...,17])
-     * 
+     *
      * @return velocity history for specified degree of freedom, body, and step (dof and b both specified in c)
      */
     double getVelHistoryVal(int step, int c) const;
 
     /**
      * @brief sets velocity history for step, b_num (body number) and index (dof) to the given val.
-     * 
+     *
      * helper function for ComputeForceRadiationDampingConv(), use to set/change vel history.
-     * 
+     *
      * @param val value to set the requested element to
      * @param step [0,1,...,1000] (0 indexed, up to the final timestep in h5 file)
      * @param b_num [1,2,...,total_bodies] (1 indexed!!!, use body number in h5 file) TODO make 0 indexed
@@ -314,9 +314,9 @@ class TestHydro {
     // int freq_index_floor;
     // double freq_interp_val;
     std::vector<double> velocity_history;  // use helper function to access vel_history elements correctly
-    double prev_time; // used to keep track of if force has been calculated this step or not
-    Eigen::VectorXd rirf_time_vector;  // (should be the same for each body?)
-    int offset_rirf; // used in circular nature of velocity history for convolution integral
-    std::shared_ptr<ChLoadContainer> my_loadcontainer; // stuff for added mass
-    std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia; // stuff for added mass
+    double prev_time;                      // used to keep track of if force has been calculated this step or not
+    Eigen::VectorXd rirf_time_vector;      // (should be the same for each body?)
+    int offset_rirf;                       // used in circular nature of velocity history for convolution integral
+    std::shared_ptr<ChLoadContainer> my_loadcontainer;    // stuff for added mass
+    std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia;  // stuff for added mass
 };

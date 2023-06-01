@@ -396,7 +396,8 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
     }
     int vi;
     //#pragma omp parallel for
-    if (convTrapz == true) { //TODO add public function to TestHydro for users to change the value of convTrapz from main simulation
+    if (convTrapz == true) {  // TODO add public function to TestHydro for users to change the value of convTrapz from
+                              // main simulation
         // convolution integral using trapezoidal rule
         for (int row = 0; row < numRows; row++) {  // row goes to 6N
             for (int st = 0; st < size; st++) {

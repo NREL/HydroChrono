@@ -2,7 +2,7 @@
  * @file  h5fileinfo.h
  *
  * @brief header file of HydroData main class and helper class \
- * H5FileInfo
+ * H5FileInfo.
  *********************************************************************/
 // TODO: clean up include statements
 #pragma once
@@ -164,23 +164,23 @@ class HydroData {
     // things that are the same no matter the body, don't need body argument
     /**
      * @brief returns the i-th component of the dimensions of radiation_damping_matrix
-     * 
+     *
      * @param i i = [0,1,2] -> [number of rows, number of columns, number of matrices]
-     * 
+     *
      * @return integer for how many rows, columns, or matrices are in RIRF
      */
     int GetRIRFDims(int i) const;
 
     /**
      * @brief Getter function for time vector for RIRF in radiation damping calculations.
-     * 
+     *
      * @return the Eigen::VectorXd of rirf_time_vector from h5 file
      */
     Eigen::VectorXd GetRIRFTimeVector() const;
 
     /**
      * @brief Get water density rho.
-     * 
+     *
      * @return density rho
      */
     double GetRhoVal() const { return sim_data.rho; }
@@ -188,9 +188,9 @@ class HydroData {
     // getters for individual chunks of data
     /**
      * @brief Get chunk of data corresponding to the BodyInfo struct in this class.
-     * 
+     *
      * BodyInfo contains information for non-wave hydro forces.
-     * 
+     *
      * @return vector containing BodyInfo classes info for each body in system with hydro forces on it
      */
     std::vector<BodyInfo>& GetBodyInfos() { return body_data; }
