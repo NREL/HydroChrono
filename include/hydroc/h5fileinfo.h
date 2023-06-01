@@ -126,7 +126,7 @@ class H5FileInfo {
     int num_bodies;
 
     //void InitScalar(H5::H5File& file, std::string data_name, double& var);
-    void H5FileInfo::InitScalar(H5::H5File& file, std::string data_name, double& var);
+    void InitScalar(H5::H5File& file, std::string data_name, double& var);
     void Init1D(H5::H5File& file, std::string data_name, Eigen::VectorXd& var);
     void Init2D(H5::H5File& file, std::string data_name, Eigen::MatrixXd& var);
     void Init3D(H5::H5File& file, std::string data_name, Eigen::Tensor<double, 3>& var /*, std::vector<int>& dims*/);
