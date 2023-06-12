@@ -1,7 +1,7 @@
 /*********************************************************************
  * @file  hydro_forces.cpp
  *
- * @brief Implementation of TestHydro main class and helper classes
+ * @brief Implementation of HydroForces main class and helper classes
  * ComponentFunc and ForceFunc6d.
  *********************************************************************/
 
@@ -149,7 +149,7 @@ ForceFunc6d::ForceFunc6d() : forces{{this, 0}, {this, 1}, {this, 2}, {this, 3}, 
     chrono_torque->SetNameString("hydrotorque");
 }
 
-ForceFunc6d::ForceFunc6d(std::shared_ptr<ChBody> object, TestHydro* user_all_forces) : ForceFunc6d() {
+ForceFunc6d::ForceFunc6d(std::shared_ptr<ChBody> object, HydroForces* user_all_forces) : ForceFunc6d() {
     body             = object;
     std::string temp = body->GetNameString();   // remove "body" from "bodyN", convert N to int, get body num
     b_num            = stoi(temp.erase(0, 4));  // 1 indexed TODO: fix b_num starting here to be 0 indexed
@@ -215,8 +215,8 @@ void ForceFunc6d::ApplyForceAndTorqueToBody() {
     body->AddForce(chrono_torque);
 }
 
-// TODO reorder TestHydro function ordering to match header file order
-TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
+// TODO reorder HydroForces function ordering to match header file order
+HydroForces::HydroForces(std::vector<std::shared_ptr<ChBody>> user_bodies,
                      std::string h5_file_name,
                      std::shared_ptr<WaveBase> waves)
     : bodies(user_bodies), num_bodies(bodies.size()), file_info(H5FileInfo(h5_file_name, num_bodies).readH5Data()) {
@@ -275,7 +275,7 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
     AddWaves(user_waves);
 }
 
-void TestHydro::AddWaves(std::shared_ptr<WaveBase> waves) {
+void HydroForces::AddWaves(std::shared_ptr<WaveBase> waves) {
     user_waves = waves;
     if (user_waves->GetWaveMode() == WaveMode::regular) {
         std::shared_ptr<RegularWave> reg = std::static_pointer_cast<RegularWave>(user_waves);
@@ -287,7 +287,7 @@ void TestHydro::AddWaves(std::shared_ptr<WaveBase> waves) {
     user_waves->Initialize();
 }
 
-double TestHydro::getVelHistoryVal(int step, int c) const {
+double HydroForces::getVelHistoryVal(int step, int c) const {
     if (step < 0 || step >= file_info.GetRIRFDims(2) || c < 0 || c >= num_bodies * 6) {
         std::cout << "wrong vel history index " << std::endl;
         return 0;
@@ -302,7 +302,7 @@ double TestHydro::getVelHistoryVal(int step, int c) const {
     return velocity_history[index + (6 * b) + (6 * num_bodies * step)];
 }
 
-double TestHydro::setVelHistory(double val, int step, int b_num, int index) {
+double HydroForces::setVelHistory(double val, int step, int b_num, int index) {
     if (step < 0 || step >= file_info.GetRIRFDims(2) || b_num < 1 || b_num > num_bodies || index < 0 || index >= 6) {
         std::cout << "bad set vel history indexing" << std::endl;
         return 0;
@@ -316,7 +316,7 @@ double TestHydro::setVelHistory(double val, int step, int b_num, int index) {
     return val;
 }
 
-std::vector<double> TestHydro::ComputeForceHydrostatics() {
+std::vector<double> HydroForces::ComputeForceHydrostatics() {
     assert(num_bodies > 0);
 
     for (int b = 0; b < num_bodies; b++) {
@@ -367,7 +367,7 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
     return force_hydrostatic;
 }
 
-std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
+std::vector<double> HydroForces::ComputeForceRadiationDampingConv() {
     int size = file_info.GetRIRFDims(2);
     int nDoF = 6;
     // "shift" everything left 1
@@ -396,7 +396,7 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
     }
     int vi;
     //#pragma omp parallel for
-    if (convTrapz == true) {  // TODO add public function to TestHydro for users to change the value of convTrapz from
+    if (convTrapz == true) {  // TODO add public function to HydroForces for users to change the value of convTrapz from
                               // main simulation
         // convolution integral using trapezoidal rule
         for (int row = 0; row < numRows; row++) {  // row goes to 6N
@@ -450,10 +450,10 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
     return force_radiation_damping;
 }
 
-double TestHydro::GetRIRFval(int row, int col, int st) {
+double HydroForces::GetRIRFval(int row, int col, int st) {
     if (row < 0 || row >= 6 * num_bodies || col < 0 || col >= 6 * num_bodies || st < 0 ||
         st >= file_info.GetRIRFDims(2)) {
-        std::cout << "rirfval index bad from testhydro" << std::endl;
+        std::cout << "rirfval index bad from HydroForces" << std::endl;
         return 0;
     }
     int b = row / 6;  // 0 indexed, which body to get matrix info from
@@ -462,7 +462,7 @@ double TestHydro::GetRIRFval(int row, int col, int st) {
     return file_info.GetRIRFVal(b, r, col, st);
 }
 
-Eigen::VectorXd TestHydro::ComputeForceWaves() {
+Eigen::VectorXd HydroForces::ComputeForceWaves() {
     Eigen::VectorXd wf(num_bodies * 6);
     // TODO: check size of force calculated against wf (this could help catch/fix NoWave multibody issue)
     wf          = user_waves->GetForceAtTime(bodies[0]->GetChTime());
@@ -470,7 +470,7 @@ Eigen::VectorXd TestHydro::ComputeForceWaves() {
     return force_waves;
 }
 
-double TestHydro::coordinateFunc(int b, int i) {
+double HydroForces::coordinateFunc(int b, int i) {
     int body_num_offset = 6 * (b - 1);  // b_num from ForceFunc6d is 1 indexed, TODO: make all b_num 0 indexed
     int total_dofs      = 6 * num_bodies;
     if (i < 0 || i > 5 || b < 1 || b > num_bodies) {

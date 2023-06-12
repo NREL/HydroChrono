@@ -1,7 +1,7 @@
 /*********************************************************************
  * @file  hydro_forces.h
  *
- * @brief header file of TestHydro main class and helper classes \
+ * @brief header file of HydroForces main class and helper classes \
  * ComponentFunc and ForceFunc6d.
  *********************************************************************/
 // TODO: clean up include statements
@@ -31,7 +31,7 @@ using namespace chrono;
 using namespace chrono::fea;
 
 class ForceFunc6d;
-class TestHydro;
+class HydroForces;
 
 class ComponentFunc : public ChFunction {
   public:
@@ -93,10 +93,10 @@ class ForceFunc6d {
      * from H5FileInfo, also initializes ChBody that this force will be applied to.
      *
      * @param object which body in system this 6 dimensional force is being applied to
-     * @param all_hydro_forces_user gets TestHydro class where total force on all bodies \
+     * @param all_hydro_forces_user gets HydroForces class where total force on all bodies \
      * in the system is calculated so the components can be passed to ForceFunc6d to apply
      */
-    ForceFunc6d(std::shared_ptr<ChBody> object, TestHydro* all_hydro_forces_user);
+    ForceFunc6d(std::shared_ptr<ChBody> object, HydroForces* all_hydro_forces_user);
 
     /**
      * @brief copy constructor should check to see if this force has been added to this body yet
@@ -148,19 +148,19 @@ class ForceFunc6d {
     std::shared_ptr<ComponentFunc> force_ptrs[6];
     std::shared_ptr<ChForce> chrono_force;
     std::shared_ptr<ChForce> chrono_torque;
-    TestHydro* all_hydro_forces;  // pointer up to TestHydro object so coordinateFunc() knows where to go for calcs
+    HydroForces* all_hydro_forces;  // pointer up to HydroForces object so coordinateFunc() knows where to go for calcs
 };
 
 class ChLoadAddedMass;
 
-// TODO give TestHydro a better name, perhaps HydroForces ?
-// TODO split TestHydro class from its helper classes into new file above for clearer code
-class TestHydro {
+// TODO give HydroForces a better name, perhaps HydroForces ?
+// TODO split HydroForces class from its helper classes into new file above for clearer code
+class HydroForces {
   public:
     bool printed = false;
-    TestHydro()  = delete;
+    HydroForces()  = delete;
     /**
-     * @brief main constructor for TestHydro class, sets up vector of bodies, h5 file info, and hydro inputs.
+     * @brief main constructor for HydroForces class, sets up vector of bodies, h5 file info, and hydro inputs.
      *
      * Also initializes many persistent variables for force calculations from h5 file.
      *
@@ -169,12 +169,12 @@ class TestHydro {
      * @param h5_file_name name of h5 file where hydro data is stored
      * @param waves optional Wavebase parameter if using regular or irregular waves
      */
-    TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
+    HydroForces(std::vector<std::shared_ptr<ChBody>> user_bodies,
               std::string h5_file_name,
               std::shared_ptr<WaveBase> waves);
 
     /**
-     * @brief alternate constructor for TestHydro class, sets up vector of bodies, h5 file info, and hydro inputs.
+     * @brief alternate constructor for HydroForces class, sets up vector of bodies, h5 file info, and hydro inputs.
      *
      * Also initializes many persistent variables for force calculations from h5 file.
      * If no waves are given in main constructor, this constructor makes NoWave object and calls main constructor \
@@ -186,13 +186,13 @@ class TestHydro {
      * must be added to system in same order as provided here
      * @param h5_file_name name of h5 file where hydro data is stored
      */
-    TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::string h5_file_name)
-        : TestHydro(user_bodies, h5_file_name, std::static_pointer_cast<WaveBase>(std::make_shared<NoWave>())) {}
+    HydroForces(std::vector<std::shared_ptr<ChBody>> user_bodies, std::string h5_file_name)
+        : HydroForces(user_bodies, h5_file_name, std::static_pointer_cast<WaveBase>(std::make_shared<NoWave>())) {}
 
-    // should only ever have 1 TestHydro object in a system to calc all the forces on all hydro bodies
+    // should only ever have 1 HydroForces object in a system to calc all the forces on all hydro bodies
     // don't try copying or moving this, many issues will arrise.
-    TestHydro(const TestHydro& old) = delete;
-    TestHydro operator=(const TestHydro& rhs) = delete;
+    HydroForces(const HydroForces& old) = delete;
+    HydroForces operator=(const HydroForces& rhs) = delete;
 
     /**
      * @brief Adds waves class to force calculations depending on if regular or irregular waves.

@@ -126,7 +126,7 @@ int main(int argc, char* argv[]) {
     bodies.push_back(float_body1);
     bodies.push_back(plate_body2);
 
-    TestHydro hydroForces(bodies, h5fname, default_dont_add_waves);
+    HydroForces hydroForces(bodies, h5fname, default_dont_add_waves);
 
     //// Debug printing added mass matrix and system mass matrix
     // ChSparseMatrix M;

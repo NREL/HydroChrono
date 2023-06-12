@@ -172,7 +172,7 @@ int main(int argc, char* argv[]) {
     bodies.push_back(flapFore);
     bodies.push_back(flapAft);
 
-    TestHydro hydroforces(bodies, h5fname, default_dont_add_waves);
+    HydroForces hydroforces(bodies, h5fname, default_dont_add_waves);
 
     // for profiling
     auto start = std::chrono::high_resolution_clock::now();
