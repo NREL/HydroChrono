@@ -1,3 +1,11 @@
+/*********************************************************************
+ * @file  hydro_forces.cpp
+ *
+ * @brief Implementation of TestHydro main class and helper classes
+ * ComponentFunc and ForceFunc6d.
+ *********************************************************************/
+
+// TODO minimize include statements, move all to header file hydro_forces.h?
 #include "hydroc/hydro_forces.h"
 #include <hydroc/chloadaddedmass.h>
 #include <hydroc/h5fileinfo.h>
@@ -17,18 +25,28 @@
     #define M_PI 3.14159265358979323846
 #endif
 
-// =============================================================================
-// Misc functions
-// =============================================================================
-
 #include <Eigen/Dense>
 #include <fstream>
 #include <iostream>
 #include <vector>
 
+// TODO: move Misc writecontainer type functions to different file
+// TODO move WriteContainerToFile generic declaration to a .h file instead of .cpp
+/**
+ * @brief Prints contents of 1D Container data to given file.
+ *
+ * @param container the 1D array/vector to write to file
+ * @param file_name file to write container to
+ */
 template <typename Container>
 void WriteContainerToFile(const Container& container, const std::string& file_name);
 
+/**
+ * @brief Prints contents of std::vector<double> data to given file.
+ *
+ * @param container std::vector<double> to write to file
+ * @param file_name file to write container to
+ */
 template <>
 void WriteContainerToFile<std::vector<double>>(const std::vector<double>& container, const std::string& file_name) {
     std::ofstream output_file(file_name);
@@ -45,6 +63,12 @@ void WriteContainerToFile<std::vector<double>>(const std::vector<double>& contai
     output_file.close();
 }
 
+/**
+ * @brief Prints contents of Eigen::VectorXd data to given file.
+ *
+ * @param container Eigen::VectorXd to write to file
+ * @param file_name file to write container to
+ */
 template <>
 void WriteContainerToFile<Eigen::VectorXd>(const Eigen::VectorXd& container, const std::string& file_name) {
     std::ofstream output_file(file_name);
@@ -61,6 +85,17 @@ void WriteContainerToFile<Eigen::VectorXd>(const Eigen::VectorXd& container, con
     output_file.close();
 }
 
+// TODO: on move from std::vector to Eigen::VectroXd, remove this function, look up
+// Eigen::LinSpaced function as replacement (arguments in slightly different order)
+/**
+ * @brief Generates a std::vector<double> with evenly spaced points
+ *
+ * @param start value for the 0th item in the std::vector<double>
+ * @param end value for the last item in the std::vector<double>
+ * @param num_points defines the size for the std::vector<double>
+ *
+ * @return std::vector<double> with evenly spaced points from start to end
+ */
 std::vector<double> Linspace(double start, double end, int num_points) {
     std::vector<double> result(num_points);
     double step = (end - start) / (num_points - 1);
@@ -72,157 +107,23 @@ std::vector<double> Linspace(double start, double end, int num_points) {
     return result;
 }
 
-//std::vector<double> PiersonMoskowitzSpectrumHz(std::vector<double>& f, double Hs, double Tp) {
-//    // Sort the frequency vector
-//    std::sort(f.begin(), f.end());
-//
-//    // Initialize the spectral densities vector
-//    std::vector<double> spectral_densities(f.size());
-//
-//    // Calculate the spectral densities
-//    for (size_t i = 0; i < f.size(); ++i) {
-//        spectral_densities[i] = 1.25 * std::pow(1 / Tp, 4) * std::pow(Hs / 2, 2) * std::pow(f[i], -5) *
-//                                std::exp(-1.25 * std::pow(1 / Tp, 4) * std::pow(f[i], -4));
-//    }
-//
-//    return spectral_densities;
-//}
-
-//std::vector<double> FreeSurfaceElevation(const std::vector<double>& freqs_hz,
-//                                         const std::vector<double>& spectral_densities,
-//                                         const std::vector<double>& time_index,
-//                                         int seed = 1) {
-//    double delta_f = freqs_hz.back() / freqs_hz.size();
-//    std::vector<double> omegas(freqs_hz.size());
-//
-//    for (size_t i = 0; i < freqs_hz.size(); ++i) {
-//        omegas[i] = 2 * M_PI * freqs_hz[i];
-//    }
-//
-//    std::vector<double> A(spectral_densities.size());
-//    for (size_t i = 0; i < spectral_densities.size(); ++i) {
-//        A[i] = 2 * spectral_densities[i] * delta_f;
-//    }
-//
-//    std::vector<double> sqrt_A(A.size());
-//    for (size_t i = 0; i < A.size(); ++i) {
-//        sqrt_A[i] = std::sqrt(A[i]);
-//    }
-//    // TODO fix this vector of vecotrs
-//    std::vector<std::vector<double>> omegas_t(time_index.size(), std::vector<double>(omegas.size()));
-//    for (size_t i = 0; i < time_index.size(); ++i) {
-//        for (size_t j = 0; j < omegas.size(); ++j) {
-//            omegas_t[i][j] = time_index[i] * omegas[j];
-//        }
-//    }
-//
-//    std::mt19937 rng(seed);  // Creates an instance of the std::mt19937 random number generator; a Mersenne Twister
-//                             // random number engine. The seed parameter is used to initialize the generator's internal
-//                             // state - to control the random sequence produced.
-//    std::uniform_real_distribution<double> dist(0.0, 2 * M_PI);
-//    std::vector<double> phases(omegas.size());
-//    for (size_t i = 0; i < phases.size(); ++i) {
-//        phases[i] = dist(rng);
-//    }
-//
-//    std::vector<double> eta(time_index.size(), 0.0);
-//    for (size_t i = 0; i < spectral_densities.size(); ++i) {
-//        for (size_t j = 0; j < time_index.size(); ++j) {
-//            eta[j] += sqrt_A[i] * std::cos(omegas_t[j][i] + phases[i]);
-//        }
-//    }
-//
-//    return eta;
-//}
-
-
-// =============================================================================
-// HydroInputs Class Definitions
-// =============================================================================
-
-/*******************************************************************************
- * HydroInputs constructor
- *******************************************************************************/
-//HydroInputs::HydroInputs() {}
-
-// TODO cut this, why is this a whole function
-//void HydroInputs::UpdateNumTimesteps() {
-//    num_timesteps = static_cast<int>(simulation_duration / simulation_dt) + 1;
-//}
-
-//void HydroInputs::UpdateRampTimesteps() {
-//    ramp_timesteps = static_cast<int>(ramp_duration / simulation_dt) + 1;
-//}
-//
-//void HydroInputs::CreateSpectrum() {
-//    // Define the frequency vector
-//    spectrum_frequencies = Linspace(0.001, 1.0, 1000);  // TODO make this range accessible to user.
-//
-//    // Calculate the Pierson-Moskowitz Spectrum
-//    spectral_densities = PiersonMoskowitzSpectrumHz(spectrum_frequencies, wave_height, wave_period);
-//
-//    // Open a file stream for writing
-//    std::ofstream outputFile("spectral_densities.txt");
-//
-//    // Check if the file stream is open
-//    if (outputFile.is_open()) {
-//        // Write the spectral densities and their corresponding frequencies to the file
-//        for (size_t i = 0; i < spectral_densities.size(); ++i) {
-//            outputFile << spectrum_frequencies[i] << " : " << spectral_densities[i] << std::endl;
-//        }
-//
-//        // Close the file stream
-//        outputFile.close();
-//    } else {
-//        std::cerr << "Unable to open file for writing." << std::endl;
-//    }
-//}
-
-
-// =============================================================================
-// ComponentFunc Class Definitions
-// =============================================================================
-
-/*******************************************************************************
- * ComponentFunc default constructor, dont use
- * sets pointer to ForceFunc6d member object to null and index to 6 (invalid)
- * this ComponentFunc object refers to
- *******************************************************************************/
+// TODO reorder ComponentFunc implementation functions to match the header order of functions
 ComponentFunc::ComponentFunc() {
     base  = NULL;
     index = 6;
 }
 
-/*******************************************************************************
- * ComponentFunc constructor
- * sets pointer to ForceFunc6d member object and index for which component
- * this ComponentFunc object refers to
- *******************************************************************************/
 ComponentFunc::ComponentFunc(ForceFunc6d* b, int i) : base(b), index(i) {}
 
-/*******************************************************************************
- * ComponentFunc::Clone()
- * required override function since ComponentFunc inherits from ChFunction
- *******************************************************************************/
 ComponentFunc* ComponentFunc::Clone() const {
     return new ComponentFunc(*this);
 }
 
-/*******************************************************************************
- * ComponentFunc copy constructor
- * copy constructor works like defualt
- *******************************************************************************/
 ComponentFunc::ComponentFunc(const ComponentFunc& old) {
     base  = old.base;
     index = old.index;
 }
 
-/*******************************************************************************
- * ComponentFunc::Get_y()
- * returns the value of the index-th coordinate of the linear restoring force
- * at each time
- * required override function since ComponentFunc inherits from ChFunction
- *******************************************************************************/
 double ComponentFunc::Get_y(double x) const {
     if (base == NULL) {
         std::cout << "base == Null!" << std::endl;
@@ -231,14 +132,6 @@ double ComponentFunc::Get_y(double x) const {
     return base->coordinateFunc(index);
 }
 
-// =============================================================================
-// ForceFunc6d Class Definitions
-// =============================================================================
-
-/*******************************************************************************
- * ForceFunc6d default constructor
- * initializes array of ComponentFunc objects and pointers to each force/torque
- *******************************************************************************/
 ForceFunc6d::ForceFunc6d() : forces{{this, 0}, {this, 1}, {this, 2}, {this, 3}, {this, 4}, {this, 5}} {
     for (unsigned i = 0; i < 6; i++) {
         force_ptrs[i] = std::shared_ptr<ComponentFunc>(forces + i, [](ComponentFunc*) {});
@@ -256,16 +149,10 @@ ForceFunc6d::ForceFunc6d() : forces{{this, 0}, {this, 1}, {this, 2}, {this, 3}, 
     chrono_torque->SetNameString("hydrotorque");
 }
 
-/*******************************************************************************
- * ForceFunc6d constructor
- * calls default constructor and initializes hydro force info
- * from H5FileInfo
- * also initializes ChBody that this force will be applied to
- *******************************************************************************/
 ForceFunc6d::ForceFunc6d(std::shared_ptr<ChBody> object, TestHydro* user_all_forces) : ForceFunc6d() {
     body             = object;
     std::string temp = body->GetNameString();   // remove "body" from "bodyN", convert N to int, get body num
-    b_num            = stoi(temp.erase(0, 4));  // 1 indexed
+    b_num            = stoi(temp.erase(0, 4));  // 1 indexed TODO: fix b_num starting here to be 0 indexed
     all_hydro_forces = user_all_forces;         // TODO switch to smart pointers? does this use = ?
     if (all_hydro_forces == NULL) {
         std::cout << "all hydro forces null " << std::endl;
@@ -275,11 +162,6 @@ ForceFunc6d::ForceFunc6d(std::shared_ptr<ChBody> object, TestHydro* user_all_for
     ApplyForceAndTorqueToBody();
 }
 
-/*******************************************************************************
- * ForceFunc6d copy constructor
- * copy constructor should check to see if this force has been added to this body yet
- * if not, it should add it, if so it shouldnt add the force a second time
- *******************************************************************************/
 ForceFunc6d::ForceFunc6d(const ForceFunc6d& old)
     : forces{{this, 0}, {this, 1}, {this, 2}, {this, 3}, {this, 4}, {this, 5}} {
     for (unsigned i = 0; i < 6; i++) {
@@ -299,26 +181,16 @@ ForceFunc6d::ForceFunc6d(const ForceFunc6d& old)
     SetTorque();
 }
 
-/*******************************************************************************
- * ForceFunc6d::coordinateFunc
- * if index is in [0,6] the corresponding vector component of the force vector
- * is returned
- * b_num is 1 indexed!!!!!!!!
- * otherwise a warning is printed and the force is interpreted to be 0
- *******************************************************************************/
 double ForceFunc6d::coordinateFunc(int i) {
     // b_num is 1 indexed?
     if (i >= 6 || i < 0) {
         std::cout << "wrong index force func 6d" << std::endl;
         return 0;
     }
-    return all_hydro_forces->coordinateFunc(b_num, i);
+    return all_hydro_forces->coordinateFunc(
+        b_num, i);  // b_num is 1 indexed here!!!!! TODO: change all b_num to be 0 indexed everywhere
 }
 
-/*******************************************************************************
- * ForceFunc6d::SetForce
- * used to initialize components of force (external ChForce pointer)
- *******************************************************************************/
 void ForceFunc6d::SetForce() {
     if (chrono_force == NULL || body == NULL) {
         std::cout << "set force null issue" << std::endl;
@@ -328,10 +200,6 @@ void ForceFunc6d::SetForce() {
     chrono_force->SetF_z(force_ptrs[2]);
 }
 
-/*******************************************************************************
- * ForceFunc6d::SetTorque
- * used to initialize components of torque (external ChForce pointer with TORQUE flag set)
- *******************************************************************************/
 void ForceFunc6d::SetTorque() {
     if (chrono_torque == NULL || body == NULL) {
         std::cout << "set torque null issue" << std::endl;
@@ -342,29 +210,12 @@ void ForceFunc6d::SetTorque() {
     chrono_torque->SetMode(ChForce::ForceType::TORQUE);
 }
 
-/*******************************************************************************
- * ForceFunc6d::ApplyForceAndTorqueToBody()
- * adds this force to the body's list of applied forces
- * Warning: everytime this is called, a force is applied to the body so be careful not to
- * duplicate forces on accident
- * TODO: make this function less risky, there shouldn't be a chance to apply the same force
- * multiple times
- *******************************************************************************/
 void ForceFunc6d::ApplyForceAndTorqueToBody() {
     body->AddForce(chrono_force);
     body->AddForce(chrono_torque);
 }
 
-// =============================================================================
-// TestHydro Class Definitions
-// =============================================================================
-/*******************************************************************************
- * TestHydro::TestHydro(user_bodies, h5_file_name, user_hydro_inputs)
- * main constructor for TestHydro class, sets up vector of bodies, h5 file info,
- * and hydro inputs
- * also initializes many persistent variables for force calculations
- * TODO add other constructor that has the waves as an argument and calls addwaves
- *******************************************************************************/
+// TODO reorder TestHydro function ordering to match header file order
 TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
                      std::string h5_file_name,
                      std::shared_ptr<WaveBase> waves)
@@ -436,41 +287,6 @@ void TestHydro::AddWaves(std::shared_ptr<WaveBase> waves) {
     user_waves->Initialize();
 }
 
-// void TestHydro::WaveSetUp() {
-//    int total_dofs = 6 * num_bodies;
-//    switch (hydro_inputs.mode) {
-//        case WaveMode::noWaveCIC:
-//            break;
-//        case WaveMode::regular:
-//            // hydro_inputs.excitation_force_mag.resize(total_dofs, 0.0);
-//            // hydro_inputs.excitation_force_phase.resize(total_dofs, 0.0);
-//            // force_waves.resize(total_dofs, 0.0);
-//            // hydro_inputs.wave_omega_delta = file_info.GetOmegaDelta();
-//            // hydro_inputs.freq_index_des   = (hydro_inputs.regular_wave_omega / hydro_inputs.wave_omega_delta) - 1;
-//            // for (int b = 0; b < num_bodies; b++) {
-//            //    for (int rowEx = 0; rowEx < 6; rowEx++) {
-//            //        int body_offset = 6 * b;
-//            //        hydro_inputs.excitation_force_mag[body_offset + rowEx] =
-//            //            file_info.GetExcitationMagInterp(b, rowEx, 0, hydro_inputs.freq_index_des);
-//            //        hydro_inputs.excitation_force_phase[body_offset + rowEx] =
-//            //            file_info.GetExcitationPhaseInterp(b, rowEx, 0, hydro_inputs.freq_index_des);
-//            //    }
-//            //}
-//            break;
-//        case WaveMode::irregular:
-//            hydro_inputs.CreateSpectrum();
-//            hydro_inputs.CreateFreeSurfaceElevation();
-//            t_irf = file_info.GetExcitationIRFTime();  // assume t_irf is the same for all hydrodynamic bodies
-//    }
-//}
-
-/*******************************************************************************
- * TestHydro::getVelHistoryVal(int step, int c) const
- * finds and returns the component of velocity history for given step and dof (c - column)
- * step: [0,1,...,1000] (timesteps from h5 file, one velocity per step
- * c: [0,..,num_bodies-1,...,numbodies*6-1] (in order of bodies, iterates over
- *    dof for each body...3 bodies c would be [0,1,...,17])
- *******************************************************************************/
 double TestHydro::getVelHistoryVal(int step, int c) const {
     if (step < 0 || step >= file_info.GetRIRFDims(2) || c < 0 || c >= num_bodies * 6) {
         std::cout << "wrong vel history index " << std::endl;
@@ -486,14 +302,6 @@ double TestHydro::getVelHistoryVal(int step, int c) const {
     return velocity_history[index + (6 * b) + (6 * num_bodies * step)];
 }
 
-/*******************************************************************************
- * TestHydro::setVelHistoryAllBodies(double val, int step, int b_num, int index)
- * sets velocity history for step, b_num (body number) and index (dof) to the given val
- * val: value to set the requested element to
- * step: [0,1,...,1000] (0 indexed, up to the final timestep in h5 file)
- * b_num: [1,2,...,total_bodies] (1 indexed!, use body number in h5 file)
- * index: [0,1,2,3,4,5] (0 indexed, always 0-5 for force+torque vector indexing)
- *******************************************************************************/
 double TestHydro::setVelHistory(double val, int step, int b_num, int index) {
     if (step < 0 || step >= file_info.GetRIRFDims(2) || b_num < 1 || b_num > num_bodies || index < 0 || index >= 6) {
         std::cout << "bad set vel history indexing" << std::endl;
@@ -508,10 +316,6 @@ double TestHydro::setVelHistory(double val, int step, int b_num, int index) {
     return val;
 }
 
-/*******************************************************************************
- * TestHydro::ComputeForceHydrostatics()
- * computes the 6N dimensional Hydrostatic stiffness force
- *******************************************************************************/
 std::vector<double> TestHydro::ComputeForceHydrostatics() {
     assert(num_bodies > 0);
 
@@ -563,10 +367,6 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
     return force_hydrostatic;
 }
 
-/*******************************************************************************
- * TestHydro::ComputeForceRadiationDampingConv()
- * computes the 6N dimensional Radiation Damping force with convolution history
- *******************************************************************************/
 std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
     int size = file_info.GetRIRFDims(2);
     int nDoF = 6;
@@ -596,7 +396,8 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
     }
     int vi;
     //#pragma omp parallel for
-    if (convTrapz == true) {
+    if (convTrapz == true) {  // TODO add public function to TestHydro for users to change the value of convTrapz from
+                              // main simulation
         // convolution integral using trapezoidal rule
         for (int row = 0; row < numRows; row++) {  // row goes to 6N
             for (int st = 0; st < size; st++) {
@@ -622,7 +423,7 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
     }
     // velOut.close();
 
-    // else { // TODO fix this for force_radiation_damping to go over col not row!
+    // else { // TODO fix this for force_radiation_damping to go over col not row like above!
     //	// convolution integral assuming fixed dt
     //	for (int row = 0; row < numRows; row++) {
     //		//#pragma omp parallel for
@@ -649,15 +450,6 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
     return force_radiation_damping;
 }
 
-/*******************************************************************************
- * TestHydro::GetRIRFval(int row, int col, int st)
- * returns the rirf value from the correct body given the row, step, and index
- * row: encodes the body number and dof index [0,...,5,...6N-1] for rows of RIRF
- * col: col in RIRF matrix [0,...,5,...6N-1]
- * st: which step in rirf ranges usually [0,...1000]
- * c: gets just the index aka dof from col
- * b: gets body num from col
- *******************************************************************************/
 double TestHydro::GetRIRFval(int row, int col, int st) {
     if (row < 0 || row >= 6 * num_bodies || col < 0 || col >= 6 * num_bodies || st < 0 ||
         st >= file_info.GetRIRFDims(2)) {
@@ -670,44 +462,14 @@ double TestHydro::GetRIRFval(int row, int col, int st) {
     return file_info.GetRIRFVal(b, r, col, st);
 }
 
-/*******************************************************************************
- * TestHydro::ComputeForceExcitationRegularFreq()
- * computes the 6N dimensional excitation force
- *******************************************************************************/
-// TODO delete this function
-// std::vector<double> TestHydro::ComputeForceExcitationRegularFreq() {
-//    for (int b = 0; b < num_bodies; b++) {
-//        int body_offset = 6 * b;
-//        for (int rowEx = 0; rowEx < 6; rowEx++) {
-//            force_waves[body_offset + rowEx] = hydro_inputs.excitation_force_mag[body_offset + rowEx] *
-//                                                         hydro_inputs.regular_wave_amplitude *
-//                                                         cos(hydro_inputs.regular_wave_omega * bodies[0]->GetChTime()
-//                                                         +
-//                                                             hydro_inputs.excitation_force_phase[rowEx]);
-//        }
-//    }
-//    return force_waves;
-//}
-
-
-
-// make force function call look the same as other compute force functions:
 Eigen::VectorXd TestHydro::ComputeForceWaves() {
     Eigen::VectorXd wf(num_bodies * 6);
+    // TODO: check size of force calculated against wf (this could help catch/fix NoWave multibody issue)
     wf          = user_waves->GetForceAtTime(bodies[0]->GetChTime());
     force_waves = wf;
     return force_waves;
 }
 
-/*******************************************************************************
- * TestHydro::TODO
- * ****IMPORTANT b is 1 indexed here
- * computes all forces or returns saved force if it's already been calculated this
- * timestep
- * b: body number, it is 1 indexed here since it comes from ForcFunc6d
- * i: index or Degree of Freedom (dof) ranges [0,...5]
- * calls computeForce type functions
- *******************************************************************************/
 double TestHydro::coordinateFunc(int b, int i) {
     int body_num_offset = 6 * (b - 1);  // b_num from ForceFunc6d is 1 indexed, TODO: make all b_num 0 indexed
     int total_dofs      = 6 * num_bodies;
@@ -738,16 +500,16 @@ double TestHydro::coordinateFunc(int b, int i) {
     convTrapz = true;  // use trapeziodal rule or assume fixed dt.
 
     force_hydrostatic       = ComputeForceHydrostatics();
-    force_radiation_damping = ComputeForceRadiationDampingConv(); // TODO non convolution option
+    force_radiation_damping = ComputeForceRadiationDampingConv();  // TODO non convolution option
     force_waves             = ComputeForceWaves();
 
-    // TODO once all force components are Eigen, remove this from being a loop
+    // TODO once all force components are Eigen, remove this from being a loop and add vectors directly
     for (int i = 0; i < total_dofs; i++) {
         total_force[i] = force_hydrostatic[i] - force_radiation_damping[i] + force_waves[i];
     }
 
-    //std::cout << "force_waves\n";
-    //for (int i = 0; i < total_dofs; i++) {
+    // std::cout << "force_waves\n";
+    // for (int i = 0; i < total_dofs; i++) {
     //    std::cout << force_waves[i] << std::endl;
     //}
 
