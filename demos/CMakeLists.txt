@@ -200,6 +200,38 @@ target_link_libraries(demo_oswec_decay
     HydroChrono
 )
 
+# =====================
+# OSWEC_REG_WAVES
+# =====================
+add_executable(demo_oswec_reg_waves)
+
+target_sources(
+    demo_oswec_reg_waves
+
+    PRIVATE
+    oswec/demo_oswec_reg_waves.cpp
+)
+
+if(HYDROCHRONO_ENABLE_IRRLICHT)
+	target_compile_definitions(demo_oswec_reg_waves
+		PRIVATE 
+		HYDROCHRONO_HAVE_IRRLICHT=1
+	)
+endif()
+
+target_include_directories(
+	demo_oswec_reg_waves
+
+	PRIVATE
+	    ${CMAKE_CURRENT_SOURCE_DIR}/
+	    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_link_libraries(demo_oswec_reg_waves
+    PRIVATE
+	HydroChronoGUI
+    HydroChrono
+)
 
 # =====================
 # F3OF DT 1

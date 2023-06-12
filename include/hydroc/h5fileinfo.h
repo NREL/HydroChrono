@@ -268,7 +268,7 @@ class H5FileInfo {
      * @param[in] data_name data name within file to extract value from
      * @param[out] var variable to be set from h5 info
      */
-    void H5FileInfo::InitScalar(H5::H5File& file, std::string data_name, double& var);
+    void InitScalar(H5::H5File& file, std::string data_name, double& var);
 
     /**
      * @brief helper function for readH5Data() to initialize any 1D data (vectors, lists etc).

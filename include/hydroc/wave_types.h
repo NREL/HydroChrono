@@ -362,7 +362,7 @@ class IrregularWave : public WaveBase {
      * Initializes eta and accounts for ramp_duration if set.
      * relevant info stored in member variables.
      */
-    void IrregularWave::CreateFreeSurfaceElevation();
+    void CreateFreeSurfaceElevation();
 
     friend Eigen::VectorXd PiersonMoskowitzSpectrumHz(Eigen::VectorXd& f, double Hs, double Tp);
 };
