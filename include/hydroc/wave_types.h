@@ -117,7 +117,7 @@ class IrregularWave : public WaveBase {
     double ExcitationConvolution(int body, int dof, double time);
 
     void CreateSpectrum();
-    void IrregularWave::CreateFreeSurfaceElevation();
+    void CreateFreeSurfaceElevation();
     friend Eigen::VectorXd PiersonMoskowitzSpectrumHz(Eigen::VectorXd& f, double Hs, double Tp);
 };
 
