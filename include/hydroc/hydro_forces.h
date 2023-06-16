@@ -187,7 +187,9 @@ class TestHydro {
      * @param h5_file_name name of h5 file where hydro data is stored
      */
     TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::string h5_file_name)
-        : TestHydro(user_bodies, h5_file_name, std::static_pointer_cast<WaveBase>(std::make_shared<NoWave>())) {}
+        : TestHydro(user_bodies,
+                    h5_file_name,
+                    std::static_pointer_cast<WaveBase>(std::make_shared<NoWave>(user_bodies.size()))){}
 
     // should only ever have 1 TestHydro object in a system to calc all the forces on all hydro bodies
     // don't try copying or moving this, many issues will arrise.
