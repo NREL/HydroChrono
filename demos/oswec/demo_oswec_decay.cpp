@@ -185,13 +185,11 @@ int main(int argc, char* argv[]) {
     revolute->Initialize(base_body, flap_body, ChCoordsys<>(ChVector<>(0.0, 0.0, -8.9), revoluteRot));
     system.AddLink(revolute);
 
-    auto default_dont_add_waves = std::make_shared<NoWave>(2);
-
     //// attach hydrodynamic forces to body
     std::vector<std::shared_ptr<ChBody>> bodies;
     bodies.push_back(flap_body);
     bodies.push_back(base_body);
-    TestHydro blah(bodies, h5fname, default_dont_add_waves);
+    TestHydro blah(bodies, h5fname);
 
     // for profiling
     auto start = std::chrono::high_resolution_clock::now();

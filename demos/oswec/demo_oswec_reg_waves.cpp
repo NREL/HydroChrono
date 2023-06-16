@@ -59,9 +59,9 @@ std::array<double, 3> add_vectors(std::array<double, 3> v1, std::array<double, 3
     return {v1[0] + v2[0], v1[1] + v2[1], v1[2] + v2[2]};
 }
 
-
 int main(int argc, char* argv[]) {
-    std::vector<double> periods = {4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0, 18.0, 18.5, 19.0, 19.25, 19.5, 20.0, 21.0, 22.0, 24.0};
+    std::vector<double> periods = {4.0,  6.0,  8.0,   10.0, 12.0, 14.0, 16.0, 18.0,
+                                   18.5, 19.0, 19.25, 19.5, 20.0, 21.0, 22.0, 24.0};
     int reg_wave_num_max        = periods.size();
 
     for (int reg_wave_num = 1; reg_wave_num <= reg_wave_num_max; ++reg_wave_num) {
@@ -82,7 +82,7 @@ int main(int argc, char* argv[]) {
 
         auto body1_meshfname = (DATADIR / "oswec" / "geometry" / "flap.obj").lexically_normal().generic_string();
         auto body2_meshfname = (DATADIR / "oswec" / "geometry" / "base.obj").lexically_normal().generic_string();
-        auto h5fname        = (DATADIR / "oswec" / "hydroData" / "oswec.h5").lexically_normal().generic_string();
+        auto h5fname         = (DATADIR / "oswec" / "hydroData" / "oswec.h5").lexically_normal().generic_string();
 
         // system/solver settings
         ChSystemNSC system;
@@ -111,15 +111,15 @@ int main(int argc, char* argv[]) {
         std::array<double, 3> axis            = {0, 1, 0};
         double angle_in_degrees               = 0.0;
 
-        //std::array<double, 3> rotated_hinge_to_cg = rotate_vector_3d(hinge_to_cg, axis, angle_in_degrees);
+        // std::array<double, 3> rotated_hinge_to_cg = rotate_vector_3d(hinge_to_cg, axis, angle_in_degrees);
 
-        //std::array<double, 3> new_cg = add_vectors(origin_to_hinge, rotated_hinge_to_cg);
+        // std::array<double, 3> new_cg = add_vectors(origin_to_hinge, rotated_hinge_to_cg);
 
-        //std::cout << "The original vector is [" << hinge_to_cg[0] << ", " << hinge_to_cg[1] << ", " << hinge_to_cg[2]
+        // std::cout << "The original vector is [" << hinge_to_cg[0] << ", " << hinge_to_cg[1] << ", " << hinge_to_cg[2]
         //          << "]" << std::endl;
-        //std::cout << "The rotated vector is [" << rotated_hinge_to_cg[0] << ", " << rotated_hinge_to_cg[1] << ", "
+        // std::cout << "The rotated vector is [" << rotated_hinge_to_cg[0] << ", " << rotated_hinge_to_cg[1] << ", "
         //          << rotated_hinge_to_cg[2] << "]" << std::endl;
-        //std::cout << "The new vector is [" << new_cg[0] << ", " << new_cg[1] << ", " << new_cg[2] << "]"
+        // std::cout << "The new vector is [" << new_cg[0] << ", " << new_cg[1] << ", " << new_cg[2] << "]"
         //          << std::endl;
 
         // set up body from a mesh
@@ -143,7 +143,7 @@ int main(int argc, char* argv[]) {
         auto ang_rad = CH_C_PI / 18.0;
         // flap_body->SetPos(ChVector<>(new_cg[0], new_cg[1], new_cg[2]));
         flap_body->SetPos(ChVector<>(0.0, 0.0, -3.9));
-        //flap_body->SetRot(Q_from_AngAxis(ang_rad, VECT_Y));
+        // flap_body->SetRot(Q_from_AngAxis(ang_rad, VECT_Y));
         flap_body->SetMass(127000.0);
         flap_body->SetInertiaXX(ChVector<>(1.85e6, 1.85e6, 1.85e6));
         // notes: mass and inertia added to added mass and system mass correctly.
@@ -200,12 +200,8 @@ int main(int argc, char* argv[]) {
 
         auto my_hydro_inputs                    = std::make_shared<RegularWave>(bodies.size());
         my_hydro_inputs->regular_wave_amplitude = 0.01;
-        my_hydro_inputs->regular_wave_omega     = (2 * CH_C_PI)/(periods[reg_wave_num - 1]);
+        my_hydro_inputs->regular_wave_omega     = (2 * CH_C_PI) / (periods[reg_wave_num - 1]);
 
-        //// attach hydrodynamic forces to body
-        /*std::vector<std::shared_ptr<ChBody>> bodies;
-        bodies.push_back(flap_body);
-        bodies.push_back(base_body);*/
         TestHydro hydro_forces(bodies, h5fname);
         hydro_forces.AddWaves(my_hydro_inputs);
 
@@ -252,7 +248,8 @@ int main(int argc, char* argv[]) {
         }
 
         if (saveDataOn) {
-            std::string out_file = "./results/oswec/regular_waves/oswec_reg_waves_" + std::to_string(reg_wave_num) + ".txt";
+            std::string out_file =
+                "./results/oswec/regular_waves/oswec_reg_waves_" + std::to_string(reg_wave_num) + ".txt";
             std::ofstream outputFile(out_file);
             if (!outputFile.is_open()) {
                 if (!std::filesystem::exists("./results")) {
@@ -266,23 +263,22 @@ int main(int argc, char* argv[]) {
                     }
                 }
             }
-            //outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(16)
+            // outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(16)
             //           << "Flap Rotation y (radians)" << std::right << std::setw(16) << "Flap Rotation y (degrees)"
             //           << std::endl;
-            //for (int i = 0; i < time_vector.size(); ++i)
+            // for (int i = 0; i < time_vector.size(); ++i)
             //    outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
             //               << std::right << std::setw(16) << std::setprecision(4) << std::fixed << flap_rot[i]
             //               << std::right << std::setw(16) << std::setprecision(4) << std::fixed
             //               << flap_rot[i] * 360.0 / 6.28 << std::endl;
-            //outputFile.close();
+            // outputFile.close();
 
             outputFile.precision(10);
             outputFile.width(12);
             outputFile << "Wave #: \t" << reg_wave_num << "\n";
             outputFile << "Wave amplitude (m): \t" << my_hydro_inputs->regular_wave_amplitude << "\n";
             outputFile << "Wave omega (rad/s): \t" << my_hydro_inputs->regular_wave_omega << "\n";
-            outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(12)
-                       << "Pitch (rads)"
+            outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(12) << "Pitch (rads)"
                        << std::endl;
             for (int i = 0; i < time_vector.size(); ++i)
                 outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]

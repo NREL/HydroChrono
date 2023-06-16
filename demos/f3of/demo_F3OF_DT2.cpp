@@ -163,16 +163,13 @@ int main(int argc, char* argv[]) {
     base_rev->Initialize(base, ground, ChCoordsys<>(ChVector<>(0.0, 0.0, -9.0), revoluteRot));
     system.AddLink(base_rev);
 
-    // define wave parameters (not used in this demo TODO have hydroforces constructor without hydro inputs)
-    auto default_dont_add_waves = std::make_shared<NoWave>(3);
-
     // set up hydro forces
     std::vector<std::shared_ptr<ChBody>> bodies;
     bodies.push_back(base);
     bodies.push_back(flapFore);
     bodies.push_back(flapAft);
 
-    TestHydro hydroforces(bodies, h5fname, default_dont_add_waves);
+    TestHydro hydroforces(bodies, h5fname);
 
     // for profiling
     auto start = std::chrono::high_resolution_clock::now();

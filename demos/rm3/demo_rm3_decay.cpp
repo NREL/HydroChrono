@@ -119,14 +119,12 @@ int main(int argc, char* argv[]) {
     prismatic_pto->SetDampingCoefficient(0.0);
     system.AddLink(prismatic_pto);
 
-    auto default_dont_add_waves = std::make_shared<NoWave>(2);
-
     // attach hydrodynamic forces to body
     std::vector<std::shared_ptr<ChBody>> bodies;
     bodies.push_back(float_body1);
     bodies.push_back(plate_body2);
 
-    TestHydro hydroForces(bodies, h5fname, default_dont_add_waves);
+    TestHydro hydroForces(bodies, h5fname);
 
     //// Debug printing added mass matrix and system mass matrix
     // ChSparseMatrix M;
@@ -162,8 +160,8 @@ int main(int argc, char* argv[]) {
         profilingFile.open("./results/rm3_decay_duration_ms.txt");
         if (!profilingFile.is_open()) {
             if (!std::filesystem::exists("./results")) {
-                std::cout << "Path " << std::filesystem::absolute("./results")
-                          << " does not exist, creating it now..." << std::endl;
+                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
+                          << std::endl;
                 std::filesystem::create_directory("./results");
                 profilingFile.open("./results/rm3_duration_ms.txt");
                 if (!profilingFile.is_open()) {
@@ -181,8 +179,8 @@ int main(int argc, char* argv[]) {
         outputFile.open("./results/rm3_decay.txt");
         if (!outputFile.is_open()) {
             if (!std::filesystem::exists("./results")) {
-                std::cout << "Path " << std::filesystem::absolute("./results")
-                          << " does not exist, creating it now..." << std::endl;
+                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
+                          << std::endl;
                 std::filesystem::create_directory("./results");
                 outputFile.open("./results/rm3_decay.txt");
                 if (!outputFile.is_open()) {
