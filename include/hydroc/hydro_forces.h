@@ -153,7 +153,6 @@ class ForceFunc6d {
 
 class ChLoadAddedMass;
 
-// TODO give HydroForces a better name, perhaps HydroForces ?
 // TODO split HydroForces class from its helper classes into new file above for clearer code
 class HydroForces {
   public:
