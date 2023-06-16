@@ -191,7 +191,7 @@ int main(int argc, char* argv[]) {
     std::vector<std::shared_ptr<ChBody>> bodies;
     bodies.push_back(flap_body);
     bodies.push_back(base_body);
-    TestHydro blah(bodies, h5fname, default_dont_add_waves);
+    HydroForces blah(bodies, h5fname, default_dont_add_waves);
 
     // for profiling
     auto start = std::chrono::high_resolution_clock::now();

@@ -102,7 +102,7 @@ int main(int argc, char* argv[]) {
     // set up hydro forces
     std::vector<std::shared_ptr<ChBody>> bodies;
     bodies.push_back(base);
-    TestHydro hydroforces(bodies, h5fname);
+    HydroForces hydroforces(bodies, h5fname);
 
     // for profiling
     auto start = std::chrono::high_resolution_clock::now();

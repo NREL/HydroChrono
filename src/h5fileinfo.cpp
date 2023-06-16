@@ -81,6 +81,7 @@ HydroData H5FileInfo::readH5Data() {
         Init1D(userH5File, "simulation_parameters/w", data_to_init.reg_wave_data[i].freq_list);
         Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/mag",
                data_to_init.reg_wave_data[i].excitation_mag_matrix);
+        // TODO does excitation_mag_matrix need to be squeezed to 2d data as well?
 
         // scale by rho * g
         data_to_init.reg_wave_data[i].excitation_mag_matrix =
@@ -89,6 +90,7 @@ HydroData H5FileInfo::readH5Data() {
         Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/phase",
                data_to_init.reg_wave_data[i]
                    .excitation_phase_matrix);  // TODO does this also need to be scaled by rho * g?
+        //TODO does excitation_phase_matrix also need to be squeezed to 2d data?
 
         // irreg wave
         // Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/re", excitation_re_matrix, re_dims);
