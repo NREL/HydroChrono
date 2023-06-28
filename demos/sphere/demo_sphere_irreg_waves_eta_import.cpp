@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Check if --nogui option is set as 2nd argument
-    bool visualizationOn = false;
+    bool visualizationOn = true;
     if (argc > 2 && std::string("--nogui").compare(argv[2]) == 0) {
         visualizationOn = false;
     }
