@@ -1,7 +1,11 @@
+/*********************************************************************
+ * @file wave_types.cpp
+ *
+ * @brief implementation file for Wavebase and classes inheriting from WaveBase.
+ *********************************************************************/
 #include <hydroc/wave_types.h>
 #include <unsupported/Eigen/Splines>
 
-// NoWave class definitions:
 Eigen::VectorXd NoWave::GetForceAtTime(double t) {
     unsigned int dof = num_bodies * 6;
     Eigen::VectorXd f(dof);
@@ -10,8 +14,7 @@ Eigen::VectorXd NoWave::GetForceAtTime(double t) {
     }
     return f;
 }
-///////////////////////////////////////////////////////////////////////////////////////////////////////
-// Regular wave class definitions:
+
 RegularWave::RegularWave() {
     num_bodies = 1;
 }
@@ -43,7 +46,6 @@ void RegularWave::AddH5Data(std::vector<HydroData::RegularWaveInfo>& reg_h5_data
     wave_info = reg_h5_data;
 }
 
-// should return a 6N long vector
 Eigen::VectorXd RegularWave::GetForceAtTime(double t) {
     unsigned int dof = num_bodies * 6;
     Eigen::VectorXd f(dof);
@@ -58,22 +60,12 @@ Eigen::VectorXd RegularWave::GetForceAtTime(double t) {
     return f;
 }
 
-// put more reg wave forces here:
-// helper GetOmegaDelta()
-/*******************************************************************************
- * RegularWave::GetOmegaDelta()
- * returns omega step size
- *******************************************************************************/
 double RegularWave::GetOmegaDelta() const {
     double omega_max = wave_info[0].freq_list[wave_info[0].freq_list.size() - 1];
     double num_freqs = wave_info[0].freq_list.size();
     return omega_max / num_freqs;
 }
 
-/*******************************************************************************
- * RegularWave::GetExcitationMagInterp()
- * returns excitation magnitudes for body b, row i, column j, frequency ix k
- *******************************************************************************/
 double RegularWave::GetExcitationMagInterp(int b, int i, int j, double freq_index_des) const {
     double freq_interp_val    = freq_index_des - floor(freq_index_des);
     double excitationMagFloor = wave_info[b].excitation_mag_matrix(i, j, (int)floor(freq_index_des));
@@ -83,10 +75,6 @@ double RegularWave::GetExcitationMagInterp(int b, int i, int j, double freq_inde
     return excitationMag;
 }
 
-/*******************************************************************************
- * RegularWave::GetExcitationPhaseInterp()
- * returns excitation phases for row i, column j, frequency ix k
- *******************************************************************************/
 double RegularWave::GetExcitationPhaseInterp(int b, int i, int j, double freq_index_des) const {
     double freq_interp_val      = freq_index_des - floor(freq_index_des);  // look into c++ modf TODO
     double excitationPhaseFloor = wave_info[b].excitation_phase_matrix(
@@ -307,6 +295,7 @@ double RegularWave::GetExcitationPhaseInterp(int b, int i, int j, double freq_in
 //    // WriteFreeSurfaceMeshObj(free_surface_3d_pts, free_surface_triangles, "fse_mesh.obj");
 //}
 
+
 std::vector<double> ComputeWaveNumbers(const std::vector<double>& omegas,
                                        double water_depth,
                                        double g           = 9.81,
@@ -424,7 +413,6 @@ std::vector<std::array<size_t, 3>> CreateFreeSurfaceTriangles(size_t eta_size) {
 }
 #include <iomanip>
 
-
 void WriteFreeSurfaceMeshObj(const std::vector<std::array<double, 3>>& points,
                              const std::vector<std::array<size_t, 3>>& triangles,
                              const std::string& file_name) {
@@ -462,82 +450,6 @@ void WriteFreeSurfaceMeshObj(const std::vector<std::array<double, 3>>& points,
 
     out.close();
 }
-//
-// void HydroInputs::CreateFreeSurfaceElevation() {
-//    // Create a time index vector
-//    UpdateNumTimesteps();
-//    std::vector<double> time_index = Linspace(0, simulation_duration, num_timesteps);
-//
-//    // Calculate the surface elevation
-//    eta = FreeSurfaceElevation(spectrum_frequencies, spectral_densities, time_index);
-//
-//    // Apply ramp if ramp_duration is greater than 0
-//    if (ramp_duration > 0.0) {
-//        UpdateRampTimesteps();
-//        ramp_timesteps = static_cast<int>(ramp_duration / simulation_dt) + 1;
-//        ramp           = Linspace(0.0, 1.0, ramp_timesteps);
-//
-//        for (size_t i = 0; i < ramp.size(); ++i) {
-//            eta[i] *= ramp[i];
-//        }
-//    }
-//
-//    // Open a file stream for writing
-//    std::ofstream eta_output("eta.txt");
-//    // Check if the file stream is open
-//    if (eta_output.is_open()) {
-//        // Write the spectral densities and their corresponding frequencies to the file
-//        for (size_t i = 0; i < eta.size(); ++i) {
-//            eta_output << time_index[i] << " : " << eta[i] << std::endl;
-//        }
-//        // Close the file stream
-//        eta_output.close();
-//    } else {
-//        std::cerr << "Unable to open file for writing." << std::endl;
-//    }
-//
-//    std::vector<std::array<double, 3>> free_surface_3d_pts    = CreateFreeSurface3DPts(eta, time_index);
-//    std::vector<std::array<size_t, 3>> free_surface_triangles = CreateFreeSurfaceTriangles(time_index.size());
-//
-//    WriteFreeSurfaceMeshObj(free_surface_3d_pts, free_surface_triangles, "fse_mesh.obj");
-//}
-
-//
-// void WriteFreeSurfaceMeshNemoh(const std::vector<std::array<double, 3>>& points,
-//                               const std::vector<std::array<size_t, 3>>& triangles,
-//                               const std::string& file_name) {
-//    std::ofstream out(file_name);
-//    if (!out) {
-//        std::cerr << "Failed to open " << file_name << std::endl;
-//        return;
-//    }
-//
-//    out << "2 0" << std::endl;
-//    out << std::fixed << std::setprecision(6);
-//
-//    // Write surface points
-//    for (size_t i = 0; i < points.size(); ++i) {
-//        out << i + 1 << ' ';
-//        out << std::setw(14) << points[i][0] << ' ';
-//        out << std::setw(14) << points[i][1] << ' ';
-//        out << std::setw(14) << points[i][2] << std::endl;
-//    }
-//
-//    out << "0 0 0 0 0" << std::endl;
-//
-//    // Write surface triangles (repeat point to 'fake' quad)
-//    for (const auto& triangle : triangles) {
-//        out << std::setw(9) << triangle[0] + 1;
-//        out << std::setw(9) << triangle[1] + 1;
-//        out << std::setw(9) << triangle[2] + 1;
-//        out << std::setw(9) << triangle[0] + 1 << std::endl;
-//    }
-//
-//    out << "0 0 0 0" << std::endl;
-//
-//    out.close();
-//}
-//
 
 //std::string IrregularWave::GetMeshFile() {
 //    return mesh_file_name;

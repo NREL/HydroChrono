@@ -1,17 +1,14 @@
+/*********************************************************************
+ * @file  chloadaddedmass.h
+ *
+ * @brief header file for added mass chload class.
+ *********************************************************************/
 #include <hydroc/chloadaddedmass.h>
 
 #include <utility>
 
 #include "chrono/physics/ChBody.h"
 
-// =============================================================================
-// ChLoadAddedMass Class Definitions
-// =============================================================================
-
-/*******************************************************************************
- * ChLoadAddedMass constructor
- * initializes body to have load applied to and added mass matrix from h5 file object
- *******************************************************************************/
 ChLoadAddedMass::ChLoadAddedMass(const std::vector<HydroData::BodyInfo>& user_h5_body_data,
                                  std::vector<std::shared_ptr<ChLoadable>>& bodies,
                                  ChSystem* system)
@@ -27,11 +24,6 @@ ChLoadAddedMass::ChLoadAddedMass(const std::vector<HydroData::BodyInfo>& user_h5
     infinite_added_mass_system = infinite_added_mass;
 }
 
-/*******************************************************************************
- * ChLoadAddedMass::ComputeJacobian()
- * Computes Jacobian for load, in this case just the mass matrix is initialized
- * as the added mass matrix
- *******************************************************************************/
 void ChLoadAddedMass::ComputeJacobian(ChState* state_x,       ///< state position to evaluate jacobians
                                       ChStateDelta* state_w,  ///< state speed to evaluate jacobians
                                       ChMatrixRef mK,         ///< result dQ/dx
@@ -63,11 +55,6 @@ void ChLoadAddedMass::ComputeJacobian(ChState* state_x,       ///< state positio
     jacobians->K.setZero();
 }
 
-/*******************************************************************************
- * ChLoadAddedMass::LoadIntLoadResidual_Mv()
- * Computes LoadIntLoadResidual_Mv for vector w, const c, and vector R
- * Note R here is vector, and is not R gyroscopic damping matrix from ComputeJacobian
- *******************************************************************************/
 void ChLoadAddedMass::LoadIntLoadResidual_Mv(ChVectorDynamic<>& R, const ChVectorDynamic<>& w, const double c) {
     if (!this->jacobians) return;
 
