@@ -7,3 +7,8 @@ sandbox
 launch.json
 settings.json
 c_cpp_properties.json
+__pycache__
+*.pyc
+doc/user/_validation/demos/sphere_decay/plot_01.pdf
+doc/user/_validation/demos/sphere_decay/plot_01.png
+doc/user/_validation/demos/sphere_decay/plot_01.hires.png

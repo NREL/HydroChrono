@@ -1,0 +1,5 @@
+Name, Symbol, Value, Units
+Temperature, |PROP_TEMP|, 298.15, |UNIT_TEMP|
+Water Density, :math:`\rho_{water}`, :math:`10^{3}`, :math:`\rm kg.m^{-3}`
+Gravity, :math:`g`, :math:`9.81`, :math:`\rm m.s^{-2}`
+Water depth, :math:`L_w`, infinite, |UNIT_LENGTH|

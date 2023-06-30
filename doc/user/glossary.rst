@@ -14,6 +14,6 @@ Glossary
     Controller : fowt
         Controller
 
-    Prandtl : fowt
+    TipLosses
         Approximation for tip losses
         `wiki Prandtl <https://onlinelibrary.wiley.com/doi/epdf/10.1002/we.153>`_
