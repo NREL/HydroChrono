@@ -33,7 +33,7 @@ Physical parameters
 
 To complete ....
 
-Center of Buoyancy, center of gravity, volum displacement, ....
+Center of Buoyancy, center of gravity, volume displacement, ....
 
 .. _tab-sd01:
 
@@ -68,7 +68,7 @@ The analytical solution for decay ...
 blabla
 
 
-.. .. plot:: _validation/demos/sphere_decay/plot_01.py
+.. plot:: _validation/demos/sphere_decay/plot_01.py
 
 
 .. _ref-SPH_Decay:
