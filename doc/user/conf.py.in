@@ -13,6 +13,7 @@
 import os
 import sys
 
+sys.path.append(os.path.abspath("@CMAKE_CURRENT_SOURCE_DIR@/_ext"))
 
 # -- Project information -----------------------------------------------------
 project = '@PROJECT_NAME@'
@@ -29,11 +30,11 @@ release = '@PROJECT_VERSION@'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    'hydrochrono_h5',
     #'matplotlib.sphinxext.mathmpl.math_directive',
     'matplotlib.sphinxext.mathmpl',
     'matplotlib.sphinxext.plot_directive',
     #'matplotlib.sphinxext.only_directives',
-    #'matplotlib.sphinxext.plot_directive',
     'sphinx.ext.mathjax',
     'sphinx.ext.todo',
     'sphinx.ext.intersphinx',
