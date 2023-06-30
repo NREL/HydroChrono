@@ -18,6 +18,7 @@ Table of Contents
    :caption: Contents
 
    _user/user
+   _validation/validation
 
 .. toctree::
    :maxdepth: 1

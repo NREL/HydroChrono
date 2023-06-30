@@ -82,4 +82,6 @@ rst_prolog = r"""
 
 .. |UNIT_TEMP| replace:: K
 
+.. |PROP_TEMP| replace:: :math:`T`
+
 """
