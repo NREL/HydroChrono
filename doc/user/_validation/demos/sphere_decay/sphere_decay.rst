@@ -56,7 +56,6 @@ Numerical parameters
 
 The simulation final time was set to :math:`t_f = 10` s.
 
-
 ..  :download:`Input files <input_files.zip>`
 
 Results

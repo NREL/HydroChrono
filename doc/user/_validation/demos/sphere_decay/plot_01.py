@@ -11,6 +11,7 @@ except ImportError:
 
 if isImported:
 
+    #df1 = pandas.read_csv('user/_validation/demos/results/sphere_decay_comparison.txt', sep='\s+', header=None)
     df1 = pandas.read_csv('results/sphere_decay_comparison.txt', sep='\s+', header=None)
 
     # assert df1.ndim == 2
