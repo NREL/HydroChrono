@@ -41,7 +41,7 @@ if __name__ == '__main__':
     n2 = np.linalg.norm(yd, np.inf)
     
     # Very specific to sphere_decay
-    if (n1 > 1e-4 or n2 > 0.024): sys.exit(1)  # error
+    if (n1 > 1e-4 or n2 > 0.02): sys.exit(1)  # error
 
 
     #plt.plot(x, y1, '+')
