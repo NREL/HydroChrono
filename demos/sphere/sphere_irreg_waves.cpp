@@ -141,11 +141,11 @@ int main(int argc, char* argv[]) {
 
     auto my_hydro_inputs = std::make_shared<IrregularWave>();
     //my_hydro_inputs->mode                   = WaveMode::irregular;                     // uses regular wave mode
-    my_hydro_inputs->wave_height            = 2.0;
-    my_hydro_inputs->wave_period            = 12.0;
-    my_hydro_inputs->simulation_duration    = simulationDuration;
-    my_hydro_inputs->simulation_dt          = timestep;
-    my_hydro_inputs->ramp_duration          = 60.0;
+    my_hydro_inputs->wave_height_            = 2.0;
+    my_hydro_inputs->wave_period_            = 12.0;
+    my_hydro_inputs->simulation_duration_    = simulationDuration;
+    my_hydro_inputs->simulation_dt_          = timestep;
+    my_hydro_inputs->ramp_duration_          = 60.0;
     //my_hydro_inputs->ramp_duration = 0.0;
     //my_hydro_inputs->SetSpectrumFrequencies(0.001, 1.0, 1000);
     //TODO add option for PiersonMoskowitzSpectrumHz or other spectrum, have a default, do PM for now
