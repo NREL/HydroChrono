@@ -5,6 +5,7 @@
  *********************************************************************/
 #include <hydroc/wave_types.h>
 #include <unsupported/Eigen/Splines>
+#include <hydroc/helper.h>
 
 Eigen::VectorXd NoWave::GetForceAtTime(double t) {
     unsigned int dof = num_bodies * 6;

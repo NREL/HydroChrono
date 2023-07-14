@@ -67,7 +67,7 @@ int main(int argc, char* argv[]) {
     for (int reg_wave_num = 1; reg_wave_num <= reg_wave_num_max; ++reg_wave_num) {
         GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
-        if (hydroc::setInitialEnvironment(argc, argv) != 0) {
+        if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
             return 1;
         }
 

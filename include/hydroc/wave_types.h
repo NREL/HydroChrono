@@ -1,3 +1,6 @@
+
+#ifndef WAVE_TYPES_H
+#define WAVE_TYPES_H
 /*********************************************************************
  * @file wave_types.h
  *
@@ -6,11 +9,6 @@
 #pragma once
 #include <hydroc/h5fileinfo.h>
 #include <Eigen/Dense>
-
-// TODO does M_PI need to be here?
-#ifndef M_PI
-    #define M_PI 3.14159265358979323846
-#endif
 
 // todo move this helper function somewhere else?
 Eigen::VectorXd PiersonMoskowitzSpectrumHz(Eigen::VectorXd& f, double Hs, double Tp);
@@ -396,3 +394,5 @@ std::vector<std::array<size_t, 3>> CreateFreeSurfaceTriangles(size_t eta_size);
  * @return vector of tuples representing vertices for mesh
  */
 std::vector<std::array<double, 3>> CreateFreeSurface3DPts(const Eigen::VectorXd& eta, const Eigen::VectorXd& t_vec);
+
+#endif

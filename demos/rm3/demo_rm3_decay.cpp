@@ -20,7 +20,7 @@ using namespace chrono::geometry;
 int main(int argc, char* argv[]) {
     GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
-    if (hydroc::setInitialEnvironment(argc, argv) != 0) {
+    if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
         return 1;
     }
 
