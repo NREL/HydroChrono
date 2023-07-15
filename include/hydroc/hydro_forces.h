@@ -1,3 +1,6 @@
+#ifndef HYDRO_FORCES_H
+#define HYDRO_FORCES_H
+
 /*********************************************************************
  * @file  hydro_forces.h
  *
@@ -75,8 +78,8 @@ class ComponentFunc : public ChFunction {
     virtual double Get_y(double x) const override;
 
   private:
-    ForceFunc6d* base;  // pointer to full 6d force on the body
-    int index;          // which force degree of freedom this object represents on the body
+    ForceFunc6d* base_;  // pointer to full 6d force on the body
+    int index_;          // which force degree of freedom this object represents on the body
 };
 
 // =============================================================================
@@ -116,7 +119,7 @@ class ForceFunc6d {
      *
      * @return value of force in i-th degree of freedom for the body this force is applied to
      */
-    double coordinateFunc(int i);
+    double CoordinateFunc(int i);
 
   private:
     /**
@@ -142,13 +145,13 @@ class ForceFunc6d {
      */
     void ApplyForceAndTorqueToBody();
 
-    std::shared_ptr<ChBody> body;  // pointer to body this 6d force is being applied to
-    int b_num;                     // 1 indexed number representing which body in system TODO: make 0 indexed
-    ComponentFunc forces[6];
-    std::shared_ptr<ComponentFunc> force_ptrs[6];
-    std::shared_ptr<ChForce> chrono_force;
-    std::shared_ptr<ChForce> chrono_torque;
-    TestHydro* all_hydro_forces;  // pointer up to TestHydro object so coordinateFunc() knows where to go for calcs
+    std::shared_ptr<ChBody> body_;  // pointer to body this 6d force is being applied to
+    int b_num_;                     // 1 indexed number representing which body in system TODO: make 0 indexed
+    ComponentFunc forces_[6];
+    std::shared_ptr<ComponentFunc> force_ptrs_[6];
+    std::shared_ptr<ChForce> chrono_force_;
+    std::shared_ptr<ChForce> chrono_torque_;
+    TestHydro* all_hydro_forces_;  // pointer up to TestHydro object so coordinateFunc() knows where to go for calcs
 };
 
 class ChLoadAddedMass;
@@ -261,29 +264,26 @@ class TestHydro {
      *
      * @return component of force vector for body b (1 indexed) and degree of freedom i
      */
-    double coordinateFunc(int b, int i);
+    double CoordinateFuncForBody(int b, int i);
 
-    bool convTrapz;         // currently unused, see ComputeForceRadiationDampingConv()
-    Eigen::VectorXd t_irf;  // TODO is this used in this class? if not, remove this variable
-
+    bool convTrapz_;         // currently unused, see ComputeForceRadiationDampingConv()
   private:
-    std::vector<std::shared_ptr<ChBody>> bodies;
-    int num_bodies;
-    HydroData file_info;
-    std::vector<ForceFunc6d> force_per_body;  // vector of ForceFunc6d on each body
-    double sumVelHistoryAndRIRF;              // TODO what is this variable? is it used?
-    std::shared_ptr<WaveBase> user_waves;     // applied wave object on bodies
+    std::vector<std::shared_ptr<ChBody>> bodies_;
+    int num_bodies_;
+    HydroData file_info_;
+    std::vector<ForceFunc6d> force_per_body_;  // vector of ForceFunc6d on each body
+    std::shared_ptr<WaveBase> user_waves_;     // applied wave object on bodies
     std::vector<double>
-        force_hydrostatic;  // TODO do these need to be class level vectors, or can they me moved to compute functions?
-    std::vector<double> force_radiation_damping;  // TODO do these need to be class level vectors, or can they me moved
+        force_hydrostatic_;  // TODO do these need to be class level vectors, or can they me moved to compute functions?
+    std::vector<double> force_radiation_damping_;  // TODO do these need to be class level vectors, or can they me moved
                                                   // to compute functions?
     Eigen::VectorXd
-        force_waves;  // TODO do these need to be class level vectors, or can they me moved to compute functions?
-    std::vector<double> total_force;  // needs to be class level to save force each timestep (only calcs forces once,
+        force_waves_;  // TODO do these need to be class level vectors, or can they me moved to compute functions?
+    std::vector<double> total_force_;  // needs to be class level to save force each timestep (only calcs forces once,
                                       // then pulls from here)
-    std::vector<double> equilibrium;
-    std::vector<double> cb_minus_cg;
-    double rirf_timestep;
+    std::vector<double> equilibrium_;
+    std::vector<double> cb_minus_cg_;
+    double rirf_timestep_;
 
     /**
      * @brief finds and returns the component of velocity history for given step and dof.
@@ -296,7 +296,7 @@ class TestHydro {
      *
      * @return velocity history for specified degree of freedom, body, and step (dof and b both specified in c)
      */
-    double getVelHistoryVal(int step, int c) const;
+    double GetVelHistoryVal(int step, int c) const;
 
     /**
      * @brief sets velocity history for step, b_num (body number) and index (dof) to the given val.
@@ -308,7 +308,7 @@ class TestHydro {
      * @param b_num [1,2,...,total_bodies] (1 indexed!!!, use body number in h5 file) TODO make 0 indexed
      * @param index [0,1,2,3,4,5] (0 indexed, always 0-5 for force+torque vector indexing)
      */
-    double setVelHistory(double val, int step, int b_num, int index);
+    double SetVelHistory(double val, int step, int b_num, int index);
 
     // double freq_index_des;
     // int freq_index_floor;
@@ -320,3 +320,5 @@ class TestHydro {
     std::shared_ptr<ChLoadContainer> my_loadcontainer;    // stuff for added mass
     std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia;  // stuff for added mass
 };
+
+#endif

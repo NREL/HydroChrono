@@ -20,7 +20,7 @@ using namespace chrono::geometry;
 int main(int argc, char* argv[]) {
     GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
-    if (hydroc::setInitialEnvironment(argc, argv) != 0) {
+    if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
         return 1;
     }
 
@@ -120,8 +120,8 @@ int main(int argc, char* argv[]) {
 
     // define wave parameters
     auto my_hydro_inputs                    = std::make_shared<RegularWave>();
-    my_hydro_inputs->regular_wave_amplitude = 1.0;
-    my_hydro_inputs->regular_wave_omega     = 2.10;
+    my_hydro_inputs->regular_wave_amplitude_ = 1.0;
+    my_hydro_inputs->regular_wave_omega_     = 2.10;
 
     // attach hydrodynamic forces to body
     std::vector<std::shared_ptr<ChBody>> bodies;

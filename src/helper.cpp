@@ -2,7 +2,6 @@
 
 #include <cstdlib>
 #include <filesystem>  // C++17
-#include <iostream>
 #include <memory>
 #include <vector>
 
@@ -10,7 +9,7 @@ using std::filesystem::path;
 
 static path DATADIR{};
 
-int hydroc::setInitialEnvironment(int argc, char* argv[]) noexcept {
+int hydroc::SetInitialEnvironment(int argc, char* argv[]) noexcept {
     const char* env_p = std::getenv("HYDROCHRONO_DATA_DIR");
 
     if (env_p == nullptr) {

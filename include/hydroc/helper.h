@@ -1,7 +1,17 @@
+#ifndef HELPER_H
+#define HELPER_H
+
 #pragma once
 
 #include <string>
+#include <iostream>
+#include <fstream>
+#include <Eigen/Dense> // Need for the container function
 
+
+#ifndef M_PI
+    #define M_PI 3.14159265358979323846
+#endif
 /**@brief Base namespace for HydroChrono library
  * 
 */
@@ -18,13 +28,81 @@ namespace hydroc {
  * @param argv arguments of main function 
  * @return 1 on error 0 else
 */
-int setInitialEnvironment(int argc, char* argv[]) noexcept;
+int SetInitialEnvironment(int argc, char* argv[]) noexcept;
 
 /**@brief Get base name of data directory
  * 
  * @return the string containing the path in standard format
 */
 std::string getDataDir() noexcept;
+template <typename T>
+void WriteDataToFile(const std::vector<T>& data, const std::string& filename){
+    std::ofstream outFile(filename);
+    if (outFile.is_open()) {
+        for (const auto& item : data) {
+            outFile << item << std::endl;
+        }
+        outFile.close();
+    } else {
+        std::cerr << "Unable to open the file for writing: " << filename << std::endl;
+    }
+};
 
+// TODO: move Misc writecontainer type functions to different file
+// TODO move WriteContainerToFile generic declaration to a .h file instead of .cpp
+/**
+ * @brief Prints contents of 1D Container data to given file.
+ *
+ * @param container the 1D array/vector to write to file
+ * @param file_name file to write container to
+ */
+template <typename Container>
+void WriteContainerToFile(const Container& container, const std::string& file_name);
+
+/**
+ * @brief Prints contents of std::vector<double> data to given file.
+ *
+ * @param container std::vector<double> to write to file
+ * @param file_name file to write container to
+ */
+template <>
+void inline WriteContainerToFile<std::vector<double>>(const std::vector<double>& container, const std::string& file_name) {
+    std::ofstream output_file(file_name);
+
+    if (!output_file) {
+        std::cerr << "Error: Unable to open the file: " << file_name << std::endl;
+        return;
+    }
+
+    for (const double value : container) {
+        output_file << value << std::endl;
+    }
+
+    output_file.close();
+};
+
+/**
+ * @brief Prints contents of Eigen::VectorXd data to given file.
+ *
+ * @param container Eigen::VectorXd to write to file
+ * @param file_name file to write container to
+ */
+template <>
+void inline WriteContainerToFile<Eigen::VectorXd>(const Eigen::VectorXd& container, const std::string& file_name) {
+    std::ofstream output_file(file_name);
+
+    if (!output_file) {
+        std::cerr << "Error: Unable to open the file: " << file_name << std::endl;
+        return;
+    }
+
+    for (int i = 0; i < container.size(); ++i) {
+        output_file << container[i] << std::endl;
+    }
+
+    output_file.close();
+};
 
 } // end namespace hydroc
+
+#endif

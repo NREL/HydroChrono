@@ -16,7 +16,7 @@ using std::filesystem::absolute;
 using std::filesystem::path;
 
 int main(int argc, char* argv[]) {
-    if (hydroc::setInitialEnvironment(argc, argv) != 0) {
+    if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
         return 1;
     }
 
@@ -41,7 +41,7 @@ int main(int argc, char* argv[]) {
         chrono_types::make_shared<chrono::ChBodyEasyMesh>(b2Meshfname,  // file name
                                                           density, evaluate_mass, create_visu_mesh, detect_collision);
 
-    HydroData infos = H5FileInfo(h5fname, 2).readH5Data();
+    HydroData infos = H5FileInfo(h5fname, 2).ReadH5Data();
 
     std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia;
 

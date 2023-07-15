@@ -7,30 +7,15 @@
 // TODO: this include statement list looks good
 #include <H5Cpp.h>
 #include <hydroc/h5fileinfo.h>
-
-#include <filesystem>  // TODO what is this part used for, does it need to be here? remove when write to file functions moved?
+#include <filesystem> // std::filesystem::absolute
 
 using namespace chrono;  // TODO narrow this using namespace to specify what we use from chrono or put chrono:: in front
                          // of it all?
 
-// TODO why is this also at top of hydro_force.cpp... these kinds of things should be moved
-// maybe add new files debugging.h/.cpp or output.h/.cpp or put in helper.h and helper.cpp
-template <typename T>
-void WriteDataToFile(const std::vector<T>& data, const std::string& filename) {
-    std::ofstream outFile(filename);
-    if (outFile.is_open()) {
-        for (const auto& item : data) {
-            outFile << item << std::endl;
-        }
-        outFile.close();
-    } else {
-        std::cerr << "Unable to open the file for writing: " << filename << std::endl;
-    }
-}
 
 H5FileInfo::H5FileInfo(std::string file, int num_bod) {
-    h5_file_name = file;
-    num_bodies   = num_bod;
+    h5_file_name_ = file;
+    num_bodies_   = num_bod;
     std::cout << "searching for file: " << file << std::endl;
     if (std::filesystem::exists(file)) {
         std::cout << "found file at: " << std::filesystem::absolute(file) << std::endl;
@@ -39,68 +24,68 @@ H5FileInfo::H5FileInfo(std::string file, int num_bod) {
     }
 }
 
-HydroData H5FileInfo::readH5Data() {
+HydroData H5FileInfo::ReadH5Data() {
     // open file with read only access
-    H5::H5File userH5File(h5_file_name, H5F_ACC_RDONLY);
+    H5::H5File userH5File(h5_file_name_, H5F_ACC_RDONLY);
     HydroData data_to_init;
-    data_to_init.resize(num_bodies);
+    data_to_init.resize(num_bodies_);
 
     // simparams first
-    InitScalar(userH5File, "simulation_parameters/rho", data_to_init.sim_data.rho);
-    InitScalar(userH5File, "simulation_parameters/g", data_to_init.sim_data.g);
-    InitScalar(userH5File, "simulation_parameters/water_depth", data_to_init.sim_data.water_depth);
-    double rho = data_to_init.sim_data.rho;
-    double g   = data_to_init.sim_data.g;
+    InitScalar(userH5File, "simulation_parameters/rho", data_to_init.sim_data_.rho);
+    InitScalar(userH5File, "simulation_parameters/g", data_to_init.sim_data_.g);
+    InitScalar(userH5File, "simulation_parameters/water_depth", data_to_init.sim_data_.water_depth);
+    double rho = data_to_init.sim_data_.rho;
+    double g   = data_to_init.sim_data_.g;
 
     // for each body things
-    for (int i = 0; i < num_bodies; i++) {
+    for (int i = 0; i < num_bodies_; i++) {
         // body data
-        data_to_init.body_data[i].body_name = "body" + std::to_string(i + 1);
-        std::string bodyName                = data_to_init.body_data[i].body_name;  // shortcut for reading later
-        data_to_init.body_data[i].body_num  = i;
+        data_to_init.body_data_[i].body_name = "body" + std::to_string(i + 1);
+        std::string bodyName                = data_to_init.body_data_[i].body_name;  // shortcut for reading later
+        data_to_init.body_data_[i].body_num  = i;
 
-        InitScalar(userH5File, bodyName + "/properties/disp_vol", data_to_init.body_data[i].disp_vol);
+        InitScalar(userH5File, bodyName + "/properties/disp_vol", data_to_init.body_data_[i].disp_vol);
         Init1D(userH5File, bodyName + "/hydro_coeffs/radiation_damping/impulse_response_fun/t",
-               data_to_init.body_data[i].rirf_time_vector);
+               data_to_init.body_data_[i].rirf_time_vector);
 
         // do not need rirf_timestep?
-        data_to_init.body_data[i].rirf_timestep =
-            data_to_init.body_data[i].rirf_time_vector[1] - data_to_init.body_data[i].rirf_time_vector[0];
+        data_to_init.body_data_[i].rirf_timestep =
+            data_to_init.body_data_[i].rirf_time_vector[1] - data_to_init.body_data_[i].rirf_time_vector[0];
 
-        Init1D(userH5File, bodyName + "/properties/cg", data_to_init.body_data[i].cg);
-        Init1D(userH5File, bodyName + "/properties/cb", data_to_init.body_data[i].cb);
-        Init2D(userH5File, bodyName + "/hydro_coeffs/linear_restoring_stiffness", data_to_init.body_data[i].lin_matrix);
-        Init2D(userH5File, bodyName + "/hydro_coeffs/added_mass/inf_freq", data_to_init.body_data[i].inf_added_mass);
-        data_to_init.body_data[i].inf_added_mass *= rho;
+        Init1D(userH5File, bodyName + "/properties/cg", data_to_init.body_data_[i].cg);
+        Init1D(userH5File, bodyName + "/properties/cb", data_to_init.body_data_[i].cb);
+        Init2D(userH5File, bodyName + "/hydro_coeffs/linear_restoring_stiffness", data_to_init.body_data_[i].lin_matrix);
+        Init2D(userH5File, bodyName + "/hydro_coeffs/added_mass/inf_freq", data_to_init.body_data_[i].inf_added_mass);
+        data_to_init.body_data_[i].inf_added_mass *= rho;
         Init3D(userH5File, bodyName + "/hydro_coeffs/radiation_damping/impulse_response_fun/K",
-               data_to_init.body_data[i].rirf_matrix);
+               data_to_init.body_data_[i].rirf_matrix);
         // Init3D(userH5File, bodyName + "/hydro_coeffs/radiation_damping/all",
         //       data_to_init.body_data[i].radiation_damping_matrix);
 
         // reg wave
-        Init1D(userH5File, "simulation_parameters/w", data_to_init.reg_wave_data[i].freq_list);
+        Init1D(userH5File, "simulation_parameters/w", data_to_init.reg_wave_data_[i].freq_list);
         Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/mag",
-               data_to_init.reg_wave_data[i].excitation_mag_matrix);
+               data_to_init.reg_wave_data_[i].excitation_mag_matrix);
 
         // scale by rho * g
-        data_to_init.reg_wave_data[i].excitation_mag_matrix =
-            data_to_init.reg_wave_data[i].excitation_mag_matrix *
-            data_to_init.reg_wave_data[i].excitation_mag_matrix.constant(rho * g);
+        data_to_init.reg_wave_data_[i].excitation_mag_matrix =
+            data_to_init.reg_wave_data_[i].excitation_mag_matrix *
+            data_to_init.reg_wave_data_[i].excitation_mag_matrix.constant(rho * g);
         Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/phase",
-               data_to_init.reg_wave_data[i]
+               data_to_init.reg_wave_data_[i]
                    .excitation_phase_matrix);  // TODO does this also need to be scaled by rho * g?
 
         // irreg wave
         // Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/re", excitation_re_matrix, re_dims);
         // Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/im", excitation_im_matrix, im_dims);
         Init1D(userH5File, bodyName + "/hydro_coeffs/excitation/impulse_response_fun/t",
-               data_to_init.irreg_wave_data[i].excitation_irf_time);
+               data_to_init.irreg_wave_data_[i].excitation_irf_time);
         // TODO change this to a temp tensor and manip it into a 2d matrix for ecitation_irf_matrix?
         // TODO look up Eigen resize and map to make this temp conversion better
         Eigen::Tensor<double, 3> temp;
         Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/impulse_response_fun/f", temp);
-        data_to_init.irreg_wave_data[i].excitation_irf_matrix = squeeze_mid(temp);
-        data_to_init.irreg_wave_data[i].excitation_irf_matrix *= rho * g;
+        data_to_init.irreg_wave_data_[i].excitation_irf_matrix = SqueezeMid(temp);
+        data_to_init.irreg_wave_data_[i].excitation_irf_matrix *= rho * g;
     }
 
     userH5File.close();
@@ -110,7 +95,7 @@ HydroData H5FileInfo::readH5Data() {
 }
 
 // squeezes the middle dimension of 1 out
-Eigen::MatrixXd H5FileInfo::squeeze_mid(Eigen::Tensor<double, 3> to_be_squeezed) {
+Eigen::MatrixXd H5FileInfo::SqueezeMid(Eigen::Tensor<double, 3>& to_be_squeezed) {
     assert(to_be_squeezed.dimension(1));
     int dof  = to_be_squeezed.dimension(0);
     int size = to_be_squeezed.dimension(2);
@@ -231,31 +216,31 @@ H5FileInfo::~H5FileInfo() {}
 
 // TODO check order of function definitions here matches order in .h file
 void HydroData::resize(int num_bodies) {
-    body_data.resize(num_bodies);
-    reg_wave_data.resize(num_bodies);
-    irreg_wave_data.resize(num_bodies);
+    body_data_.resize(num_bodies);
+    reg_wave_data_.resize(num_bodies);
+    irreg_wave_data_.resize(num_bodies);
 }
 
 Eigen::MatrixXd HydroData::GetInfAddedMassMatrix(int b) const {
-    return body_data[b].inf_added_mass;
+    return body_data_[b].inf_added_mass;
 }
 
 double HydroData::GetHydrostaticStiffnessVal(int b, int i, int j) const {
-    return body_data[b].lin_matrix(i, j) * sim_data.rho * sim_data.g;
+    return body_data_[b].lin_matrix(i, j) * sim_data_.rho * sim_data_.g;
 }
 
 Eigen::MatrixXd HydroData::GetLinMatrix(int b) const {
-    return body_data[b].lin_matrix;
+    return body_data_[b].lin_matrix;
 }
 
 double HydroData::GetRIRFVal(int b, int dof, int col, int s) const {
-    return body_data[b].rirf_matrix(dof, col, s) * sim_data.rho;  // scale radiation force by rho
+    return body_data_[b].rirf_matrix(dof, col, s) * sim_data_.rho;  // scale radiation force by rho
 }
 
 int HydroData::GetRIRFDims(int i) const {
-    return body_data[0].rirf_matrix.dimension(i);
+    return body_data_[0].rirf_matrix.dimension(i);
 }
 
 Eigen::VectorXd HydroData::GetRIRFTimeVector() const {
-    return body_data[0].rirf_time_vector;
+    return body_data_[0].rirf_time_vector;
 }
