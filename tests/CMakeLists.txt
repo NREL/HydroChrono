@@ -74,7 +74,7 @@ if(TARGET demo_sphere_decay)
         set(FILE_REF ${HYDROCHRONO_DATA_DIR}/sphere/postprocessing/sphere_decay_comparison.txt)
 
         add_test(NAME demo_sphere_decay_ref
-                COMMAND ${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/compare.py ${FILE_REF} ${FILE_RST}
+                COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/../demos/sphere/compare.py ${FILE_REF} ${FILE_RST}
         )
 
         set_tests_properties(
@@ -123,8 +123,25 @@ if(TARGET demo_rm3_decay)
                 demo_rm3_decay_01
                 PROPERTIES LABELS "demos;medium;core"
         )
+
+        set(FILE_RST ${CMAKE_CURRENT_BINARY_DIR}/results/rm3_decay.txt)
+        set(FILE_REF ${HYDROCHRONO_DATA_DIR}/rm3/postprocessing/rm3_WECSim_decay.txt)
+
+        add_test(NAME demo_rm3_decay_ref
+                COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/../demos/rm3/compare.py ${FILE_REF} ${FILE_RST}
+        )
+
+        set_tests_properties(
+                demo_rm3_decay_ref
+                PROPERTIES 
+                LABELS "demos;ref"
+                DEPENDS demo_rm3_decay_01
+                REQUIRED_FILES ${FILE_RST} 
+                FIXTURES_REQUIRED demo_rm3_decay_01_file
+        )
 endif() 
 
+# TODO Add comparison
 if(TARGET demo_rm3_reg_waves)
         add_test (
                 NAME demo_rm3_reg_waves_01
