@@ -163,8 +163,25 @@ if(TARGET demo_oswec_decay)
                 demo_oswec_decay_01
                 PROPERTIES LABELS "demos;medium;core"
         )
+
+        set(FILE_RST ${CMAKE_CURRENT_BINARY_DIR}/results/oswec_decay.txt)
+        set(FILE_REF ${HYDROCHRONO_DATA_DIR}/oswec/postprocessing/wecsim_oswec_decay.txt)
+
+        add_test(NAME demo_oswec_decay_ref
+                COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/../demos/oswec/compare.py ${FILE_REF} ${FILE_RST}
+        )
+
+        set_tests_properties(
+                demo_oswec_decay_ref
+                PROPERTIES 
+                LABELS "demos;ref"
+                DEPENDS demo_oswec_decay_01
+                REQUIRED_FILES ${FILE_RST} 
+                FIXTURES_REQUIRED demo_rm3_decay_01_file
+        )
 endif() 
 
+# This demo seems to be writting to oswec_decay again -> is this correct? Needs to be clarified before adding the test
 if(TARGET demo_oswec_reg_waves)
         add_test (
                 NAME demo_oswec_reg_waves_01
@@ -176,6 +193,7 @@ if(TARGET demo_oswec_reg_waves)
         )
 endif() 
 
+# Unclear what surge to use and thus not added
 # DEMO DeepCWind
 if(TARGET demo_DeepCWind_decay)
         add_test (
@@ -188,6 +206,7 @@ if(TARGET demo_DeepCWind_decay)
         )
 endif() 
 
+#Again not very clear what reference data to use
 # DEMO F3OF
 if(TARGET demo_f3of_DT1)
         add_test (
