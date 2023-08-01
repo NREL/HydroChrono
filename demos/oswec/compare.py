@@ -37,9 +37,9 @@ if __name__ == '__main__':
     flapPitchComp = flapPitchRef - flapPitchTest
 
 
-    #Forbnius norm - Float Heave
+    #Forbnius norm - Flap pitch
     flapPitchn1 = np.linalg.norm(flapPitchComp)/nval
-    #infinity norm - Float Heave
+    #infinity norm - Flap pitch
     flapPitchn2 = np.linalg.norm(flapPitchComp, np.inf)
 
     
