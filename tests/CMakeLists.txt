@@ -54,7 +54,7 @@ endif(TARGET chrono_error_t01)
 
 
 # TODO : ensure previous result test file is removed  before comparing results
-# The fixture dependency is not sufficient. It forces relaunche of the case but 
+# The fixture dependency is not sufficient. It forces relaunch of the case but 
 # in case of failure the previous file is still there for comparison ! 
 if(TARGET demo_sphere_decay)
 
@@ -98,7 +98,9 @@ if(TARGET demo_sphere_reg_waves)
         )
         set_tests_properties(
                 demo_sphere_reg_waves_01
-                PROPERTIES LABELS "demos;long;core"
+                PROPERTIES 
+                LABELS "demos;long;core"
+                FIXTURES_SETUP  demo_sphere_reg_waves_01_file
         )
         # Define the range of file numbers we want to iterate over
         set(FILE_RANGE_START 1)
@@ -118,7 +120,7 @@ if(TARGET demo_sphere_reg_waves)
                 LABELS "demos;ref"
                 DEPENDS demo_reg_waves_01
                 REQUIRED_FILES ${FILE_RST} 
-                FIXTURES_REQUIRED demo_reg_waves_01_file
+                FIXTURES_REQUIRED demo_sphere_reg_waves_01_file
         )
         endforeach()
 
@@ -146,7 +148,9 @@ if(TARGET demo_rm3_decay)
         )
         set_tests_properties(
                 demo_rm3_decay_01
-                PROPERTIES LABELS "demos;medium;core"
+                PROPERTIES 
+                LABELS "demos;medium;core"
+                FIXTURES_SETUP demo_rm3_decay_01_file
         )
 
         set(FILE_RST ${CMAKE_CURRENT_BINARY_DIR}/results/rm3_decay.txt)
@@ -186,7 +190,9 @@ if(TARGET demo_oswec_decay)
         )
         set_tests_properties(
                 demo_oswec_decay_01
-                PROPERTIES LABELS "demos;medium;core"
+                PROPERTIES 
+                LABELS "demos;medium;core"
+                FIXTURES_SETUP demo_oswec_decay_01_file
         )
 
         set(FILE_RST ${CMAKE_CURRENT_BINARY_DIR}/results/oswec_decay.txt)
@@ -202,7 +208,7 @@ if(TARGET demo_oswec_decay)
                 LABELS "demos;ref"
                 DEPENDS demo_oswec_decay_01
                 REQUIRED_FILES ${FILE_RST} 
-                FIXTURES_REQUIRED demo_rm3_decay_01_file
+                FIXTURES_REQUIRED demo_oswec_decay_01_file
         )
 endif() 
 
@@ -265,7 +271,9 @@ if(TARGET demo_f3of_DT3)
         )
         set_tests_properties(
                 demo_F3OF_DT3_01
-                PROPERTIES LABELS "demos;long;core"
+                PROPERTIES 
+                LABELS "demos;long;core"
+                FIXTURES_SETUP demo_F3OF_DT3_01_file
         )
 
         set(FILE_RST ${CMAKE_CURRENT_BINARY_DIR}/results/CHRONO_F3OF_DT3_PITCH.txt)
