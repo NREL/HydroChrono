@@ -49,11 +49,17 @@
 
 ## Tests
 
-If `HYDROCHRONO_ENABLE_TESTS` is enabled during configuration (need python) you can launch every tests in the build directory with the command:
+If `HYDROCHRONO_ENABLE_TESTS` is enabled during configuration (need python) you can launch every tests in the build directory with the command on Linux:
 
 	ctest .
 
-or for launch only a subset of the tests (demos, examples, small, medium, long):
+and on Windows:
+
+	ctest -C <config>
+
+Where <config> is the build configuration (i.e. "Debug", "Release", etc.)
+
+To launch only a subset of the tests (demos, examples, small, medium, long):
 
 	ctest -L demos -L medium
 
