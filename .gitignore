@@ -1,11 +1,25 @@
-.vs
-build
-data
-demos/F3OF/f3of
-sandbox
+# IDEs and Editors #
+.vs/
 .editorconfig
 launch.json
 settings.json
 c_cpp_properties.json
-__pycache__
+
+# Build artifacts and generated files #
+build/
+_build/
+.doctrees/
+_static/
+.sphinx-build/
+
+# Virtual Environments #
+sphinx_docs/
+
+# Python Files #
+__pycache__/
 *.pyc
+
+# Project-specific #
+data/
+demos/F3OF/f3of/
+sandbox/
