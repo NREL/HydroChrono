@@ -1,24 +1,83 @@
 .. HydroChrono documentation master file
 
-HydroChrono
-###########
+======================
+Welcome to HydroChrono
+======================
+
+.. image:: ./hydrochrono_logo.png
+   :align: center
+   :alt: HydroChrono Logo
 
 Introduction
-============
+------------
 
-Numerical simulation of Hydrodynamic bodies
+HydroChrono is purpose-built for the numerical simulation of hydrodynamic bodies, with a particular focus on offshore renewable energy systems. It integrates seamlessly with the Project Chrono physics engine, offering both users and developers powerful tools for simulating offshore systems. HydroChrono is capable of modeling multibody floating systems and with complete access to Chrono's capabilities, users can model intricate subsystems, and use the finite element method (FEM) and discrete element method (DEM) tools available in Chrono.
 
+.. image:: sphere_irreg.gif
+   :align: center
+   :width: 59%
+   :alt: A floating sphere simulated with HydroChrono.
 
+.. note::
+   **Development Notice:** HydroChrono is in early development, and users may encounter some issues. However, we are keenly interested in community contributions and collaborations!
 
-Table of Contents
-=================
+User Documentation
+------------------
+
+For users who are looking to build, install and run simulations with HydroChrono.
 
 .. toctree::
    :maxdepth: 1
-   :caption: Contents
+   :caption: User documentation:
 
-   _user/user
+   _getting_started/prerequisites
+   _getting_started/building_hydrochrono
+   _getting_started/workflow
+
+Theory Documentation
+--------------------
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Theory documentation:
+
+   _theory/theory
+
+Developer Documentation
+-----------------------
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Developer documentation:
+
+   _developer/build_the_docs
+   _developer/contribution_guidelines
+   _developer/source_code_overview
+
+Validation Results
+------------------
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Validation results:
+
    _validation/validation
+
+About
+-----
+
+.. toctree::
+   :maxdepth: 1
+   :caption: About:
+
+   _about/project_overview
+   _about/team
+   _about/acknowledgements
+   _about/contact
+   _about/faqs
+
+Annexes
+-------
 
 .. toctree::
    :maxdepth: 1
@@ -26,20 +85,7 @@ Table of Contents
 
    glossary
 
-
-
-.. .. hydrochrono_h5:: The one
-..    :widths: 25 25 50
-..    :h5-file: /home/maxime/Sources/External/HydroChrono/demos/sphere/hydroData/sphere.h5
-   
-
-
-
-.. .. hydrochrono_h5:: roudoudou
-
-
-
-Indices and tables
+Indices and Tables
 ------------------
 
 * :ref:`genindex`
@@ -47,6 +93,6 @@ Indices and tables
 * :ref:`search`
 
 TODO
-------
+----
 
 .. todolist::

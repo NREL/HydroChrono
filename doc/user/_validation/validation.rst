@@ -4,7 +4,7 @@ Validation cases
 
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: Demos:
 
    demos/sphere_decay/sphere_decay
