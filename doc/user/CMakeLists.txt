@@ -1,3 +1,5 @@
+set(SPHINX_EXECUTABLE ${CONDA_ENV_PATH}/Scripts/sphinx-build.exe)
+
 find_package(Sphinx REQUIRED)
 
 if(NOT Sphinx_FOUND)
