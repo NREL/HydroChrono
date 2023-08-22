@@ -9,7 +9,7 @@
 using std::filesystem::path;
 
 int main(int argc, char* argv[]) {
-    if (hydroc::setInitialEnvironment(argc, argv) != 0) {
+    if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
         return 1;
     }
 
@@ -17,7 +17,7 @@ int main(int argc, char* argv[]) {
 
     auto h5fname = (DATADIR / "rm3" / "hydroData" / "rm3.h5").lexically_normal().generic_string();
 
-    HydroData infos = H5FileInfo(h5fname, 2).readH5Data();
+    HydroData infos = H5FileInfo(h5fname, 2).ReadH5Data();
 
     auto rirf_time_vector = infos.GetRIRFTimeVector();
 

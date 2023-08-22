@@ -35,7 +35,7 @@ int main(int argc, char* argv[]) {
 
         GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
-        if (hydroc::setInitialEnvironment(argc, argv) != 0) {
+        if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
             return 1;
         }
 
@@ -124,8 +124,8 @@ int main(int argc, char* argv[]) {
         system.AddLink(spring_1);
 
         auto my_hydro_inputs                    = std::make_shared<RegularWave>(1);
-        my_hydro_inputs->regular_wave_amplitude = task10_wave_amps[reg_wave_num - 1];    // 0.095;
-        my_hydro_inputs->regular_wave_omega     = task10_wave_omegas[reg_wave_num - 1];  // 1.427996661;
+        my_hydro_inputs->regular_wave_amplitude_ = task10_wave_amps[reg_wave_num - 1];    // 0.095;
+        my_hydro_inputs->regular_wave_omega_     = task10_wave_omegas[reg_wave_num - 1];  // 1.427996661;
 
         std::vector<std::shared_ptr<ChBody>> bodies;
         bodies.push_back(sphereBody);
@@ -192,8 +192,8 @@ int main(int argc, char* argv[]) {
             outputFile.precision(10);
             outputFile.width(12);
             outputFile << "Wave #: \t" << reg_wave_num << "\n";
-            outputFile << "Wave amplitude (m): \t" << my_hydro_inputs->regular_wave_amplitude << "\n";
-            outputFile << "Wave omega (rad/s): \t" << my_hydro_inputs->regular_wave_omega << "\n";
+            outputFile << "Wave amplitude (m): \t" << my_hydro_inputs->regular_wave_amplitude_ << "\n";
+            outputFile << "Wave omega (rad/s): \t" << my_hydro_inputs->regular_wave_omega_ << "\n";
             outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(12)
                        << "Heave (m)"
                        //<< std::right << std::setw(18) << "Heave Vel (m/s)"

@@ -47,6 +47,20 @@
 		* Alternatively, set the command line argument for debug mode in a demo's properties. Do this in Visual Studio 2019 by navigating to the solution explorer, right clicking a demo, select `properties > Configuration Properties > Debugging` and set the option for Command Arguments to `C:\Users\USERNAME\HydroChrono\demos`.
 	* Optionally copy plot files into results files and generate plots.
 
+## Tests
+
+If `HYDROCHRONO_ENABLE_TESTS` is enabled during configuration (need python) you can launch every tests in the build directory with the command:
+
+	ctest .
+
+or for launch only a subset of the tests (demos, examples, small, medium, long):
+
+	ctest -L demos -L medium
+
+
+
+
+
 ## Files
 * src - contains source code for HydroChrono library
 	* hydro_forces.cpp

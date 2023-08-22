@@ -1,3 +1,5 @@
+#ifndef H5FILEINFO_H
+#define H5FILEINFO_H
 /*********************************************************************
  * @file  h5fileinfo.h
  *
@@ -71,15 +73,15 @@ class HydroData {
 
   private:
     // a vector of BodyInfo objects, one for each hydro body in system
-    std::vector<BodyInfo> body_data;
+    std::vector<BodyInfo> body_data_;
     // a variable for simulation parameters, assumed the same for each body, only  1 per system
-    SimulationParameters sim_data;
+    SimulationParameters sim_data_;
     // a vector of RegularWaveInfo, one for each hydro body in system
     // is empty if regular waves are not used
-    std::vector<RegularWaveInfo> reg_wave_data;
+    std::vector<RegularWaveInfo> reg_wave_data_;
     // a vector of IrregularWaveInfo, one for each hydro body in system
     // is empty if irregular waves are not used
-    std::vector<IrregularWaveInfo> irreg_wave_data;
+    std::vector<IrregularWaveInfo> irreg_wave_data_;
     friend H5FileInfo;
     void resize(int num_bodies);
     HydroData() = default;
@@ -138,7 +140,7 @@ class HydroData {
      *
      * @return displaced volume from h5file
      */
-    double GetDispVolVal(int b) const { return body_data[b].disp_vol; }
+    double GetDispVolVal(int b) const { return body_data_[b].disp_vol; }
 
     /**
      * @brief Get cg vector constant for a body.
@@ -147,7 +149,7 @@ class HydroData {
      *
      * @return cg vector from h5file
      */
-    Eigen::VectorXd GetCGVector(int b) const { return body_data[b].cg; }
+    Eigen::VectorXd GetCGVector(int b) const { return body_data_[b].cg; }
 
     /**
      * @brief Get cb vector constant for a body.
@@ -156,7 +158,7 @@ class HydroData {
      *
      * @return cb vector from h5file
      */
-    Eigen::VectorXd GetCBVector(int b) const { return body_data[b].cb; }
+    Eigen::VectorXd GetCBVector(int b) const { return body_data_[b].cb; }
 
     double GetExcitationIRFVal(int b, int dof, int s) const;  // TODO if this isn't used get rid of it
     Eigen::MatrixXd GetExcitationIRF(int b) const;            // TODO if this isn't used get rid of it
@@ -183,7 +185,7 @@ class HydroData {
      *
      * @return density rho
      */
-    double GetRhoVal() const { return sim_data.rho; }
+    double GetRhoVal() const { return sim_data_.rho; }
 
     // getters for individual chunks of data
     /**
@@ -193,7 +195,7 @@ class HydroData {
      *
      * @return vector containing BodyInfo classes info for each body in system with hydro forces on it
      */
-    std::vector<BodyInfo>& GetBodyInfos() { return body_data; }
+    std::vector<BodyInfo>& GetBodyInfos() { return body_data_; }
 
     /**
      * @brief Get chunk of data corresponding to the SimulationParameters struct in this class.
@@ -202,7 +204,7 @@ class HydroData {
      *
      * @return SimulationParameters info for the system
      */
-    SimulationParameters& GetSimulationInfo() { return sim_data; }
+    SimulationParameters& GetSimulationInfo() { return sim_data_; }
 
     /**
      * @brief Get chunk of data corresponding to the RegularWaveInfo struct in this class.
@@ -211,7 +213,7 @@ class HydroData {
      *
      * @return vector containing RegularWaveInfo classes info for each body in system with hydro forces on it
      */
-    std::vector<RegularWaveInfo>& GetRegularWaveInfos() { return reg_wave_data; }
+    std::vector<RegularWaveInfo>& GetRegularWaveInfos() { return reg_wave_data_; }
 
     /**
      * @brief Get chunk of data corresponding to the IrregularWaveInfo struct in this class.
@@ -220,7 +222,7 @@ class HydroData {
      *
      * @return vector containing IrregularWaveInfo classes info for each body in system with hydro forces on it
      */
-    std::vector<IrregularWaveInfo>& GetIrregularWaveInfos() { return irreg_wave_data; }
+    std::vector<IrregularWaveInfo>& GetIrregularWaveInfos() { return irreg_wave_data_; }
 };
 
 // TODO change name to LoadH5File or ReadH5File or H5Init or something similar to give better description of
@@ -250,16 +252,16 @@ class H5FileInfo {
     /**
      * @brief Creates HydroData object and populates it with info from h5 file.
      *
-     * h5_file_name needs to be set before readH5Date called (usually set in constructor).
+     * h5_file_name needs to be set before readH5Data called (usually set in constructor).
      * calls Initialize functions to read h5 file information into  member variables.]
      *
      * @return newly initialized HydroData object
      */
-    HydroData readH5Data();  // TODO: eventually pass user input struct here? instead of making it in function?
+    HydroData ReadH5Data();  // TODO: eventually pass user input struct here? instead of making it in function?
 
   private:
-    std::string h5_file_name;
-    int num_bodies;
+    std::string h5_file_name_;
+    int num_bodies_;
 
     /**
      * @brief helper function for readH5Data() to initialize any scalars.
@@ -309,5 +311,7 @@ class H5FileInfo {
      *
      * @return 2D matrix representing same data as to_be_squeezed, but in Eigen::Matrix, it is much easier to handle
      */
-    Eigen::MatrixXd squeeze_mid(Eigen::Tensor<double, 3> to_be_squeezed);
+    Eigen::MatrixXd SqueezeMid(Eigen::Tensor<double, 3>& to_be_squeezed);
 };
+
+#endif
