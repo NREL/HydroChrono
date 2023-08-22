@@ -18,6 +18,13 @@ set(SPHINX_INDEX_FILE ${SPHINX_BUILD}/index.html)
 
 configure_file(conf.py.in ${SPHINX_BUILD}/conf.py @ONLY)
 
+if(PYTHON_ENV_PATH AND WIN32)
+    set(SPHINX_EXECUTABLE "${PYTHON_ENV_PATH}/Scripts/sphinx-build.exe")
+elseif(PYTHON_ENV_PATH)
+    set(SPHINX_EXECUTABLE "${PYTHON_ENV_PATH}/bin/sphinx-build")
+endif()
+
+message(STATUS "Using Sphinx executable at: ${SPHINX_EXECUTABLE}")
 
 add_custom_command(OUTPUT ${SPHINX_INDEX_FILE}
 

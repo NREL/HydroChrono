@@ -50,7 +50,16 @@ option (HYDROCHRONO_ENABLE_DEMOS "Enable demo executables" ON)
 option (HYDROCHRONO_ENABLE_USER_DOC "User's documentation" OFF)
 option (HYDROCHRONO_ENABLE_PROG_DOC "Programmer's documentation" OFF)
 
-
+set(PYTHON_ENV_PATH "" CACHE PATH "Path to the desired Python environment (e.g., venv, conda, etc.)")
+if(PYTHON_ENV_PATH)
+    # Assuming the interpreter is in the 'bin' directory for Unix-like OSes
+    # and in the base directory for Windows. Adjust accordingly.
+    if(WIN32)
+        set(Python3_EXECUTABLE "${PYTHON_ENV_PATH}/python.exe")
+    else()
+        set(Python3_EXECUTABLE "${PYTHON_ENV_PATH}/bin/python")
+    endif()
+endif()
 
 # find required packages and libraries to make HydroChrono library
 set (LIB_TYPE STATIC) # or SHARED
