@@ -51,20 +51,6 @@ option (HYDROCHRONO_ENABLE_USER_DOC "User's documentation" OFF)
 option (HYDROCHRONO_ENABLE_PROG_DOC "Programmer's documentation" OFF)
 
 
-# If CONDA_ENV_PATH isn't already set, prompt the user to provide it
-if(NOT DEFINED CONDA_ENV_PATH)
-    message(STATUS "Please specify the path to the conda environment.")
-    set(CONDA_ENV_PATH "" CACHE PATH "Path to conda environment")
-endif()
-
-# Set the Python root directory to the conda environment
-set(Python3_ROOT_DIR ${CONDA_ENV_PATH})
-message(STATUS "Python3_ROOT_DIR is set to: ${Python3_ROOT_DIR}")
-
-# Find Python within that directory
-find_package(Python3 REQUIRED Interpreter)
-message(STATUS "Python3_EXECUTABLE is set to: ${Python3_EXECUTABLE}")
-
 
 # find required packages and libraries to make HydroChrono library
 set (LIB_TYPE STATIC) # or SHARED

@@ -1,4 +1,4 @@
-set(SPHINX_EXECUTABLE ${CONDA_ENV_PATH}/Scripts/sphinx-build.exe)
+find_package(Python3 REQUIRED Interpreter)
 
 find_package(Sphinx REQUIRED)
 
