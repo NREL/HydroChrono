@@ -1,5 +1,5 @@
 #######################
-Validation cases
+Verification cases
 #######################
 
 

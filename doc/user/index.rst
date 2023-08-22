@@ -11,7 +11,7 @@ Welcome to HydroChrono
 Introduction
 ------------
 
-HydroChrono is purpose-built for the numerical simulation of hydrodynamic bodies, with a particular focus on offshore renewable energy systems. It integrates seamlessly with the Project Chrono physics engine, offering both users and developers powerful tools for simulating offshore systems. HydroChrono is capable of modeling multibody floating systems and with complete access to Chrono's capabilities, users can model intricate subsystems, and use the finite element method (FEM) and discrete element method (DEM) tools available in Chrono.
+HydroChrono is purpose-built for the numerical simulation of hydrodynamic bodies in the time-domain, with a particular focus on offshore renewable energy systems. It integrates seamlessly with the Project Chrono physics engine, offering users powerful tools for simulating offshore systems. HydroChrono is capable of modeling multibody floating systems and with complete access to Chrono's capabilities, users can model intricate subsystems, and use the finite element method (FEM) and discrete element method (DEM) tools available in Chrono.
 
 .. image:: sphere_irreg.gif
    :align: center
@@ -28,7 +28,6 @@ For users who are looking to build, install and run simulations with HydroChrono
 
 .. toctree::
    :maxdepth: 1
-   :caption: User documentation:
 
    _getting_started/prerequisites
    _getting_started/building_hydrochrono
@@ -39,7 +38,6 @@ Theory Documentation
 
 .. toctree::
    :maxdepth: 2
-   :caption: Theory documentation:
 
    _theory/theory
 
@@ -48,27 +46,23 @@ Developer Documentation
 
 .. toctree::
    :maxdepth: 1
-   :caption: Developer documentation:
 
-   _developer/build_the_docs
    _developer/contribution_guidelines
    _developer/source_code_overview
 
-Validation Results
+Verification Results
 ------------------
 
 .. toctree::
    :maxdepth: 1
-   :caption: Validation results:
 
-   _validation/validation
+   _verification/verification
 
 About
 -----
 
 .. toctree::
    :maxdepth: 1
-   :caption: About:
 
    _about/project_overview
    _about/team
@@ -81,7 +75,6 @@ Annexes
 
 .. toctree::
    :maxdepth: 1
-   :caption: Annexes:
 
    glossary
 
@@ -89,10 +82,16 @@ Indices and Tables
 ------------------
 
 * :ref:`genindex`
-* :ref:`modindex`
 * :ref:`search`
 
 TODO
 ----
 
 .. todolist::
+   
+   * Merge PR #34 - add functionality to import wave elevation from .txt file
+   * Resample RIRFs for Chrono timestep
+   * Remove dead code
+   * Rename 'TestHydro'
+   * Pass density as an argument to HydroChrono
+   * More flexible indexing to allow hydrodynamic bodies to be defined either before or after other bodies (at the moment they need to be defined first).
