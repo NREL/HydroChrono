@@ -67,7 +67,7 @@ Results
 
 
 
-.. plot:: _validation/demos/sphere_decay/plot_01.py
+.. plot:: _verification/demos/sphere_decay/plot_01.py
 
 
 .. _ref-SPH_Decay:

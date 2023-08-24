@@ -96,7 +96,7 @@ The hydrostatic stiffness matrix, :math:`K_h`, can be sourced by executing a num
 .. _[#]: https://github.com/LHEEA/meshmagick
 
 Radiation damping force, :math:`F_{rad}(\dot{q}, t)`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This force stands as a representation of the energy dissipated when a floating body undergoes oscillation in water. It's procured through a convolution integral between the radiation impulse response function :math:`K_{rad}(t)` and the system's velocity timeline :math:`\dot{q}(\tau)`:
 
@@ -125,3 +125,8 @@ The following method to compute the wave excitation force involves convolution b
     F_{exc}(t) = \int_{-\infty}^{+\infty} K_{exc}(\tau) \eta(x, y, t-\tau) d\tau
 
 By amalgamating these forces into the equation of motion, one can effectively model the behavior of a multibody oceanic system influenced by hydrodynamic forces.
+
+
+.. rubric:: Footnotes
+
+.. [#] MeshMagick: https://github.com/LHEEA/meshmagick
