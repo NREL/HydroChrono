@@ -91,7 +91,7 @@ This force mirrors the restoring force due to buoyancy alongside alterations in 
     
     F_{hs}(q, t) = K_h \Delta q = K_h (q - q_0)
 
-The hydrostatic stiffness matrix, :math:`K_h`, can be sourced by executing a numerical integration over the waterplane area of the floating body. Potential tools for this task include open-source boundary element method (BEM) tools like Capytaine [Ancellin2019]_, HAMS [jmse7030081]_, or the open-source mesh and hydrostatics package MeshMagick [#]_.
+The hydrostatic stiffness matrix, :math:`K_h`, can be sourced by executing a numerical integration over the waterplane area of the floating body. Potential tools for this task include open-source boundary element method (BEM) tools like Capytaine :cite:`AnDi2019`, HAMS [jmse7030081]_, or the open-source mesh and hydrostatics package MeshMagick [#]_.
 
 .. _[#]: https://github.com/LHEEA/meshmagick
 

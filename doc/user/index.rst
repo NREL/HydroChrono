@@ -86,7 +86,5 @@ Indices and Tables
 * :ref:`genindex`
 * :ref:`search`
 
+.. bibliography:: references.bib
 
-
-
-   

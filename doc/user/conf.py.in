@@ -35,6 +35,7 @@ extensions = [
     'matplotlib.sphinxext.mathmpl',
     'matplotlib.sphinxext.plot_directive',
     #'matplotlib.sphinxext.only_directives',
+    'sphinxcontrib.bibtex',
     'sphinx.ext.mathjax',
     'sphinx.ext.todo',
     'sphinx.ext.intersphinx',
@@ -43,6 +44,9 @@ extensions = [
 
 # Include TODO comments
 todo_include_todos = True
+
+# Bibtex file location
+bibtex_bibfiles = ['@CMAKE_CURRENT_SOURCE_DIR@/references.bib']
 
 # matplotlib.sphinxext.plot_directive Configuration
 # plot_basedir = '@CMAKE_CURRENT_SOURCE_DIR@'
