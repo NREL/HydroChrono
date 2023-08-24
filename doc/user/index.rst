@@ -79,6 +79,7 @@ Annexes
 
    glossary
    todos
+   bibliography
 
 Indices and Tables
 ------------------
@@ -86,5 +87,5 @@ Indices and Tables
 * :ref:`genindex`
 * :ref:`search`
 
-.. bibliography:: references.bib
+
 
