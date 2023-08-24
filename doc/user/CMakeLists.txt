@@ -4,12 +4,16 @@ if(NOT Python3_FOUND)
     message(WARNING "Disable user doc option or provide a Python3 environment") 
     message(WARNING "or provide hints in the CMakeCache.txt file: Python_ROOT_DIR=")       
     message(ERROR "and for a virtual env.  Python_FIND_VIRTUALENV=FIRST see cmake documentation")
+else(NOT Python3_FOUND)
+    message("Found python: ${Python3_EXECUTABLE}")
 endif(NOT Python3_FOUND)
 
 find_package(Sphinx)
 if(NOT Sphinx_FOUND)
     message(WARNING "Can't build user's docs. Sphinx not found!")
     message(ERROR "Disable user doc option or provide a sphinx environment")    
+else(NOT Sphinx_FOUND)
+    message("Found sphinx: ${SPHINX_EXECUTABLE}")
 endif(NOT Sphinx_FOUND)
 
 set(SPHINX_SOURCE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -18,13 +22,6 @@ set(SPHINX_INDEX_FILE ${SPHINX_BUILD}/index.html)
 
 configure_file(conf.py.in ${SPHINX_BUILD}/conf.py @ONLY)
 
-if(PYTHON_ENV_PATH AND WIN32)
-    set(SPHINX_EXECUTABLE "${PYTHON_ENV_PATH}/Scripts/sphinx-build.exe")
-elseif(PYTHON_ENV_PATH)
-    set(SPHINX_EXECUTABLE "${PYTHON_ENV_PATH}/bin/sphinx-build")
-endif()
-
-message(STATUS "Using Sphinx executable at: ${SPHINX_EXECUTABLE}")
 
 add_custom_command(OUTPUT ${SPHINX_INDEX_FILE}
 
