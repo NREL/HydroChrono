@@ -51,7 +51,7 @@ Developer Documentation
    _developer/source_code_overview
 
 Verification Results
-------------------
+---------------------
 
 .. toctree::
    :maxdepth: 1

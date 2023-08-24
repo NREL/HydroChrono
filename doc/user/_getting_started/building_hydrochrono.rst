@@ -1,7 +1,7 @@
 .. _label-building_hydrochrono:
 
 Building HydroChrono (and demos)
-===============================
+================================
 
 Introduction
 ------------
@@ -11,10 +11,10 @@ This page provides instructions on how to build HydroChrono and its associated d
 Preparation
 -----------
 
-Ensure you have installed and built all required :ref:`prerequisites <_label-prerequisites>`. The exact versions listed in the prerequisites are essential for proper functionality.
+Ensure you have installed and built all required :ref:`prerequisites <label-prerequisites>`. The exact versions listed in the prerequisites are essential for proper functionality.
 
 Building HydroChrono Library
----------------------------
+----------------------------
 
 1. Clone this project into a directory and set up a build folder.
    - For instance, clone the project into a `HydroChrono` directory and set up a `HydroChrono_build` adjacent directory.
