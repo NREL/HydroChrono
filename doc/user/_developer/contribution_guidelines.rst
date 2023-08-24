@@ -36,16 +36,18 @@ Google C++ Style Guide Highlights
 8. **Namespace Names**:
    - All lowercase, and based on project name or what makes sense for your project.
    - **Example**:
-     .. code-block:: cpp
+   
+   .. code-block:: cpp
 
-         namespace hydrochrono { 
-             // ... code ...
-         }
+      namespace hydrochrono { 
+         // ... code ...
+      }
 
 9. **Enumerator Names**:
    - Use Pascal case for the enumeration type name. The individual enumerators within it should use Pascal case or Camel case depending on context.
    - **Example**:
-     .. code-block:: cpp
+   
+   .. code-block:: cpp
 
          enum class WaveType { 
              OceanWave, 
@@ -60,6 +62,7 @@ Google C++ Style Guide Highlights
          };
 
 10. **Using `auto`**:
+
    - Use `auto` to avoid type names that are noisy, obvious, or unimportant.
    - Never use `auto` for defining a type, which isn't obvious from the context.
 
