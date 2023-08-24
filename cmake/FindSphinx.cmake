@@ -3,7 +3,7 @@
 include(FindPackageHandleStandardArgs)
 
 # We are likely to find Sphinx near the Python interpreter
-find_package(PythonInterp)
+find_package(Python3 COMPONENTS Interpreter)
 if(PYTHONINTERP_FOUND)
     get_filename_component(_PYTHON_DIR "${PYTHON_EXECUTABLE}" DIRECTORY)
     set(
