@@ -2,8 +2,8 @@
 User guide
 #######################
 
-.. todo::
-	This is an example. Should be replaced
+
+
 
 Global parameters
 =================

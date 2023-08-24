@@ -31,7 +31,8 @@ in :ref:`tab-sd01`.
 Physical parameters
 ======================
 
-To complete ....
+.. todo::
+	To complete sphere decal case description....
 
 Center of Buoyancy, center of gravity, volume displacement, ....
 
@@ -61,10 +62,9 @@ The simulation final time was set to :math:`t_f = 10` s.
 Results
 ======================
 
-The analytical solution for decay ...
+.. todo::
+	Describe results
 
-
-blabla
 
 
 .. plot:: _validation/demos/sphere_decay/plot_01.py
@@ -74,5 +74,8 @@ blabla
 
 Reference "Sphere Decay"
 ========================
+
+.. todo::
+	Modify this fake reference
 
 Kramer, Andersen, et al. 2021, "Highly Accurate Experimental Heave Decay Tests with a Floating Sphere: A Public Benchmark Dataset for Model Validation of Fluid–Structure Interaction"
