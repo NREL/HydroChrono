@@ -1,6 +1,6 @@
-#######################
-Verification cases
-#######################
+##################
+Verification Cases
+##################
 
 
 .. toctree::
@@ -8,3 +8,4 @@ Verification cases
    :caption: Models:
 
    models/sphere/sphere
+   

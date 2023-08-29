@@ -49,9 +49,10 @@ Developer Documentation
 
    _developer/contribution_guidelines
    _developer/source_code_overview
+   _developer/source_code_documentation
 
-Verification Results
----------------------
+Verification Documentation
+--------------------------
 
 .. toctree::
    :maxdepth: 1
