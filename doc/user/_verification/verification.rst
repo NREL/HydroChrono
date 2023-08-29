@@ -5,6 +5,6 @@ Verification cases
 
 .. toctree::
    :maxdepth: 2
-   :caption: Demos:
+   :caption: Models:
 
-   demos/sphere_decay/sphere_decay
+   models/sphere/sphere
