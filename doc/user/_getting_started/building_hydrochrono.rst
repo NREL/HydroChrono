@@ -24,6 +24,7 @@ Building HydroChrono Library
    - Set `Chrono_DIR` to the Chrono Build location (typically `../chrono_build/cmake`).
    - Set `HDF5_DIR` to your HDF5 build location, such as `../CMake-hdf5-1.10.8/CMake-hdf5-1.10.8/build/HDF5-1.10.8-win64/HDF5-1.10.8-win64/share/cmake`. Note that version 1.10.8 of HDF5 is best suited for Visual Studio 2019.
    - Enable the following options for additional features: `HYDROCHRONO_ENABLE_DEMOS`, `HYDROCHRONO_ENABLE_IRRLICHT`, and `HYDROCHRONO_ENABLE_TESTS`. For best results, enable all of these features. Note that the Irrlicht module requires Project Chrono to be built with the Irrlicht module enabled.
+   - To build the docs: create a new entry in cmake-gui (Name: `Python3_ROOT_DIR`, Type: `PATH`) and set it to the path of your virtual Python environment where you have the `matplotlib`, `sphinx`, `sphinxcontrib-bibtex` and `h5py` packages installed (these are required to build the docs).
 
 3. Navigate to the build folder and open the generated solution in Visual Studio (or click "Open Project" in the CMake GUI). Build the HydroChrono solution with your preferred configuration option (e.g. `RelWithDebInfo`). For comprehensive building and linking, use the `ALL_BUILD` project.
 
