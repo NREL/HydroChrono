@@ -8,7 +8,7 @@ Overview
 The Oscillating Surge Wave Energy Converter (OSWEC) is the verification case tested in this section, using the example model provided in the WEC-Sim package :cite:`WEC-SimReference`. The verification process serves as a comparative measure against WEC-Sim results for assessing the accuracy of HydroChrono.
 
 .. figure:: images/oswec_model.png
-   :scale: 25%
+   :scale: 35%
    :alt: Image
 
    Visualization of OSWEC. Left\: hydrodynamic mesh for coefficient computation. Right\: OSWEC system in the Chrono GUI.
@@ -77,13 +77,13 @@ Results
 The OSWEC pitch decay tests and Response Amplitude Operators (RAOs) were focused on for HydroChrono verification.
 
 .. figure:: images/oswec_pitch_decay_verification.png
-   :scale: 25%
+   :scale: 20%
    :alt: Image
 
    OSWEC 10-degree pitch decay test, displaying a high degree of correlation between HydroChrono and WEC-Sim results.
 
 .. figure:: images/oswec_pitch_rao_verification.png
-   :scale: 25%
+   :scale: 20%
    :alt: Image
 
    RAOs from WEC-Sim and HydroChrono for OSWEC in regular waves, revealing minor discrepancies at the resonance frequency.
