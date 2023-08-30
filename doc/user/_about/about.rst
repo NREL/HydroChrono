@@ -1,7 +1,7 @@
 .. _label-about:
 
-About
-=====
+About the Project
+=================
 
 Project History
 ---------------
