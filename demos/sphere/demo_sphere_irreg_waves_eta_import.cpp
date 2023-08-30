@@ -1,13 +1,14 @@
-#include <hydroc/gui/guihelper.h>
-#include <hydroc/helper.h>
-#include <hydroc/hydro_forces.h>
+#include <chrono>
+#include <filesystem>
+#include <iomanip>
+#include <vector>
 
 #include <chrono/assets/ChColor.h>
 #include <chrono/core/ChRealtimeStep.h>
-#include <chrono>  // std::chrono::high_resolution_clock::now
-#include <filesystem>
-#include <iomanip>  // std::setprecision
-#include <vector>   // std::vector<double>
+
+#include <hydroc/gui/guihelper.h>
+#include <hydroc/helper.h>
+#include <hydroc/hydro_forces.h>
 
 // Use the namespaces of Chrono
 using namespace chrono;
@@ -42,7 +43,7 @@ int main(int argc, char* argv[]) {
     system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
     double timestep = 0.015;
     system.SetSolverType(ChSolver::Type::GMRES);
-    system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
+    system.SetSolverMaxIterations(300);
     system.SetStep(timestep);
     ChRealtimeStepTimer realtime_timer;
     double simulationDuration = 600.0;
@@ -103,7 +104,6 @@ int main(int argc, char* argv[]) {
     auto spring_1       = chrono_types::make_shared<ChLinkTSDA>();
     spring_1->Initialize(sphereBody, ground, false, ChVector<>(0, 0, -2),
                          ChVector<>(0, 0, -5));  // false means positions are in global frame
-    // spring_1->SetRestLength(rest_length); // if not set, the rest length is calculated from initial position
     spring_1->SetSpringCoefficient(spring_coef);
     spring_1->SetDampingCoefficient(damping_coef);
     system.AddLink(spring_1);
@@ -118,11 +118,8 @@ int main(int argc, char* argv[]) {
     params.num_bodies          = bodies.size();
     params.simulation_dt       = timestep;
     params.simulation_duration = simulationDuration;
-    params.ramp_duration       = 0.0;  // or params.ramp_duration = 0.0; based on your requirement
+    params.ramp_duration       = 0.0;
     params.eta_file_path       = (DATADIR / "sphere" / "eta" / "eta.txt").lexically_normal().generic_string();
-    // If you want to set wave height and period, do so like this:
-    // params.wave_height = 2.0;
-    // params.wave_period = 12.0;
 
     std::shared_ptr<IrregularWaves> my_hydro_inputs;  // declare outside the try-catch block
 
@@ -179,7 +176,6 @@ int main(int argc, char* argv[]) {
     ui.Init(&system, "Sphere - Irregular Waves Test");
     ui.SetCamera(8, -25, 15, 0, 0, 0);
 
-    std::cout << "Running simulation..." << std::endl;
     while (system.GetChTime() <= simulationDuration) {
         if (ui.IsRunning(timestep) == false) break;
 
@@ -191,7 +187,6 @@ int main(int argc, char* argv[]) {
             heave_position.push_back(sphereBody->GetPos().z());
         }
     }
-
 
     // for profiling
     auto end          = std::chrono::high_resolution_clock::now();
