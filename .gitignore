@@ -30,6 +30,9 @@ __pycache__/
 src/html/*
 src/xml/*
 src/latex/*
+html/*
+xml/*
+latex/*
 
 # Documentation
 doc/user/_validation/demos/sphere_decay/*.pdf

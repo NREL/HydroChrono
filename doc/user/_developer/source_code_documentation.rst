@@ -11,7 +11,7 @@ H5 Reader
 This file provides methods to manipulate and extract data from HDF5 files.
 
 .. doxygenfile:: h5fileinfo.cpp
-   :project: HydroChrono-src
+   :project: HydroChrono
 
 Some Helper Functions
 ---------------------
@@ -21,17 +21,22 @@ Some Helper Functions
 A collection of auxiliary functions that facilitate data manipulation and transformations.
 
 .. doxygenfile:: helper.cpp
-   :project: HydroChrono-src
+   :project: HydroChrono
 
 Hydrodynamic Modeling
 ---------------------
 
 `hydro_forces.cpp`
+`hydro_forces.h`
 
 This file encompasses the main hydrodynamic calculations and algorithms.
 
 .. doxygenfile:: hydro_forces.cpp
-   :project: HydroChrono-src
+   :project: HydroChrono
+
+.. doxygenfile:: hydro_forces.h
+   :project: HydroChrono
+
 
 Wave Options
 ------------
@@ -41,7 +46,7 @@ Wave Options
 This source file includes various types of wave models, both regular and irregular.
 
 .. doxygenfile:: wave_types.cpp
-   :project: HydroChrono-src
+   :project: HydroChrono
 
 Added Mass
 ----------
@@ -51,4 +56,4 @@ Added Mass
 Contains methods to include added mass in Chrono.
 
 .. doxygenfile:: chloadaddedmass.cpp
-   :project: HydroChrono-src
+   :project: HydroChrono

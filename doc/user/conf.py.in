@@ -62,9 +62,9 @@ templates_path = ['_templates']
 exclude_patterns = []
 
 # Breathe Configuration
-ProjectName = f'HydroChrono-src'
+ProjectName = f'HydroChrono'
 breathe_default_project = ProjectName
-breathe_projects = { ProjectName : "..\\..\\..\\..\\HydroChrono\\src\\xml" }
+breathe_projects = { ProjectName : "..\\..\\..\\..\\HydroChrono\\xml" }
 
 # -- Options for HTML output -------------------------------------------------
 
