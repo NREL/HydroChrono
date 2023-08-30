@@ -1,5 +1,5 @@
 ###############################################################
-Sphere Model (IEA OES Task 10 - Verification)
+Sphere Model (IEA OES Task 10) - Verification
 ###############################################################
 
 Overview
