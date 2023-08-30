@@ -65,12 +65,7 @@ About
 .. toctree::
    :maxdepth: 1
 
-   _about/project_overview
-   _about/team
-   _about/acknowledgements
-   _about/contact
-   _about/faqs
-
+   _about/about
 
 Annexes
 -------
