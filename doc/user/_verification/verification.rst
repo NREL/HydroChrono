@@ -8,4 +8,4 @@ Verification Cases
    :caption: Models:
 
    models/sphere/sphere
-   
+   models/oswec/oswec
