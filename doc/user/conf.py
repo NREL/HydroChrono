@@ -30,7 +30,7 @@ release = '0.1'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'hydrochrono_h5',
+    #'hydrochrono_h5',
     #'matplotlib.sphinxext.mathmpl.math_directive',
     'matplotlib.sphinxext.mathmpl',
     'matplotlib.sphinxext.plot_directive',
