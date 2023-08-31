@@ -1,9 +1,50 @@
-.vs
-build
-data
-demos/F3OF/f3of
-sandbox
+# IDE Specific
+.vs/
+*.launch
+*.json
 .editorconfig
-launch.json
-settings.json
-c_cpp_properties.json
+
+# Compiled source
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+
+# Packages
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# Python
+__pycache__/
+*.pyc
+
+# Doxygen
+src/html/*
+src/xml/*
+src/latex/*
+html/*
+xml/*
+latex/*
+
+# Documentation
+doc/user/_validation/demos/sphere_decay/*.pdf
+doc/user/_validation/demos/sphere_decay/*.png
+doc/user/_validation/demos/sphere_decay/*.hires.png
+doc/user/_verification/demos/sphere_decay/*.pdf
+doc/user/_verification/demos/sphere_decay/*.png
+doc/user/_verification/demos/sphere_decay/*.hires.png
+_build/
+
+# General
+build/
+data/
+demos/F3OF/f3of/
+sandbox/

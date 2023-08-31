@@ -1,3 +1,6 @@
+
+#ifndef WAVE_TYPES_H
+#define WAVE_TYPES_H
 /*********************************************************************
  * @file wave_types.h
  *
@@ -6,11 +9,6 @@
 #pragma once
 #include <hydroc/h5fileinfo.h>
 #include <Eigen/Dense>
-
-// TODO does M_PI need to be here?
-#ifndef M_PI
-    #define M_PI 3.14159265358979323846
-#endif
 
 // todo move this helper function somewhere else?
 Eigen::VectorXd PiersonMoskowitzSpectrumHz(Eigen::VectorXd& f, double Hs, double Tp);
@@ -57,8 +55,8 @@ class WaveBase {
  */
 class NoWave : public WaveBase {
   public:
-    NoWave() { num_bodies = 1; }
-    NoWave(unsigned int num_b) { num_bodies = num_b; }
+    NoWave() { num_bodies_ = 1; }
+    NoWave(unsigned int num_b) { num_bodies_ = num_b; }
     void Initialize() override {}
 
     /**
@@ -71,11 +69,11 @@ class NoWave : public WaveBase {
      * @return 6N dimensional force vector (Eigen::VectorXd) from waves in NoWave case.
      */
     Eigen::VectorXd GetForceAtTime(double t) override;
-    WaveMode GetWaveMode() override { return mode; }
+    WaveMode GetWaveMode() override { return mode_; }
 
   private:
-    unsigned int num_bodies;
-    const WaveMode mode = WaveMode::noWaveCIC;
+    unsigned int num_bodies_;
+    const WaveMode mode_ = WaveMode::noWaveCIC;
 };
 
 /**
@@ -124,11 +122,11 @@ class RegularWave : public WaveBase {
      *
      * @return WaveMode enum for RegularWave is regular
      */
-    WaveMode GetWaveMode() override { return mode; }
+    WaveMode GetWaveMode() override { return mode_; }
 
     // user input variables
-    double regular_wave_amplitude;
-    double regular_wave_omega;
+    double regular_wave_amplitude_;
+    double regular_wave_omega_;
 
     /**
      * @brief Initializes other member variables for timestep calculations later.
@@ -141,12 +139,12 @@ class RegularWave : public WaveBase {
     void AddH5Data(std::vector<HydroData::RegularWaveInfo>& reg_h5_data);
 
   private:
-    unsigned int num_bodies;
-    const WaveMode mode = WaveMode::regular;
-    std::vector<HydroData::RegularWaveInfo> wave_info;
-    Eigen::VectorXd excitation_force_mag;
-    Eigen::VectorXd excitation_force_phase;
-    Eigen::VectorXd force;
+    unsigned int num_bodies_;
+    const WaveMode mode_ = WaveMode::regular;
+    std::vector<HydroData::RegularWaveInfo> wave_info_;
+    Eigen::VectorXd excitation_force_mag_;
+    Eigen::VectorXd excitation_force_phase_;
+    Eigen::VectorXd force_;
 
     /**
      * @brief Finds omega_max and number of frequencies, then gets omega_max / num_freqs.
@@ -231,13 +229,13 @@ class RegularWave : public WaveBase {
 //};
 
 struct IrregularWaveParams {
-    unsigned int num_bodies;
-    double simulation_dt;
-    double simulation_duration;
-    double ramp_duration;
-    std::string eta_file_path;
-    double wave_height = 0.0;
-    double wave_period = 0.0;
+    unsigned int num_bodies_;
+    double simulation_dt_;
+    double simulation_duration_;
+    double ramp_duration_;
+    std::string eta_file_path_;
+    double wave_height_ = 0.0;
+    double wave_period_ = 0.0;
 };
 
 class IrregularWaves : public WaveBase {
@@ -256,7 +254,7 @@ class IrregularWaves : public WaveBase {
      *
      * @return WaveMode (always irregular for IrregularWave)
      */
-    WaveMode GetWaveMode() override { return mode; }
+    WaveMode GetWaveMode() override { return mode_; }
 
     /**
      * @brief TODO
@@ -297,6 +295,14 @@ class IrregularWaves : public WaveBase {
      */
     Eigen::Vector3<double> GetWaveMeshVelocity();
 
+    // user input // TODO add default values in case user doesn't initialize these?
+    //double wave_height_;
+    //double wave_period_;
+    //double simulation_duration_;
+    //double simulation_dt_;
+    //double ramp_duration_;
+    //Eigen::VectorXd eta_;  // public for mesh printing functions, TODO maybe make those friends, so this can be private?
+
     /**
      * @brief Initializes other member variables for timestep calculations later.
      *
@@ -308,26 +314,28 @@ class IrregularWaves : public WaveBase {
     void AddH5Data(std::vector<HydroData::IrregularWaveInfo>& irreg_h5_data, HydroData::SimulationParameters& sim_data);
 
   private:
-    unsigned int num_bodies;
-    double simulation_dt;
-    double simulation_duration;
-    double ramp_duration;
-    std::string eta_file_path;
-    double wave_height;
-    double wave_period;
-    std::vector<double> spectrum;
-    std::vector<double> time_data;
-    std::vector<double> free_surface_elevation;
-    bool spectrumCreated;
+    unsigned int num_bodies_;
+    double simulation_dt_;
+    double simulation_duration_;
+    double ramp_duration_;
+    std::string eta_file_path_;
+    double wave_height_;
+    double wave_period_;
+    std::vector<double> spectrum_;
+    std::vector<double> time_data_;
+    std::vector<double> free_surface_elevation_;
+    bool spectrumCreated_;
 
-    const WaveMode mode = WaveMode::irregular;
-    std::vector<HydroData::IrregularWaveInfo> wave_info;
-    HydroData::SimulationParameters sim_data;
-    std::vector<Eigen::MatrixXd> ex_irf_resampled;
-    std::vector<Eigen::VectorXd> ex_irf_time_resampled;
-    Eigen::VectorXd spectrum_frequencies;
-    Eigen::VectorXd spectral_densities;
-    std::string mesh_file_name;
+    const WaveMode mode_ = WaveMode::irregular;
+    //unsigned int num_bodies_;
+    //const WaveMode mode_ = WaveMode::irregular;
+    std::vector<HydroData::IrregularWaveInfo> wave_info_;
+    HydroData::SimulationParameters sim_data_;
+    std::vector<Eigen::MatrixXd> ex_irf_resampled_;
+    std::vector<Eigen::VectorXd> ex_irf_time_resampled_;
+    Eigen::VectorXd spectrum_frequencies_;
+    Eigen::VectorXd spectral_densities_;
+    std::string mesh_file_name_;
 
     void InitializeIRFVectors();
     void ReadEtaFromFile();
@@ -402,3 +410,5 @@ std::vector<std::array<size_t, 3>> CreateFreeSurfaceTriangles(size_t eta_size);
  * @return vector of tuples representing vertices for mesh
  */
 std::vector<std::array<double, 3>> CreateFreeSurface3DPts(const Eigen::VectorXd& eta, const Eigen::VectorXd& t_vec);
+
+#endif

@@ -67,7 +67,7 @@ int main(int argc, char* argv[]) {
     for (int reg_wave_num = 1; reg_wave_num <= reg_wave_num_max; ++reg_wave_num) {
         GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
-        if (hydroc::setInitialEnvironment(argc, argv) != 0) {
+        if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
             return 1;
         }
 
@@ -199,8 +199,8 @@ int main(int argc, char* argv[]) {
         bodies.push_back(base_body);
 
         auto my_hydro_inputs                    = std::make_shared<RegularWave>(bodies.size());
-        my_hydro_inputs->regular_wave_amplitude = 0.01;
-        my_hydro_inputs->regular_wave_omega     = (2 * CH_C_PI)/(periods[reg_wave_num - 1]);
+        my_hydro_inputs->regular_wave_amplitude_ = 0.01;
+        my_hydro_inputs->regular_wave_omega_     = (2 * CH_C_PI)/(periods[reg_wave_num - 1]);
 
         //// attach hydrodynamic forces to body
         /*std::vector<std::shared_ptr<ChBody>> bodies;
@@ -279,8 +279,8 @@ int main(int argc, char* argv[]) {
             outputFile.precision(10);
             outputFile.width(12);
             outputFile << "Wave #: \t" << reg_wave_num << "\n";
-            outputFile << "Wave amplitude (m): \t" << my_hydro_inputs->regular_wave_amplitude << "\n";
-            outputFile << "Wave omega (rad/s): \t" << my_hydro_inputs->regular_wave_omega << "\n";
+            outputFile << "Wave amplitude (m): \t" << my_hydro_inputs->regular_wave_amplitude_ << "\n";
+            outputFile << "Wave omega (rad/s): \t" << my_hydro_inputs->regular_wave_omega_ << "\n";
             outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(12)
                        << "Pitch (rads)"
                        << std::endl;

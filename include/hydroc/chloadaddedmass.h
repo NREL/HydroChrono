@@ -1,3 +1,5 @@
+#ifndef CHLOADADDEDMASS_H
+#define CHLOADADDEDMASS_H
 /*********************************************************************
  * @file  chloadaddedmass.h
  *
@@ -93,3 +95,5 @@ class ChLoadAddedMass : public chrono::ChLoadCustomMultiple {
         infinite_added_mass_system;  ///< added mass at infinite frequency in global coordinates (system matrix)
     virtual bool IsStiff() override { return true; }  // this to force the use of the inertial M, R and K matrices
 };
+
+#endif
