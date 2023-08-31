@@ -23,7 +23,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install sphinx matplotlib h5py pandas
+        pip install sphinx matplotlib h5py pandas sphinxcontrib-bibtex
 
     - name: Build docs using sphinx-build
       run: |
