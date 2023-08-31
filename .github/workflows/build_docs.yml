@@ -33,6 +33,6 @@ jobs:
     - name: Deploy to GitHub Pages
       uses: JamesIves/github-pages-deploy-action@v4
       with:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # You can use the default GITHUB_TOKEN or your PAT.
+        GITHUB_TOKEN: ${{ secrets.GH_PAGES_TOKEN }}  # You can use the default GITHUB_TOKEN or your PAT.
         BRANCH: gh-pages
         FOLDER: doc/user/_build/html
