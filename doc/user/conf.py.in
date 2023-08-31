@@ -39,8 +39,7 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.todo',
     'sphinx.ext.intersphinx',
-    'sphinx.ext.inheritance_diagram',
-    'breathe'
+    'sphinx.ext.inheritance_diagram'
 ]
 
 # Include TODO comments
@@ -61,10 +60,14 @@ templates_path = ['_templates']
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
 
-# Breathe Configuration
 ProjectName = f'HydroChrono'
-breathe_default_project = ProjectName
-breathe_projects = { ProjectName : "..\\..\\..\\..\\HydroChrono\\xml" }
+
+# Breathe Configuration
+if @PYHAVE_BREATHE@ and @PYHAVE_PROG_DOC@:
+    extensions.append('breathe')
+    breathe_default_project = ProjectName
+    breathe_projects = { ProjectName : "..\\..\\..\\..\\HydroChrono\\xml" }
+
 
 # -- Options for HTML output -------------------------------------------------
 

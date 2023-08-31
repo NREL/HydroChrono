@@ -1,4 +1,5 @@
 find_package(Python3 COMPONENTS Interpreter)
+
 if(NOT Python3_FOUND)
     message(WARNING "Can't build user docs. Python3 not found!")
     message(WARNING "Disable user doc option or provide a Python3 environment") 
@@ -8,6 +9,7 @@ else(NOT Python3_FOUND)
     message(STATUS "Found python: ${Python3_EXECUTABLE}")
 endif(NOT Python3_FOUND)
 
+
 find_package(Sphinx)
 if(NOT Sphinx_FOUND)
     message(WARNING "Can't build user's docs. Sphinx not found!")
@@ -15,6 +17,53 @@ if(NOT Sphinx_FOUND)
 else(NOT Sphinx_FOUND)
     message(STATUS "Found sphinx: ${SPHINX_EXECUTABLE}")
 endif(NOT Sphinx_FOUND)
+
+
+
+# Check for additional modules necessary for sphinx documentation: breathe, ...
+# Modules are configured in 'conf.py.in' sphinx configuration file
+# Define variables for python code (booolean with integer)
+set(PYHAVE_BREATHE 1)
+set(PYHAVE_SPINXCONTRIB_BIBTEX 1)
+if(HYDROCHRONO_ENABLE_PROG_DOC)
+    set(PYHAVE_PROG_DOC 1)
+else()
+    set(PYHAVE_PROG_DOC 0)
+endif()
+
+if (Python3_FOUND AND Sphinx_FOUND)
+    # mandatory bibtex contrib
+    execute_process(
+        COMMAND ${Python3_EXECUTABLE} -E -c "import sphinxcontrib.bibtex"
+        RESULT_VARIABLE HAVENOT_SPINXCONTRIB_BIBTEX
+        OUTPUT_QUIET    
+    )
+
+
+    if (NOT ${HAVENOT_SPINXCONTRIB_BIBTEX} EQUAL 0)       
+        set(PYHAVE_SPINXCONTRIB_BIBTEX  0)
+        message(
+                FATAL_ERROR
+                "The \"sphinxcontrib.bibtex\" Python3 package is not installed. Please install it using the following command: \"pip3 install sphinxcontrib.bibtex\"."
+        ) 
+    else()
+        message(STATUS "Found python 'sphinxcontrib.bibtex'")           
+    endif()
+
+    # optional breathe for doxygen
+    execute_process(
+        COMMAND ${Python3_EXECUTABLE} -E -c "import breathe"
+        RESULT_VARIABLE HAVENOT_BREATHE
+        OUTPUT_QUIET    
+    )
+    if (NOT ${HAVENOT_BREATHE} EQUAL 0)
+        set(PYHAVE_BREATHE  0)
+    else()
+        message(STATUS "Found python 'breathe'")
+    endif()
+endif()
+
+
 
 set(SPHINX_SOURCE ${CMAKE_CURRENT_SOURCE_DIR})
 set(SPHINX_BUILD ${CMAKE_CURRENT_BINARY_DIR}/html)
