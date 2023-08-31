@@ -31,7 +31,8 @@ jobs:
         sphinx-build -b html . _build/html
 
     - name: Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v3
+      uses: JamesIves/github-pages-deploy-action@4.4.3
       with:
-        github_token: ${{ secrets.GH_PAGES_TOKEN }}
-        publish_dir: ./doc/user/_build/html
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # You can use the default GITHUB_TOKEN or your PAT.
+        BRANCH: gh-pages
+        FOLDER: doc/user/_build/html
