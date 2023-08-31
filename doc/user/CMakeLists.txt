@@ -42,10 +42,7 @@ if (Python3_FOUND AND Sphinx_FOUND)
 
     if (NOT ${HAVENOT_SPINXCONTRIB_BIBTEX} EQUAL 0)       
         set(PYHAVE_SPINXCONTRIB_BIBTEX  0)
-        message(
-                FATAL_ERROR
-                "The \"sphinxcontrib.bibtex\" Python3 package is not installed. Please install it using the following command: \"pip3 install sphinxcontrib.bibtex\"."
-        ) 
+        message(STATUS "Module python 'sphinxcontrib.bibtex' not found")          
     else()
         message(STATUS "Found python 'sphinxcontrib.bibtex'")           
     endif()
@@ -58,6 +55,7 @@ if (Python3_FOUND AND Sphinx_FOUND)
     )
     if (NOT ${HAVENOT_BREATHE} EQUAL 0)
         set(PYHAVE_BREATHE  0)
+        message(STATUS "Module python 'breathe' not found")
     else()
         message(STATUS "Found python 'breathe'")
     endif()

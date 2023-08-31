@@ -63,10 +63,10 @@ exclude_patterns = []
 ProjectName = f'HydroChrono'
 
 # Breathe Configuration
-if @PYHAVE_BREATHE@ and @PYHAVE_PROG_DOC@:
-    extensions.append('breathe')
-    breathe_default_project = ProjectName
-    breathe_projects = { ProjectName : "..\\..\\..\\..\\HydroChrono\\xml" }
+#if @PYHAVE_BREATHE@ and @PYHAVE_PROG_DOC@:
+#    extensions.append('breathe')
+#    breathe_default_project = ProjectName
+#    breathe_projects = { ProjectName : "..\\..\\..\\..\\HydroChrono\\xml" }
 
 
 # -- Options for HTML output -------------------------------------------------
