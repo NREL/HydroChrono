@@ -22,7 +22,7 @@ using namespace chrono::geometry;
 int main(int argc, char* argv[]) {
     GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
-    if (hydroc::setInitialEnvironment(argc, argv) != 0) {
+    if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
         return 1;
     }
 
@@ -115,11 +115,11 @@ int main(int argc, char* argv[]) {
     std::cout << "Defining irregular wave input parameters..." << std::endl;
     IrregularWaveParams params;
     std::cout << "bodies.size() = " << bodies.size() << std::endl;
-    params.num_bodies          = bodies.size();
-    params.simulation_dt       = timestep;
-    params.simulation_duration = simulationDuration;
-    params.ramp_duration       = 0.0;
-    params.eta_file_path       = (DATADIR / "sphere" / "eta" / "eta.txt").lexically_normal().generic_string();
+    params.num_bodies_          = bodies.size();
+    params.simulation_dt_       = timestep;
+    params.simulation_duration_ = simulationDuration;
+    params.ramp_duration_       = 0.0;
+    params.eta_file_path_       = (DATADIR / "sphere" / "eta" / "eta.txt").lexically_normal().generic_string();
 
     std::shared_ptr<IrregularWaves> my_hydro_inputs;  // declare outside the try-catch block
 
