@@ -31,7 +31,7 @@ jobs:
         sphinx-build -b html . _build/html
 
     - name: Deploy to GitHub Pages
-      uses: JamesIves/github-pages-deploy-action@4.4.3
+      uses: JamesIves/github-pages-deploy-action@v4
       with:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # You can use the default GITHUB_TOKEN or your PAT.
         BRANCH: gh-pages
