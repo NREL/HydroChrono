@@ -1,10 +1,67 @@
-find_package(Sphinx REQUIRED)
+find_package(Python3 COMPONENTS Interpreter)
 
+if(NOT Python3_FOUND)
+    message(WARNING "Can't build user docs. Python3 not found!")
+    message(WARNING "Disable user doc option or provide a Python3 environment") 
+    message(WARNING "or provide hints in the CMakeCache.txt file: Python_ROOT_DIR=")       
+    message(ERROR "and for a virtual env.  Python_FIND_VIRTUALENV=FIRST see cmake documentation")
+else(NOT Python3_FOUND)
+    message(STATUS "Found python: ${Python3_EXECUTABLE}")
+endif(NOT Python3_FOUND)
+
+
+find_package(Sphinx)
 if(NOT Sphinx_FOUND)
-    message(WARNING "Can't build programmer's docs. Sphinx not found!")
-    message(WARNING "Disable user doc option or provide a sphinx environement")    
-    return()
+    message(WARNING "Can't build user's docs. Sphinx not found!")
+    message(ERROR "Disable user doc option or provide a sphinx environment")    
+else(NOT Sphinx_FOUND)
+    message(STATUS "Found sphinx: ${SPHINX_EXECUTABLE}")
 endif(NOT Sphinx_FOUND)
+
+
+
+# Check for additional modules necessary for sphinx documentation: breathe, ...
+# Modules are configured in 'conf.py.in' sphinx configuration file
+# Define variables for python code (booolean with integer)
+set(PYHAVE_BREATHE 1)
+set(PYHAVE_SPINXCONTRIB_BIBTEX 1)
+if(HYDROCHRONO_ENABLE_PROG_DOC)
+    set(PYHAVE_PROG_DOC 1)
+else()
+    set(PYHAVE_PROG_DOC 0)
+endif()
+
+if (Python3_FOUND AND Sphinx_FOUND)
+    # mandatory bibtex contrib
+    execute_process(
+        COMMAND ${Python3_EXECUTABLE} -E -c "import sphinxcontrib.bibtex"
+        RESULT_VARIABLE HAVENOT_SPINXCONTRIB_BIBTEX
+        OUTPUT_QUIET    
+    )
+
+
+    if (NOT ${HAVENOT_SPINXCONTRIB_BIBTEX} EQUAL 0)       
+        set(PYHAVE_SPINXCONTRIB_BIBTEX  0)
+        message(STATUS "Module python 'sphinxcontrib.bibtex' not found")          
+    else()
+        message(STATUS "Found python 'sphinxcontrib.bibtex'")           
+    endif()
+
+    # optional breathe for doxygen
+    execute_process(
+        COMMAND ${Python3_EXECUTABLE} -E -c "import breathe"
+        RESULT_VARIABLE HAVENOT_BREATHE
+        OUTPUT_QUIET    
+    )
+    if (NOT ${HAVENOT_BREATHE} EQUAL 0)
+        set(PYHAVE_BREATHE  0)
+        message(STATUS "Module python 'breathe' not found")
+    else()
+        message(STATUS "Found python 'breathe'")
+    endif()
+endif()
+
+
 
 set(SPHINX_SOURCE ${CMAKE_CURRENT_SOURCE_DIR})
 set(SPHINX_BUILD ${CMAKE_CURRENT_BINARY_DIR}/html)

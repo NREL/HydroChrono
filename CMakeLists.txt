@@ -33,8 +33,8 @@ endif()
 #--------------------------------------------------------------
 
 project(HydroChrono 
-	VERSION 0.0.1
-	DESCRIPTION "Hydro dynamic library based on chrono engine"
+	VERSION 0.1
+	DESCRIPTION "A hydrodynamic library for use with Project Chrono."
 	LANGUAGES CXX
 )
 
@@ -49,6 +49,7 @@ option (HYDROCHRONO_ENABLE_IRRLICHT "Enable irrlicht visualization library" ON)
 option (HYDROCHRONO_ENABLE_DEMOS "Enable demo executables" ON)
 option (HYDROCHRONO_ENABLE_USER_DOC "User's documentation" OFF)
 option (HYDROCHRONO_ENABLE_PROG_DOC "Programmer's documentation" OFF)
+
 
 # find required packages and libraries to make HydroChrono library
 set (LIB_TYPE STATIC) # or SHARED
@@ -89,7 +90,7 @@ if(MSVC)
 endif()
 
 # =======================
-# Hydro Chrono Library
+# HydroChrono Library
 # =======================
 set(HYDROCHRONO_SOURCES
   

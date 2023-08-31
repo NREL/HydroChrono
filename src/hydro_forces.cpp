@@ -26,16 +26,18 @@
 #include <vector>
 
 
-// TODO: on move from std::vector to Eigen::VectroXd, remove this function, look up
-// Eigen::LinSpaced function as replacement (arguments in slightly different order)
 /**
- * @brief Generates a std::vector<double> with evenly spaced points
+ * @brief Generates a vector of evenly spaced numbers over a specified range.
  *
- * @param start value for the 0th item in the std::vector<double>
- * @param end value for the last item in the std::vector<double>
- * @param num_points defines the size for the std::vector<double>
+ * This function returns a vector of `num_points` numbers evenly spaced from
+ * `start` to `end`. The function utilizes a single loop for this computation,
+ * making it efficient for generating large vectors.
  *
- * @return std::vector<double> with evenly spaced points from start to end
+ * @param start - The start value of the sequence.
+ * @param end - The end value of the sequence.
+ * @param num_points - The number of evenly spaced samples to generate.
+ * @return std::vector<double> - Vector of evenly spaced numbers.
+ * @exception None
  */
 std::vector<double> Linspace(double start, double end, int num_points) {
     std::vector<double> result(num_points);
