@@ -1,16 +1,13 @@
+<p align="center">
+  <img src="doc/user/hydrochrono_logo.png" width="720" alt="HydroChrono logo">
+</p>
+
 # What is HydroChrono?
 
 HydroChrono is an advanced hydrodynamics package for simulating complex ocean systems. Its designed to integrate seamlessly with the open-source physics engine, [Project Chrono](https://projectchrono.org/) through a robust C++ API.
 
 <p align="center">
   <img src="doc/user/sphere_irreg.gif" width="500" alt="A simple sphere in irregular waves.">
-</p>
-
-<p align="center">
-  <video width="500" controls>
-    <source src="doc/user/sphere_irreg.webm" type="video/webm" width="500" alt="A simple sphere in irregular waves.">
-    Your browser does not support the video tag.
-  </video>
 </p>
 
 # Capabilities of HydroChrono
@@ -26,7 +23,7 @@ Here is an example of a floating wind turbine with flexible tower and blades whe
 And here is a cutaway view of multibody WEC (TALOS) with 6 PTOs connecting the hull to a large internal reaction mass. HydroChrono is supplying wave forces to the hull:
 
 <p align="center">
-  <img src="doc/user/talos_demo.gif" alt="Description of Image" width="500">
+  <img src="doc/user/talos_demo.gif" alt="TALOS" width="500">
 </p>
 
 
