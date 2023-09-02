@@ -26,7 +26,7 @@ Here is an example of a floating wind turbine with flexible tower and blades whe
 And here is a cutaway view of multibody WEC (TALOS) with 6 PTOs connecting the hull to a large internal reaction mass. HydroChrono is supplying wave forces to the hull:
 
 <p align="center">
-  <img src="doc/user/talos_demo.gif" alt="Description of Image" width="300">
+  <img src="doc/user/talos_demo.gif" alt="Description of Image" width="500">
 </p>
 
 
