@@ -12,14 +12,14 @@
 
 // todo move this helper function somewhere else?
 Eigen::VectorXd PiersonMoskowitzSpectrumHz(Eigen::VectorXd& f, double Hs, double Tp);
-Eigen::VectorXd FreeSurfaceElevation(const Eigen::VectorXd& freqs_hz,
-                                     const Eigen::VectorXd& spectral_densities,
-                                     const Eigen::VectorXd& time_index,
-                                     double water_depth,
-                                     int seed = 1);
-/**
- * @brief enum for type of wave.
- */
+
+std::vector<double> FreeSurfaceElevation(const Eigen::VectorXd& freqs_hz,
+                                         const Eigen::VectorXd& spectral_densities,
+                                         const Eigen::VectorXd& time_index,
+                                         double water_depth,
+                                         int seed = 1);
+
+
 enum class WaveMode {
     /// @brief No waves
     noWaveCIC = 0,
@@ -184,45 +184,69 @@ class RegularWave : public WaveBase {
     double GetExcitationPhaseInterp(int b, int i, int j, double freq_index_des) const;
 };
 
-/**
- * @brief class to instantiate WaveBase for irregular waves.
- */
-class IrregularWave : public WaveBase {
+//// class to instantiate WaveBase for irregular waves
+//class IrregularWave : public WaveBase {
+//  public:
+//    IrregularWave();
+//    IrregularWave(unsigned int num_b);
+//    void Initialize() override;  // call any set up functions from here
+//    Eigen::VectorXd GetForceAtTime(double t) override;
+//    WaveMode GetWaveMode() override { return mode; }
+//    Eigen::VectorXd SetSpectrumFrequencies(double start, double end, int num_steps);
+//    void SetUpWaveMesh(std::string filename = "fse_mesh.obj");
+//    std::string GetMeshFile();
+//    Eigen::Vector3<double> GetWaveMeshVelocity();
+//    // add more helper functions for calculations here:
+//
+//    double wave_height;
+//    double wave_period;
+//    double simulation_duration;
+//    double simulation_dt;
+//    double ramp_duration;
+//    Eigen::VectorXd eta;
+//
+//    void AddH5Data(std::vector<HydroData::IrregularWaveInfo>& irreg_h5_data, HydroData::SimulationParameters& sim_data);
+//
+//  private:
+//    unsigned int num_bodies;
+//    const WaveMode mode = WaveMode::irregular;
+//    std::vector<HydroData::IrregularWaveInfo> wave_info;
+//    HydroData::SimulationParameters sim_data;
+//    std::vector<Eigen::MatrixXd> ex_irf_resampled;
+//    std::vector<Eigen::VectorXd> ex_irf_time_resampled;
+//    Eigen::VectorXd spectrum_frequencies;
+//    Eigen::VectorXd spectral_densities;
+//    std::string mesh_file_name;
+//
+//    // Eigen::MatrixXd GetExcitationIRF(int b) const;
+//    Eigen::VectorXd ResampleTime(const Eigen::VectorXd& t_old, const double dt_new);
+//    Eigen::MatrixXd ResampleVals(const Eigen::VectorXd& t_old, Eigen::MatrixXd& vals_old, const Eigen::VectorXd& t_new);
+//    double ExcitationConvolution(int body, int dof, double time);
+//
+//    void CreateSpectrum();
+//    void IrregularWave::CreateFreeSurfaceElevation();
+//    friend Eigen::VectorXd PiersonMoskowitzSpectrumHz(Eigen::VectorXd& f, double Hs, double Tp);
+//};
+
+struct IrregularWaveParams {
+    unsigned int num_bodies_;
+    double simulation_dt_;
+    double simulation_duration_;
+    double ramp_duration_;
+    std::string eta_file_path_;
+    double wave_height_ = 0.0;
+    double wave_period_ = 0.0;
+};
+
+class IrregularWaves : public WaveBase {
   public:
-    /**
-     * @brief default constructor for IrregularWave.
-     *
-     * Defaults to 1 body if no argument given. Explicitly separate from constructor with num_b so a default \
-     * constructor exists.
-     */
-    IrregularWave();
+    IrregularWaves(const IrregularWaveParams& params);
+    void Initialize() override {}
 
-    /**
-     * @brief constructor for IrregularWave in multibody case.
-     *
-     * @param num_b number of bodies to apply hydro forces to (usually number of bodies in system)
-     */
-    IrregularWave(unsigned int num_b);
+    std::vector<double> GetSpectrum();
+    std::vector<double> GetFreeSurfaceElevation();
+    std::vector<double> GetEtaTimeData();
 
-    /**
-     * @brief Initializes other member variables for timestep calculations later.
-     *
-     * Also resamples irf if timestep in h5 file does not match simulation timestep.
-     * Needs to be called before IrregularWave can calculate any forces at any time. Resizes vectors, calculates \
-     * constants, etc from h5 data. Assumes AddH5Data() has been called.
-     * Calls CreateSpectrum() and CreateFreeSurfaceElevation()
-     */
-    void Initialize() override;
-
-    /**
-     * @brief computes 6N dimensional force from irregular wave on bodies in system.
-     *
-     * N is number of bodies with hydro forces (usually this is same as number of bodies in the system).
-     *
-     * @param t timestep to calculate the force at
-     *
-     * @return force vector (Eigen::VectorXd)
-     */
     Eigen::VectorXd GetForceAtTime(double t) override;
 
     /**
@@ -272,12 +296,12 @@ class IrregularWave : public WaveBase {
     Eigen::Vector3<double> GetWaveMeshVelocity();
 
     // user input // TODO add default values in case user doesn't initialize these?
-    double wave_height_;
-    double wave_period_;
-    double simulation_duration_;
-    double simulation_dt_;
-    double ramp_duration_;
-    Eigen::VectorXd eta_;  // public for mesh printing functions, TODO maybe make those friends, so this can be private?
+    //double wave_height_;
+    //double wave_period_;
+    //double simulation_duration_;
+    //double simulation_dt_;
+    //double ramp_duration_;
+    //Eigen::VectorXd eta_;  // public for mesh printing functions, TODO maybe make those friends, so this can be private?
 
     /**
      * @brief Initializes other member variables for timestep calculations later.
@@ -291,8 +315,21 @@ class IrregularWave : public WaveBase {
 
   private:
     unsigned int num_bodies_;
+    double simulation_dt_;
+    double simulation_duration_;
+    double ramp_duration_;
+    std::string eta_file_path_;
+    double wave_height_;
+    double wave_period_;
+    std::vector<double> spectrum_;
+    std::vector<double> time_data_;
+    std::vector<double> free_surface_elevation_;
+    bool spectrumCreated_;
+
     const WaveMode mode_ = WaveMode::irregular;
-    std::vector<HydroData::IrregularWaveInfo> wave_info;
+    //unsigned int num_bodies_;
+    //const WaveMode mode_ = WaveMode::irregular;
+    std::vector<HydroData::IrregularWaveInfo> wave_info_;
     HydroData::SimulationParameters sim_data_;
     std::vector<Eigen::MatrixXd> ex_irf_resampled_;
     std::vector<Eigen::VectorXd> ex_irf_time_resampled_;
@@ -300,13 +337,11 @@ class IrregularWave : public WaveBase {
     Eigen::VectorXd spectral_densities_;
     std::string mesh_file_name_;
 
-    /**
-     * @brief Get the excitation_irf_matrix from h5 file for specific body.
-     *
-     * @param b which body to get matrix for
-     *
-     * @return Eigen::MatrixXd irf matrix from h5 file for a specific body
-     */
+    void InitializeIRFVectors();
+    void ReadEtaFromFile();
+    void CreateSpectrum();
+    void CreateFreeSurfaceElevation();
+
     Eigen::MatrixXd GetExcitationIRF(int b) const;
 
     /**
@@ -344,25 +379,6 @@ class IrregularWave : public WaveBase {
      * @return value of force vector at t time in component corresponding to body and dof
      */
     double ExcitationConvolution(int body, int dof, double time);
-
-    /**
-     * @brief Creates wave spectrum for irrreg wave force.
-     *
-     * Currently only uses PiersonMoskowitzSpectrum, TODO make this adjustable for other spectra types.
-     * Spectrum info saved to member variables for quick access in other functions.
-     * Called from Initialize() function.
-     */
-    void CreateSpectrum();
-
-    /**
-     * @brief TODO describe
-     *
-     * Initializes eta and accounts for ramp_duration if set.
-     * relevant info stored in member variables.
-     */
-    void CreateFreeSurfaceElevation();
-
-    friend Eigen::VectorXd PiersonMoskowitzSpectrumHz(Eigen::VectorXd& f, double Hs, double Tp);
 };
 
 /**

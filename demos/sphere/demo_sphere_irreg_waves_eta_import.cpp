@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) {
         (DATADIR / "sphere" / "geometry" / "oes_task10_sphere.obj").lexically_normal().generic_string();
     auto h5fname = (DATADIR / "sphere" / "hydroData" / "sphere.h5").lexically_normal().generic_string();
 
-//    // system/solver settings
+    // system/solver settings
     ChSystemNSC system;
     system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
     double timestep = 0.015;
@@ -66,7 +66,7 @@ int main(int argc, char* argv[]) {
     bool saveDataOn      = true;
     std::vector<double> time_vector;
     std::vector<double> heave_position;
-//
+
     // set up body from a mesh
     std::cout << "Attempting to open mesh file: " << body1_meshfame << std::endl;
     std::shared_ptr<ChBody> sphereBody = chrono_types::make_shared<ChBodyEasyMesh>(  //
@@ -76,14 +76,14 @@ int main(int argc, char* argv[]) {
         true,   // create visualization asset
         false   // do not collide
     );
-//
+
     // define the body's initial conditions
     system.Add(sphereBody);
     sphereBody->SetNameString("body1");  // must set body name correctly! (must match .h5 file)
     sphereBody->SetPos(ChVector<>(0, 0, -2));
     sphereBody->SetMass(261.8e3);
 
-    // create a visualization material
+    // Create a visualization material
     auto yellow = chrono_types::make_shared<ChVisualMaterial>();
     yellow->SetDiffuseColor(ChColor(0.244f, 0.225f, 0.072f));
     sphereBody->GetVisualShape(0)->SetMaterial(0, yellow);
@@ -96,7 +96,7 @@ int main(int argc, char* argv[]) {
                           ChCoordsys<>(ChVector<>(0, 0, -5)));
     system.AddLink(prismatic);
 
-    // create the spring between body_1 and ground. The spring end points are
+    // Create the spring between body_1 and ground. The spring end points are
     // specified in the body relative frames.
     double rest_length  = 3.0;
     double spring_coef  = 0.0;
@@ -107,31 +107,38 @@ int main(int argc, char* argv[]) {
     spring_1->SetSpringCoefficient(spring_coef);
     spring_1->SetDampingCoefficient(damping_coef);
     system.AddLink(spring_1);
+    std::cout << "PTO added to the system." << std::endl;
 
     std::vector<std::shared_ptr<ChBody>> bodies;
     bodies.push_back(sphereBody);
 
-    IrregularWaveParams wave_inputs;
-    wave_inputs.num_bodies_          = bodies.size();
-    wave_inputs.simulation_dt_       = timestep;
-    wave_inputs.simulation_duration_ = simulationDuration;
-    wave_inputs.ramp_duration_       = 60.0;
-    wave_inputs.wave_height_         = 2.0;
-    wave_inputs.wave_period_         = 12.0;
+    std::cout << "Defining irregular wave input parameters..." << std::endl;
+    IrregularWaveParams params;
+    std::cout << "bodies.size() = " << bodies.size() << std::endl;
+    params.num_bodies_          = bodies.size();
+    params.simulation_dt_       = timestep;
+    params.simulation_duration_ = simulationDuration;
+    params.ramp_duration_       = 0.0;
+    params.eta_file_path_       = (DATADIR / "sphere" / "eta" / "eta.txt").lexically_normal().generic_string();
 
     std::shared_ptr<IrregularWaves> my_hydro_inputs;  // declare outside the try-catch block
 
     try {
-        my_hydro_inputs = std::make_shared<IrregularWaves>(wave_inputs);
+        my_hydro_inputs = std::make_shared<IrregularWaves>(params);
     } catch (const std::exception& e) {
         std::cerr << "Caught exception: " << e.what() << '\n';
     } catch (...) {
         std::cerr << "Caught unknown exception.\n";
     }
 
+
+    std::cout << "Creating TestHydro..." << std::endl;
     TestHydro hydro_forces(bodies, h5fname);
+
+    std::cout << "Adding waves to TestHydro object..." << std::endl;
     hydro_forces.AddWaves(my_hydro_inputs);
 
+    std::cout << "Creating fse mesh..." << std::endl;
     // set up free surface from a mesh
     auto fse_plane = chrono_types::make_shared<ChBody>();
     fse_plane->SetPos(ChVector<>(0, 0, 0));
@@ -139,26 +146,29 @@ int main(int argc, char* argv[]) {
     fse_plane->SetCollide(false);
     system.AddBody(fse_plane);
 
-    my_hydro_inputs->SetUpWaveMesh();
-    std::shared_ptr<ChBody> fse_mesh = chrono_types::make_shared<ChBodyEasyMesh>(  //
-        my_hydro_inputs->GetMeshFile(),                                            // file name
-        1000,                                                                      // density
-        false,                                                                     // do not evaluate mass automatically
-        true,                                                                      // create visualization asset
-        false                                                                      // do not collide
-    );
-    fse_mesh->SetMass(1.0);
-    fse_mesh->SetPos_dt(my_hydro_inputs->GetWaveMeshVelocity());
-    system.Add(fse_mesh);
-    auto fse_prismatic = chrono_types::make_shared<ChLinkLockPrismatic>();
-    fse_prismatic->Initialize(fse_plane, fse_mesh, ChCoordsys<>(ChVector<>(1.0, 0.0, 0.0), Q_from_AngY(CH_C_PI_2)));
-    system.AddLink(fse_prismatic);
+    //std::cout << "SetUpWaveMesh..." << std::endl;
+    //my_hydro_inputs->SetUpWaveMesh();
+    //std::shared_ptr<ChBody> fse_mesh = chrono_types::make_shared<ChBodyEasyMesh>(  //
+    //    my_hydro_inputs->GetMeshFile(),                                            // file name
+    //    1000,                                                                      // density
+    //    false,                                                                     // do not evaluate mass automatically
+    //    true,                                                                      // create visualization asset
+    //    false                                                                      // do not collide
+    //);
+    //fse_mesh->SetMass(1.0);
+    //fse_mesh->SetPos_dt(my_hydro_inputs->GetWaveMeshVelocity());
+    //std::cout << "system.Add(fse_mesh)..." << std::endl;
+    //system.Add(fse_mesh);
+    //auto fse_prismatic = chrono_types::make_shared<ChLinkLockPrismatic>();
+    //fse_prismatic->Initialize(fse_plane, fse_mesh, ChCoordsys<>(ChVector<>(1.0, 0.0, 0.0), Q_from_AngY(CH_C_PI_2)));
+    //system.AddLink(fse_prismatic);
 
-    // Create a visualization material
-    auto fse_texture = chrono_types::make_shared<ChVisualMaterial>();
-    fse_texture->SetDiffuseColor(ChColor(0.026f, 0.084f, 0.168f));
-    fse_texture->SetOpacity(0.1);
-    fse_mesh->GetVisualShape(0)->SetMaterial(0, fse_texture);
+    //// Create a visualization material
+    //std::cout << "Create a visualization material..." << std::endl;
+    //auto fse_texture = chrono_types::make_shared<ChVisualMaterial>();
+    //fse_texture->SetDiffuseColor(ChColor(0.026f, 0.084f, 0.168f));
+    //fse_texture->SetOpacity(0.1);
+    //fse_mesh->GetVisualShape(0)->SetMaterial(0, fse_texture);
 
     // for profiling
     auto start = std::chrono::high_resolution_clock::now();

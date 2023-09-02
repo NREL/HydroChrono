@@ -100,6 +100,39 @@ target_link_libraries(demo_sphere_irreg_waves
 )
 
 # =====================
+# SPHERE_IRREG_WAVES_ETA_IMPORT
+
+# =====================
+add_executable(demo_sphere_irreg_waves_eta_import)
+
+target_sources(
+    demo_sphere_irreg_waves_eta_import
+
+    PRIVATE
+        sphere/demo_sphere_irreg_waves_eta_import.cpp
+)
+
+if(HYDROCHRONO_ENABLE_IRRLICHT)
+	target_compile_definitions(demo_sphere_irreg_waves_eta_import 
+		PRIVATE 
+		HYDROCHRONO_HAVE_IRRLICHT=1
+	)
+endif()
+
+target_include_directories(
+	demo_sphere_irreg_waves_eta_import
+
+	PRIVATE
+	    ${CMAKE_CURRENT_SOURCE_DIR}/
+	    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+target_link_libraries(demo_sphere_irreg_waves_eta_import 
+    PRIVATE 
+    HydroChronoGUI
+    HydroChrono
+)
+
+# =====================
 # RM3_DECAY
 # =====================
 add_executable(demo_rm3_decay)
