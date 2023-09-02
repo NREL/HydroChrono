@@ -2,6 +2,11 @@
 
 HydroChrono is an advanced hydrodynamics package for simulating complex ocean systems. Its designed to integrate seamlessly with the open-source physics engine, [Project Chrono](https://projectchrono.org/) through a robust C++ API.
 
+<p align="center">
+  <img src="doc/user/sphere_irreg.gif" width="500" alt="A simple sphere in irregular waves.">
+</p>
+
+
 # Capabilities of HydroChrono
 
 With HydroChrono, you can model any system that's supported by Chrono - from multiple bodies and joints to finite element bodies and discrete element particles. HydroChrono will supply hydrodynamic forces to any rigid body in the system - whether you're looking to simulate multibody wave energy converters (WECs) or floating offshore wind turbines (FOWTs) with flexible towers and blades through Chrono::FEA.
