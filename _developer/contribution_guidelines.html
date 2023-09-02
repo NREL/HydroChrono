@@ -1,0 +1,234 @@
+
+
+<!doctype html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Contribution Guidelines &#8212; HydroChrono 0.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/bizstyle.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/graphviz.css" />
+    
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Source Code Overview" href="source_code_overview.html" />
+    <link rel="prev" title="Theory" href="../_theory/theory.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="source_code_overview.html" title="Source Code Overview"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../_theory/theory.html" title="Theory"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">HydroChrono 0.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Contribution Guidelines</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="contribution-guidelines">
+<span id="label-contribution-guidelines"></span><h1>Contribution Guidelines<a class="headerlink" href="#contribution-guidelines" title="Permalink to this heading">¶</a></h1>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this heading">¶</a></h2>
+<p>Contributions to the HydroChrono project are highly valued and appreciated. This section outlines the guidelines and best practices to follow when contributing. We follow the Google C++ Style Guide; below are some of its main points.</p>
+</section>
+<section id="google-c-style-guide-highlights">
+<h2>Google C++ Style Guide Highlights<a class="headerlink" href="#google-c-style-guide-highlights" title="Permalink to this heading">¶</a></h2>
+<ol class="arabic">
+<li><p><strong>General Naming Rules</strong>:
+- Opt for clarity and completeness over brevity.
+- Use descriptive names, and avoid abbreviations unless they are more common than the full word.</p></li>
+<li><p><strong>File Names</strong>:
+- All lowercase, with words separated by underscores (<cite>_</cite>), e.g., <cite>my_example_file.cpp</cite>.</p></li>
+<li><p><strong>Type Names</strong>:
+- Camel case starting with an uppercase letter, e.g., <cite>MyExampleClass</cite>.</p></li>
+<li><p><strong>Variable Names</strong>:
+- Use snake case (all lowercase with underscores), e.g., <cite>my_example_variable</cite>.</p></li>
+<li><p><strong>Class Member Variables</strong>:
+- These have a trailing underscore, e.g., <cite>class_member_variable_</cite>.</p></li>
+<li><p><strong>Function Names</strong>:
+- Camel case starting with an uppercase letter, e.g., <cite>DoSomethingInteresting()</cite>.</p></li>
+<li><p><strong>Constant Names</strong>:
+- Use a <cite>k</cite> prefix followed by Camel case, e.g., <cite>const int kDaysInAWeek = 7;</cite>.</p></li>
+<li><p><strong>Namespace Names</strong>:
+- All lowercase, and based on project name or what makes sense for your project.
+- <strong>Example</strong>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">namespace</span><span class="w"> </span><span class="nn">hydrochrono</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="c1">// ... code ...</span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>Enumerator Names</strong>:
+- Use Pascal case for the enumeration type name. The individual enumerators within it should use Pascal case or Camel case depending on context.
+- <strong>Example</strong>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">enum</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nc">WaveType</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="n">OceanWave</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="n">RiverFlow</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="n">Tsunami</span><span class="w"></span>
+<span class="p">};</span><span class="w"></span>
+
+<span class="k">enum</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nc">colorOptions</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="n">redOption</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="n">blueOption</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="n">greenOption</span><span class="w"></span>
+<span class="p">};</span><span class="w"></span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>Using `auto`</strong>:</p></li>
+</ol>
+<blockquote>
+<div><ul class="simple">
+<li><p>Use <cite>auto</cite> to avoid type names that are noisy, obvious, or unimportant.</p></li>
+<li><p>Never use <cite>auto</cite> for defining a type, which isn’t obvious from the context.</p></li>
+</ul>
+</div></blockquote>
+</section>
+<section id="code-standards">
+<h2>Code Standards<a class="headerlink" href="#code-standards" title="Permalink to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Adhere to the points mentioned above and the full Google C++ Style Guide.</p></li>
+<li><p>Provide comprehensive comments for any non-trivial code.</p></li>
+<li><p>Test your code to ensure existing functionality remains intact.</p></li>
+</ul>
+</section>
+<section id="submitting-contributions">
+<h2>Submitting Contributions<a class="headerlink" href="#submitting-contributions" title="Permalink to this heading">¶</a></h2>
+<ol class="arabic simple">
+<li><p><strong>Fork and Clone</strong>:
+- Fork the HydroChrono repository on the platform where it’s hosted (e.g., GitHub).
+- Clone your forked repository to your local machine.</p></li>
+<li><p><strong>Create a New Branch</strong>:
+- Create a new branch for each new feature or bugfix. Naming it descriptively can help, e.g., <cite>feature-add-hydro-dynamics</cite> or <cite>bugfix-memory-leak</cite>.</p></li>
+<li><p><strong>Committing Changes</strong>:
+- Write clear, concise commit messages that explain the change.
+- Split larger changes into multiple commits if possible.</p></li>
+<li><p><strong>Syncing with Upstream</strong>:
+- Regularly sync your fork and branch with the main repository (<cite>upstream</cite>) to keep up with changes.
+- Merge or rebase your branch with the latest from <cite>upstream</cite> before submitting a pull request.</p></li>
+<li><p><strong>Code Reviews</strong>:
+- Once you’ve pushed your branch to your fork, submit a pull request to the main HydroChrono repository.
+- Participate in the code review process. Respond to feedback, and make changes as requested.</p></li>
+<li><p><strong>Testing</strong>:
+- Ensure that your code passes all tests and doesn’t introduce new issues.
+- Add new tests for your features to ensure future changes don’t break your contribution.</p></li>
+<li><p><strong>Documentation</strong>:
+- Update relevant documentation pertaining to your changes.
+- Ensure examples, if provided, are clear and understandable.</p></li>
+</ol>
+</section>
+<section id="contribution-best-practices">
+<h2>Contribution Best Practices<a class="headerlink" href="#contribution-best-practices" title="Permalink to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><strong>Collaboration</strong>: Encourage collaboration with other contributors. Open discussions can lead to better solutions.</p></li>
+<li><p><strong>Stay Updated</strong>: Regularly pull the latest changes from the <cite>upstream</cite> main branch and stay updated with the project’s progress and changes.</p></li>
+<li><p><strong>Respect</strong>: Respect the decisions of maintainers and the feedback of others. Every piece of feedback is to ensure the quality and consistency of the project.</p></li>
+</ul>
+</section>
+<section id="conclusion">
+<h2>Conclusion<a class="headerlink" href="#conclusion" title="Permalink to this heading">¶</a></h2>
+<p>Whether you’re adding new features, bug fixes, or simply improving documentation, your contributions are invaluable and greatly appreciated.</p>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Contribution Guidelines</a><ul>
+<li><a class="reference internal" href="#introduction">Introduction</a></li>
+<li><a class="reference internal" href="#google-c-style-guide-highlights">Google C++ Style Guide Highlights</a></li>
+<li><a class="reference internal" href="#code-standards">Code Standards</a></li>
+<li><a class="reference internal" href="#submitting-contributions">Submitting Contributions</a></li>
+<li><a class="reference internal" href="#contribution-best-practices">Contribution Best Practices</a></li>
+<li><a class="reference internal" href="#conclusion">Conclusion</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="../_theory/theory.html"
+                          title="previous chapter">Theory</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="source_code_overview.html"
+                          title="next chapter">Source Code Overview</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/_developer/contribution_guidelines.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="source_code_overview.html" title="Source Code Overview"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../_theory/theory.html" title="Theory"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">HydroChrono 0.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Contribution Guidelines</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright .
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 5.0.2.
+    </div>
+  </body>
+</html>

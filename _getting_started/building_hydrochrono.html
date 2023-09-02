@@ -1,0 +1,186 @@
+
+
+<!doctype html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Building HydroChrono (and demos) &#8212; HydroChrono 0.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/bizstyle.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/graphviz.css" />
+    
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Workflow" href="workflow.html" />
+    <link rel="prev" title="Prerequisites" href="prerequisites.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="workflow.html" title="Workflow"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="prerequisites.html" title="Prerequisites"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">HydroChrono 0.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Building HydroChrono (and demos)</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="building-hydrochrono-and-demos">
+<span id="label-building-hydrochrono"></span><h1>Building HydroChrono (and demos)<a class="headerlink" href="#building-hydrochrono-and-demos" title="Permalink to this heading">¶</a></h1>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this heading">¶</a></h2>
+<p>This page provides instructions on how to build HydroChrono and its associated demos.</p>
+</section>
+<section id="preparation">
+<h2>Preparation<a class="headerlink" href="#preparation" title="Permalink to this heading">¶</a></h2>
+<p>Ensure you have installed and built all required <a class="reference internal" href="prerequisites.html#label-prerequisites"><span class="std std-ref">prerequisites</span></a>. The exact versions listed in the prerequisites are essential for proper functionality.</p>
+</section>
+<section id="building-hydrochrono-library">
+<h2>Building HydroChrono Library<a class="headerlink" href="#building-hydrochrono-library" title="Permalink to this heading">¶</a></h2>
+<ol class="arabic simple">
+<li><p>Clone this project into a directory and set up a build folder.
+- For instance, clone the project into a <cite>HydroChrono</cite> directory and set up a <cite>HydroChrono_build</cite> adjacent directory.</p></li>
+<li><p>Using the CMake GUI, specify the location of the source files and built binaries for HydroChrono (<cite>HydroChrono</cite> and <cite>HydroChrono_build</cite> respectively). Configure and generate the solution with the following settings:</p>
+<ul class="simple">
+<li><p>Set <cite>Chrono_DIR</cite> to the Chrono Build location (typically <cite>../chrono_build/cmake</cite>).</p></li>
+<li><p>Set <cite>HDF5_DIR</cite> to your HDF5 build location, such as <cite>../CMake-hdf5-1.10.8/CMake-hdf5-1.10.8/build/HDF5-1.10.8-win64/HDF5-1.10.8-win64/share/cmake</cite>. Note that version 1.10.8 of HDF5 is best suited for Visual Studio 2019.</p></li>
+<li><p>Enable the following options for additional features: <cite>HYDROCHRONO_ENABLE_DEMOS</cite>, <cite>HYDROCHRONO_ENABLE_IRRLICHT</cite>, and <cite>HYDROCHRONO_ENABLE_TESTS</cite>. For best results, enable all of these features. Note that the Irrlicht module requires Project Chrono to be built with the Irrlicht module enabled.</p></li>
+<li><p>To build the docs: create a new entry in cmake-gui (Name: <cite>Python3_ROOT_DIR</cite>, Type: <cite>PATH</cite>) and set it to the path of your virtual Python environment where you have the <cite>matplotlib</cite>, <cite>sphinx</cite>, <cite>sphinxcontrib-bibtex</cite>, <cite>breathe</cite> and <cite>h5py</cite> packages installed (these are required to build the docs).</p></li>
+</ul>
+</li>
+<li><p>Navigate to the build folder and open the generated solution in Visual Studio (or click “Open Project” in the CMake GUI). Build the HydroChrono solution with your preferred configuration option (e.g. <cite>RelWithDebInfo</cite>). For comprehensive building and linking, use the <cite>ALL_BUILD</cite> project.</p></li>
+</ol>
+</section>
+<section id="post-build-steps">
+<h2>Post-Build Steps<a class="headerlink" href="#post-build-steps" title="Permalink to this heading">¶</a></h2>
+<ol class="arabic simple">
+<li><p>Copy the <cite>chrono_build/bin/data</cite> file from the Project Chrono build directory to <cite>HydroChrono_build/data</cite> to obtain optional shaders and logos.</p></li>
+<li><p>Navigate to the <cite>chrono_build/bin/RelWithDebInfo</cite> directory and copy all <cite>.dll</cite> and <cite>.pdb</cite> files (excluding those for demos) to <cite>HydroChrono_build/demos/RelWithDebInfo</cite>. Files to copy include:</p>
+<ul class="simple">
+<li><p>ChronoEngine.dll</p></li>
+<li><p>ChronoEngine.pdb</p></li>
+<li><p>ChronoEngine_irrlicht.dll</p></li>
+<li><p>ChronoEngine_irrlicht.pdb</p></li>
+<li><p>ChronoEngine_postprocess.dll</p></li>
+<li><p>ChronoEngine_postprocess.pdb</p></li>
+<li><p>Irrlicht.dll (note: no <cite>.pdb</cite> for Irrlicht)</p></li>
+<li><p>Other <cite>ChronoEngine_moduleName.dll</cite> and <cite>ChronoEngine_moduleName.pdb</cite> files as relevant.</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="running-demos">
+<h2>Running Demos<a class="headerlink" href="#running-demos" title="Permalink to this heading">¶</a></h2>
+<ol class="arabic simple">
+<li><p>To run the demos, navigate to <cite>HydroChrono_build/demos/RelWithDebInfo</cite>.</p></li>
+<li><p>Demos require a command line argument indicating the location of input files. To specify this:</p>
+<ul class="simple">
+<li><p>Run demo executables from the command line with an argument pointing to the absolute location of <cite>&lt;path&gt;/HydroChrono/demos</cite>. For example, executing <cite>&gt; ./sphere_decay.exe C:\Users\USERNAME\HydroChrono\demos</cite> from the <cite>HydroChrono_build/demos/RelWithDebInfo</cite> directory would run the sphere heave decay test demo with the correct input file locations.</p></li>
+<li><p>Alternatively, in Visual Studio 2019, you can set this command line argument for debug mode in a demo’s properties. Navigate to the Solution Explorer, right-click a demo, select <cite>properties &gt; Configuration Properties &gt; Debugging</cite>, and set the Command Arguments to the appropriate path, like <cite>C:\Users\USERNAME\HydroChrono\demos</cite>.</p></li>
+</ul>
+</li>
+<li><p>Optionally, you can copy plot files into result directories and generate plots as needed.</p></li>
+</ol>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Building HydroChrono (and demos)</a><ul>
+<li><a class="reference internal" href="#introduction">Introduction</a></li>
+<li><a class="reference internal" href="#preparation">Preparation</a></li>
+<li><a class="reference internal" href="#building-hydrochrono-library">Building HydroChrono Library</a></li>
+<li><a class="reference internal" href="#post-build-steps">Post-Build Steps</a></li>
+<li><a class="reference internal" href="#running-demos">Running Demos</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="prerequisites.html"
+                          title="previous chapter">Prerequisites</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="workflow.html"
+                          title="next chapter">Workflow</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/_getting_started/building_hydrochrono.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="workflow.html" title="Workflow"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="prerequisites.html" title="Prerequisites"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">HydroChrono 0.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Building HydroChrono (and demos)</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright .
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 5.0.2.
+    </div>
+  </body>
+</html>

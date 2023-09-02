@@ -1,0 +1,203 @@
+
+
+<!doctype html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Theory &#8212; HydroChrono 0.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/bizstyle.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/graphviz.css" />
+    
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Contribution Guidelines" href="../_developer/contribution_guidelines.html" />
+    <link rel="prev" title="Workflow" href="../_getting_started/workflow.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../_developer/contribution_guidelines.html" title="Contribution Guidelines"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../_getting_started/workflow.html" title="Workflow"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">HydroChrono 0.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Theory</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="theory">
+<h1>Theory<a class="headerlink" href="#theory" title="Permalink to this heading">¶</a></h1>
+<section id="multibody-dynamics-theory-in-project-chrono">
+<h2>Multibody dynamics theory in Project Chrono<a class="headerlink" href="#multibody-dynamics-theory-in-project-chrono" title="Permalink to this heading">¶</a></h2>
+<p>In this section, the fundamental multibody dynamics theory used by Chrono is described. For a multibody system comprising <span class="math notranslate nohighlight">\(n_b\)</span> bodies, the generalized position of each body <span class="math notranslate nohighlight">\(i\)</span> is represented by the vector <span class="math notranslate nohighlight">\(r_i = [x_i, y_i, z_i]^T\)</span>, and its orientation is given by the Euler angles, <span class="math notranslate nohighlight">\(e_i = [\psi_i, \theta_i, \phi_i]^T\)</span>. Hence, the generalized coordinates for the entire system can be expressed as:</p>
+<div class="math notranslate nohighlight" id="equation-positions">
+<span class="eqno">(1)<a class="headerlink" href="#equation-positions" title="Permalink to this equation">¶</a></span>\[q = [r_1^T e_1^T \dots r_{n_b}^T e_{n_b}^T]^T \in \mathbb{R}^p,\ p = 6n_b\]</div>
+<p>Where <span class="math notranslate nohighlight">\(R\)</span> is the set of real numbers and <span class="math notranslate nohighlight">\(p\)</span> is a variable representing the total number of generalized coordinates in the multibody system (i.e., each body has three variables for position and three for orientation).</p>
+<p>In practice, quaternions (which have four variables) are typically used to describe orientation to avoid issues such as gimbal lock. If flexible bodies are present, deformation modes can be added to the position generalized coordinates.</p>
+<p>Constrained mechanical systems have joints connecting bodies, which impose restrictions on the relative motion and result in constraints on the generalized coordinates. The kinematic constraints are formulated as algebraic expressions involving generalized coordinates:</p>
+<div class="math notranslate nohighlight" id="equation-pos-constraints">
+<span class="eqno">(2)<a class="headerlink" href="#equation-pos-constraints" title="Permalink to this equation">¶</a></span>\[\Phi(q, t) = [\Phi_1(q, t) \dots \Phi_m(q, t)]^T = 0\]</div>
+<p>where <span class="math notranslate nohighlight">\(m\)</span> represents the total number of independent constraint equations that the generalized coordinates must satisfy throughout the simulation. For simplicity, only holonomic constraints (i.e., position-dependent constraints) are considered in this section.</p>
+<p>Taking the time derivative of the equation yields the velocity kinematic constraint equation:</p>
+<div class="math notranslate nohighlight" id="equation-vel-constraints">
+<span class="eqno">(3)<a class="headerlink" href="#equation-vel-constraints" title="Permalink to this equation">¶</a></span>\[\Phi_q(q, t)\dot{q} + \Phi_t(q, t) = 0\]</div>
+<p>Here, <span class="math notranslate nohighlight">\(\dot{q}\)</span> denotes generalized velocity, and the subscripts denote the partial derivatives: <span class="math notranslate nohighlight">\(\Phi_q = \left[\frac{\partial \Phi_i}{\partial q_j}\right]\)</span> and <span class="math notranslate nohighlight">\(\Phi_t = \left[\frac{\partial \Phi}{\partial t}\right]\)</span>. Differentiating the equation with respect to time results in the acceleration kinematic constraint equation:</p>
+<div class="math notranslate nohighlight" id="equation-acc-constraints">
+<span class="eqno">(4)<a class="headerlink" href="#equation-acc-constraints" title="Permalink to this equation">¶</a></span>\[\Phi_q(q, t)\ddot{q} + (\Phi_q(q, t)\dot{q})q\dot{q} + 2\Phi_{qt}(q, t)\dot{q} + \Phi_{tt}(q, t) = 0\]</div>
+<p>The time evolution of the mechanical system, governed by the Lagrange multiplier form of the constrained equations of motion, must satisfy the constraints at all times. The constrained equations of motion are given by:</p>
+<div class="math notranslate nohighlight" id="equation-dae">
+<span class="eqno">(5)<a class="headerlink" href="#equation-dae" title="Permalink to this equation">¶</a></span>\[M(q)\ddot{q} + \Phi_q^T(q)\lambda = Q(\dot{q}, q, t)\]</div>
+<p>where <span class="math notranslate nohighlight">\(M(q) \in \mathbb{R}^{p \times p}\)</span> represents the generalized mass matrix, and <span class="math notranslate nohighlight">\(Q(\dot{q}, q, t) \in \mathbb{R}^p\)</span> denotes the action force acting on the generalized coordinates <span class="math notranslate nohighlight">\(q \in \mathbb{R}^p\)</span>. The reaction force <span class="math notranslate nohighlight">\(\Phi_q^T(q)\lambda\)</span>, where <span class="math notranslate nohighlight">\(\lambda \in \mathbb{R}^m\)</span> is the Lagrange multiplier associated with the kinematic constraints, results from the constraint equations. The combination of differential equations describing the system dynamics and algebraic equations describing the system’s constraints leads to the system being referred to as a <em>differential-algebraic equation</em> (DAE). Because the constraint equations are described at the position level, these DAEs are referred to as “index-3.”</p>
+<p>The index-3 DAEs are neither linear nor ordinary differential. Hence, the Hilber-Hughes-Taylor (HHT) algorithm addresses these challenges by discretizing the equations of motion and enforcing position-level kinematic constraints. The core equation for the HHT integrator is:</p>
+<div class="math notranslate nohighlight" id="equation-hht">
+<span class="eqno">(6)<a class="headerlink" href="#equation-hht" title="Permalink to this equation">¶</a></span>\[\frac{1}{1+\alpha}(M\ddot{q})_{n+1} + (\Phi^T_q \lambda - Q)_{n+1} - \frac{\alpha}{1+\alpha}(\Phi^T_q \lambda - Q)_n) = 0\]</div>
+<p>The HHT algorithm iteratively solves the nonlinear equations for the unknowns using a Newton-like method, which eliminates ill-conditioning issues typically associated with integrating index-3 DAEs.</p>
+</section>
+<section id="hydrodynamics-theory-in-hydrochrono">
+<h2>Hydrodynamics theory in HydroChrono<a class="headerlink" href="#hydrodynamics-theory-in-hydrochrono" title="Permalink to this heading">¶</a></h2>
+<p>In order to integrate potential-flow-based hydrodynamics with Project Chrono, equation <a class="reference internal" href="#equation-dae">(5)</a> needs to be modified to incorporate added mass on its left side and the hydrodynamic force functions (e.g., hydrostatics, radiation damping, wave excitation) on its right side. Importantly, constraints, which might emerge from various subsystems like joints, power take-offs, and ropes, remain unchanged when including hydrodynamics. The time-integration of the system’s equations of motion remains under Project Chrono’s purview, without any need for alterations. Indeed, Chrono is solving the complete Cummins’ equation.</p>
+<p>The equation <a class="reference internal" href="#equation-dae">(5)</a> can be adapted to include the added mass and hydrodynamic forces as:</p>
+<div class="math notranslate nohighlight" id="equation-dae-hydro">
+<span class="eqno">(7)<a class="headerlink" href="#equation-dae-hydro" title="Permalink to this equation">¶</a></span>\[(M(q) + A)\ddot{q} + \Phi_q^T(q)\lambda = Q(\dot{q}, q, t) + F_{hydro}(\dot{q}, q, t)\]</div>
+<p>Where:
+- <span class="math notranslate nohighlight">\(A \in \mathbb{R}^{p \times p}\)</span> signifies the added mass matrix.
+- <span class="math notranslate nohighlight">\(F_{hydro}(\dot{q}, q, t) \in \mathbb{R}^p\)</span> represents the hydrodynamic force vector influencing the generalized coordinates <span class="math notranslate nohighlight">\(q \in \mathbb{R}^p\)</span>.</p>
+<p>The hydrodynamic force vector <span class="math notranslate nohighlight">\(F_{hydro}(\dot{q}, q, t)\)</span> can be broken down into three primary components: hydrostatic force <span class="math notranslate nohighlight">\(F_{hs}(q)\)</span>, radiation damping force <span class="math notranslate nohighlight">\(F_{rad}(\dot{q}, q)\)</span>, and wave excitation force <span class="math notranslate nohighlight">\(F_{exc}(t)\)</span>. Thus, we have:</p>
+<div class="math notranslate nohighlight" id="equation-f-hydro">
+<span class="eqno">(8)<a class="headerlink" href="#equation-f-hydro" title="Permalink to this equation">¶</a></span>\[F_{hydro}(\dot{q}, q, t) = F_{hs}(q, t) + F_{rad}(\dot{q}, t) + F_{exc}(t)\]</div>
+<p>The subsequent sections provide an in-depth look into these components.</p>
+<section id="hydrostatic-force-f-hs-q-t">
+<h3>Hydrostatic force, <span class="math notranslate nohighlight">\(F_{hs}(q, t)\)</span><a class="headerlink" href="#hydrostatic-force-f-hs-q-t" title="Permalink to this heading">¶</a></h3>
+<p>This force mirrors the restoring force due to buoyancy alongside alterations in the body’s waterplane area. It can be derived from the product of the hydrostatic stiffness matrix <span class="math notranslate nohighlight">\(K_h\)</span> and the displacement vector <span class="math notranslate nohighlight">\(\Delta q\)</span> - the difference between the system’s position <span class="math notranslate nohighlight">\(q\)</span> and its equilibrium position <span class="math notranslate nohighlight">\(q_0\)</span>:</p>
+<div class="math notranslate nohighlight" id="equation-f-hs">
+<span class="eqno">(9)<a class="headerlink" href="#equation-f-hs" title="Permalink to this equation">¶</a></span>\[F_{hs}(q, t) = K_h \Delta q = K_h (q - q_0)\]</div>
+<p>The hydrostatic stiffness matrix, <span class="math notranslate nohighlight">\(K_h\)</span>, can be sourced by executing a numerical integration over the waterplane area of the floating body. Potential tools for this task include open-source boundary element method (BEM) tools like Capytaine <span id="id1">[<a class="reference internal" href="../bibliography.html#id2" title="Matthieu Ancellin and Frédéric Dias. Capytaine: a python-based linear potential flow solver. Journal of Open Source Software, 4:1341, 04 2019. doi:10.21105/joss.01341.">AD19</a>]</span>, HAMS <span id="id2">[jmse7030081]</span>, or the open-source mesh and hydrostatics package MeshMagick <a class="footnote-reference brackets" href="#id5" id="id3">1</a>.</p>
+</section>
+<section id="radiation-damping-force-f-rad-dot-q-t">
+<h3>Radiation damping force, <span class="math notranslate nohighlight">\(F_{rad}(\dot{q}, t)\)</span><a class="headerlink" href="#radiation-damping-force-f-rad-dot-q-t" title="Permalink to this heading">¶</a></h3>
+<p>This force stands as a representation of the energy dissipated when a floating body undergoes oscillation in water. It’s procured through a convolution integral between the radiation impulse response function <span class="math notranslate nohighlight">\(K_{rad}(t)\)</span> and the system’s velocity timeline <span class="math notranslate nohighlight">\(\dot{q}(\tau)\)</span>:</p>
+<div class="math notranslate nohighlight" id="equation-f-rad">
+<span class="eqno">(10)<a class="headerlink" href="#equation-f-rad" title="Permalink to this equation">¶</a></span>\[F_{rad}(\dot{q}, t) = \int_{-\infty}^t K_{rad}(t - \tau) \dot{q}(\tau) d\tau\]</div>
+<p>The <span class="math notranslate nohighlight">\(K_{rad}(t)\)</span> function is derived by implementing the inverse continuous cosine transform (related to Fourier) on the frequency-domain radiation damping coefficients, <span class="math notranslate nohighlight">\(B(\omega)\)</span>:</p>
+<div class="math notranslate nohighlight" id="equation-k-rad">
+<span class="eqno">(11)<a class="headerlink" href="#equation-k-rad" title="Permalink to this equation">¶</a></span>\[K_{rad}(t) = \frac{2}{\pi} \int_0^\infty B(\omega) \cos(\omega t) d\omega\]</div>
+<p>This transform allows the frequency domain coefficients, <span class="math notranslate nohighlight">\(B(\omega)\)</span>, to be remapped into the time domain, thus producing the radiation impulse response function, <span class="math notranslate nohighlight">\(K_{rad}(t)\)</span>. The <span class="math notranslate nohighlight">\(B(\omega)\)</span> values can be sourced using open-source BEM software.</p>
+</section>
+<section id="wave-excitation-force-f-exc-t">
+<h3>Wave excitation force, <span class="math notranslate nohighlight">\(F_{exc}(t)\)</span><a class="headerlink" href="#wave-excitation-force-f-exc-t" title="Permalink to this heading">¶</a></h3>
+<p>The following method to compute the wave excitation force involves convolution between the excitation impulse response function <span class="math notranslate nohighlight">\(K_{exc}(t)\)</span> and the wave elevation time sequence <span class="math notranslate nohighlight">\(\eta(t)\)</span>:</p>
+<div class="math notranslate nohighlight" id="equation-f-ex">
+<span class="eqno">(12)<a class="headerlink" href="#equation-f-ex" title="Permalink to this equation">¶</a></span>\[F_{exc}(t) = \int_{-\infty}^{+\infty} K_{exc}(\tau) \eta(x, y, t-\tau) d\tau\]</div>
+<p>By amalgamating these forces into the equation of motion, one can effectively model the behavior of a multibody oceanic system influenced by hydrodynamic forces.</p>
+<p class="rubric">Footnotes</p>
+<dl class="footnote brackets">
+<dt class="label" id="id5"><span class="brackets"><a class="fn-backref" href="#id3">1</a></span></dt>
+<dd><p>MeshMagick: <a class="reference external" href="https://github.com/LHEEA/meshmagick">https://github.com/LHEEA/meshmagick</a></p>
+</dd>
+</dl>
+</section>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Theory</a><ul>
+<li><a class="reference internal" href="#multibody-dynamics-theory-in-project-chrono">Multibody dynamics theory in Project Chrono</a></li>
+<li><a class="reference internal" href="#hydrodynamics-theory-in-hydrochrono">Hydrodynamics theory in HydroChrono</a><ul>
+<li><a class="reference internal" href="#hydrostatic-force-f-hs-q-t">Hydrostatic force, <span class="math notranslate nohighlight">\(F_{hs}(q, t)\)</span></a></li>
+<li><a class="reference internal" href="#radiation-damping-force-f-rad-dot-q-t">Radiation damping force, <span class="math notranslate nohighlight">\(F_{rad}(\dot{q}, t)\)</span></a></li>
+<li><a class="reference internal" href="#wave-excitation-force-f-exc-t">Wave excitation force, <span class="math notranslate nohighlight">\(F_{exc}(t)\)</span></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="../_getting_started/workflow.html"
+                          title="previous chapter">Workflow</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="../_developer/contribution_guidelines.html"
+                          title="next chapter">Contribution Guidelines</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/_theory/theory.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../_developer/contribution_guidelines.html" title="Contribution Guidelines"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../_getting_started/workflow.html" title="Workflow"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">HydroChrono 0.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Theory</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright .
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 5.0.2.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,177 @@
+
+
+<!doctype html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Prerequisites &#8212; HydroChrono 0.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/bizstyle.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/graphviz.css" />
+    
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Building HydroChrono (and demos)" href="building_hydrochrono.html" />
+    <link rel="prev" title="Welcome to HydroChrono" href="../index.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="building_hydrochrono.html" title="Building HydroChrono (and demos)"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../index.html" title="Welcome to HydroChrono"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">HydroChrono 0.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Prerequisites</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="prerequisites">
+<span id="label-prerequisites"></span><h1>Prerequisites<a class="headerlink" href="#prerequisites" title="Permalink to this heading">¶</a></h1>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this heading">¶</a></h2>
+<p>This page provides a detailed list of prerequisites and installation guidelines for users who wish to use HydrChrono. It covers the necessary software, libraries, and additional tools.</p>
+</section>
+<section id="section-1-chrono-and-dependencies">
+<h2>Section 1: Chrono and Dependencies<a class="headerlink" href="#section-1-chrono-and-dependencies" title="Permalink to this heading">¶</a></h2>
+<p>Before proceeding with the scientific software installation, users need to ensure they have Chrono v8.0.0 installed and built.</p>
+<p>For detailed instructions on how to install and build Chrono, please refer to the <a class="reference external" href="https://api.projectchrono.org/tutorial_install_chrono.html">Chrono Install/Build Guide</a>. For visualization, insure this build includes the Irrlicht module.</p>
+<p>Below are the necessary dependencies and the recommended versions:</p>
+<ul class="simple">
+<li><p>C++ Compiler (Visual Studio 2019 or newer required, 2019 recommended)</p></li>
+<li><p>Eigen3 (3.3.0 or newer required, 3.4.0 recommended)</p></li>
+<li><p>Irrlicht Engine (1.8.4)</p></li>
+<li><p>CMake (3.18.2 recommended)</p></li>
+<li><p>GIT client</p></li>
+</ul>
+</section>
+<section id="section-2-h5cpp-from-hdf5group">
+<h2>Section 2: H5Cpp from HDF5Group<a class="headerlink" href="#section-2-h5cpp-from-hdf5group" title="Permalink to this heading">¶</a></h2>
+<p>Users need to install the H5Cpp header file from HDF5Group. We recommend using version 1.10.8 as other versions may not be fully compatible.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This is why Visual Studio 2019 is recommended. Building HDF5 with newer versions of Visual Studio may not be straightforward. Further instructions for building with VS2022 will be provided in the future.</p>
+</div>
+<p>To facilitate the installation of H5Cpp, here’s a brief summary:</p>
+<ol class="arabic simple">
+<li><p>Download the 1.10.8 release .zip from <a class="reference external" href="https://portal.hdfgroup.org/display/support/Downloads">HDF5Group</a>.</p></li>
+<li><p>Extract the zip file to a preferred location.</p></li>
+<li><p>Navigate to <cite>&lt;path&gt;\libraries\CMake-hdf5-1.10.8\CMake-hdf5-1.10.8</cite> and open a command line or powershell window.</p></li>
+<li><p>Run the respective batch file or shell script for your platform. For instance: <cite>ctest -S HDF5config.cmake,BUILD_GENERATOR=VS201964 -C RelWithDebInfo -V -O hdf5.log</cite>.</p>
+<ul class="simple">
+<li><p>The <cite>RelWithDebInfo</cite> option is optional (users could choose <cite>Debug</cite> or <cite>Release</cite> etc.). However, it’s important to maintain consistency with the configuration option used to build Chrono (be it <cite>Release</cite>, <cite>Debug</cite>, or <cite>RelWithDebInfo</cite>) and the one you plan to use for HydroChrono.</p></li>
+</ul>
+</li>
+<li><p>Follow through with the configuration process.</p></li>
+<li><p>Once completed, locate the compressed binary named <cite>HDF5-N-&lt;platform&gt;.&lt;zip or tar.gz&gt;</cite> within the build folder and extract it.</p></li>
+<li><p>Check the presence of <cite>hdf5-config.cmake</cite> files in the directory: <cite>&lt;path&gt;\libraries\CMake-hdf5-1.10.8\CMake-hdf5-1.10.8\build\HDF5-1.10.8-win64\HDF5-1.10.8-win64\share\cmake</cite>.</p></li>
+<li><p>Users must set the <cite>HDF5_DIR</cite> environment variable to the installed location of the CMake configuration files for HDF5. For instance, on Windows: <cite>HDF5_DIR=C:\Users\USER\code\libraries\CMake-hdf5-1.10.8\CMake-hdf5-1.10.8\build\HDF5-1.10.8-win64\HDF5-1.10.8-win64\share\cmake</cite>.</p></li>
+</ol>
+</section>
+<section id="section-4-optional-tools">
+<h2>Section 4: Optional Tools<a class="headerlink" href="#section-4-optional-tools" title="Permalink to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Gnuplot or any other plotting software of your choice. Learn more at <cite>Gnuplot Home &lt;http://www.gnuplot.info/&gt;</cite>.</p></li>
+<li><p>For users interested in Python integration, it is recommended to install and build PyChrono. Follow the <a class="reference external" href="https://api.projectchrono.org/module_python_installation.html">instructions</a> provided by Project Chrono. This guide also covers the installation of SWIG for generating python files from C++ code.</p></li>
+</ul>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Prerequisites</a><ul>
+<li><a class="reference internal" href="#introduction">Introduction</a></li>
+<li><a class="reference internal" href="#section-1-chrono-and-dependencies">Section 1: Chrono and Dependencies</a></li>
+<li><a class="reference internal" href="#section-2-h5cpp-from-hdf5group">Section 2: H5Cpp from HDF5Group</a></li>
+<li><a class="reference internal" href="#section-4-optional-tools">Section 4: Optional Tools</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="../index.html"
+                          title="previous chapter">Welcome to HydroChrono</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="building_hydrochrono.html"
+                          title="next chapter">Building HydroChrono (and demos)</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/_getting_started/prerequisites.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="building_hydrochrono.html" title="Building HydroChrono (and demos)"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../index.html" title="Welcome to HydroChrono"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">HydroChrono 0.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Prerequisites</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright .
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 5.0.2.
+    </div>
+  </body>
+</html>
