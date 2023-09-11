@@ -324,87 +324,77 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 }
 
 std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
-    int size = file_info_.GetRIRFDims(2);
-    int nDoF = 6;
-    // "shift" everything left 1
-    offset_rirf--;  // starts as 0 before timestep change
-    // keep offset close to 0, avoids small chance of -overflow errors in long simulations
+    const int size    = file_info_.GetRIRFDims(2);
+    const int nDoF    = 6;
+    const int numRows = nDoF * num_bodies_;
+    const int numCols = nDoF * num_bodies_;
+
+    // "Shift" everything left 1
+    offset_rirf--;  // Starts as 0 before timestep change
+
+    // Keep offset close to 0, avoids small chance of overflow errors in long simulations
     if (offset_rirf < -1 * size) {
         offset_rirf += size;
     }
-    int numRows = nDoF * num_bodies_;
-    int numCols = nDoF * num_bodies_;
+
     assert(numRows * size > 0 && numCols > 0);
-    double* timeseries = new double[numRows * numCols * size];
-    double* tmp_s      = new double[numRows * size];
-    // define shortcuts for accessing 1D arrays as 3D (or 2D) arrays
-    // TIMESERIES is for each row in RIRF, element wise multipy velocity history by RIRF slab
-#define TIMESERIES(row, col, step) timeseries[(row * numCols * size) + (col * size) + (step)]
-    // TMP_S ends up being a sum over the columns of TIMESERIES (total_dofs aka LDOF
-#define TMP_S(row, step) tmp_s[((row)*size) + (step)]
-    // set last entry as velocity
+
+    std::vector<double> timeseries(numRows * numCols * size, 0.0);
+    std::vector<double> tmp_s(numRows * size, 0.0);
+
+    // Helper function for timeseries indexing
+    auto TimeseriesIndex = [&](int row, int col, int step) { return (row * numCols * size) + (col * size) + step; };
+
+    // Helper function for tmp_s indexing
+    auto TmpSIndex = [&](int row, int step) { return (row * size) + step; };
+
+    // Helper function for circular indexing
+    auto CircularIndex = [&](int value) { return ((value % size) + size) % size; };
+
+    // Set last entry as velocity
     for (int i = 0; i < 3; i++) {
-        for (int b = 1; b < num_bodies_ + 1; b++) {  // body index being 1 indexed here is right
-            int vi = (((size + offset_rirf) % size) + size) % size;
+        for (int b = 1; b <= num_bodies_; b++) {
+            int vi = CircularIndex(size + offset_rirf);
             SetVelHistory(bodies_[b - 1]->GetPos_dt()[i], vi, b, i);
             SetVelHistory(bodies_[b - 1]->GetWvel_par()[i], vi, b, i + 3);
         }
     }
-    int vi;
-    //#pragma omp parallel for
-    if (convTrapz_ == true) {  // TODO add public function to TestHydro for users to change the value of convTrapz from
-                              // main simulation
-        // convolution integral using trapezoidal rule
-        for (int row = 0; row < numRows; row++) {  // row goes to 6N
+
+    if (convTrapz_) {
+        for (int row = 0; row < numRows; row++) {
             for (int st = 0; st < size; st++) {
-                vi = (((st + offset_rirf) % size) + size) % size;  // vi takes care of circshift function from matLab
-                TMP_S(row, st) = 0;
-                for (int col = 0; col < numCols; col++) {  // numCols goes to 6N
-                    // multiply rirf by velocity history for each step and row (0,...,6N), store product in TIMESERIES
-                    TIMESERIES(row, col, st) = GetRIRFval(row, col, st) * GetVelHistoryVal(vi, col);
-                    // for (int i = 0; i < numCols; i++) {
-                    // velOut << getVelHistoryVal(vi, col) << std::endl;
-                    //}
-                    // TMP_S is the sum over col (sum the effects of all radiating dofs (LDOF) for each time and motion
-                    // dof)
-                    TMP_S(row, st) += TIMESERIES(row, col, st);
+                int vi                    = CircularIndex(st + offset_rirf);
+                tmp_s[TmpSIndex(row, st)] = 0;
+                for (int col = 0; col < numCols; col++) {
+                    timeseries[TimeseriesIndex(row, col, st)] = GetRIRFval(row, col, st) * GetVelHistoryVal(vi, col);
+                    tmp_s[TmpSIndex(row, st)] += timeseries[TimeseriesIndex(row, col, st)];
                 }
                 if (st > 0) {
-                    // integrate TMP_S
-                    force_radiation_damping_[row] +=
-                        (TMP_S(row, st - 1) + TMP_S(row, st)) / 2.0 * (rirf_time_vector[st] - rirf_time_vector[st - 1]);
+                    // Integrate tmp_s
+                    force_radiation_damping_[row] += (tmp_s[TmpSIndex(row, st - 1)] + tmp_s[TmpSIndex(row, st)]) / 2.0 *
+                                                     (rirf_time_vector[st] - rirf_time_vector[st - 1]);
                 }
             }
         }
     }
-    // velOut.close();
-
-    // else { // TODO fix this for force_radiation_damping to go over col not row like above!
-    //	// convolution integral assuming fixed dt
-    //	for (int row = 0; row < numRows; row++) {
-    //		//#pragma omp parallel for
-    //		sumVelHistoryAndRIRF = 0.0;
-    //		for (int col = 0; col < numCols; col++) {
-    //			for (int st = 0; st < size; st++) {
-    //				vi = (((st + offset_rirf) % size) + size) % size; // vi takes care of circshift function from matLab
-    //				TIMESERIES(row, col, st) = GetRIRFval(row, col, st) * getVelHistoryVal(vi, col); // col now runs
-    // thru all
-    // bodies (0->11 for 2 bodies...) 				TMP_S(row, st) = TIMESERIES(row, col, st);
-    // sumVelHistoryAndRIRF
-    // += TMP_S(row, st);
-    //			}
-    //		}
-    //		force_radiation_damping[row] -= sumVelHistoryAndRIRF * rirf_timestep;
-    //	}
+    //else {
+    //    // Convolution integral assuming fixed dt
+    //    for (int row = 0; row < numRows; row++) {
+    //        double sumVelHistoryAndRIRF = 0.0;
+    //        for (int col = 0; col < numCols; col++) {
+    //            for (int st = 0; st < size; st++) {
+    //                int vi                                    = CircularIndex(st + offset_rirf);
+    //                timeseries[TimeseriesIndex(row, col, st)] = GetRIRFval(row, col, st) * GetVelHistoryVal(vi, col);
+    //                sumVelHistoryAndRIRF += timeseries[TimeseriesIndex(row, col, st)];
+    //            }
+    //        }
+    //        force_radiation_damping_[row] -= sumVelHistoryAndRIRF * rirf_timestep;
+    //    }
     //}
-    // Deallocate memory
-#undef TIMESERIES
-#undef TMP_S
-    delete[] timeseries;
-    delete[] tmp_s;
 
     return force_radiation_damping_;
 }
+
 
 double TestHydro::GetRIRFval(int row, int col, int st) {
     if (row < 0 || row >= 6 * num_bodies_ || col < 0 || col >= 6 * num_bodies_ || st < 0 ||
