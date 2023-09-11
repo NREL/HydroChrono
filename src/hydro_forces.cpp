@@ -220,13 +220,20 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
 
 void TestHydro::AddWaves(std::shared_ptr<WaveBase> waves) {
     user_waves_ = waves;
-    if (user_waves_->GetWaveMode() == WaveMode::regular) {
-        std::shared_ptr<RegularWave> reg = std::static_pointer_cast<RegularWave>(user_waves_);
-        reg->AddH5Data(file_info_.GetRegularWaveInfos());
-    } else if (user_waves_->GetWaveMode() == WaveMode::irregular) {
-        std::shared_ptr<IrregularWaves> irreg = std::static_pointer_cast<IrregularWaves>(user_waves_);
-        irreg->AddH5Data(file_info_.GetIrregularWaveInfos(), file_info_.GetSimulationInfo());
+
+    switch (user_waves_->GetWaveMode()) {
+        case WaveMode::regular: {
+            auto reg = std::static_pointer_cast<RegularWave>(user_waves_);
+            reg->AddH5Data(file_info_.GetRegularWaveInfos());
+            break;
+        }
+        case WaveMode::irregular: {
+            auto irreg = std::static_pointer_cast<IrregularWaves>(user_waves_);
+            irreg->AddH5Data(file_info_.GetIrregularWaveInfos(), file_info_.GetSimulationInfo());
+            break;
+        }
     }
+
     user_waves_->Initialize();
 }
 
@@ -235,14 +242,17 @@ double TestHydro::GetVelHistoryVal(int step, int c) const {
         std::cout << "wrong vel history index " << std::endl;
         return 0;
     }
-    int index = c % 6;
-    int b     = c / 6;  // 0 indexed
-    if (index + 6 * b + 6 * num_bodies_ * step >= num_bodies_ * 6 * file_info_.GetRIRFDims(2) ||
-        index + 6 * b + 6 * num_bodies_ * step < 0) {
+
+    int index            = c % 6;
+    int b                = c / 6;  // 0 indexed
+    int calculated_index = index + (6 * b) + (6 * num_bodies_ * step);
+
+    if (calculated_index >= num_bodies_ * 6 * file_info_.GetRIRFDims(2) || calculated_index < 0) {
         std::cout << "bad vel history math" << std::endl;
         return 0;
     }
-    return velocity_history[index + (6 * b) + (6 * num_bodies_ * step)];
+
+    return velocity_history[calculated_index];
 }
 
 double TestHydro::SetVelHistory(double val, int step, int b_num, int index) {
@@ -250,63 +260,66 @@ double TestHydro::SetVelHistory(double val, int step, int b_num, int index) {
         std::cout << "bad set vel history indexing" << std::endl;
         return 0;
     }
-    if (index + 6 * (b_num - 1) + 6 * num_bodies_ * step < 0 ||
-        index + 6 * (b_num - 1) + 6 * num_bodies_ * step >= num_bodies_ * 6 * file_info_.GetRIRFDims(2)) {
+
+    int calculated_index = index + (6 * (b_num - 1)) + (6 * num_bodies_ * step);
+
+    if (calculated_index < 0 || calculated_index >= num_bodies_ * 6 * file_info_.GetRIRFDims(2)) {
         std::cout << "bad set vel history math" << std::endl;
         return 0;
     }
-    velocity_history[index + (6 * (b_num - 1)) + (6 * num_bodies_ * step)] = val;
+
+    velocity_history[calculated_index] = val;
     return val;
 }
 
 std::vector<double> TestHydro::ComputeForceHydrostatics() {
     assert(num_bodies_ > 0);
 
+    const int kDofPerBody = 6;
+    const int kSpaceDims  = 3;
+    const double rho      = file_info_.GetRhoVal();
+    const auto g_acc      = bodies_[0]->GetSystem()->Get_G_acc();  // assuming all bodies in same system
+    const double gg       = g_acc.Length();
+
     for (int b = 0; b < num_bodies_; b++) {
-        // initialize variables
         std::shared_ptr<chrono::ChBody> body = bodies_[b];
-        // H5FileInfo& body_h5file              = file_info[b];
-        double rho   = file_info_.GetRhoVal();
-        int b_offset = 6 * b;
-        // force_hydrostatic has 6 elements for each body so to skip to the next body we move 6 spaces
+
+        int b_offset                   = kDofPerBody * b;
         double* body_force_hydrostatic = &force_hydrostatic_[b_offset];
         double* body_equilibrium       = &equilibrium_[b_offset];
-        double gg                      = body->GetSystem()->Get_G_acc().Length();
 
         // hydrostatic stiffness due to offset from equilibrium
-        chrono::ChVector<> body_position = body->GetPos();
-        chrono::ChVector<> body_rotation = body->GetRot().Q_to_Euler123();
-        // calculate displacement
-        chrono::ChVectorN<double, 6> body_displacement;
-        for (int ii = 0; ii < 3; ii++) {
-            body_displacement[ii]     = body_position[ii] - body_equilibrium[ii];
-            body_displacement[ii + 3] = body_rotation[ii] - body_equilibrium[ii + 3];
+        const auto body_position = body->GetPos();
+        const auto body_rotation = body->GetRot().Q_to_Euler123();
+
+        chrono::ChVectorN<double, kDofPerBody> body_displacement;
+        for (int ii = 0; ii < kSpaceDims; ii++) {
+            body_displacement[ii]              = body_position[ii] - body_equilibrium[ii];
+            body_displacement[ii + kSpaceDims] = body_rotation[ii] - body_equilibrium[ii + kSpaceDims];
         }
-        // calculate force
-        chrono::ChVectorN<double, 6> force_offset = -gg * rho * file_info_.GetLinMatrix(b) * body_displacement;
-        // add to force_hydrostatic
-        for (int dof = 0; dof < 6; dof++) {
+
+        const auto force_offset = -gg * rho * file_info_.GetLinMatrix(b) * body_displacement;
+        for (int dof = 0; dof < kDofPerBody; dof++) {
             body_force_hydrostatic[dof] += force_offset[dof];
         }
 
         // buoyancy at equilibrium
-        // TODO: move to prestep (shouldn't be calculated at each time step)
-        // translational
-        chrono::ChVector<> buoyancy =
-            rho * (-body->GetSystem()->Get_G_acc()) * file_info_.GetDispVolVal(b);  // buoyancy = rho*g*Vdisp
-        body_force_hydrostatic[0] += buoyancy[0];
-        body_force_hydrostatic[1] += buoyancy[1];
-        body_force_hydrostatic[2] += buoyancy[2];
-        // rotational
-        int r_offset = 3 * b;
-        // cb_minus_cg has 3 elements for each body so to skip to the next body we move 3 spaces
-        auto cg2cb =
-            chrono::ChVector<double>(cb_minus_cg_[0 + r_offset], cb_minus_cg_[1 + r_offset], cb_minus_cg_[2 + r_offset]);
-        chrono::ChVector<> buoyancy2 = cg2cb % buoyancy;
-        body_force_hydrostatic[3] += buoyancy2[0];
-        body_force_hydrostatic[4] += buoyancy2[1];
-        body_force_hydrostatic[5] += buoyancy2[2];
+        const auto buoyancy = rho * (-g_acc) * file_info_.GetDispVolVal(b);
+
+        for (int ii = 0; ii < kSpaceDims; ii++) {
+            body_force_hydrostatic[ii] += buoyancy[ii];
+        }
+
+        int r_offset = kSpaceDims * b;
+        const auto cg2cb =
+            chrono::ChVector<double>(cb_minus_cg_[r_offset], cb_minus_cg_[r_offset + 1], cb_minus_cg_[r_offset + 2]);
+        const auto buoyancy2 = cg2cb % buoyancy;
+
+        for (int ii = 0; ii < kSpaceDims; ii++) {
+            body_force_hydrostatic[ii + kSpaceDims] += buoyancy2[ii];
+        }
     }
+
     return force_hydrostatic_;
 }
 
@@ -450,11 +463,6 @@ double TestHydro::CoordinateFuncForBody(int b, int i) {
     for (int i = 0; i < total_dofs; i++) {
         total_force_[i] = force_hydrostatic_[i] - force_radiation_damping_[i] + force_waves_[i];
     }
-
-    // std::cout << "force_waves\n";
-    // for (int i = 0; i < total_dofs; i++) {
-    //    std::cout << force_waves[i] << std::endl;
-    //}
 
     if (body_num_offset + i < 0 || body_num_offset >= total_dofs) {
         std::cout << "total force accessing out of bounds" << std::endl;
