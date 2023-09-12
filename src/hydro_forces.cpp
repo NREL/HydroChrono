@@ -178,7 +178,7 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
     int total_dofs = kDofPerBody * num_bodies_;
 
     // Initialize vectors
-    velocity_history.assign(file_info_.GetRIRFDims(2) * total_dofs, 0.0);
+    velocity_history_.assign(file_info_.GetRIRFDims(2) * total_dofs, 0.0);
     force_hydrostatic_.assign(total_dofs, 0.0);
     force_radiation_damping_.assign(total_dofs, 0.0);
     total_force_.assign(total_dofs, 0.0);
@@ -253,7 +253,7 @@ double TestHydro::GetVelHistoryVal(int step, int c) const {
         return 0;
     }
 
-    return velocity_history[calculated_index];
+    return velocity_history_[calculated_index];
 }
 
 double TestHydro::SetVelHistory(double val, int step, int b_num, int index) {
@@ -270,7 +270,7 @@ double TestHydro::SetVelHistory(double val, int step, int b_num, int index) {
         return 0;
     }
 
-    velocity_history[calculated_index] = val;
+    velocity_history_[calculated_index] = val;
     return val;
 }
 
