@@ -23,7 +23,10 @@
 #include <Eigen/Dense>
 #include <fstream>
 #include <iostream>
-#include <vector>
+#include <stdexcept>
+
+
+const int kDofPerBody = 6;
 
 
 /**
@@ -395,25 +398,34 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
     return force_radiation_damping_;
 }
 
-
 double TestHydro::GetRIRFval(int row, int col, int st) {
-    if (row < 0 || row >= 6 * num_bodies_ || col < 0 || col >= 6 * num_bodies_ || st < 0 ||
+    if (row < 0 || row >= kDofPerBody * num_bodies_ || col < 0 || col >= kDofPerBody * num_bodies_ || st < 0 ||
         st >= file_info_.GetRIRFDims(2)) {
-        std::cout << "rirfval index bad from testhydro" << std::endl;
-        return 0;
+        throw std::out_of_range("rirfval index out of range in TestHydro");
     }
-    int b = row / 6;  // 0 indexed, which body to get matrix info from
-    int c = col % 6;  // which dof across column, 0,..,11 for 2 bodies, 0,...,6N-1 for N
-    int r = row % 6;  // which dof 0,..,5 in individual body RIRF matrix
-    return file_info_.GetRIRFVal(b, r, col, st);
+
+    int body_index = row / kDofPerBody;
+    int col_dof    = col % kDofPerBody;
+    int row_dof    = row % kDofPerBody;
+
+    return file_info_.GetRIRFVal(body_index, row_dof, col, st);
 }
 
 Eigen::VectorXd TestHydro::ComputeForceWaves() {
-    Eigen::VectorXd wf(num_bodies_ * 6);
-    // TODO: check size of force calculated against wf (this could help catch/fix NoWave multibody issue)
-    wf          = user_waves_->GetForceAtTime(bodies_[0]->GetChTime());
-    force_waves_ = wf;
-    return wf;
+    // Ensure bodies_ is not empty
+    if (bodies_.empty()) {
+        throw std::runtime_error("bodies_ array is empty in ComputeForceWaves");
+    }
+
+    force_waves_ = user_waves_->GetForceAtTime(bodies_[0]->GetChTime());
+
+    // TODO: Add size check for force_waves_ if needed
+    // Example:
+    // if (force_waves_.size() != expected_size) {
+    //     throw std::runtime_error("Mismatched size in ComputeForceWaves");
+    // }
+
+    return force_waves_;
 }
 
 double TestHydro::CoordinateFuncForBody(int b, int i) {
