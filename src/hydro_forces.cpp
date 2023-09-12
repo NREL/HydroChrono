@@ -428,46 +428,46 @@ Eigen::VectorXd TestHydro::ComputeForceWaves() {
     return force_waves_;
 }
 
-double TestHydro::CoordinateFuncForBody(int b, int i) {
-    int body_num_offset = 6 * (b - 1);  // b_num from ForceFunc6d is 1 indexed, TODO: make all b_num 0 indexed
-    int total_dofs      = 6 * num_bodies_;
-    if (i < 0 || i > 5 || b < 1 || b > num_bodies_) {
-        std::cout << "wrong index somewhere\nsetting coordinateFunc to 0" << std::endl;
-        return 0;
+double TestHydro::CoordinateFuncForBody(int b, int dof_index) {
+    if (dof_index < 0 || dof_index > 5 || b < 1 || b > num_bodies_) {
+        throw std::out_of_range("Invalid index in CoordinateFuncForBody");
     }
-    // check prev_time here and only here
-    // if forces have been computed for this time already, return the computed total force
-    if (bodies_[0] == NULL) {
-        std::cout << "bodies empty" << std::endl;
-        return 0;
-    }
-    if (bodies_[0]->GetChTime() == prev_time) {
-        return total_force_[body_num_offset + i];
-    }
-    // update current time and total_force for this step
-    prev_time = bodies_[0]->GetChTime();
 
-    // reset forces to 0
-    // TODO change forces to Eigen::VectorXd types, might need to force evaluation of eigen at some point?
+    // Adjusting for 1-indexed body number
+    const int body_num_offset = kDofPerBody * (b - 1);
+    const int total_dofs      = kDofPerBody * num_bodies_;
+
+    // Ensure the bodies_ vector isn't empty and the first element isn't null
+    if (bodies_.empty() || !bodies_[0]) {
+        throw std::runtime_error("bodies_ array is empty or invalid in CoordinateFuncForBody");
+    }
+
+    // Check if the forces for this time step have already been computed
+    if (bodies_[0]->GetChTime() == prev_time) {
+        return total_force_[body_num_offset + dof_index];
+    }
+
+    // Update time and reset forces for this time step
+    prev_time = bodies_[0]->GetChTime();
     std::fill(total_force_.begin(), total_force_.end(), 0.0);
     std::fill(force_hydrostatic_.begin(), force_hydrostatic_.end(), 0.0);
     std::fill(force_radiation_damping_.begin(), force_radiation_damping_.end(), 0.0);
     std::fill(force_waves_.begin(), force_waves_.end(), 0.0);
 
-    // call compute forces
-    convTrapz_ = true;  // use trapeziodal rule or assume fixed dt.
-
+    // Compute forces using the trapezoidal rule (or other methods in the future)
+    convTrapz_               = true;
     force_hydrostatic_       = ComputeForceHydrostatics();
-    force_radiation_damping_ = ComputeForceRadiationDampingConv();  // TODO non convolution option
+    force_radiation_damping_ = ComputeForceRadiationDampingConv();
     force_waves_             = ComputeForceWaves();
 
-    // TODO once all force components are Eigen, remove this from being a loop and add vectors directly
-    for (int i = 0; i < total_dofs; i++) {
-        total_force_[i] = force_hydrostatic_[i] - force_radiation_damping_[i] + force_waves_[i];
+    // Accumulate total force (consider converting forces to Eigen::VectorXd in the future for direct addition)
+    for (int index = 0; index < total_dofs; index++) {
+        total_force_[index] = force_hydrostatic_[index] - force_radiation_damping_[index] + force_waves_[index];
     }
 
-    if (body_num_offset + i < 0 || body_num_offset >= total_dofs) {
-        std::cout << "total force accessing out of bounds" << std::endl;
+    if (body_num_offset + dof_index < 0 || body_num_offset >= total_dofs) {
+        throw std::out_of_range("Accessing out-of-bounds index in CoordinateFuncForBody");
     }
-    return total_force_[body_num_offset + i];
+
+    return total_force_[body_num_offset + dof_index];
 }
