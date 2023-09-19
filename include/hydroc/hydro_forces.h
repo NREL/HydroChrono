@@ -4,13 +4,17 @@
 /*********************************************************************
  * @file  hydro_forces.h
  *
- * @brief header file of TestHydro main class and helper classes \
+ * @brief Header file of TestHydro main class and helper classes \
  * ComponentFunc and ForceFunc6d.
  *********************************************************************/
+
 // TODO: clean up include statements
+
+// Standard includes
 #include <cstdio>
 #include <filesystem>
 
+// Chrono library includes
 #include <chrono/solver/ChIterativeSolverLS.h>
 #include <chrono/solver/ChSolverPMINRES.h>
 #include <chrono/timestepper/ChTimestepper.h>
@@ -25,8 +29,10 @@
 #include <chrono/physics/ChSystemNSC.h>
 #include <chrono/physics/ChSystemSMC.h>
 
+// Chrono FEA includes
 #include <chrono/fea/ChMeshFileLoader.h>
 
+// Hydroc library includes
 #include <hydroc/h5fileinfo.h>
 #include <hydroc/wave_types.h>
 
@@ -39,163 +45,134 @@ class TestHydro;
 class ComponentFunc : public ChFunction {
   public:
     /**
-     * @brief default constructor, dont use.
+     * @brief Default constructor.
+     * @note Do not use this constructor.
      */
     ComponentFunc();
-    // TODO delete default constructor for ComponentFunc? Users shouldnt be touching
-    // ComponentFunc class anyway
 
     /**
-     * @brief copy constructor works like default copy constructor.
+     * @brief Copy constructor.
      */
     ComponentFunc(const ComponentFunc& old);
-    // TODO: remove copy constructor definition since it should be the default
 
     /**
-     * @brief sets pointer to ForceFunc6d member object and index for which component
-     * this ComponentFunc object refers to.
+     * @brief Construct a new ComponentFunc object.
      *
-     * @param b which body in the system the force is being applied to, 0 indexed?
-     * @param i integer corresponding to the force's degree of freedom \
-     * (0,1,2,3,4,5) -> (surge, sway, heave, roll, pitch, yaw)
+     * @param b Pointer to ForceFunc6d member object.
+     * @param i Index for which component this ComponentFunc object refers to. Corresponds
+     * to the force's degree of freedom, where:
+     * (0,1,2,3,4,5) -> (surge, sway, heave, roll, pitch, yaw).
      */
     ComponentFunc(ForceFunc6d* b, int i);
 
     /**
-     * @brief Required override function since ComponentFunc inherits from ChFunction.
+     * @brief Clone the object.
+     * @note This is a required override since ComponentFunc inherits from ChFunction.
+     * @return A cloned ComponentFunc object.
      */
     virtual ComponentFunc* Clone() const override;
 
     /**
-     * @brief calculates the value of the index-th coordinate of the hydro forces at each time.
+     * @brief Calculate the force value for a specific time.
      *
-     * This is a required override function since ComponentFunc inherits from ChFunction.
-     *
-     * @param x time from simulation
-     *
-     * @return force on body in index-th degree of freedom at time x
+     * @param x Time from simulation.
+     * @return Force on body in the specified degree of freedom at time x.
      */
     virtual double Get_y(double x) const override;
 
   private:
-    ForceFunc6d* base_;  // pointer to full 6d force on the body
-    int index_;          // which force degree of freedom this object represents on the body
+    ForceFunc6d* base_;  ///< Pointer to the full 6D force on the body.
+    int index_;          ///< Index representing force degree of freedom on the body.
 };
 
-// =============================================================================
-// ForceFunc6d organizes the functional (time dependent) forces in each DoF (6 total) for a body
+/**
+ * @brief Organizes the functional (time-dependent) forces in each degree of freedom (6 total) for a body.
+ */
 class ForceFunc6d {
   public:
     /**
-     * @brief initializes array of ComponentFunc objects and pointers to each force/torque.
+     * @brief Initializes an array of ComponentFunc objects and pointers to each force/torque.
      */
     ForceFunc6d();
 
     /**
-     * @brief calls default constructor and initializes hydro force info \
-     * from H5FileInfo, also initializes ChBody that this force will be applied to.
+     * @brief Initializes hydro force info from H5FileInfo and the ChBody this force will be applied to.
      *
-     * @param object which body in system this 6 dimensional force is being applied to
-     * @param all_hydro_forces_user gets TestHydro class where total force on all bodies \
-     * in the system is calculated so the components can be passed to ForceFunc6d to apply
+     * @param object The body in the system to which this 6-dimensional force is being applied.
+     * @param all_hydro_forces_user The TestHydro class where the total force on all bodies is calculated.
      */
     ForceFunc6d(std::shared_ptr<ChBody> object, TestHydro* all_hydro_forces_user);
 
     /**
-     * @brief copy constructor should check to see if this force has been added to this body yet
-     * if not, it should add it, if so it shouldnt add the force a second time.
+     * @brief Copy constructor that ensures the force is only added to a body once.
      *
-     * Do not use default copy constructor for ForceFunc6d at this time! ApplyForceAndTorqueToBody()
-     * should only ever be applied once. If your forces are doubled, tripled, or more
-     * (depending on number of bodies) this is something to check (force only being applied once).
+     * @note Avoid using the default copy constructor. ApplyForceAndTorqueToBody() should only ever be applied once.
+     *
+     * @param old ForceFunc6d object to copy from.
      */
     ForceFunc6d(const ForceFunc6d& old);
 
     /**
-     * @brief calculates vector component of the force vector on the body.
+     * @brief Calculates the force on a given degree of freedom.
      *
-     * @param i index corresponding to the degree of freedom to calculate force on body \
-     * assumed to be 0,1,2,3,4,5 only
-     *
-     * @return value of force in i-th degree of freedom for the body this force is applied to
+     * @param i Index corresponding to the degree of freedom. Assumed to be 0-5 only.
+     * @return Value of force in the i-th degree of freedom for the associated body.
      */
     double CoordinateFunc(int i);
 
   private:
     /**
-     * @brief Used to initialize components of force (external ChForce pointers).
+     * @brief Initializes force components.
      */
     void SetForce();
 
     /**
-     * @brief used to initialize components of torque (external ChForce pointer with TORQUE flag set).
+     * @brief Initializes torque components.
      */
     void SetTorque();
 
-    // TODO: remove ApplyForceAndTorqueToBody() from ForceFunc6d, instead make the operations in this function
-    // reachable by users in the main simulation loop. Like all forces, add to body in the demo
-    // this will avoid a lot of issues we've had to overcome
     /**
-     * @brief adds this force to the body's list of applied forces
+     * @brief Adds this force to the body's list of applied forces.
      *
-     * Warning: everytime this is called, a force is applied to the body so be careful not to \
-     * duplicate forces on accident!!.
-     * TODO: make this function less risky, there shouldn't be a chance to apply the same force
-     * multiple times.
+     * @warning Ensure this function is not called multiple times for the same force.
      */
     void ApplyForceAndTorqueToBody();
 
-    std::shared_ptr<ChBody> body_;  // pointer to body this 6d force is being applied to
-    int b_num_;                     // 1 indexed number representing which body in system TODO: make 0 indexed
-    ComponentFunc forces_[6];
-    std::shared_ptr<ComponentFunc> force_ptrs_[6];
-    std::shared_ptr<ChForce> chrono_force_;
-    std::shared_ptr<ChForce> chrono_torque_;
-    TestHydro* all_hydro_forces_;  // pointer up to TestHydro object so coordinateFunc() knows where to go for calcs
+    std::shared_ptr<ChBody> body_;                  ///< Pointer to the body this force is applied to.
+    int b_num_;                                     ///< Body's index in the system. Currently 1-indexed.
+    ComponentFunc forces_[6];                       ///< Forces for each degree of freedom.
+    std::shared_ptr<ComponentFunc> force_ptrs_[6];  ///< Pointers to the forces.
+    std::shared_ptr<ChForce> chrono_force_;         ///< Chrono force for the body.
+    std::shared_ptr<ChForce> chrono_torque_;        ///< Chrono torque for the body.
+    TestHydro* all_hydro_forces_;                   ///< Pointer to TestHydro for calculations.
 };
 
 class ChLoadAddedMass;
 
-// TODO give TestHydro a better name, perhaps HydroForces ?
-// TODO split TestHydro class from its helper classes into new file above for clearer code
+// TODO: Rename TestHydro for clarity, perhaps to HydroForces?
+// TODO: Split TestHydro class from its helper classes for clearer code structure.
 class TestHydro {
   public:
-    bool printed = false;
-    TestHydro()  = delete;
+    bool convTrapz_;  // for use in ComputeForceRadiationDampingConv()
+    TestHydro() = delete;
+
     /**
-     * @brief main constructor for TestHydro class, sets up vector of bodies, h5 file info, and hydro inputs.
+     * @brief Main constructor for initializing the TestHydro class.
      *
-     * Also initializes many persistent variables for force calculations from h5 file.
+     * Sets up vector of bodies, h5 file info, and hydro inputs. If no waves are given,
+     * this constructor defaults to using NoWave.
      *
-     * @param user_bodies list of pointers to bodies in chrono system that the hydro forces are being applied to \
-     * must be added to system in same order as provided here
-     * @param h5_file_name name of h5 file where hydro data is stored
-     * @param waves optional Wavebase parameter if using regular or irregular waves
+     * @param user_bodies List of pointers to bodies for the hydro forces.
+     * @param h5_file_name Name of the h5 file where hydro data is stored.
+     * @param waves WaveBase object. Defaults to NoWave if not provided.
      */
     TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
               std::string h5_file_name,
-              std::shared_ptr<WaveBase> waves);
+              std::shared_ptr<WaveBase> waves = std::make_shared<NoWave>());
 
-    /**
-     * @brief alternate constructor for TestHydro class, sets up vector of bodies, h5 file info, and hydro inputs.
-     *
-     * Also initializes many persistent variables for force calculations from h5 file.
-     * If no waves are given in main constructor, this constructor makes NoWave object and calls main constructor \
-     * with NoWave object.
-     * TODO: default NoWave option doesn't work for multibody sytems, add user_bodies->size() to NoWave constructor \
-     * to fix?
-     *
-     * @param user_bodies list of pointers to bodies in chrono system that the hydro forces are being applied to \
-     * must be added to system in same order as provided here
-     * @param h5_file_name name of h5 file where hydro data is stored
-     */
-    TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies, std::string h5_file_name)
-        : TestHydro(user_bodies, h5_file_name, std::static_pointer_cast<WaveBase>(std::make_shared<NoWave>())) {}
-
-    // should only ever have 1 TestHydro object in a system to calc all the forces on all hydro bodies
-    // don't try copying or moving this, many issues will arrise.
+    // Deleted copy constructor and assignment operator for safety.
     TestHydro(const TestHydro& old) = delete;
-    TestHydro operator=(const TestHydro& rhs) = delete;
+    TestHydro& operator=(const TestHydro& rhs) = delete;
 
     /**
      * @brief Adds waves class to force calculations depending on if regular or irregular waves.
@@ -206,119 +183,98 @@ class TestHydro {
      */
     void AddWaves(std::shared_ptr<WaveBase> waves);
 
-    void WaveSetUp();  // TODO remove function, no longer in use
-
     /**
-     * @brief Computes the 6N dimensional Hydrostatic stiffness force plus buoyancy force.
+     * @brief Computes the Hydrostatic stiffness force plus buoyancy force for a 6N dimensional system.
      *
-     * TODO: change return type to Eigen::VectorXd.
-     * TODO: make private, users shouldn't call from main
-     *
-     * @return 6N dimensional force for 6 dof and N bodies in system
+     * @return 6N dimensional force for 6 DOF and N bodies in system.
      */
     std::vector<double> ComputeForceHydrostatics();
 
     /**
-     * @brief computes the 6N dimensional Radiation Damping force with convolution history.
+     * @brief Computes the Radiation Damping force with convolution history for a 6N dimensional system.
      *
-     * TODO: change return type to Eigen::VectorXd.
-     * TODO: make private, users shouldn't call from main
-     *
-     * @return 6N dimensional force for 6 dof and N bodies in system
+     * @return 6N dimensional force for 6 DOF and N bodies in system.
      */
     std::vector<double> ComputeForceRadiationDampingConv();
 
     /**
-     * @brief computes the 6N dimensional force from any waves applied to system.
-     *
-     * TODO: make private, users shouldn't call from main
-     *
-     * @return 6N dimensional force for 6 dof and N bodies in system (already Eigen type)
+     * @brief Computes the 6N dimensional force from any waves applied to the system.
+     * @return 6N dimensional force for 6 DOF and N bodies in system (already Eigen type).
      */
     Eigen::VectorXd ComputeForceWaves();
 
     /**
-     * @brief looksup the rirf value from the h5 file info for correct body given the row, col, and step.
+     * @brief Fetches the RIRF value from the h5 file based on the provided indices.
      *
-     * TODO: make private function, since this is mostly a helper for ComputeForceRadiationDampingConv?
+     * @param row Index representing the body number and DOF index [0,...,5,...6N-1] for rows of RIRF.
+     * @param col Column index in RIRF matrix [0,...,5,...6N-1].
+     * @param st Index representing the timestep in RIRF, usually in the range [0,...1000].
      *
-     * @param row encodes the body number and dof index [0,...,5,...6N-1] for rows of RIRF
-     * @param col col in RIRF matrix [0,...,5,...6N-1]
-     * @param st which time step in rirf ranges usually [0,...1000]
-     *
-     * @return matrix val from h5 file RIRF val
+     * @return The value from the h5 file RIRF matrix.
      */
     double GetRIRFval(int row, int col, int st);
 
     /**
-     * @brief Called from ForceFunc6d, this function finds the total force on body b in degree of freedom i.
+     * @brief Calculates or retrieves the total force on a specific body in a particular degree of freedom.
      *
-     * Calls all ComputeForce... type functions to get total force. If the total force has already been calculated \
-     * this timestep, funciton instead returns the saved force from when it was calculated for this timestep.
-     * b is 1 indexed here since it is from ForceFunc6d!!!!!.
+     * If the total force for the body and DOF was computed for the current timestep, it's retrieved.
+     * Otherwise, the function calculates it. Note: Body index is 1-based here due to its origin from ForceFunc6d.
      *
-     * TODO: make private function and have ForceFunc6d be friends? users shouldn't be using this function from main
+     * @param b Body index (1-based due to source from ForceFunc6d).
+     * @param i Degree of Freedom (DOF) index, ranging from [0,...5].
      *
-     * @param b body number, it is 1 indexed here since it comes from ForcFunc6d TODO: make 0 indexed
-     * @param i index or Degree of Freedom (dof) ranges [0,...5]
-     *
-     * @return component of force vector for body b (1 indexed) and degree of freedom i
+     * @return Component of the force vector for body 'b' and DOF 'i'.
      */
     double CoordinateFuncForBody(int b, int i);
 
-    bool convTrapz_;         // currently unused, see ComputeForceRadiationDampingConv()
   private:
+    // Class properties related to the body and hydrodynamics
     std::vector<std::shared_ptr<ChBody>> bodies_;
     int num_bodies_;
     HydroData file_info_;
-    std::vector<ForceFunc6d> force_per_body_;  // vector of ForceFunc6d on each body
-    std::shared_ptr<WaveBase> user_waves_;     // applied wave object on bodies
-    std::vector<double>
-        force_hydrostatic_;  // TODO do these need to be class level vectors, or can they me moved to compute functions?
-    std::vector<double> force_radiation_damping_;  // TODO do these need to be class level vectors, or can they me moved
-                                                  // to compute functions?
-    Eigen::VectorXd
-        force_waves_;  // TODO do these need to be class level vectors, or can they me moved to compute functions?
-    std::vector<double> total_force_;  // needs to be class level to save force each timestep (only calcs forces once,
-                                      // then pulls from here)
+    std::vector<ForceFunc6d> force_per_body_;
+    std::shared_ptr<WaveBase> user_waves_;
+
+    // Force components vectors
+    std::vector<double> force_hydrostatic_;
+    std::vector<double> force_radiation_damping_;
+    Eigen::VectorXd force_waves_;
+    std::vector<double> total_force_;  // Saved force per timestep to reduce redundant calculations
+
+    // Additional properties related to equilibrium and hydrodynamics
     std::vector<double> equilibrium_;
     std::vector<double> cb_minus_cg_;
     double rirf_timestep_;
+    Eigen::VectorXd rirf_time_vector;  // Assumed consistent for each body
+    int offset_rirf;                   // For managing the circular nature of velocity history in convolution
+
+    // Properties for velocity history management and time tracking
+    std::vector<double> velocity_history_;
+    double prev_time;
+
+    // Added mass related properties
+    std::shared_ptr<ChLoadContainer> my_loadcontainer;
+    std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia;
 
     /**
-     * @brief finds and returns the component of velocity history for given step and dof.
+     * @brief Fetches the velocity history for a specific DOF, body, and timestep.
      *
-     * helper function for ComputeForceRadiationDampingConv(), use to access vel history.
+     * @param step The timestep index, ranging from [0,1,...,1000].
+     * @param c The combined index for the body and DOF, where the order is first by body then by DOF.
      *
-     * @param step [0,1,...,1000] (timesteps from h5 file, one velocity per step
-     * @param c column [0,..,num_bodies-1,...,numbodies*6-1] (in order of bodies, iterates over dof for each body...3 \
-     * bodies c would be one of [0,1,...,17])
-     *
-     * @return velocity history for specified degree of freedom, body, and step (dof and b both specified in c)
+     * @return Velocity history for the specified DOF and body at the given timestep.
      */
     double GetVelHistoryVal(int step, int c) const;
 
     /**
-     * @brief sets velocity history for step, b_num (body number) and index (dof) to the given val.
+     * @brief Updates the velocity history for a given timestep, body, and DOF.
      *
-     * helper function for ComputeForceRadiationDampingConv(), use to set/change vel history.
-     *
-     * @param val value to set the requested element to
-     * @param step [0,1,...,1000] (0 indexed, up to the final timestep in h5 file)
-     * @param b_num [1,2,...,total_bodies] (1 indexed!!!, use body number in h5 file) TODO make 0 indexed
-     * @param index [0,1,2,3,4,5] (0 indexed, always 0-5 for force+torque vector indexing)
+     * @param val The new value to set.
+     * @param step The timestep index, ranging from [0,1,...,1000].
+     * @param b_num The body number (1-based), indicating which body's data to update.
+     * @param index The DOF index, ranging from [0,1,...,5].
      */
     double SetVelHistory(double val, int step, int b_num, int index);
-
-    // double freq_index_des;
-    // int freq_index_floor;
-    // double freq_interp_val;
-    std::vector<double> velocity_history;  // use helper function to access vel_history elements correctly
-    double prev_time;                      // used to keep track of if force has been calculated this step or not
-    Eigen::VectorXd rirf_time_vector;      // (should be the same for each body?)
-    int offset_rirf;                       // used in circular nature of velocity history for convolution integral
-    std::shared_ptr<ChLoadContainer> my_loadcontainer;    // stuff for added mass
-    std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia;  // stuff for added mass
 };
 
 #endif
