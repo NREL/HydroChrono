@@ -1,7 +1,7 @@
 @PACKAGE_INIT@
 
 include(CMakeFindDependencyMacro)
-find_dependency(HDF5)
-find_dependency(Chrono)
+find_dependency(HDF5 NAMES hdf5 COMPONENTS CXX)
+find_dependency(Chrono CONFIG REQUIRED)
 
 include("${CMAKE_CURRENT_LIST_DIR}/HydroChronoTargets.cmake")
