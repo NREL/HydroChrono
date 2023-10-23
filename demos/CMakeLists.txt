@@ -199,6 +199,38 @@ target_link_libraries(demo_rm3_reg_waves
     HydroChrono
 )
 
+# =====================
+# RM3_IRREG_WAVES_WSIO
+# =====================
+add_executable(demo_rm3_irreg_waves_wsio)
+
+target_sources(
+    demo_rm3_irreg_waves_wsio
+
+    PRIVATE
+    rm3/demo_rm3_irreg_waves_wsio.cpp
+)
+
+if(HYDROCHRONO_ENABLE_IRRLICHT)
+	target_compile_definitions(demo_rm3_irreg_waves_wsio
+		PRIVATE 
+		HYDROCHRONO_HAVE_IRRLICHT=1
+	)
+endif()
+
+target_include_directories(
+	demo_rm3_irreg_waves_wsio
+
+	PRIVATE
+	    ${CMAKE_CURRENT_SOURCE_DIR}/
+	    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_link_libraries(demo_rm3_irreg_waves_wsio 
+    PRIVATE
+	HydroChronoGUI	
+    HydroChrono
+)
 
 # =====================
 # OSWEC_DECAY
