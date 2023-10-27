@@ -5,13 +5,13 @@
 #include <chrono/core/ChRealtimeStep.h>
 
 #include <chrono>
-#include <iomanip>
-#include <vector>
-#include <fstream>
-#include <iostream>
-#include <sstream>
-#include <map>
 #include <filesystem>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <map>
+#include <sstream>
+#include <vector>
 
 // Use the namespaces of Chrono
 using namespace chrono;
@@ -152,6 +152,10 @@ std::map<int, BodyConfig> parseBodyConfig(const std::string& filename) {
         throw std::runtime_error("Failed to open file.");
     }
 
+    // Extracting directory from the input file path
+    std::filesystem::path inputPath(filename);
+    std::string directory = inputPath.parent_path().string();
+
     std::map<int, BodyConfig> bodies;
     std::string line;
     BodyConfig body;
@@ -161,18 +165,20 @@ std::map<int, BodyConfig> parseBodyConfig(const std::string& filename) {
         if (line.find("bodyClass('") != std::string::npos) {
             if (bodyNumber > 0) {  // Save previous body if exists
                 bodies[bodyNumber] = body;
-                body               = BodyConfig();  // Reset body
             }
-            bodyNumber++;  // Increment for new body
+            bodyNumber++;         // Increment for new body
+            body = BodyConfig();  // Reset body
 
             size_t start       = line.find("'") + 1;
             size_t end         = line.find_last_of("'");
             body.hydroDataFile = line.substr(start, end - start);
+            body.hydroDataFile = directory + "/" + body.hydroDataFile;
             std::cout << "HydroDataFile: " << body.hydroDataFile << std::endl;
         } else if (line.find(".geometryFile = '") != std::string::npos) {
             size_t start      = line.find("'") + 1;
             size_t end        = line.find_last_of("'");
             body.geometryFile = line.substr(start, end - start);
+            body.geometryFile = directory + "/" + body.geometryFile;
             std::cout << "GeometryFile: " << body.geometryFile << std::endl;
         } else if (line.find(".mass = ") != std::string::npos) {
             size_t start = line.find(".mass = ") + 8;
@@ -213,7 +219,6 @@ std::map<int, BodyConfig> parseBodyConfig(const std::string& filename) {
                 std::cout << p << " ";
             std::cout << std::endl;
         }
-
     }
 
     // Save the last body
@@ -223,8 +228,6 @@ std::map<int, BodyConfig> parseBodyConfig(const std::string& filename) {
 
     return bodies;
 }
-
-
 
 std::vector<PTOConfig> parsePTOConfig(const std::string& filename) {
     std::ifstream inFile(filename);
@@ -249,6 +252,8 @@ std::vector<PTOConfig> parsePTOConfig(const std::string& filename) {
         } else if (line.find(".damping = ") != std::string::npos) {
             currentConfig.damping = std::stod(line.substr(line.find("=") + 2));
         } else if (line.find(".location = [") != std::string::npos) {
+            currentConfig.location.clear();  // Ensure the location is cleared before adding new values
+
             std::string loc = line.substr(line.find("[") + 1, line.find("]") - line.find("[") - 1);
             std::istringstream locStream(loc);
             double val;
@@ -336,41 +341,52 @@ std::vector<std::shared_ptr<ChBody>> createBodies(const std::map<int, BodyConfig
     std::string directory = inputPath.parent_path().string();
 
     for (const auto& [bodyNumber, bodyConfig] : bodyConfigs) {
-        std::string relativeMeshFilename = bodyConfig.geometryFile;
-
-        // Creating the full path by concatenating the directory and the relative path
-        std::string fullMeshFilename = directory + "/" + relativeMeshFilename;
-
-        auto body = chrono_types::make_shared<ChBodyEasyMesh>(fullMeshFilename,  // mesh filename
+        std::string fullMeshFilename = bodyConfig.geometryFile;
+        auto body                    = chrono_types::make_shared<ChBodyEasyMesh>(fullMeshFilename,  // mesh filename
                                                               0,                 // density
-                                                              false,             // do not evaluate mass automatically
-                                                              true,              // create visualization asset
-                                                              false              // collisions
+                                                              false,  // do not evaluate mass automatically
+                                                              true,  // create visualization asset
+                                                              false  // collisions
         );
+
+        std::cout << "Creating Body Number: " << bodyNumber << std::endl;
+        std::cout << "Mesh Filename: " << fullMeshFilename << std::endl;
 
         // Setting the body parameters
         body->SetNameString("body" + std::to_string(bodyNumber));
+        std::cout << "Body Name: " << body->GetNameString() << std::endl;
 
         if (bodyConfig.position.size() == 3) {
             body->SetPos(ChVector<>(bodyConfig.position[0], bodyConfig.position[1], bodyConfig.position[2]));
+            std::cout << "Position: (" << bodyConfig.position[0] << ", " << bodyConfig.position[1] << ", "
+                      << bodyConfig.position[2] << ")" << std::endl;
         } else {
             std::cerr << "Error: Position vector size is not 3." << std::endl;
         }
 
         body->SetMass(bodyConfig.mass);
+        std::cout << "Mass: " << bodyConfig.mass << std::endl;
 
         if (bodyConfig.inertia.size() == 3) {
             body->SetInertiaXX(ChVector<>(bodyConfig.inertia[0], bodyConfig.inertia[1], bodyConfig.inertia[2]));
+            std::cout << "Inertia: (" << bodyConfig.inertia[0] << ", " << bodyConfig.inertia[1] << ", "
+                      << bodyConfig.inertia[2] << ")" << std::endl;
         } else {
             std::cerr << "Error: Inertia vector size is not 3." << std::endl;
         }
 
         // Adding body to the system
         system.AddBody(body);
+        std::cout << "Body added to the system." << std::endl;
 
         // Adding body to the list of bodies
         bodies.push_back(body);
+        std::cout << "Body added to the list of bodies." << std::endl;
+        std::cout << std::endl;
     }
+
+    std::cout << "Total bodies created: " << bodies.size() << std::endl;
+    std::cout << std::endl;
 
     return bodies;
 }
@@ -403,12 +419,94 @@ void createJointOrPTO(ChSystem& system,
     // }
 }
 
+std::shared_ptr<WaveBase> setupWaveParameters(const WaveConfig& waveConfig,
+                                              double timestep,
+                                              double simulationDuration,
+                                              double rampTime,
+                                              size_t num_bodies) {
+    std::shared_ptr<WaveBase> hydro_inputs;
+
+    std::cout << "Setting up wave parameters:" << std::endl;
+    std::cout << "Wave Type: " << waveConfig.type << std::endl;
+    if (waveConfig.type == "irregular") {
+        IrregularWaveParams wave_inputs;
+        wave_inputs.num_bodies_          = num_bodies;
+        wave_inputs.simulation_dt_       = timestep;
+        wave_inputs.simulation_duration_ = simulationDuration;
+        wave_inputs.ramp_duration_       = rampTime;
+        wave_inputs.wave_height_         = waveConfig.height;
+        wave_inputs.wave_period_         = waveConfig.period;
+
+        std::cout << "Simulation Timestep: " << wave_inputs.simulation_dt_ << std::endl;
+        std::cout << "Simulation Duration: " << wave_inputs.simulation_duration_ << std::endl;
+        std::cout << "Ramp Time: " << wave_inputs.ramp_duration_ << std::endl;
+        std::cout << "Wave Height: " << wave_inputs.wave_height_ << std::endl;
+        std::cout << "Wave Period: " << wave_inputs.wave_period_ << std::endl;
+
+        try {
+            hydro_inputs = std::make_shared<IrregularWaves>(wave_inputs);
+        } catch (const std::exception& e) {
+            std::cerr << "Caught exception: " << e.what() << '\n';
+        } catch (...) {
+            std::cerr << "Caught unknown exception.\n";
+        }
+    } else if (waveConfig.type == "regular") {
+        auto regular_wave = std::make_shared<RegularWave>(num_bodies);  // or any other appropriate value
+        regular_wave->regular_wave_amplitude_ = waveConfig.height / 2;
+        regular_wave->regular_wave_omega_ = 2.0 * CH_C_PI / waveConfig.period;  // calculating omega based on the period
+
+        std::cout << "Wave Amplitude: " << regular_wave->regular_wave_amplitude_ << std::endl;
+        std::cout << "Wave Omega: " << regular_wave->regular_wave_omega_ << std::endl;
+
+        hydro_inputs = regular_wave;  // Assigning back to hydro_inputs of type WaveBase
+    } else if (waveConfig.type == "still") {
+        std::cout << "No wave conditions (Still water)" << std::endl;
+        hydro_inputs = std::make_shared<NoWave>(1);
+    }
+
+    return hydro_inputs;
+}
+
+void initializeOutputFile(std::ofstream& outputFile, const std::vector<std::shared_ptr<ChBody>>& bodies) {
+    outputFile.open("./results/output.txt");
+
+    if (!outputFile.is_open()) {
+        if (!std::filesystem::exists("./results")) {
+            std::filesystem::create_directory("./results");
+            outputFile.open("./results/output.txt");
+        }
+    }
+
+    outputFile << std::left << std::setw(20) << "Time (s)";
+    for (int i = 0; i < bodies.size(); ++i) {
+        std::string bodyIndex = "Body" + std::to_string(i);
+        outputFile << std::setw(16) << (bodyIndex + "_x (m)") << std::setw(16) << (bodyIndex + "_y (m)")
+                   << std::setw(16) << (bodyIndex + "_z (m)");
+    }
+    outputFile << std::endl;
+}
+
+void saveDataToFile(std::ofstream& outputFile,
+                    const std::vector<double>& time_vector,
+                    const std::map<int, std::vector<ChVector<>>>& body_positions) {
+    for (int i = 0; i < time_vector.size(); ++i) {
+        outputFile << std::left << std::setw(20) << std::setprecision(2) << std::fixed << time_vector[i];
+
+        for (const auto& [bodyIndex, positions] : body_positions) {
+            outputFile << std::setw(16) << std::setprecision(4) << std::fixed << positions[i].x() << std::setw(16)
+                       << std::setprecision(4) << std::fixed << positions[i].y() << std::setw(16)
+                       << std::setprecision(4) << std::fixed << positions[i].z();
+        }
+        outputFile << std::endl;
+    }
+    outputFile.close();
+}
+
 // usage: ./<demos>.exe [WECSimInputFile.m] [--nogui]
 
 int main(int argc, char* argv[]) {
-
     GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
-    
+
     if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
         return 1;
     }
@@ -453,27 +551,92 @@ int main(int argc, char* argv[]) {
     for (const auto& ptoConfig : ptoConfigs) {
         // Extracting the information from each PTOConfig
         std::string type              = ptoConfig.type;
-        int indexBody1   = ptoConfig.bodies[0] - 1;  // get the index of the first body
-        int indexBody2   = ptoConfig.bodies[1] - 1;  // get the index of the second body
-        std::shared_ptr<ChBody> body1 = bodies[indexBody1];  // Get the first body using the index
-        std::shared_ptr<ChBody> body2 = bodies[indexBody2];  // Get the second body using the index
-        ChVector<> location           = ptoConfig.location;
-        ChVector<> attachment1        = ptoConfig.attachments[0];
-        ChVector<> attachment2        = ptoConfig.attachments[1];
-        double stiffness              = ptoConfig.stiffness;
-        double damping                = ptoConfig.damping;
+        int indexBody1                = ptoConfig.bodies[0] - 1;  // get the index of the first body
+        int indexBody2                = ptoConfig.bodies[1] - 1;  // get the index of the second body
+        std::shared_ptr<ChBody> body1 = bodies[indexBody1];       // Get the first body using the index
+        std::shared_ptr<ChBody> body2 = bodies[indexBody2];       // Get the second body using the index
+        ChVector<> location;
+        ChVector<> attachment1;
+        ChVector<> attachment2;
+        if (ptoConfig.location.size() != 3) {
+            std::cerr << "Error: ptoConfig.location has " << ptoConfig.location.size() << " elements: ";
+            for (const auto& val : ptoConfig.location) {
+                std::cerr << val << " ";
+            }
+            std::cerr << std::endl;
+        }
+        if (ptoConfig.attachments[0].size() == 3 && ptoConfig.attachments[1].size() == 3) {
+            attachment1.Set(ptoConfig.attachments[0][0], ptoConfig.attachments[0][1], ptoConfig.attachments[0][2]);
+            attachment2.Set(ptoConfig.attachments[1][0], ptoConfig.attachments[1][1], ptoConfig.attachments[1][2]);
+        } else {
+            // Handle the error
+            std::cerr << "Error: ptoConfig.attachments elements must each have exactly 3 elements." << std::endl;
+        }
+        double stiffness = ptoConfig.stiffness;
+        double damping   = ptoConfig.damping;
 
         // Calling createJointOrPTO() function with the extracted information
         createJointOrPTO(system, type, body1, body2, location, attachment1, attachment2, stiffness, damping);
     }
-    
+
+    auto hydro_inputs = setupWaveParameters(waveConfig,
+                                            simuConfig.dt,
+                                            simuConfig.endTime,
+                                            simuConfig.rampTime,
+                                            bodies.size());
+
+    std::cerr << "hydroDataFile location: " << bodyConfigs[1].hydroDataFile << std::endl;
+
+    TestHydro hydro_forces(bodies, bodyConfigs[1].hydroDataFile);
+    hydro_forces.AddWaves(hydro_inputs);
+
+    // for profiling
+    auto start = std::chrono::high_resolution_clock::now();
+
+    // for visualization
+    bool visualizationOn = true;
+    if (argc > 2 && std::string("--nogui").compare(argv[2]) == 0) {
+        visualizationOn = false;
+    }
+
+    // for output
+    std::vector<double> time_vector;
+    std::map<int, std::vector<ChVector<>>> body_positions;
+
+    // create an ofstream object
+    std::ofstream outputFile;
+
+    // initialize the output file
+    initializeOutputFile(outputFile, bodies);
+
+    // main simulation loop
+    std::shared_ptr<hydroc::gui::UI> pui = hydroc::gui::CreateUI(visualizationOn);
+    hydroc::gui::UI& ui                  = *pui.get();
+    ui.Init(&system, "RM3 - Regular Wave Test");
+    ui.SetCamera(0, -50, -10, 0, 0, -10);
+
+    while (system.GetChTime() <= simulationDuration) {
+        if (ui.IsRunning(timestep) == false) break;
+
+        if (ui.simulationStarted) {
+            system.DoStepDynamics(timestep);
+            time_vector.push_back(system.GetChTime());
+
+            for (int i = 0; i < bodies.size(); ++i) {
+                body_positions[i].push_back(bodies[i]->GetPos());
+            }
+        }
+    }
+
+    saveDataToFile(outputFile, time_vector, body_positions);
+
     return 0;
 }
 
 //// If no argument is given user can set HYDROCHRONO_DATA_DIR
 //// environment variable to give the data_directory.
 ////
-//int main(int argc, char* argv[]) {
+// int main(int argc, char* argv[]) {
 //    GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
 //
 //    if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
