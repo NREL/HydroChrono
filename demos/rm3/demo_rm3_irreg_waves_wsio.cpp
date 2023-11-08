@@ -1,4 +1,4 @@
-// Include necessary headers
+﻿// Include necessary headers
 #include <hydroc/gui/guihelper.h>
 #include <hydroc/helper.h>
 #include <hydroc/hydro_forces.h>
@@ -152,8 +152,8 @@ WaveConfig parseWaveConfig(const std::string& filePath) {
     file.close();
 
     //// Output the parsed values to the console for verification
-    //std::cout << "Parsed Wave Configuration:" << std::endl;
-    //std::cout << "Waves Type: " << waveConfig.type << std::endl;
+    std::cout << "Parsed Wave Configuration:" << std::endl;
+    std::cout << "Waves Type: " << waveConfig.type << std::endl;
     //std::cout << "Wave Height: " << waveConfig.height << std::endl;
     //std::cout << "Wave Period: " << waveConfig.period << std::endl;
     //std::cout << "Wave Spectrum Type: " << waveConfig.spectrumType << std::endl;
@@ -334,30 +334,34 @@ std::vector<PTOConfig> parsePTOConfig(const std::string& filename) {
     if (!currentConfig.type.empty()) {
         configs.push_back(currentConfig);
     }
-    //for (const auto& config : configs) {
-    //    std::cout << "PTO Type: " << config.type << std::endl;
-    //    std::cout << "Stiffness: " << config.stiffness << std::endl;
-    //    std::cout << "Damping: " << config.damping << std::endl;
-    //    std::cout << "Location: ";
-    //    for (auto val : config.location) {
-    //        std::cout << val << " ";
-    //    }
-    //    std::cout << std::endl;
-    //    std::cout << "Bodies: ";
-    //    for (auto body : config.bodies) {
-    //        std::cout << body << " ";
-    //    }
-    //    std::cout << std::endl;
-    //    std::cout << "Attachments: " << std::endl;
-    //    for (const auto& vec : config.attachments) {
-    //        std::cout << "[";
-    //        for (auto val : vec) {
-    //            std::cout << val << " ";
-    //        }
-    //        std::cout << "]" << std::endl;
-    //    }
-    //    std::cout << std::endl;
-    //}
+    if (configs.empty()) {
+        std::cout << "No PTO configurations found in the file." << std::endl;
+    } else {
+        for (const auto& config : configs) {
+            std::cout << "PTO Type: " << config.type << std::endl;
+            //    std::cout << "Stiffness: " << config.stiffness << std::endl;
+            //    std::cout << "Damping: " << config.damping << std::endl;
+            //    std::cout << "Location: ";
+            //    for (auto val : config.location) {
+            //        std::cout << val << " ";
+            //    }
+            //    std::cout << std::endl;
+            //    std::cout << "Bodies: ";
+            //    for (auto body : config.bodies) {
+            //        std::cout << body << " ";
+            //    }
+            //    std::cout << std::endl;
+            //    std::cout << "Attachments: " << std::endl;
+            //    for (const auto& vec : config.attachments) {
+            //        std::cout << "[";
+            //        for (auto val : vec) {
+            //            std::cout << val << " ";
+            //        }
+            //        std::cout << "]" << std::endl;
+            //    }
+            //    std::cout << std::endl;
+        }
+    }
     return configs;
 }
 
@@ -492,32 +496,49 @@ std::shared_ptr<WaveBase> setupWaveParameters(const WaveConfig& waveConfig,
         std::cout << std::left << std::setw(20) << "Wave Omega:" << regular_wave->regular_wave_omega_ << "\n";
 
         hydro_inputs = regular_wave;  // Assigning back to hydro_inputs of type WaveBase
-    } else if (waveConfig.type == "still") {
-        hydro_inputs = std::make_shared<NoWave>(1);
+    } else if (waveConfig.type == "still" || waveConfig.type == "noWaveCIC") {
+        hydro_inputs = std::make_shared<NoWave>(num_bodies);
     }
     std::cout << "------------------------------------\n" << std::endl;
     return hydro_inputs;
 }
 
-void initializeOutputFile(std::ofstream& outputFile, const std::vector<std::shared_ptr<ChBody>>& bodies) {
-    outputFile.open("./results/output.txt");
+void initializeOutputFile(std::ofstream& outputFile,
+                          const std::vector<std::shared_ptr<ChBody>>& bodies,
+                          const std::string& inputFilePath) {
+    // Extract the directory from the input file path
+    std::filesystem::path inputDir       = std::filesystem::path(inputFilePath).parent_path();
+    std::filesystem::path resultsDir     = inputDir / "results";
+    std::filesystem::path outputFilePath = resultsDir / "output.txt";
 
+    // Try to open the file directly
+    outputFile.open(outputFilePath);
+
+    // If the file could not be opened, try creating the directory and then opening the file
     if (!outputFile.is_open()) {
-        if (!std::filesystem::exists("./results")) {
-            std::filesystem::create_directory("./results");
-            outputFile.open("./results/output.txt");
+        // Create the 'results' directory if it does not exist
+        if (!std::filesystem::exists(resultsDir)) {
+            std::filesystem::create_directory(resultsDir);
         }
+
+        // Try opening the file again after creating the directory
+        outputFile.open(outputFilePath);
     }
 
-    outputFile << std::left << std::setw(20) << "Time (s)";
-    for (int i = 0; i < bodies.size(); ++i) {
-        std::string bodyIndex = "Body" + std::to_string(i);
-        outputFile << std::setw(16) << (bodyIndex + "_x (m)") << std::setw(16) << (bodyIndex + "_y (m)")
-                   << std::setw(16) << (bodyIndex + "_z (m)");
+    // Check again if file is open, and proceed with writing headers if it is
+    if (outputFile.is_open()) {
+        outputFile << std::left << std::setw(20) << "Time (s)";
+        for (size_t i = 0; i < bodies.size(); ++i) {
+            std::string bodyIndex = "Body" + std::to_string(i);
+            outputFile << std::setw(16) << (bodyIndex + "_x (m)") << std::setw(16) << (bodyIndex + "_y (m)")
+                       << std::setw(16) << (bodyIndex + "_z (m)");
+        }
+        outputFile << std::endl;
+    } else {
+        std::cerr << "Failed to open the output file at: " << outputFilePath << std::endl;
+        // Handle the error, such as throwing an exception or returning a status
     }
-    outputFile << std::endl;
 }
-
 void saveDataToFile(std::ofstream& outputFile,
                     const std::vector<double>& time_vector,
                     const std::map<int, std::vector<ChVector<>>>& body_positions) {
@@ -538,16 +559,14 @@ void saveDataToFile(std::ofstream& outputFile,
 
 int main(int argc, char* argv[]) {
     std::cout << R"(
-  /\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\
- /\/\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\
-             _   _           _            ____ _                                           
-            | | | |_   _  __| |_ __ ___  / ___| |__  _ __ ___  _ __   ___                  
-            | |_| | | | |/ _` | '__/ _ \| |   | '_ \| '__/ _ \| '_ \ / _ \                 
-            |  _  | |_| | (_| | | | (_) | |___| | | | | | (_) | | | | (_) |                
-            |_| |_|\__, |\__,_|_|  \___/ \____|_| |_|_|  \___/|_| |_|\___/                 
-                   |___/                                                                   
-  /\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\
- /\/\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\
+ /\/\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\
+         _   _           _            ____ _                                    
+        | | | |_   _  __| |_ __ ___  / ___| |__  _ __ ___  _ __   ___                  
+        | |_| | | | |/ _` | '__/ _ \| |   | '_ \| '__/ _ \| '_ \ / _ \                 
+        |  _  | |_| | (_| | | | (_) | |___| | | | | | (_) | | | | (_) |                
+        |_| |_|\__, |\__,_|_|  \___/ \____|_| |_|_|  \___/|_| |_|\___/                 
+               |___/                                                            
+ /\/\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\//\
 )" << std::endl;
 
     GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
@@ -568,16 +587,21 @@ int main(int argc, char* argv[]) {
     // Parsing simulation configuration
     SimulationConfig simuConfig = parseSimulationConfig(filePath);
 
+    std::cout << "Model name: " << simuConfig.modelName.c_str() << std::endl;
+
     // Parsing wave configuration
+    std::cout << "Parsing wave config..." << std::endl;
     WaveConfig waveConfig = parseWaveConfig(filePath);
 
     // Parsing body information
+    std::cout << "Parsing body config..." << std::endl;
     std::map<int, BodyConfig> bodyConfigs = parseBodyConfig(filePath);
 
     // Parsing PTO configuration
+    std::cout << "Parsing pto config..." << std::endl;
     std::vector<PTOConfig> ptoConfigs = parsePTOConfig(filePath);
 
-    std::cout << "==== Setting up system...  ====" << std::endl;
+    std::cout << "\n==== Setting up system...  ====" << std::endl;
     // System/solver settings
     ChSystemNSC system;
 
@@ -594,8 +618,10 @@ int main(int argc, char* argv[]) {
     system.SetStep(timestep);
 
     // Create body objects
+    std::cout << "Creating body objects..." << std::endl;
     std::vector<std::shared_ptr<ChBody>> bodies = createBodies(bodyConfigs, filePath, system);
 
+    std::cout << "Creating joint and/or PTO objects..." << std::endl;
     for (const auto& ptoConfig : ptoConfigs) {
         // Extracting the information from each PTOConfig
         std::string type              = ptoConfig.type;
@@ -627,11 +653,13 @@ int main(int argc, char* argv[]) {
         createJointOrPTO(system, type, body1, body2, location, attachment1, attachment2, stiffness, damping);
     }
 
+    std::cout << "Set wave parameters..." << std::endl;
     auto hydro_inputs =
         setupWaveParameters(waveConfig, simuConfig.dt, simuConfig.endTime, simuConfig.rampTime, bodies.size());
 
     std::cerr << "hydroDataFile location: " << bodyConfigs[1].hydroDataFile << std::endl;
 
+    std::cout << "Test hydro..." << std::endl;
     TestHydro hydro_forces(bodies, bodyConfigs[1].hydroDataFile);
     hydro_forces.AddWaves(hydro_inputs);
 
@@ -639,6 +667,7 @@ int main(int argc, char* argv[]) {
     auto start = std::chrono::high_resolution_clock::now();
 
     // For visualization
+    std::cout << "Visualization..." << std::endl;
     bool visualizationOn = true;
     if (argc > 2 && std::string("--nogui").compare(argv[2]) == 0) {
         visualizationOn = false;
@@ -652,7 +681,8 @@ int main(int argc, char* argv[]) {
     std::ofstream outputFile;
 
     // Initialize the output file
-    initializeOutputFile(outputFile, bodies);
+    std::cout << "Initialize output file..." << std::endl;
+    initializeOutputFile(outputFile, bodies, filePath);
 
     // Main simulation loop
     std::cout << std::endl;
