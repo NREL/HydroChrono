@@ -490,29 +490,32 @@ void CreateTranslationalPTO(ChSystem& system,
 // Function to create a simple spring-damper
 void CreateLinSpringDamper(ChSystem& system,
                         const std::vector<std::shared_ptr<ChBody>>& bodies,
-                        const PTOConfig& pto_config) {
+                        const PTOConfig& pto_config,
+                        std::vector<std::shared_ptr<ChLinkTSDA>>& ptos) {
     auto body1 = bodies[pto_config.bodies[0] - 1];
     auto body2 = bodies[pto_config.bodies[1] - 1];
     ChVector<> attachment1(pto_config.attachments[0][0], pto_config.attachments[0][1], pto_config.attachments[0][2]);
     ChVector<> attachment2(pto_config.attachments[1][0], pto_config.attachments[1][1], pto_config.attachments[1][2]);
 
-    auto spring = chrono_types::make_shared<ChLinkTSDA>();
-    spring->Initialize(body1, body2, true, attachment1, attachment2);
-    spring->SetRestLength(pto_config.rest_length);  // Assuming restLength is defined in PTOConfig
-    spring->SetSpringCoefficient(pto_config.stiffness);
-    spring->SetDampingCoefficient(pto_config.damping);
-    spring->AddVisualShape(chrono_types::make_shared<ChSpringShape>(
+    auto spring_damper = chrono_types::make_shared<ChLinkTSDA>();
+    spring_damper->Initialize(body1, body2, true, attachment1, attachment2);
+    spring_damper->SetRestLength(pto_config.rest_length);  // Assuming restLength is defined in PTOConfig
+    spring_damper->SetSpringCoefficient(pto_config.stiffness);
+    spring_damper->SetDampingCoefficient(pto_config.damping);
+    spring_damper->AddVisualShape(chrono_types::make_shared<ChSpringShape>(
         pto_config.spring_radius, pto_config.spring_resolution, pto_config.spring_turns));
-    system.AddLink(spring);
+    system.AddLink(spring_damper);
+    ptos.push_back(spring_damper);
 }
 
 void CreateJointOrPTO(ChSystem& system,
                       const std::vector<std::shared_ptr<ChBody>>& bodies,
-                      const PTOConfig& pto_config) {
+                      const PTOConfig& pto_config,
+                      std::vector<std::shared_ptr<ChLinkTSDA>>& ptos) {  // Added ptos vector
     if (pto_config.type == "TranslationalPTO") {
         CreateTranslationalPTO(system, bodies, pto_config);
     } else if (pto_config.type == "LinSpringDamper") {
-        CreateLinSpringDamper(system, bodies, pto_config);
+        CreateLinSpringDamper(system, bodies, pto_config, ptos);  // Pass ptos vector to the function
     }
     // Add more else-if clauses for other joint types
 }
@@ -565,43 +568,76 @@ std::shared_ptr<WaveBase> setupWaveParameters(const WaveConfig& waveConfig,
     return hydro_inputs;
 }
 
-void initializeOutputFile(std::ofstream& outputFile,
-                          const std::vector<std::shared_ptr<ChBody>>& bodies,
-                          const std::string& inputFilePath) {
-    // Extract the directory from the input file path
-    std::filesystem::path inputDir       = std::filesystem::path(inputFilePath).parent_path();
-    std::filesystem::path resultsDir     = inputDir / "results";
-    std::filesystem::path outputFilePath = resultsDir / "output.txt";
+bool openOutputFile(std::ofstream& outputFile, const std::string& filePath) {
+    std::filesystem::path outputPath(filePath);
 
     // Try to open the file directly
-    outputFile.open(outputFilePath);
+    outputFile.open(outputPath);
 
     // If the file could not be opened, try creating the directory and then opening the file
     if (!outputFile.is_open()) {
-        // Create the 'results' directory if it does not exist
-        if (!std::filesystem::exists(resultsDir)) {
-            std::filesystem::create_directory(resultsDir);
+        std::filesystem::path dirPath = outputPath.parent_path();
+        if (!std::filesystem::exists(dirPath)) {
+            std::filesystem::create_directory(dirPath);
         }
-
-        // Try opening the file again after creating the directory
-        outputFile.open(outputFilePath);
+        outputFile.open(outputPath);
     }
 
-    // Check again if file is open, and proceed with writing headers if it is
-    if (outputFile.is_open()) {
-        outputFile << std::left << std::setw(20) << "Time (s)";
+    return outputFile.is_open();
+}
+
+void initializeBodyOutputFile(std::ofstream& bodyOutputFile,
+                          const std::vector<std::shared_ptr<ChBody>>& bodies,
+                          const std::string& inputFilePath) {
+    std::filesystem::path inputDir       = std::filesystem::path(inputFilePath).parent_path();
+    std::filesystem::path outputFilePath = inputDir / "results" / "body_output.txt";
+
+    if (openOutputFile(bodyOutputFile, outputFilePath.string())) {
+        bodyOutputFile << std::left << std::setw(20) << "Time (s)";
         for (size_t i = 0; i < bodies.size(); ++i) {
             std::string bodyIndex = "Body" + std::to_string(i);
-            outputFile << std::setw(16) << (bodyIndex + "_x (m)") << std::setw(16) << (bodyIndex + "_y (m)")
+            bodyOutputFile << std::setw(16) << (bodyIndex + "_x (m)") << std::setw(16) << (bodyIndex + "_y (m)")
                        << std::setw(16) << (bodyIndex + "_z (m)");
         }
-        outputFile << std::endl;
+        bodyOutputFile << std::endl;
     } else {
         std::cerr << "Failed to open the output file at: " << outputFilePath << std::endl;
-        // Handle the error, such as throwing an exception or returning a status
     }
 }
-void saveDataToFile(std::ofstream& outputFile,
+
+void initializePTOOutputFile(std::ofstream& ptoOutputFile, size_t ptoCount, const std::string& inputFilePath) {
+    std::filesystem::path inputDir          = std::filesystem::path(inputFilePath).parent_path();
+    std::filesystem::path ptoOutputFilePath = inputDir / "results" / "pto_output.txt";
+
+    if (openOutputFile(ptoOutputFile, ptoOutputFilePath.string())) {
+        ptoOutputFile << std::left << std::setw(20) << "Time (s)";
+        for (size_t i = 0; i < ptoCount; ++i) {
+            ptoOutputFile << std::setw(16) << ("PTO" + std::to_string(i) + "_velocity (m/s)") << std::setw(16)
+                          << ("PTO" + std::to_string(i) + "_power (W)");
+        }
+        ptoOutputFile << std::endl;
+    } else {
+        std::cerr << "Failed to open the PTO output file at: " << ptoOutputFilePath << std::endl;
+    }
+}
+
+void collectPTOData(const std::vector<std::shared_ptr<ChLinkTSDA>>& ptos,
+                    std::vector<double>& ptoVelocities,
+                    std::vector<double>& ptoPowers) {
+    ptoVelocities.clear();
+    ptoPowers.clear();
+
+    for (const auto& pto : ptos) {
+        double ptoVelocity   = pto->GetVelocity();
+        double ptoDamping    = pto->GetDampingCoefficient();
+        double powerAbsorbed = ptoVelocity * ptoVelocity * ptoDamping;  // Assuming lower_pto_damping is accessible
+
+        ptoVelocities.push_back(ptoVelocity);
+        ptoPowers.push_back(powerAbsorbed);
+    }
+}
+
+void saveBodyDataToFile(std::ofstream& outputFile,
                     const std::vector<double>& time_vector,
                     const std::map<int, std::vector<ChVector<>>>& body_positions) {
     for (int i = 0; i < time_vector.size(); ++i) {
@@ -615,6 +651,27 @@ void saveDataToFile(std::ofstream& outputFile,
         outputFile << std::endl;
     }
     outputFile.close();
+}
+
+void savePTODataToFile(std::ofstream& ptoOutputFile,
+                       const std::vector<double>& time_vector,
+                       const std::vector<std::vector<double>>& ptoVelocities,
+                       const std::vector<std::vector<double>>& ptoPowers) {
+    for (size_t i = 0; i < time_vector.size(); ++i) {
+        ptoOutputFile << std::left << std::setw(20) << std::setprecision(2) << std::fixed << time_vector[i];
+
+        // Assuming each inner vector in ptoVelocities and ptoPowers corresponds to a specific PTO
+        for (size_t j = 0; j < ptoVelocities.size(); ++j) {
+            if (i < ptoVelocities[j].size()) {
+                ptoOutputFile << std::setw(16) << std::setprecision(4) << std::fixed << ptoVelocities[j][i];
+            }
+            if (i < ptoPowers[j].size()) {
+                ptoOutputFile << std::setw(16) << std::setprecision(4) << std::fixed << ptoPowers[j][i];
+            }
+        }
+        ptoOutputFile << std::endl;
+    }
+    ptoOutputFile.close();
 }
 
 // usage: ./<demos>.exe [WECSimInputFile.m] [--nogui]
@@ -684,6 +741,7 @@ int main(int argc, char* argv[]) {
     auto [bodies, hydrodynamicBodies] = createBodies(bodyConfigs, filePath, system);
 
     std::cout << "Creating joint and/or PTO objects..." << std::endl;
+    std::vector<std::shared_ptr<ChLinkTSDA>> ptos;
     for (const auto& ptoConfig : ptoConfigs) {
         // Validate the attachments and locations
         if (ptoConfig.attachments.size() != 2 || ptoConfig.attachments[0].size() != 3 ||
@@ -698,7 +756,7 @@ int main(int argc, char* argv[]) {
         }
 
         // Calling createJointOrPTO() function with the PTOConfig object
-        CreateJointOrPTO(system, bodies, ptoConfig);
+        CreateJointOrPTO(system, bodies, ptoConfig, ptos);
     }
 
     std::cout << "Set wave parameters..." << std::endl;
@@ -724,13 +782,17 @@ int main(int argc, char* argv[]) {
     // For output
     std::vector<double> time_vector;
     std::map<int, std::vector<ChVector<>>> body_positions;
+    std::vector<std::vector<double>> ptoVelocities(ptos.size(), std::vector<double>());
+    std::vector<std::vector<double>> ptoPowers(ptos.size(), std::vector<double>());
 
     // Create an ofstream object
-    std::ofstream outputFile;
+    std::ofstream bodyOutputFile;
+    std::ofstream ptoOutputFile;
 
     // Initialize the output file
-    std::cout << "Initialize output file..." << std::endl;
-    initializeOutputFile(outputFile, bodies, filePath);
+    std::cout << "Initialize output files..." << std::endl;
+    initializeBodyOutputFile(bodyOutputFile, bodies, filePath);
+    initializePTOOutputFile(ptoOutputFile, ptoConfigs.size(), filePath);
 
     // Main simulation loop
     std::cout << std::endl;
@@ -747,19 +809,30 @@ int main(int argc, char* argv[]) {
     std::cout << std::endl;
 
     while (system.GetChTime() <= simulationDuration) {
-        if (ui.IsRunning(timestep) == false) break;
+        if (!ui.IsRunning(timestep)) break;
 
         if (ui.simulationStarted) {
             system.DoStepDynamics(timestep);
             time_vector.push_back(system.GetChTime());
 
-            for (int i = 0; i < bodies.size(); ++i) {
+            // Collect body position data
+            for (size_t i = 0; i < bodies.size(); ++i) {
                 body_positions[i].push_back(bodies[i]->GetPos());
+            }
+
+            // Collect PTO data
+            for (size_t i = 0; i < ptos.size(); ++i) {
+                double velocity = ptos[i]->GetVelocity();
+                double pto_damping_coefficient = ptos[i]->GetDampingCoefficient();
+                double power = velocity * velocity * pto_damping_coefficient;  // Assuming pto_damping is accessible
+                ptoVelocities[i].push_back(velocity);
+                ptoPowers[i].push_back(power);
             }
         }
     }
 
-    saveDataToFile(outputFile, time_vector, body_positions);
+    saveBodyDataToFile(bodyOutputFile, time_vector, body_positions);
+    savePTODataToFile(ptoOutputFile, time_vector, ptoVelocities, ptoPowers);
 
     return 0;
 }
