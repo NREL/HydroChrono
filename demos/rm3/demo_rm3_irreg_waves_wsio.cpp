@@ -587,39 +587,51 @@ bool openOutputFile(std::ofstream& outputFile, const std::string& filePath) {
 }
 
 void initializeBodyOutputFile(std::ofstream& bodyOutputFile,
-                          const std::vector<std::shared_ptr<ChBody>>& bodies,
-                          const std::string& inputFilePath) {
-    std::filesystem::path inputDir       = std::filesystem::path(inputFilePath).parent_path();
-    std::filesystem::path outputFilePath = inputDir / "results" / "body_output.txt";
+                              const std::vector<std::shared_ptr<ChBody>>& bodies,
+                              const std::string& outputDirectory) {
+    std::filesystem::path outputDirPath = std::filesystem::path(outputDirectory);
 
-    if (openOutputFile(bodyOutputFile, outputFilePath.string())) {
+    // Create the directory if it does not exist
+    if (!std::filesystem::exists(outputDirPath)) {
+        std::filesystem::create_directories(outputDirPath);
+    }
+
+    std::filesystem::path outputFile = outputDirPath / "body_output.txt";
+
+    if (openOutputFile(bodyOutputFile, outputFile.string())) {
         bodyOutputFile << std::left << std::setw(20) << "Time (s)";
         for (size_t i = 0; i < bodies.size(); ++i) {
             std::string bodyIndex = "Body" + std::to_string(i);
             bodyOutputFile << std::setw(16) << (bodyIndex + "_x (m)") << std::setw(16) << (bodyIndex + "_y (m)")
-                       << std::setw(16) << (bodyIndex + "_z (m)");
+                           << std::setw(16) << (bodyIndex + "_z (m)");
         }
         bodyOutputFile << std::endl;
     } else {
-        std::cerr << "Failed to open the output file at: " << outputFilePath << std::endl;
+        std::cerr << "Failed to open the output file at: " << outputFile << std::endl;
     }
 }
 
-void initializePTOOutputFile(std::ofstream& ptoOutputFile, size_t ptoCount, const std::string& inputFilePath) {
-    std::filesystem::path inputDir          = std::filesystem::path(inputFilePath).parent_path();
-    std::filesystem::path ptoOutputFilePath = inputDir / "results" / "pto_output.txt";
+void initializePTOOutputFile(std::ofstream& ptoOutputFile, size_t ptoCount, const std::string& outputDirectory) {
+    std::filesystem::path outputDirPath = std::filesystem::path(outputDirectory);
 
-    if (openOutputFile(ptoOutputFile, ptoOutputFilePath.string())) {
+    // Create the directory if it does not exist
+    if (!std::filesystem::exists(outputDirPath)) {
+        std::filesystem::create_directories(outputDirPath);
+    }
+
+    std::filesystem::path outputFile = outputDirPath / "pto_output.txt";
+
+    if (openOutputFile(ptoOutputFile, outputFile.string())) {
         ptoOutputFile << std::left << std::setw(20) << "Time (s)";
         for (size_t i = 0; i < ptoCount; ++i) {
-            ptoOutputFile << std::setw(16) << ("PTO" + std::to_string(i) + "_velocity (m/s)") << std::setw(16)
-                          << ("PTO" + std::to_string(i) + "_power (W)");
+            ptoOutputFile << std::setw(20) << ("PTO" + std::to_string(i) + "_power (W)");  // Adjusted column width
         }
         ptoOutputFile << std::endl;
     } else {
-        std::cerr << "Failed to open the PTO output file at: " << ptoOutputFilePath << std::endl;
+        std::cerr << "Failed to open the PTO output file at: " << outputFile << std::endl;
     }
 }
+
 
 void collectPTOData(const std::vector<std::shared_ptr<ChLinkTSDA>>& ptos,
                     std::vector<double>& ptoVelocities,
@@ -655,18 +667,18 @@ void saveBodyDataToFile(std::ofstream& outputFile,
 
 void savePTODataToFile(std::ofstream& ptoOutputFile,
                        const std::vector<double>& time_vector,
-                       const std::vector<std::vector<double>>& ptoVelocities,
+                       //const std::vector<std::vector<double>>& ptoVelocities,
                        const std::vector<std::vector<double>>& ptoPowers) {
     for (size_t i = 0; i < time_vector.size(); ++i) {
         ptoOutputFile << std::left << std::setw(20) << std::setprecision(2) << std::fixed << time_vector[i];
 
         // Assuming each inner vector in ptoVelocities and ptoPowers corresponds to a specific PTO
-        for (size_t j = 0; j < ptoVelocities.size(); ++j) {
-            if (i < ptoVelocities[j].size()) {
-                ptoOutputFile << std::setw(16) << std::setprecision(4) << std::fixed << ptoVelocities[j][i];
-            }
+        for (size_t j = 0; j < ptoPowers.size(); ++j) {
+            //if (i < ptoVelocities[j].size()) {
+            //    ptoOutputFile << std::setw(16) << std::setprecision(4) << std::fixed << ptoVelocities[j][i];
+            //}
             if (i < ptoPowers[j].size()) {
-                ptoOutputFile << std::setw(16) << std::setprecision(4) << std::fixed << ptoPowers[j][i];
+                ptoOutputFile << std::setw(20) << std::setprecision(4) << std::fixed << ptoPowers[j][i];
             }
         }
         ptoOutputFile << std::endl;
@@ -674,7 +686,7 @@ void savePTODataToFile(std::ofstream& ptoOutputFile,
     ptoOutputFile.close();
 }
 
-// usage: ./<demos>.exe [WECSimInputFile.m] [--nogui]
+// usage: ./<demos>.exe [WECSimInputFile.m] [resultsDirectory] [--nogui]
 
 int main(int argc, char* argv[]) {
     std::cout << R"(
@@ -694,12 +706,13 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <path to .m file>" << std::endl;
+    if (argc < 3) {
+        std::cerr << "Usage: " << argv[0] << " <path to .m file> <output directory>" << std::endl;
         return 1;
     }
 
-    std::string filePath = argv[1];
+    std::string filePath        = argv[1];
+    std::string outputDirectory = argv[2];
 
     std::cout << "==== Parsing input file... ====\n" << std::endl;
     
@@ -772,15 +785,8 @@ int main(int argc, char* argv[]) {
     // For profiling
     auto start = std::chrono::high_resolution_clock::now();
 
-    // For visualization
-    std::cout << "Visualization..." << std::endl;
-    bool visualizationOn = true;
-    if (argc > 2 && std::string("--nogui").compare(argv[2]) == 0) {
-        visualizationOn = false;
-    }
-
     // For output
-    std::vector<double> time_vector;
+    std::vector<double> time;
     std::map<int, std::vector<ChVector<>>> body_positions;
     std::vector<std::vector<double>> ptoVelocities(ptos.size(), std::vector<double>());
     std::vector<std::vector<double>> ptoPowers(ptos.size(), std::vector<double>());
@@ -791,19 +797,31 @@ int main(int argc, char* argv[]) {
 
     // Initialize the output file
     std::cout << "Initialize output files..." << std::endl;
-    initializeBodyOutputFile(bodyOutputFile, bodies, filePath);
-    initializePTOOutputFile(ptoOutputFile, ptoConfigs.size(), filePath);
+    initializeBodyOutputFile(bodyOutputFile, bodies, outputDirectory);
+    initializePTOOutputFile(ptoOutputFile, ptoConfigs.size(), outputDirectory);
 
-    // Main simulation loop
+    // For visualization
     std::cout << std::endl;
     std::cout << "\n---- Initializing Chrono visualization... ----" << std::endl;
     std::cout << std::endl;
+
+    bool visualizationOn = (simuConfig.explorer == "on");
+    // Check for command line arguments to override
+    if (argc > 3) {
+        if (std::string("--nogui").compare(argv[3]) == 0) {
+            visualizationOn = false;
+        } else if (std::string("--gui").compare(argv[3]) == 0) {
+            visualizationOn = true;
+        }
+    }
+    std::cout << "Visualization: " << (visualizationOn ? "Enabled" : "Disabled") << std::endl;
 
     std::shared_ptr<hydroc::gui::UI> pui = hydroc::gui::CreateUI(visualizationOn);
     hydroc::gui::UI& ui                  = *pui.get();
     ui.Init(&system, simuConfig.modelName.c_str());
     ui.SetCamera(0, -50, -10, 0, 0, -10);
 
+    // Main simulation loop
     std::cout << std::endl;
     std::cout << "==== Running simulation... ====" << std::endl;
     std::cout << std::endl;
@@ -813,7 +831,7 @@ int main(int argc, char* argv[]) {
 
         if (ui.simulationStarted) {
             system.DoStepDynamics(timestep);
-            time_vector.push_back(system.GetChTime());
+            time.push_back(system.GetChTime());
 
             // Collect body position data
             for (size_t i = 0; i < bodies.size(); ++i) {
@@ -831,8 +849,8 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    saveBodyDataToFile(bodyOutputFile, time_vector, body_positions);
-    savePTODataToFile(ptoOutputFile, time_vector, ptoVelocities, ptoPowers);
+    saveBodyDataToFile(bodyOutputFile, time, body_positions);
+    savePTODataToFile(ptoOutputFile, time, ptoPowers);
 
     return 0;
 }
