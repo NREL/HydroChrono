@@ -137,6 +137,11 @@ target_link_options(HydroChrono BEFORE
 		${CHRONO_LINKER_FLAGS}
 )
 
+set_target_properties(HydroChrono
+	PROPERTIES
+	POSITION_INDEPENDENT_CODE ON
+)
+
 # temporary hack
 # seems there is no namespace target hdf5:: on linux
 # for HDF5 version 1.10 to 1.14 ?
