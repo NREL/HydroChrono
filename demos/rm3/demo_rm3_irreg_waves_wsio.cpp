@@ -4,6 +4,7 @@
 #include <hydroc/hydro_forces.h>
 
 #include <chrono/core/ChRealtimeStep.h>
+//#include <chrono/physics/ChLinkLock.h>
 #include <chrono/physics/ChLinkMate.h>  // fixed body uses link
 
 #include <chrono>
@@ -41,12 +42,12 @@ struct WaveConfig {
 
 // Define a struct for body configurations
 struct BodyConfig {
-    std::string hydroDataFile;     // file containing hydrodynamic data
-    std::string type = "hydrodynamic-body";         // Type of the body
-    double mass;                   // Mass of the body
-    std::vector<double> inertia;   // Inertia of the body
-    std::vector<double> position;  // Position of the body
-    bool fixed = false;            // Indicates if the body is fixed
+    std::string hydroDataFile;               // File containing hydrodynamic data
+    std::string type = "hydrodynamic-body";  // Type of the body
+    double mass;                             // Mass of the body
+    std::vector<double> inertia;             // Inertia of the body
+    std::vector<double> position;            // Position of the body
+    bool fixed = false;                      // Indicates if the body is fixed
     // For mesh bodies
     std::string geometryFile;  // File path for the geometry
     // For sphere bodies
@@ -105,9 +106,10 @@ SimulationConfig parseSimulationConfig(const std::string& filename) {
         }
     }
 
-    std::cout << "  " << std::left << std::setw(24) << "Model Name:" << config.modelName << "\n";
-    std::cout << "  " << std::left << std::setw(24) << "Simulation Duration:" << config.endTime << " seconds\n";
-    std::cout << "  " << std::left << std::setw(24) << "Time Step:" << config.dt << " seconds\n\n";
+    const int colWidth = 24;  // Adjust this value for alignment
+    std::cout << "  " << std::left << std::setw(colWidth) << "Model Name:" << config.modelName << "\n";
+    std::cout << "  " << std::left << std::setw(colWidth) << "Simulation Duration:" << config.endTime << " seconds\n";
+    std::cout << "  " << std::left << std::setw(colWidth) << "Time Step:" << config.dt << " seconds\n\n";
 
     return config;
 }
@@ -161,22 +163,24 @@ WaveConfig parseWaveConfig(const std::string& filePath) {
 
     file.close();
 
-    // Print summary of wave configuration with indentation for better readability
-    std::cout << "  " << std::left << std::setw(16) << "Type:" << waveConfig.type << "\n";
-    std::cout << "  " << std::left << std::setw(16) << "Height:" << waveConfig.height << " meters\n";
-    std::cout << "  " << std::left << std::setw(16) << "Period:" << waveConfig.period << " seconds\n";
+    const int colWidth = 24;
+    std::cout << "  " << std::left << std::setw(colWidth) << "Type:" << waveConfig.type << "\n";
+    std::cout << "  " << std::left << std::setw(colWidth) << "Height:" << waveConfig.height << " meters\n";
+    std::cout << "  " << std::left << std::setw(colWidth) << "Period:" << waveConfig.period << " seconds\n";
     if (!waveConfig.spectrumType.empty()) {
-        std::cout << "  " << std::left << std::setw(20) << "Spectrum Type:" << waveConfig.spectrumType << std::endl;
+        std::cout << "  " << std::left << std::setw(colWidth) << "Spectrum Type:" << waveConfig.spectrumType
+                  << std::endl;
     }
     if (!waveConfig.direction.empty()) {
-        std::cout << "  " << std::left << std::setw(20) << "Directions:";
+        std::cout << "  " << std::left << std::setw(colWidth) << "Directions:";
         for (const auto& dir : waveConfig.direction) {
             std::cout << dir << " ";
         }
         std::cout << std::endl;
     }
     if (!waveConfig.elevationFile.empty()) {
-        std::cout << "  " << std::left << std::setw(20) << "Elevation File:" << waveConfig.elevationFile << std::endl;
+        std::cout << "  " << std::left << std::setw(colWidth) << "Elevation File:" << waveConfig.elevationFile
+                  << std::endl;
     }
 
     return waveConfig;
@@ -212,7 +216,7 @@ void extractAndAssignVector(const std::string& line, std::vector<double>& attrib
 
     std::istringstream iss(numbers);
     double val;
-    attribute.clear(); // Clear any existing values
+    attribute.clear();  // Clear any existing values
     while (iss >> val) {
         attribute.push_back(val);
     }
@@ -355,7 +359,7 @@ std::vector<PTOConfig> parsePTOConfig(const std::string& filename) {
                 }
                 currentConfig.attachments.push_back(attachment);
             }
-        } else if (line.find(".location = [") != std::string::npos) {
+        } else if (line.find(".location = [") != std::string::npos && currentConfig.attachments.empty()) {
             currentConfig.location = parseVector(line);
         } else if (line.find(".restLength = ") != std::string::npos) {
             try {
@@ -376,6 +380,10 @@ std::vector<PTOConfig> parsePTOConfig(const std::string& filename) {
         for (const auto& config : configs) {
             std::cout << "    - " << config.type << " between body " << config.bodies[0] << " and body "
                       << config.bodies[1] << std::endl;
+            if (!config.location.empty()) {
+                std::cout << "      Location: [" << config.location[0] << ", " << config.location[1] << ", "
+                          << config.location[2] << "]" << std::endl;
+            }
         }
     }
     return configs;
@@ -398,22 +406,38 @@ void setBodyInertia(std::shared_ptr<ChBodyEasyMesh>& body, const std::vector<dou
     }
 }
 
-std::shared_ptr<ChBody> createSphereBody(int bodyNumber, const BodyConfig& bodyConfig, ChSystem& system) {
-    auto irm = chrono_types::make_shared<ChBodyEasySphere>(bodyConfig.radius, 1000.0, true, false);
-    if (!irm) {
+std::shared_ptr<ChBody> createSphereBody(int bodyNumber,
+                                         const BodyConfig& bodyConfig,
+                                         ChSystem& system,
+                                         const ChColor& color = ChColor(0.244f, 0.225f, 0.072f),  // Default color white
+                                         float opacity        = 0.8f) {
+    auto sphere = chrono_types::make_shared<ChBodyEasySphere>(bodyConfig.radius, 1000.0, true,
+                                                              false);  // true for visualization asset
+    if (!sphere) {
         return nullptr;
     }
-    irm->SetMass(bodyConfig.mass);
-    irm->SetInertiaXX(ChVector<>(bodyConfig.inertia[0], bodyConfig.inertia[1], bodyConfig.inertia[2]));
-    irm->SetPos(ChVector<>(bodyConfig.position[0], bodyConfig.position[1], bodyConfig.position[2]));
-    irm->SetNameString("body" + std::to_string(bodyNumber));
-    system.AddBody(irm);
-    return irm;
+    sphere->SetMass(bodyConfig.mass);
+    sphere->SetInertiaXX(ChVector<>(bodyConfig.inertia[0], bodyConfig.inertia[1], bodyConfig.inertia[2]));
+    sphere->SetPos(ChVector<>(bodyConfig.position[0], bodyConfig.position[1], bodyConfig.position[2]));
+    sphere->SetNameString("body" + std::to_string(bodyNumber));
+
+    // Create a visualization material
+    auto material = chrono_types::make_shared<ChVisualMaterial>();
+    material->SetDiffuseColor(color);
+    material->SetOpacity(opacity);
+    sphere->GetVisualShape(0)->SetMaterial(0, material);
+
+    system.AddBody(sphere);
+    return sphere;
 }
 
-std::shared_ptr<ChBody> createSingleBody(int bodyNumber, const BodyConfig& bodyConfig, ChSystem& system) {
-    // Debug print to check the geometry file path
-    auto body = chrono_types::make_shared<ChBodyEasyMesh>(bodyConfig.geometryFile, 0, false, true, false);
+std::shared_ptr<ChBody> createSingleBody(int bodyNumber,
+                                         const BodyConfig& bodyConfig,
+                                         ChSystem& system,
+                                         const ChColor& color = ChColor(0.244f, 0.225f, 0.072f),  // Default color
+                                         float opacity        = 0.8f) {
+    auto body = chrono_types::make_shared<ChBodyEasyMesh>(bodyConfig.geometryFile, 0, false, true,
+                                                          false);  // Enable visualization asset
     if (!body) {
         std::cerr << "Failed to create body " << bodyNumber << std::endl;
         return nullptr;
@@ -422,70 +446,57 @@ std::shared_ptr<ChBody> createSingleBody(int bodyNumber, const BodyConfig& bodyC
     setBodyPosition(body, bodyConfig.position);
     body->SetMass(bodyConfig.mass);
     setBodyInertia(body, bodyConfig.inertia);
+
+    // Create a visualization material
+    auto material = chrono_types::make_shared<ChVisualMaterial>();
+    material->SetDiffuseColor(color);
+    material->SetOpacity(opacity);
+    body->GetVisualShape(0)->SetMaterial(0, material);
+
     system.AddBody(body);
     return body;
 }
 
-std::pair<std::vector<std::shared_ptr<ChBody>>, std::vector<std::shared_ptr<ChBody>>>
-createBodies(const std::map<int, BodyConfig>& bodyConfigs, const std::string& inputFilePath, ChSystem& system) {
+std::pair<std::vector<std::shared_ptr<ChBody>>, std::vector<std::shared_ptr<ChBody>>> createBodies(
+    const std::map<int, BodyConfig>& bodyConfigs,
+    ChSystem& system) {
     std::vector<std::shared_ptr<ChBody>> allBodies;
     std::vector<std::shared_ptr<ChBody>> hydrodynamicBodies;
 
-    // Check if any body is fixed
-    bool anyBodyFixed = false;
+    // First, create hydrodynamic bodies
     for (const auto& [bodyNumber, bodyConfig] : bodyConfigs) {
-        if (bodyConfig.fixed) {
-            anyBodyFixed = true;
-            break;
-        }
-    }
-
-    // Create a ground body if needed for fixed bodies
-    std::shared_ptr<ChBody> ground;
-    if (anyBodyFixed) {
-        std::cout << "    Creating ground for fixed bodies\n";
-        ground = chrono_types::make_shared<ChBody>();
-        system.AddBody(ground);
-        ground->SetBodyFixed(true);
-        ground->SetCollide(false);
-    }
-
-    for (const auto& [bodyNumber, bodyConfig] : bodyConfigs) {
-        std::shared_ptr<ChBody> body;
-        std::string bodyType = bodyConfig.type.empty() ? "unknown type" : bodyConfig.type;
-        std::cout << "    Creating body " << bodyNumber << " (" << bodyType << ")";
-
-        if (bodyConfig.type == "nonhydro-sphere") {
-            body = createSphereBody(bodyNumber, bodyConfig, system);
-            std::cout << " - nonhydro-sphere";
-        } else {
-            body = createSingleBody(bodyNumber, bodyConfig, system);
+        if (bodyConfig.type != "nonhydro-sphere") {
+            auto body = createSingleBody(bodyNumber, bodyConfig, system);
             if (body) {
                 hydrodynamicBodies.push_back(body);
+                allBodies.push_back(body);
+                std::cout << "    Created hydrodynamic body " << bodyNumber << ".\n";
             }
-            std::cout << " - hydrodynamic";
-        }
-
-        if (body) {
-            allBodies.push_back(body);
-            std::cout << ", added successfully";
-
-            if (bodyConfig.fixed) {
-                // Anchor fixed body to the ground
-                std::cout << ", anchoring to ground";
-                auto anchor = chrono_types::make_shared<ChLinkMateGeneric>();
-                anchor->Initialize(body, ground, false, body->GetFrame_REF_to_abs(), body->GetFrame_REF_to_abs());
-                system.Add(anchor);
-                anchor->SetConstrainedCoords(true, true, true, true, true, true);
-            }
-            std::cout << ".\n";
-        } else {
-            std::cerr << "\n    Error creating body " << bodyNumber << ".\n";
         }
     }
 
-    std::cout << "    Total bodies created: " << allBodies.size() << std::endl;
-    std::cout << "    Total hydrodynamic bodies: " << hydrodynamicBodies.size() << std::endl;
+    // Then, create non-hydrodynamic bodies
+    for (const auto& [bodyNumber, bodyConfig] : bodyConfigs) {
+        if (bodyConfig.type == "nonhydro-sphere") {
+            auto body = createSphereBody(bodyNumber, bodyConfig, system);
+            if (body) {
+                allBodies.push_back(body);
+                std::cout << "    Created non-hydrodynamic body " << bodyNumber << ".\n";
+            }
+        }
+    }
+
+    // Set bodies as fixed if necessary
+    for (auto& body : allBodies) {
+        if (bodyConfigs.at(std::stoi(body->GetNameString().substr(4))).fixed) {
+            body->SetBodyFixed(true);
+            std::cout << "    Body " << body->GetNameString() << " set as fixed.\n";
+        }
+    }
+
+    const int colWidth = 32;
+    std::cout << std::setw(colWidth) << std::left << "    Total bodies created:" << allBodies.size() << std::endl;
+    std::cout << std::setw(colWidth) << "    Total hydrodynamic bodies:" << hydrodynamicBodies.size() << std::endl;
 
     return std::make_pair(allBodies, hydrodynamicBodies);
 }
@@ -510,7 +521,15 @@ void CreateTranslationalPTO(ChSystem& system,
     system.AddLink(prismatic_pto);
     ptos.push_back(prismatic_pto);
 
-    std::cout << "    Created TranslationalPTO\n";
+    const int colWidth = 24;
+    std::cout << "    Created TranslationalPTO between bodies " << pto_config.bodies[0] << " and "
+              << pto_config.bodies[1] << std::endl
+              << std::setw(colWidth) << std::left << "        Attachments:"
+              << "[" << pto_config.attachments[0][0] << ", " << pto_config.attachments[0][1] << ", "
+              << pto_config.attachments[0][2] << "] and [" << pto_config.attachments[1][0] << ", "
+              << pto_config.attachments[1][1] << ", " << pto_config.attachments[1][2] << "]" << std::endl
+              << std::setw(colWidth) << "        Stiffness:" << pto_config.stiffness << std::endl
+              << std::setw(colWidth) << "        Damping:" << pto_config.damping << std::endl;
 }
 
 void CreateLinSpringDamper(ChSystem& system,
@@ -529,18 +548,36 @@ void CreateLinSpringDamper(ChSystem& system,
     system.AddLink(spring_damper);
     ptos.push_back(spring_damper);
 
-    std::cout << "    Created LinSpringDamper\n";
+    const int colWidth = 24;
+    std::cout << "    Created LinSpringDamper between bodies " << pto_config.bodies[0] << " and "
+              << pto_config.bodies[1] << std::endl
+              << std::setw(colWidth) << std::left << "        Attachments:"
+              << "[" << pto_config.attachments[0][0] << ", " << pto_config.attachments[0][1] << ", "
+              << pto_config.attachments[0][2] << "] and [" << pto_config.attachments[1][0] << ", "
+              << pto_config.attachments[1][1] << ", " << pto_config.attachments[1][2] << "]" << std::endl
+              << std::setw(colWidth) << "        Rest length:" << pto_config.rest_length << std::endl
+              << std::setw(colWidth) << "        Stiffness:" << pto_config.stiffness << std::endl
+              << std::setw(colWidth) << "        Damping:" << pto_config.damping << std::endl;
 }
 
 void CreateRotationalPTO(ChSystem& system,
                          const std::vector<std::shared_ptr<ChBody>>& bodies,
                          const PTOConfig& pto_config,
                          std::vector<std::shared_ptr<ChLinkBase>>& ptos) {
+    if (pto_config.bodies.size() != 2) {
+        std::cerr << "Error: RotationalPTO requires exactly two bodies." << std::endl;
+        return;
+    }
+
     auto body1 = bodies[pto_config.bodies[0] - 1];
     auto body2 = bodies[pto_config.bodies[1] - 1];
-    ChVector<> attachmentPoint(pto_config.location[0], pto_config.location[1], pto_config.location[2]);
 
-    // Assuming that the rotational axis is along the X-axis, similar to the working example
+    if (pto_config.location.size() != 3) {
+        std::cerr << "Error: RotationalPTO 'location' vector must have exactly 3 elements." << std::endl;
+        return;
+    }
+
+    ChVector<> attachmentPoint(pto_config.location[0], pto_config.location[1], pto_config.location[2]);
     ChQuaternion<> revoluteRot = Q_from_AngX(CH_C_PI / 2.0);
 
     auto revolute = chrono_types::make_shared<ChLinkLockRevolute>();
@@ -548,7 +585,14 @@ void CreateRotationalPTO(ChSystem& system,
     system.AddLink(revolute);
     ptos.push_back(revolute);
 
-    std::cout << "    Created RotationalPTO\n";
+    const int colWidth = 24;
+    std::cout << "    Created RotationalPTO between bodies " << pto_config.bodies[0] << " and " << pto_config.bodies[1]
+              << std::endl
+              << std::setw(colWidth) << "        Location: "
+              << "[" << pto_config.location[0] << ", " << pto_config.location[1] << ", " << pto_config.location[2]
+              << "]" << std::endl
+              << std::setw(colWidth) << "        Stiffness: " << pto_config.stiffness << std::endl
+              << std::setw(colWidth) << "        Damping: " << pto_config.damping << std::endl;
 }
 
 void CreateJointOrPTO(ChSystem& system,
@@ -608,7 +652,6 @@ std::shared_ptr<WaveBase> setupWaveParameters(const WaveConfig& waveConfig,
     } else if (waveConfig.type == "still" || waveConfig.type == "noWaveCIC") {
         hydro_inputs = std::make_shared<NoWave>(num_bodies);
     }
-    std::cout << "============================================\n" << std::endl;
     return hydro_inputs;
 }
 
@@ -791,7 +834,7 @@ int main(int argc, char* argv[]) {
     std::cout << "======== Parsing input file... ========" << std::endl;
 
     // Parsing simulation configuration
-    std::cout << "\nSimulation Configuration:" << std::endl;
+    std::cout << "Simulation Configuration:" << std::endl;
     SimulationConfig simuConfig = parseSimulationConfig(filePath);
 
     // Parsing wave configuration
@@ -805,9 +848,9 @@ int main(int argc, char* argv[]) {
     // Parsing PTO configuration
     std::cout << "\nPTO Configuration:" << std::endl;
     std::vector<PTOConfig> ptoConfigs = parsePTOConfig(filePath);
-    std::cout << "\n============================================\n" << std::endl;
-    
-    std::cout << "\n======== Setting up system...  ========\n" << std::endl;
+    // std::cout << "\n=======================================\n" << std::endl;
+
+    std::cout << "\n\n======== Setting up system...  ========" << std::endl;
     // System/solver settings
     ChSystemNSC system;
 
@@ -825,15 +868,27 @@ int main(int argc, char* argv[]) {
 
     // Create body objects
     std::cout << "Creating body objects..." << std::endl;
-    auto [bodies, hydrodynamicBodies] = createBodies(bodyConfigs, filePath, system);
+    auto [bodies, hydrodynamicBodies] = createBodies(bodyConfigs, system);
 
     std::cout << "\nCreating joint and/or PTO objects..." << std::endl;
     std::vector<std::shared_ptr<ChLinkBase>> ptos;
     for (const auto& ptoConfig : ptoConfigs) {
-        // Check if the PTO is a RotationalPTO, which uses 'location' instead of 'attachments'
         if (ptoConfig.type == "RotationalPTO") {
-            if (ptoConfig.location.size() != 3) {
-                std::cerr << "Error: RotationalPTO requires a 'location' vector with exactly 3 elements." << std::endl;
+            // Check for either 'location' or 'attachments' for RotationalPTO
+            if (!ptoConfig.location.empty()) {
+                if (ptoConfig.location.size() != 3) {
+                    std::cerr << "Error: RotationalPTO 'location' vector must have exactly 3 elements." << std::endl;
+                    continue;  // Skip this iteration if the data is invalid
+                }
+            } else if (!ptoConfig.attachments.empty()) {
+                if (ptoConfig.attachments.size() != 2 || ptoConfig.attachments[0].size() != 3 ||
+                    ptoConfig.attachments[1].size() != 3) {
+                    std::cerr << "Error: RotationalPTO 'attachments' must each have exactly 3 elements." << std::endl;
+                    continue;  // Skip this iteration if the data is invalid
+                }
+            } else {
+                std::cerr << "Error: RotationalPTO requires either 'location' or 'attachments' to be specified."
+                          << std::endl;
                 continue;  // Skip this iteration if the data is invalid
             }
         } else {
@@ -854,12 +909,14 @@ int main(int argc, char* argv[]) {
         CreateJointOrPTO(system, bodies, ptoConfig, ptos);
     }
 
-
-    std::cout << "\n======== Setting up Wave Parameters ========\n";
+    std::cout << "\n\n======== Setting up Waves... ==========\n";
     auto hydro_inputs = setupWaveParameters(waveConfig, simuConfig.dt, simuConfig.endTime, simuConfig.rampTime,
                                             hydrodynamicBodies.size());
+    // std::cout << "=======================================\n" << std::endl;
 
-    std::cerr << "hydroDataFile location: " << bodyConfigs[1].hydroDataFile << std::endl;
+    std::cout << "\n\n======== Initialize HydroChrono... ====\n";
+
+    // std::cerr << "hydroDataFile location: " << bodyConfigs[1].hydroDataFile << std::endl;
 
     std::cout << "Test hydro..." << std::endl;
     TestHydro hydro_forces(hydrodynamicBodies, bodyConfigs[1].hydroDataFile);
@@ -871,8 +928,8 @@ int main(int argc, char* argv[]) {
     // For output
     std::vector<double> time;
     std::map<int, std::vector<ChVector<>>> body_positions;
-    std::vector<std::vector<double>> ptoVelocities(ptos.size(), std::vector<double>());
-    std::vector<std::vector<double>> ptoPowers(ptos.size(), std::vector<double>());
+    // std::vector<std::vector<double>> ptoVelocities(ptos.size(), std::vector<double>());
+    std::vector<std::vector<double>> pto_power(ptos.size(), std::vector<double>());
 
     // Create an ofstream object
     std::ofstream bodyOutputFile;
@@ -884,9 +941,6 @@ int main(int argc, char* argv[]) {
     initializePTOOutputFile(ptoOutputFile, ptoConfigs.size(), outputDirectory);
 
     // For visualization
-    std::cout << std::endl;
-    std::cout << "\n---- Initializing Chrono visualization... ----" << std::endl;
-    std::cout << std::endl;
 
     bool visualizationOn = (simuConfig.explorer == "on");
     // Check for command line arguments to override
@@ -895,30 +949,36 @@ int main(int argc, char* argv[]) {
             visualizationOn = false;
         } else if (std::string("--gui").compare(argv[3]) == 0) {
             visualizationOn = true;
+            std::cout << std::endl;
+            std::cout << "\n======== Setting up GUI... ============" << std::endl;
+            std::cout << std::endl;
         }
     }
-    std::cout << "Visualization: " << (visualizationOn ? "Enabled" : "Disabled") << std::endl;
+
+    std::cout << "Visualization: " << (visualizationOn ? "Enabled" : "Disabled") << "\n" << std::endl;
 
     std::shared_ptr<hydroc::gui::UI> pui = hydroc::gui::CreateUI(visualizationOn);
     hydroc::gui::UI& ui                  = *pui.get();
     ui.Init(&system, simuConfig.modelName.c_str());
     ui.SetCamera(0, -50, -10, 0, 0, -10);
+    ui.ShowFrames(true);
 
     // Main simulation loop
     std::cout << std::endl;
-    std::cout << "==== Running simulation... ====" << std::endl;
+    std::cout << "======== Running simulation... ========" << std::endl;
     std::cout << std::endl;
 
-    std::vector<std::shared_ptr<ChLinkTSDA>> tsdaPtos;
+    // std::vector<std::shared_ptr<ChLinkTSDA>> tsdaPtos;
+    // std::vector<std::shared_ptr<ChLinkLockRevolute>> revolutePtos;
 
-    for (const auto& pto : ptos) {
-        auto tsdaLink = std::dynamic_pointer_cast<ChLinkTSDA>(pto);
-        if (tsdaLink) {
-            // If the cast is successful, add it to the tsdaPtos vector
-            tsdaPtos.push_back(tsdaLink);
-        }
-        // Add similar code for other PTO types if needed
-    }
+    // for (const auto& pto : ptos) {
+    //    if (auto tsdaLink = std::dynamic_pointer_cast<ChLinkTSDA>(pto)) {
+    //        tsdaPtos.push_back(tsdaLink);
+    //    } else if (auto revoluteLink = std::dynamic_pointer_cast<ChLinkLockRevolute>(pto)) {
+    //        revolutePtos.push_back(revoluteLink);
+    //    }
+    //    // Handle other PTO types as needed
+    //}
 
     while (system.GetChTime() <= simulationDuration) {
         if (!ui.IsRunning(timestep)) break;
@@ -926,27 +986,25 @@ int main(int argc, char* argv[]) {
         if (ui.simulationStarted) {
             system.DoStepDynamics(timestep);
             time.push_back(system.GetChTime());
-
             // Collect body position data
             for (size_t i = 0; i < bodies.size(); ++i) {
-                body_positions[i].push_back(bodies[i]->GetPos());
+                //body_positions[i].push_back(bodies[i]->GetPos());
             }
-
             // Collect PTO data for tsdaPtos
-            for (size_t i = 0; i < tsdaPtos.size(); ++i) {
-                double velocity                = tsdaPtos[i]->GetVelocity();
-                double pto_damping_coefficient = tsdaPtos[i]->GetDampingCoefficient();
-                double power = velocity * velocity * pto_damping_coefficient;  // Assuming pto_damping is accessible
-                ptoVelocities[i].push_back(velocity);
-                ptoPowers[i].push_back(power);
+            for (size_t i = 0; i < ptos.size(); ++i) {
+                // double velocity                = tsdaPtos[i]->GetVelocity();
+                // double pto_damping_coefficient = tsdaPtos[i]->GetDampingCoefficient();
+                // double power = velocity * velocity * pto_damping_coefficient;  // Assuming pto_damping is accessible
+                // ptoVelocities[i].push_back(velocity);
+                // ptoPowers[i].push_back(power);
+                // std::cout << "==== Running 2... ====" << std::endl;
             }
-
             // Add similar code for other PTO types if they have different properties or methods
         }
     }
 
     saveBodyDataToFile(bodyOutputFile, time, body_positions);
-    savePTODataToFile(ptoOutputFile, time, ptoPowers);
+    savePTODataToFile(ptoOutputFile, time, pto_power);
 
     // Restore original cout buffer and close file if it was opened
     if (quietMode) {

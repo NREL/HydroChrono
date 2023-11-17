@@ -3,11 +3,12 @@
 #include <hydroc/hydro_forces.h>
 
 #include <chrono/core/ChRealtimeStep.h>
-#include <chrono/physics/ChLinkMate.h> // fixed body uses link
+#include <chrono/physics/ChLinkMate.h>
+#include <chrono/physics/ChLinkLock.h>
 
-#include <chrono>   // std::chrono::high_resolution_clock::now
-#include <iomanip>  // std::setprecision
-#include <vector>   // std::vector<double>
+#include <chrono>
+#include <iomanip>
+#include <vector>
 
 // Use the namespaces of Chrono
 using namespace chrono;
