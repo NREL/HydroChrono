@@ -239,6 +239,7 @@ struct IrregularWaveParams {
     double wave_height_ = 0.0;
     double wave_period_ = 0.0;
     double peak_enhancement_factor_ = 1.0;
+    int seed_ = 1;
 };
 
 class IrregularWaves : public WaveBase {
@@ -325,6 +326,7 @@ class IrregularWaves : public WaveBase {
     double wave_height_;
     double wave_period_;
     double peak_enhancement_factor_;
+    int seed_;
     std::vector<double> spectrum_;
     std::vector<double> time_data_;
     std::vector<double> free_surface_elevation_;

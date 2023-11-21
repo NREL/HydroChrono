@@ -481,7 +481,8 @@ IrregularWaves::IrregularWaves(const IrregularWaveParams& params)
       peak_enhancement_factor_(params.peak_enhancement_factor_),
       simulation_dt_(params.simulation_dt_),
       simulation_duration_(params.simulation_duration_),
-      ramp_duration_(params.ramp_duration_) {
+      ramp_duration_(params.ramp_duration_),
+      seed_(params.seed_) {
     std::cout << "Creating IrregularWaves object..." << std::endl;
     ex_irf_resampled_.resize(num_bodies_);
     ex_irf_time_resampled_.resize(num_bodies_);
@@ -737,7 +738,8 @@ void IrregularWaves::CreateFreeSurfaceElevation() {
     Eigen::VectorXd time_index = Eigen::VectorXd::LinSpaced(num_timesteps, 0, simulation_duration_);
 
     // Calculate the free surface elevation
-    free_surface_elevation_ = FreeSurfaceElevation(spectrum_frequencies_, spectral_densities_, time_index, sim_data_.water_depth);
+    free_surface_elevation_ =
+        FreeSurfaceElevation(spectrum_frequencies_, spectral_densities_, time_index, sim_data_.water_depth, seed_);
 
     // Apply ramp if ramp_duration is greater than 0
     if (ramp_duration_ > 0.0) {
