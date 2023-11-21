@@ -478,6 +478,7 @@ IrregularWaves::IrregularWaves(const IrregularWaveParams& params)
       eta_file_path_(params.eta_file_path_),
       wave_height_(params.wave_height_),
       wave_period_(params.wave_period_),
+      peak_enhancement_factor_(params.peak_enhancement_factor_),
       simulation_dt_(params.simulation_dt_),
       simulation_duration_(params.simulation_duration_),
       ramp_duration_(params.ramp_duration_) {
@@ -675,7 +676,7 @@ void IrregularWaves::CreateSpectrum() {
     spectrum_frequencies_ = Eigen::VectorXd::LinSpaced(1000, 0.001, 1.0);
 
     // Calculate the Pierson-Moskowitz Spectrum
-    spectral_densities_ = PiersonMoskowitzSpectrumHz(spectrum_frequencies_, wave_height_, wave_period_);
+    spectral_densities_ = JONSWAPSpectrumHz(spectrum_frequencies_, wave_height_, wave_period_, peak_enhancement_factor_);
 
     // Open a file stream for writing
     std::ofstream outputFile("spectral_densities.txt");
@@ -706,6 +707,23 @@ Eigen::VectorXd PiersonMoskowitzSpectrumHz(Eigen::VectorXd& f, double Hs, double
     for (size_t i = 0; i < f.size(); ++i) {
         spectral_densities[i] = 1.25 * std::pow(1 / Tp, 4) * std::pow(Hs / 2, 2) * std::pow(f[i], -5) *
                                 std::exp(-1.25 * std::pow(1 / Tp, 4) * std::pow(f[i], -4));
+    }
+
+    return spectral_densities;
+}
+
+Eigen::VectorXd JONSWAPSpectrumHz(Eigen::VectorXd& f, double Hs, double Tp, double gamma) {
+    auto spectral_densities = PiersonMoskowitzSpectrumHz(f, Hs, Tp);
+
+    // Scale spectral densities from PM to JONSWAP with gamma factor
+    for (size_t i = 0; i < spectral_densities.size(); ++i) {
+        double sigma;
+        if (f[i] <= 1.0 / Tp) {
+            sigma = 0.07;
+        } else {
+            sigma = 0.09;
+        }
+        spectral_densities[i] *= pow(gamma, exp(-(1.0 / (2.0 * pow(sigma, 2))) * pow(f[i] * Tp - 1.0, 2)));
     }
 
     return spectral_densities;
