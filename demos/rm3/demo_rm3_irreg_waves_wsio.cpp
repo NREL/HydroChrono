@@ -410,9 +410,11 @@ std::shared_ptr<ChBody> createSphereBody(int bodyNumber,
                                          const BodyConfig& bodyConfig,
                                          ChSystem& system,
                                          const ChColor& color = ChColor(0.244f, 0.225f, 0.072f),  // Default color white
-                                         float opacity        = 0.8f) {
-    auto sphere = chrono_types::make_shared<ChBodyEasySphere>(bodyConfig.radius, 1000.0, true,
-                                                              false);  // true for visualization asset
+                                         float opacity        = 0.5f) {
+    auto sphere = chrono_types::make_shared<ChBodyEasySphere>(bodyConfig.radius,
+                                                              1000.0,  // Density
+                                                              true,    // Visualization
+                                                              false);  // Collisions
     if (!sphere) {
         return nullptr;
     }
@@ -435,9 +437,12 @@ std::shared_ptr<ChBody> createSingleBody(int bodyNumber,
                                          const BodyConfig& bodyConfig,
                                          ChSystem& system,
                                          const ChColor& color = ChColor(0.244f, 0.225f, 0.072f),  // Default color
-                                         float opacity        = 0.8f) {
-    auto body = chrono_types::make_shared<ChBodyEasyMesh>(bodyConfig.geometryFile, 0, false, true,
-                                                          false);  // Enable visualization asset
+                                         float opacity        = 0.5f) {
+    auto body = chrono_types::make_shared<ChBodyEasyMesh>(bodyConfig.geometryFile,
+                                                          1000.0,  // Density
+                                                          false,   // Automatically evaluate mass
+                                                          true,    // Visualization
+                                                          false);  // Collisions
     if (!body) {
         std::cerr << "Failed to create body " << bodyNumber << std::endl;
         return nullptr;
@@ -462,6 +467,7 @@ std::pair<std::vector<std::shared_ptr<ChBody>>, std::vector<std::shared_ptr<ChBo
     ChSystem& system) {
     std::vector<std::shared_ptr<ChBody>> allBodies;
     std::vector<std::shared_ptr<ChBody>> hydrodynamicBodies;
+    std::shared_ptr<ChBody> ground;
 
     // First, create hydrodynamic bodies
     for (const auto& [bodyNumber, bodyConfig] : bodyConfigs) {
@@ -486,11 +492,26 @@ std::pair<std::vector<std::shared_ptr<ChBody>>, std::vector<std::shared_ptr<ChBo
         }
     }
 
-    // Set bodies as fixed if necessary
+    // Create a ground body if there are any fixed bodies
+    bool anyBodyFixed =
+        std::any_of(bodyConfigs.begin(), bodyConfigs.end(), [](const auto& pair) { return pair.second.fixed; });
+
+    if (anyBodyFixed) {
+        std::cout << "    Creating ground for fixed bodies.\n";
+        ground = chrono_types::make_shared<ChBody>();
+        system.AddBody(ground);
+        ground->SetBodyFixed(true);
+        ground->SetCollide(false);
+    }
+
+    // Set bodies as fixed if necessary and anchor to the ground
     for (auto& body : allBodies) {
         if (bodyConfigs.at(std::stoi(body->GetNameString().substr(4))).fixed) {
-            body->SetBodyFixed(true);
-            std::cout << "    Body " << body->GetNameString() << " set as fixed.\n";
+            auto anchor = chrono_types::make_shared<ChLinkMateGeneric>();
+            anchor->Initialize(body, ground, false, body->GetFrame_REF_to_abs(), body->GetFrame_REF_to_abs());
+            system.Add(anchor);
+            anchor->SetConstrainedCoords(true, true, true, true, true, true);
+            std::cout << "    Body " << body->GetNameString() << " set as fixed and anchored to ground.\n";
         }
     }
 
@@ -518,6 +539,8 @@ void CreateTranslationalPTO(ChSystem& system,
     prismatic_pto->Initialize(body1, body2, false, attachment1, attachment2);
     prismatic_pto->SetSpringCoefficient(pto_config.stiffness);
     prismatic_pto->SetDampingCoefficient(pto_config.damping);
+    prismatic_pto->AddVisualShape(chrono_types::make_shared<ChSpringShape>(
+        pto_config.spring_radius, pto_config.spring_resolution, pto_config.spring_turns));
     system.AddLink(prismatic_pto);
     ptos.push_back(prismatic_pto);
 
@@ -545,6 +568,8 @@ void CreateLinSpringDamper(ChSystem& system,
     spring_damper->Initialize(body1, body2, true, attachment1, attachment2);
     spring_damper->SetSpringCoefficient(pto_config.stiffness);
     spring_damper->SetDampingCoefficient(pto_config.damping);
+    spring_damper->AddVisualShape(chrono_types::make_shared<ChSpringShape>(
+        pto_config.spring_radius, pto_config.spring_resolution, pto_config.spring_turns));
     system.AddLink(spring_damper);
     ptos.push_back(spring_damper);
 
@@ -772,6 +797,30 @@ void savePTODataToFile(std::ofstream& ptoOutputFile,
     ptoOutputFile.close();
 }
 
+void printSystemMassMatrix(chrono::ChSystem& system) {
+    // Create a sparse matrix to hold the mass matrix
+    chrono::ChSparseMatrix massMatrix;
+
+    // Fill the mass matrix
+    system.GetMassMatrix(&massMatrix);
+    std::cout << "System mass matrix:" << std::endl;
+    std::cout << massMatrix << std::endl;
+
+    // Check if the matrix is empty
+    if (massMatrix.nonZeros() == 0) {
+        std::cout << "Mass matrix is empty." << std::endl;
+        return;
+    }
+
+    //// Print the mass matrix
+    //std::cout << "System Mass Matrix:" << std::endl;
+    //for (int k = 0; k < massMatrix.outerSize(); ++k) {
+    //    for (Eigen::SparseMatrix<double>::InnerIterator it(massMatrix, k); it; ++it) {
+    //        std::cout << "M(" << it.row() << "," << it.col() << ") = " << it.value() << std::endl;
+    //    }
+    //}
+}
+
 // usage: [hydrochrono_wsi.exe] [WECSimInputFile.m] [resultsDirectory] [--gui or --nogui]
 
 int main(int argc, char* argv[]) {
@@ -979,6 +1028,16 @@ int main(int argc, char* argv[]) {
     //    }
     //    // Handle other PTO types as needed
     //}
+
+    std::cout << "Number of bodies in system: " << system.Get_bodylist().size() << std::endl;
+    
+    for (auto& body : system.Get_bodylist()) {
+        auto inertia = body->GetInertiaXX();
+        std::cout << "Body: " << body->GetNameString() << ", Mass: " << body->GetMass() << ", Inertia: (" << inertia.x()
+                  << ", " << inertia.y() << ", " << inertia.z() << ")" << std::endl;
+    }
+
+    printSystemMassMatrix(system);
 
     while (system.GetChTime() <= simulationDuration) {
         if (!ui.IsRunning(timestep)) break;
