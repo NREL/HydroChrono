@@ -339,8 +339,9 @@ class IrregularWaves : public WaveBase {
     // const WaveMode mode_ = WaveMode::irregular;
     std::vector<HydroData::IrregularWaveInfo> wave_info_;
     HydroData::SimulationParameters sim_data_;
-    std::vector<Eigen::MatrixXd> ex_irf_resampled_;
-    std::vector<Eigen::VectorXd> ex_irf_time_resampled_;
+    std::vector<Eigen::MatrixXd> ex_irf_sampled_;
+    std::vector<Eigen::VectorXd> ex_irf_time_sampled_;
+    std::vector<Eigen::VectorXd> ex_irf_width_sampled_;
     Eigen::VectorXd spectrum_frequencies_;
     Eigen::VectorXd spectral_densities_;
     std::string mesh_file_name_;
@@ -352,30 +353,15 @@ class IrregularWaves : public WaveBase {
 
     Eigen::MatrixXd GetExcitationIRF(int b) const;
 
-    /**
-     * @brief resamples irf time vector from old time vector and new timestep.
+    /** @brief Resamples IRF time, widths, and values.
      *
-     * Creates a resized time vector that starts and ends at the same values as t_old and has timestep t_new.
-     *
-     * @param t_old reference to old time vector from h5 file, the first and last element are transfered to the first
-     * and last element of t_new (return val)
-     * @param dt_new the time step to use in resampled vector, typically the timestep of chrono simulation
-     *
-     * @return newly sized vector that looks like \
-     * (t_old[0], t_old[0] + dt_new, t_old[0] + 2*dt_new, ... , t_old[t_old.size()-1])
+     * @param dt Time step value to resample
      */
-    Eigen::VectorXd ResampleTime(const Eigen::VectorXd& t_old, const double dt_new);
+    void ResampleIRF(double dt);
 
-    /**
-     * @brief Creates a resized values vector to interpolate values for a new timestep.
-     *
-     * @param t_old reference to old time vector from h5 file
-     * @param vals_old the original values corresponding to the times in t_old from h5 file
-     * @param t_new resampled times (return value from ResampleTime()) to use in interpolation
-     *
-     * @return matrix for interpolated vals_old over t_new
+    /** @brief Calculates width (used for excitation convolution).
      */
-    Eigen::MatrixXd ResampleVals(const Eigen::VectorXd& t_old, Eigen::MatrixXd& vals_old, const Eigen::VectorXd& t_new);
+    void IrregularWaves::CalculateWidthIRF();
 
     /**
      * @brief Calculates the component of force from Convolution integral for specified body, dof, time.

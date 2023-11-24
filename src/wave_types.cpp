@@ -482,8 +482,9 @@ IrregularWaves::IrregularWaves(const IrregularWaveParams& params)
       ramp_duration_(params.ramp_duration_),
       seed_(params.seed_) {
     std::cout << "Creating IrregularWaves object..." << std::endl;
-    ex_irf_resampled_.resize(num_bodies_);
-    ex_irf_time_resampled_.resize(num_bodies_);
+    ex_irf_sampled_.resize(num_bodies_);
+    ex_irf_time_sampled_.resize(num_bodies_);
+    ex_irf_width_sampled_.resize(num_bodies_);
     std::cout << "eta_file_path (1)" << eta_file_path_ << std::endl;
     if (!eta_file_path_.empty()) {
         std::cout << "Reading eta.txt..." << std::endl;
@@ -521,14 +522,14 @@ void IrregularWaves::InitializeIRFVectors() {
     std::vector<Eigen::VectorXd> ex_irf_time_old(num_bodies_);
 
     for (unsigned int b = 0; b < num_bodies_; b++) {
-        ex_irf_old[b]      = GetExcitationIRF(b);
-        ex_irf_time_old[b] = wave_info_[b].excitation_irf_time;
+        ex_irf_sampled_[b]      = GetExcitationIRF(b);
+        ex_irf_time_sampled_[b] = wave_info_[b].excitation_irf_time;
+        CalculateWidthIRF();
     }
 
     // Resample excitation IRF time series
-    for (unsigned int b = 0; b < num_bodies_; b++) {
-        ex_irf_time_resampled_[b] = ResampleTime(ex_irf_time_old[b], simulation_dt_);
-        ex_irf_resampled_[b]      = ResampleVals(ex_irf_time_old[b], ex_irf_old[b], ex_irf_time_resampled_[b]);
+    if (simulation_dt_ > 0.0) {
+        ResampleIRF(simulation_dt_);
     }
 }
 
@@ -616,44 +617,56 @@ Eigen::VectorXd IrregularWaves::GetForceAtTime(double t) {
     return f;
 }
 
-Eigen::MatrixXd IrregularWaves::ResampleVals(const Eigen::VectorXd& t_old,
-                                             Eigen::MatrixXd& vals_old,
-                                             const Eigen::VectorXd& t_new) {
-    assert(vals_old.rows() == 6);
+void IrregularWaves::ResampleIRF(double dt) {
+    for (unsigned int b = 0; b < num_bodies_; b++) {
+        // 0) access arrays to modify at body index
+        auto& time_array  = ex_irf_time_sampled_[b];
+        auto& width_array = ex_irf_width_sampled_[b];
+        auto& val_array   = ex_irf_sampled_[b];
+        // copy time array
+        auto time_array_old = time_array;
 
-    Eigen::MatrixXd vals_new(6, t_new.size());
-    // we need to scale t to be [0,1] for spline use
-    // TODO: change this to accomodate variable dt instead of const dt
-    Eigen::VectorXd t_old_scaled = Eigen::VectorXd::LinSpaced(t_old.size(), 0, 1);
-    Eigen::VectorXd t_new_scaled = Eigen::VectorXd::LinSpaced(t_new.size(), 0, 1);
+        // 1) resample time
+        auto t0    = time_array_old[0];
+        auto t1    = time_array_old[time_array_old.size() - 1];
+        time_array = Eigen::VectorXd::LinSpaced(static_cast<int>(ceil((t1 - t0) / dt)), t0, t1);
 
-    Eigen::Spline<double, 6> spline =
-        Eigen::SplineFitting<Eigen::Spline<double, 6>>::Interpolate(vals_old, 3, t_old_scaled);
-    for (int i = 0; i < t_new.rows(); i++) {
-        vals_new.col(i) = spline(t_new_scaled[i]);
+        // 2) resample width
+        CalculateWidthIRF();
+
+        // 3) resample values
+        assert(val_array.rows() == 6);
+        Eigen::MatrixXd vals_new(6, time_array.size());
+        // we need to scale t to be [0,1] for spline use
+        Eigen::VectorXd t_old_scaled = Eigen::VectorXd::LinSpaced(time_array_old.size(), 0, 1);
+        Eigen::VectorXd t_new_scaled = Eigen::VectorXd::LinSpaced(time_array.size(), 0, 1);
+        // use spline to get new values
+        Eigen::Spline<double, 6> spline =
+            Eigen::SplineFitting<Eigen::Spline<double, 6>>::Interpolate(val_array, 3, t_old_scaled);
+        for (int i = 0; i < time_array.rows(); i++) {
+            vals_new.col(i) = spline(t_new_scaled[i]);
+        }
+        val_array = vals_new;
     }
-
-    // std::cout << "Old time vector:\n" << t_old << std::endl;
-    // std::cout << "Old values:\n" << vals_old << std::endl;
-    // std::cout << "New time vector:\n" << t_new << std::endl;
-    // std::cout << "New values:\n" << vals_new << std::endl;  // assuming new_vals is the output of the function
-
-    return vals_new;
 }
 
-Eigen::VectorXd IrregularWaves::ResampleTime(const Eigen::VectorXd& t_old, const double dt_new) {
-    double dt_old    = t_old[1] - t_old[0];
-    int size_new     = static_cast<int>(ceil(t_old.size() * dt_old / dt_new));
-    double t_initial = t_old[0];
-    double t_final   = t_old[t_old.size() - 1];
-    // t_0 and t_final should be the same in old/new versions, use new time step, which means a different number of
-    // timesteps
-    Eigen::VectorXd t_new = Eigen::VectorXd::LinSpaced(size_new, t_initial, t_final);
+void IrregularWaves::CalculateWidthIRF() {
+    for (unsigned int b = 0; b < num_bodies_; b++) {
+        auto& time_array  = ex_irf_time_sampled_[b];
+        auto& width_array = ex_irf_width_sampled_[b];
 
-    int N_old = t_old.size() - 1;
-    int N_new = t_new.size() - 1;
-
-    return t_new;
+        // 2) calculate width
+        width_array.resize(time_array.size());
+        for (int ii = 0; ii < width_array.size(); ii++) {
+            width_array[ii] = 0.0;
+            if (ii < time_array.size() - 1) {
+                width_array[ii] += 0.5 * abs(time_array[ii + 1] - time_array[ii]);
+            }
+            if (ii > 0) {
+                width_array[ii] += 0.5 * abs(time_array[ii] - time_array[ii - 1]);
+            }
+        }
+    }
 }
 
 Eigen::VectorXd IrregularWaves::SetSpectrumFrequencies(double start, double end, int num_points) {
@@ -774,9 +787,10 @@ void IrregularWaves::CreateFreeSurfaceElevation() {
 }
 
 double IrregularWaves::ExcitationConvolution(int body, int dof, double time) {
-    double f_ex          = 0.0;
-    auto& irf_time_array = ex_irf_time_resampled_[body];
-    auto& irf_val_mat    = ex_irf_resampled_[body];
+    double f_ex           = 0.0;
+    auto& irf_time_array  = ex_irf_time_sampled_[body];
+    auto& irf_val_mat     = ex_irf_sampled_[body];
+    auto& irf_width_array = ex_irf_width_sampled_[body];
 
     // asumptions: irf_time_array in ascending order, free_surface_time_sampled_ in ascending order
     // get initial index
@@ -820,18 +834,8 @@ double IrregularWaves::ExcitationConvolution(int body, int dof, double time) {
             // weighted value
             auto eta_val = w1 * eta1 + w2 * eta2;
 
-            // calculate width
-            double width = 0;
-            if (j > 0) {
-                width += 0.5 * (irf_time_array[j] - irf_time_array[j - 1]);
-            }
-            if (j < irf_time_array.size() - 1) {
-                width += 0.5 * (irf_time_array[j + 1] - irf_time_array[j]);
-            }
-
-            double ex_irf_val = irf_val_mat(dof, j);
-
-            f_ex += ex_irf_val * eta_val * width;
+            // add to excitation force
+            f_ex += irf_val_mat(dof, j) * eta_val * irf_width_array[j];
         }
     }
 
