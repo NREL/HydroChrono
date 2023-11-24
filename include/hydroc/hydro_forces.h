@@ -246,10 +246,10 @@ class TestHydro {
     std::vector<double> cb_minus_cg_;
     double rirf_timestep_;
     Eigen::VectorXd rirf_time_vector;  // Assumed consistent for each body
-    int offset_rirf;                   // For managing the circular nature of velocity history in convolution
 
     // Properties for velocity history management and time tracking
-    std::vector<double> velocity_history_;
+    std::vector<std::vector<std::vector<double>>> velocity_history_;
+    std::vector<double> time_history_;
     double prev_time;
 
     // Added mass related properties
