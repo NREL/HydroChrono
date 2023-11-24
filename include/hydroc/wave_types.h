@@ -17,7 +17,7 @@ Eigen::VectorXd JONSWAPSpectrumHz(Eigen::VectorXd& f, double Hs, double Tp, doub
 
 std::vector<double> FreeSurfaceElevation(const Eigen::VectorXd& freqs_hz,
                                          const Eigen::VectorXd& spectral_densities,
-                                         const Eigen::VectorXd& time_index,
+                                         const Eigen::VectorXd& time_array,
                                          double water_depth,
                                          int seed = 1);
 
@@ -330,7 +330,8 @@ class IrregularWaves : public WaveBase {
     int seed_;
     std::vector<double> spectrum_;
     std::vector<double> time_data_;
-    std::vector<double> free_surface_elevation_;
+    std::vector<double> free_surface_elevation_sampled_;
+    std::vector<double> free_surface_time_sampled_;
     bool spectrumCreated_;
 
     const WaveMode mode_ = WaveMode::irregular;
