@@ -19,8 +19,6 @@ using namespace chrono::geometry;
 
 //////// Parsing data structures and functions
 
-//// structs
-
 // Struct for simulation configuration
 struct SimulationConfig {
     std::string explorer_;    // Explorer type
@@ -500,13 +498,6 @@ AllConfigurations ParseConfigurations(const std::string& file_path) {
     return configs;
 }
 
-
-
-
-
-
-
-
 // Struct for command line arguments
 struct CommandLineArgs {
     std::string file_path;
@@ -516,7 +507,6 @@ struct CommandLineArgs {
     bool hydro_enabled      = true;
     bool visualization_mode = true;  // true for GUI, false for no GUI
 };
-
 
 //////// Struct and functions to set up the system
 
@@ -600,7 +590,6 @@ void PrintSystemBodySummary(const SystemAndComponents& sac) {
         }
     }
 }
-
 
 //// Functions to set up the Chrono system
 

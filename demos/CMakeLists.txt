@@ -200,33 +200,33 @@ target_link_libraries(demo_rm3_reg_waves
 )
 
 # =====================
-# RM3_IRREG_WAVES_WSIO
+# HYDROCHRONO_WSI
 # =====================
-add_executable(demo_rm3_irreg_waves_wsio)
+add_executable(demo_hydrochrono_wsi)
 
 target_sources(
-    demo_rm3_irreg_waves_wsio
+    demo_hydrochrono_wsi
 
     PRIVATE
-    rm3/demo_rm3_irreg_waves_wsio.cpp
+    demo_hydrochrono_wsi.cpp
 )
 
 if(HYDROCHRONO_ENABLE_IRRLICHT)
-	target_compile_definitions(demo_rm3_irreg_waves_wsio
+	target_compile_definitions(demo_hydrochrono_wsi
 		PRIVATE 
 		HYDROCHRONO_HAVE_IRRLICHT=1
 	)
 endif()
 
 target_include_directories(
-	demo_rm3_irreg_waves_wsio
+	demo_hydrochrono_wsi
 
 	PRIVATE
 	    ${CMAKE_CURRENT_SOURCE_DIR}/
 	    ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-target_link_libraries(demo_rm3_irreg_waves_wsio 
+target_link_libraries(demo_hydrochrono_wsi 
     PRIVATE
 	HydroChronoGUI	
     HydroChrono
