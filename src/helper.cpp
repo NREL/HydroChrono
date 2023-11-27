@@ -5,6 +5,22 @@
 #include <memory>
 #include <vector>
 
+size_t get_lower_index(double value, const std::vector<double>& ticks) {
+    auto it = std::upper_bound(ticks.begin(), ticks.end(), value);
+    // get nearest-below index
+    size_t idx = it - ticks.begin() - 1;
+    // remove one if equal to value
+    if (ticks[idx] == value) {
+        idx -= 1;
+    }
+    if (idx <= 0 || idx >= ticks.size() - 1) {
+        throw std::runtime_error("Could not find index for value " + std::to_string(value) + " in array with bounds (" +
+                                 std::to_string(ticks.front()) + ", " + std::to_string(ticks.back()) + ").");
+    }
+    // return index
+    return idx;
+}
+
 using std::filesystem::path;
 
 static path DATADIR{};

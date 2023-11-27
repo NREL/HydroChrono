@@ -3,40 +3,48 @@
 
 #pragma once
 
-#include <string>
-#include <iostream>
+#include <Eigen/Dense>  // Need for the container function
 #include <fstream>
-#include <Eigen/Dense> // Need for the container function
-
+#include <iostream>
+#include <string>
 
 #ifndef M_PI
     #define M_PI 3.14159265358979323846
 #endif
+
+/**@brief Returns last index of vector element below value.
+ *
+ * @param value Input value
+ * @param ticks Array of ticks from which to find lower-bound index (assuming ascending order)
+ *
+ */
+size_t get_lower_index(double value, const std::vector<double>& ticks);
+
 /**@brief Base namespace for HydroChrono library
- * 
-*/
+ *
+ */
 namespace hydroc {
 
 /**@brief Set initial environment
- * 
+ *
  * Use command line argument or env variables to set s
  * ome static data at initialization.
- * 
+ *
  * Set the main data directory ..
- * 
+ *
  * @param argc number of argument (same as for main function)
- * @param argv arguments of main function 
+ * @param argv arguments of main function
  * @return 1 on error 0 else
-*/
+ */
 int SetInitialEnvironment(int argc, char* argv[]) noexcept;
 
 /**@brief Get base name of data directory
- * 
+ *
  * @return the string containing the path in standard format
-*/
+ */
 std::string getDataDir() noexcept;
 template <typename T>
-void WriteDataToFile(const std::vector<T>& data, const std::string& filename){
+void WriteDataToFile(const std::vector<T>& data, const std::string& filename) {
     std::ofstream outFile(filename);
     if (outFile.is_open()) {
         for (const auto& item : data) {
@@ -66,7 +74,8 @@ void WriteContainerToFile(const Container& container, const std::string& file_na
  * @param file_name file to write container to
  */
 template <>
-void inline WriteContainerToFile<std::vector<double>>(const std::vector<double>& container, const std::string& file_name) {
+void inline WriteContainerToFile<std::vector<double>>(const std::vector<double>& container,
+                                                      const std::string& file_name) {
     std::ofstream output_file(file_name);
 
     if (!output_file) {
@@ -103,6 +112,6 @@ void inline WriteContainerToFile<Eigen::VectorXd>(const Eigen::VectorXd& contain
     output_file.close();
 };
 
-} // end namespace hydroc
+}  // end namespace hydroc
 
 #endif

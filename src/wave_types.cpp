@@ -3,9 +3,9 @@
  *
  * @brief implementation file for Wavebase and classes inheriting from WaveBase.
  *********************************************************************/
+#include <hydroc/helper.h>
 #include <hydroc/wave_types.h>
 #include <unsupported/Eigen/Splines>
-#include <hydroc/helper.h>
 
 Eigen::VectorXd NoWave::GetForceAtTime(double t) {
     unsigned int dof = num_bodies_ * 6;
@@ -86,217 +86,6 @@ double RegularWave::GetExcitationPhaseInterp(int b, int i, int j, double freq_in
     return excitationPhase;
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//// Irregular wave class definitions:
-//IrregularWave::IrregularWave() {
-//    num_bodies = 1;
-//}
-//
-//IrregularWave::IrregularWave(unsigned int num_b) {
-//    num_bodies = num_b;
-//}
-//
-//void IrregularWave::Initialize() {
-//    std::vector<Eigen::MatrixXd> ex_irf_old(num_bodies);
-//    std::vector<Eigen::VectorXd> ex_irf_time_old(num_bodies);
-//    for (int b = 0; b < num_bodies; b++) {
-//        ex_irf_old[b]      = GetExcitationIRF(b);
-//        ex_irf_time_old[b] = wave_info[b].excitation_irf_time;
-//    }
-//
-//    // resample excitation IRF time series
-//    // h5 file irf has different timestep, want to resample with interpolation (cubic spline?) once at start no
-//    // interpolation in convolution integral part
-//    // different one for each body it's 6x1x1000 so maybe switch to 2d reading
-//    ex_irf_resampled.resize(num_bodies);
-//    ex_irf_time_resampled.resize(num_bodies);
-//    for (int b = 0; b < num_bodies; b++) {  // function call (time_in, vals_in, &time_out, &vals_out)
-//        ex_irf_time_resampled[b] = ResampleTime(ex_irf_time_old[b], simulation_dt);
-//        ex_irf_resampled[b]      = ResampleVals(ex_irf_time_old[b], ex_irf_old[b], ex_irf_time_resampled[b]);
-//    }
-//
-//    CreateSpectrum();              // output in spectral_densities.txt
-//    CreateFreeSurfaceElevation();  // eta initialized in here, and output to eta.txt
-//}
-//
-//Eigen::MatrixXd IrregularWave::ResampleVals(const Eigen::VectorXd& t_old,
-//                                            Eigen::MatrixXd& vals_old,
-//                                            const Eigen::VectorXd& t_new) {
-//    assert(vals_old.rows() == 6);
-//
-//    Eigen::MatrixXd vals_new(6, t_new.size());
-//    // we need to scale t to be [0,1] for spline use
-//    // TODO: change this to accomodate variable dt instead of const dt
-//    Eigen::VectorXd t_old_scaled = Eigen::VectorXd::LinSpaced(t_old.size(), 0, 1);
-//    Eigen::VectorXd t_new_scaled = Eigen::VectorXd::LinSpaced(t_new.size(), 0, 1);
-//
-//    Eigen::Spline<double, 6> spline =
-//        Eigen::SplineFitting<Eigen::Spline<double, 6>>::Interpolate(vals_old, 3, t_old_scaled);
-//    for (int i = 0; i < t_new.rows(); i++) {
-//        vals_new.col(i) = spline(t_new_scaled[i]);
-//    }
-//
-//    return vals_new;
-//}
-//
-//Eigen::VectorXd IrregularWave::ResampleTime(const Eigen::VectorXd& t_old, const double dt_new) {
-//    double dt_old    = t_old[1] - t_old[0];
-//    int size_new     = static_cast<int>(ceil(t_old.size() * dt_old / dt_new));
-//    double t_initial = t_old[0];
-//    double t_final   = t_old[t_old.size() - 1];
-//    // t_0 and t_final should be the same in old/new versions, use new time step, which means a different number of
-//    // timesteps
-//    Eigen::VectorXd t_new = Eigen::VectorXd::LinSpaced(size_new, t_initial, t_final);
-//
-//    // print for testing
-//    int N_old = t_old.size() - 1;
-//    int N_new = t_new.size() - 1;
-//    //std::cout << "T_old = {t_i | i = 0 .. " << N_old << ", t_0 = " << t_old[0] << ", t_" << N_old << " = "
-//    //          << t_old[N_old] << "}\n"
-//    //          << "dt_old = " << dt_old << "\nT_new = {t_i | i = 0 .. " << N_new << ", t_0 = " << t_new[0] << ", t_"
-//    //          << N_new << " = " << t_new[N_new] << "}\n"
-//    //          << "dt_new = " << dt_new << std::endl;
-//
-//    return t_new;
-//}
-//
-//void IrregularWave::AddH5Data(std::vector<HydroData::IrregularWaveInfo>& irreg_h5_data,
-//                              HydroData::SimulationParameters& sim_data) {
-//    wave_info = irreg_h5_data;
-//    sim_data  = sim_data;
-//}
-//
-//Eigen::VectorXd IrregularWave::GetForceAtTime(double t) {
-//    unsigned int total_dofs = num_bodies * 6;
-//    Eigen::VectorXd f(total_dofs);
-//    // initialize the force here:
-//    // for now set f to all zeros
-//    for (int i = 0; i < total_dofs; i++) {
-//        f[i] = 0.0;
-//    }
-//    // see ComputeForceExcitation and convolution functions
-//
-//    // force_excitation.resize(total_dofs, 0.0);
-//
-//    for (int body = 0; body < num_bodies; body++) {
-//        // Loop through the DOFs
-//        for (int dof = 0; dof < 6; ++dof) {
-//            // Compute the convolution for the current DOF
-//            double f_dof          = ExcitationConvolution(body, dof, t);
-//            unsigned int b_offset = body * 6;
-//            f[b_offset + dof]     = f_dof;
-//        }
-//    }
-//    return f;
-//}
-//
-/////*******************************************************************************
-//// * IrregularWave::GetExcitationIRF()
-//// * returns the std::vector of excitation_irf_matrix from h5 file
-//// *******************************************************************************/
-////Eigen::MatrixXd IrregularWave::GetExcitationIRF(int b) const {
-////    return wave_info[b].excitation_irf_matrix;
-////}
-//
-//double IrregularWave::ExcitationConvolution(int body, int dof, double time) {
-//    double f_ex  = 0.0;
-//    double width = ex_irf_time_resampled[body][1] - ex_irf_time_resampled[body][0];
-//    //std::cout << "width=" << width << std::endl;
-//
-//    for (size_t j = 0; j < ex_irf_time_resampled[0].size(); ++j) {
-//        double tau        = ex_irf_time_resampled[0][j];
-//        double t_tau      = time - tau;
-//        double ex_irf_val = ex_irf_resampled[body](dof, j);
-//        if (0.0 < t_tau && t_tau < eta.size() * width) {
-//            size_t eta_index = static_cast<size_t>(t_tau / width);
-//            double eta_val   = eta[eta_index - 1];
-//            f_ex += ex_irf_val * eta_val * width;  // eta is wave elevation
-//        }
-//    }
-//
-//    return f_ex;
-//}
-//
-//Eigen::VectorXd IrregularWave::SetSpectrumFrequencies(double start, double end, int num_points) {
-//    Eigen::VectorXd result(num_points);
-//    double step = (end - start) / (num_points - 1);
-//
-//    for (int i = 0; i < num_points; ++i) {
-//        result[i] = start + i * step;
-//    }
-//
-//    spectrum_frequencies = result;
-//
-//    return result;
-//}
-//
-//void IrregularWave::CreateSpectrum() {
-//    // Define the frequency vector
-//    spectrum_frequencies = Eigen::VectorXd::LinSpaced(1000, 0.001, 1.0);
-//
-//    // Calculate the Pierson-Moskowitz Spectrum
-//    spectral_densities = PiersonMoskowitzSpectrumHz(spectrum_frequencies, wave_height, wave_period);
-//
-//    // Open a file stream for writing
-//    std::ofstream outputFile("spectral_densities.txt");
-//
-//    // Check if the file stream is open
-//    if (outputFile.is_open()) {
-//        // Write the spectral densities and their corresponding frequencies to the file
-//        for (size_t i = 0; i < spectral_densities.size(); ++i) {
-//            outputFile << spectrum_frequencies[i] << " : " << spectral_densities[i] << std::endl;
-//        }
-//
-//        // Close the file stream
-//        outputFile.close();
-//    } else {
-//        std::cerr << "Unable to open file for writing." << std::endl;
-//    }
-//}
-//
-//void IrregularWave::CreateFreeSurfaceElevation() {
-//    // Create a time index vector
-//    // UpdateNumTimesteps();
-//    int num_timesteps = static_cast<int>(simulation_duration / simulation_dt) + 1;
-//
-//    Eigen::VectorXd time_index = Eigen::VectorXd::LinSpaced(num_timesteps, 0, simulation_duration);
-//
-//    // Calculate the free surface elevation
-//    eta = FreeSurfaceElevation(spectrum_frequencies, spectral_densities, time_index, sim_data.water_depth);
-//
-//    // Apply ramp if ramp_duration is greater than 0
-//    if (ramp_duration > 0.0) {
-//        // UpdateRampTimesteps();
-//        int ramp_timesteps   = static_cast<int>(ramp_duration / simulation_dt) + 1;
-//        Eigen::VectorXd ramp = Eigen::VectorXd::LinSpaced(ramp_timesteps, 0.0, 1.0);
-//
-//        for (size_t i = 0; i < ramp.size(); ++i) {
-//            eta[i] *= ramp[i];
-//        }
-//    }
-//
-//    // Open a file stream for writing
-//    std::ofstream eta_output("eta.txt");
-//    // Check if the file stream is open
-//    if (eta_output.is_open()) {
-//        // Write the spectral densities and their corresponding frequencies to the file
-//        for (size_t i = 0; i < eta.size(); ++i) {
-//            eta_output << time_index[i] << " : " << eta[i] << std::endl;
-//        }
-//        // Close the file stream
-//        eta_output.close();
-//    } else {
-//        std::cerr << "Unable to open file for writing." << std::endl;
-//    }
-//
-//    // std::vector<std::array<double, 3>> free_surface_3d_pts    = CreateFreeSurface3DPts(eta, time_index);
-//    // std::vector<std::array<size_t, 3>> free_surface_triangles = CreateFreeSurfaceTriangles(time_index.size());
-//
-//    // WriteFreeSurfaceMeshObj(free_surface_3d_pts, free_surface_triangles, "fse_mesh.obj");
-//}
-
-
 std::vector<double> ComputeWaveNumbers(const std::vector<double>& omegas,
                                        double water_depth,
                                        double g           = 9.81,
@@ -330,10 +119,10 @@ std::vector<double> ComputeWaveNumbers(const std::vector<double>& omegas,
 }
 
 std::vector<double> FreeSurfaceElevation(const Eigen::VectorXd& freqs_hz,
-                                     const Eigen::VectorXd& spectral_densities,
-                                     const Eigen::VectorXd& time_index,
-                                     double water_depth,
-                                     int seed) {
+                                         const Eigen::VectorXd& spectral_densities,
+                                         const Eigen::VectorXd& time_index,
+                                         double water_depth,
+                                         int seed) {
     double delta_f = freqs_hz(Eigen::last) / freqs_hz.size();
     std::vector<double> omegas(freqs_hz.size());
 
@@ -376,16 +165,6 @@ std::vector<double> FreeSurfaceElevation(const Eigen::VectorXd& freqs_hz,
 
     return eta;
 }
-
-//void IrregularWave::SetUpWaveMesh(std::string filename) {
-//    mesh_file_name             = filename;
-//    int num_timesteps          = static_cast<int>(simulation_duration / simulation_dt) + 1;
-//    Eigen::VectorXd time_index = Eigen::VectorXd::LinSpaced(num_timesteps, 0, simulation_duration);
-//    std::vector<std::array<double, 3>> free_surface_3d_pts    = CreateFreeSurface3DPts(eta, time_index);
-//    std::vector<std::array<size_t, 3>> free_surface_triangles = CreateFreeSurfaceTriangles(time_index.size());
-//
-//    WriteFreeSurfaceMeshObj(free_surface_3d_pts, free_surface_triangles, mesh_file_name);
-//}
 
 std::vector<std::array<double, 3>> CreateFreeSurface3DPts(const std::vector<double>& eta,
                                                           const Eigen::VectorXd& t_vec) {
@@ -452,27 +231,6 @@ void WriteFreeSurfaceMeshObj(const std::vector<std::array<double, 3>>& points,
     out.close();
 }
 
-//std::string IrregularWave::GetMeshFile() {
-//    return mesh_file_name;
-//}
-//
-//Eigen::Vector3<double> IrregularWave::GetWaveMeshVelocity() {
-//    return Eigen::Vector3d(1.0, 0, 0);
-//}
-
-
-//IrregularWaves::IrregularWaves(const std::string& eta_file_path, double wave_height, double wave_period)
-//    : eta_file_path(eta_file_path), wave_height(wave_height), wave_period(wave_period) {
-//    if (!eta_file_path.empty()) {
-//        ReadEtaFromFile();
-//        spectrumCreated = false;
-//    } else {
-//        CreateSpectrum();
-//        CreateFreeSurfaceElevation();
-//        spectrumCreated = true;
-//    }
-//}
-
 IrregularWaves::IrregularWaves(const IrregularWaveParams& params)
     : num_bodies_(params.num_bodies_),
       eta_file_path_(params.eta_file_path_),
@@ -482,55 +240,34 @@ IrregularWaves::IrregularWaves(const IrregularWaveParams& params)
       simulation_dt_(params.simulation_dt_),
       simulation_duration_(params.simulation_duration_),
       ramp_duration_(params.ramp_duration_),
-      seed_(params.seed_) {
-    std::cout << "Creating IrregularWaves object..." << std::endl;
-    ex_irf_resampled_.resize(num_bodies_);
-    ex_irf_time_resampled_.resize(num_bodies_);
-    std::cout << "eta_file_path (1)" << eta_file_path_ << std::endl;
+      seed_(params.seed_) {}
+
+void IrregularWaves::InitializeIRFVectors() {
+    ex_irf_sampled_.resize(num_bodies_);
+    ex_irf_time_sampled_.resize(num_bodies_);
+    ex_irf_width_sampled_.resize(num_bodies_);
+
+    std::vector<Eigen::MatrixXd> ex_irf_old(num_bodies_);
+    std::vector<Eigen::VectorXd> ex_irf_time_old(num_bodies_);
+
+    for (unsigned int b = 0; b < num_bodies_; b++) {
+        ex_irf_sampled_[b]      = GetExcitationIRF(b);
+        ex_irf_time_sampled_[b] = wave_info_[b].excitation_irf_time;
+        CalculateWidthIRF();
+    }
+
+    // Resample excitation IRF time series
+    if (simulation_dt_ > 0.0) {
+        ResampleIRF(simulation_dt_);
+    }
+
     if (!eta_file_path_.empty()) {
-        std::cout << "Reading eta.txt..." << std::endl;
         ReadEtaFromFile();
         spectrumCreated_ = false;
     } else if (wave_height_ != 0.0 && wave_period_ != 0.0) {
         CreateSpectrum();
         CreateFreeSurfaceElevation();
         spectrumCreated_ = true;
-    }
-    std::cout << "eta.txt read." << std::endl;
-
-    std::vector<Eigen::MatrixXd> ex_irf_old(num_bodies_);
-    std::vector<Eigen::VectorXd> ex_irf_time_old(num_bodies_);
-
-    //for (unsigned int b = 0; b < num_bodies; b++) {
-    //    std::cout << "get excitation IRFs..." << std::endl;
-    //    ex_irf_old[b]      = GetExcitationIRF(b);
-    //    std::cout << "get excitation IRF time..." << std::endl;
-    //    ex_irf_time_old[b] = wave_info[b].excitation_irf_time;
-    //}
-
-    //// Resample excitation IRF time series
-    //std::cout << "resample IRFs..." << std::endl;
-    //for (unsigned int b = 0; b < num_bodies; b++) {
-    //    ex_irf_time_resampled[b] = ResampleTime(ex_irf_time_old[b], simulation_dt);
-    //    ex_irf_resampled[b]      = ResampleVals(ex_irf_time_old[b], ex_irf_old[b], ex_irf_time_resampled[b]);
-    //}
-
-    std::cout << "IrregularWaves instantiated..." << std::endl;
-}
-
-void IrregularWaves::InitializeIRFVectors() {
-    std::vector<Eigen::MatrixXd> ex_irf_old(num_bodies_);
-    std::vector<Eigen::VectorXd> ex_irf_time_old(num_bodies_);
-
-    for (unsigned int b = 0; b < num_bodies_; b++) {
-        ex_irf_old[b]      = GetExcitationIRF(b);
-        ex_irf_time_old[b] = wave_info_[b].excitation_irf_time;
-    }
-
-    // Resample excitation IRF time series
-    for (unsigned int b = 0; b < num_bodies_; b++) {
-        ex_irf_time_resampled_[b] = ResampleTime(ex_irf_time_old[b], simulation_dt_);
-        ex_irf_resampled_[b]      = ResampleVals(ex_irf_time_old[b], ex_irf_old[b], ex_irf_time_resampled_[b]);
     }
 }
 
@@ -543,7 +280,7 @@ std::vector<double> IrregularWaves::GetSpectrum() {
 }
 
 std::vector<double> IrregularWaves::GetFreeSurfaceElevation() {
-    return free_surface_elevation_;
+    return free_surface_elevation_sampled_;
 }
 
 std::vector<double> IrregularWaves::GetEtaTimeData() {
@@ -551,10 +288,10 @@ std::vector<double> IrregularWaves::GetEtaTimeData() {
 }
 
 void IrregularWaves::ReadEtaFromFile() {
-    std::cout << "ReadEtaFromFile()" << std::endl;
+    std::cout << "Reading eta file " << eta_file_path_ << "." << std::endl;
     std::ifstream file(eta_file_path_);
     if (!file) {
-        throw std::runtime_error("Unable to open file at: " + eta_file_path_);
+        throw std::runtime_error("Unable to open file at: " + eta_file_path_ + ".");
     }
 
     std::string line;
@@ -564,17 +301,14 @@ void IrregularWaves::ReadEtaFromFile() {
         std::stringstream ss(line);
         char delimiter;
         if (!(ss >> time >> delimiter >> eta) || delimiter != ':') {
-            throw std::runtime_error("Could not parse line: " + line);
+            throw std::runtime_error("Could not parse line: " + line + ".");
         }
         time_data_.push_back(time);
-        free_surface_elevation_.push_back(eta);
+        free_surface_elevation_sampled_.push_back(eta);
     }
+    std::cout << "Finished reading eta file." << std::endl;
 }
 
-/*******************************************************************************
- * IrregularWave::GetExcitationIRF()
- * returns the std::vector of excitation_irf_matrix from h5 file
- *******************************************************************************/
 Eigen::MatrixXd IrregularWaves::GetExcitationIRF(int b) const {
     return wave_info_[b].excitation_irf_matrix;
 }
@@ -582,13 +316,6 @@ Eigen::MatrixXd IrregularWaves::GetExcitationIRF(int b) const {
 void IrregularWaves::AddH5Data(std::vector<HydroData::IrregularWaveInfo>& irreg_h5_data,
                                HydroData::SimulationParameters& sim_data) {
     wave_info_ = irreg_h5_data;
-    sim_data  = sim_data;  // Note: This line seems to be redundant as mentioned before.
-
-    //// Add this loop to print the values of wave_info[b].excitation_irf_matrix for each body
-    //for (unsigned int b = 0; b < num_bodies; ++b) {
-    //    std::cout << "wave_info[" << b << "].excitation_irf_matrix:\n";
-    //    std::cout << wave_info[b].excitation_irf_matrix << std::endl;
-    //}
 
     InitializeIRFVectors();
 }
@@ -596,14 +323,9 @@ void IrregularWaves::AddH5Data(std::vector<HydroData::IrregularWaveInfo>& irreg_
 Eigen::VectorXd IrregularWaves::GetForceAtTime(double t) {
     unsigned int total_dofs = num_bodies_ * 6;
     Eigen::VectorXd f(total_dofs);
-    // initialize the force here:
-    // for now set f to all zeros
     for (int i = 0; i < total_dofs; i++) {
         f[i] = 0.0;
     }
-    // see ComputeForceExcitation and convolution functions
-
-    // force_excitation.resize(total_dofs, 0.0);
 
     for (int body = 0; body < num_bodies_; body++) {
         // Loop through the DOFs
@@ -614,49 +336,62 @@ Eigen::VectorXd IrregularWaves::GetForceAtTime(double t) {
             f[b_offset + dof]     = f_dof;
         }
     }
-    
+
     return f;
 }
 
-Eigen::MatrixXd IrregularWaves::ResampleVals(const Eigen::VectorXd& t_old,
-                                            Eigen::MatrixXd& vals_old,
-                                            const Eigen::VectorXd& t_new) {
-    assert(vals_old.rows() == 6);
+void IrregularWaves::ResampleIRF(double dt) {
+    for (unsigned int b = 0; b < num_bodies_; b++) {
+        auto& time_array  = ex_irf_time_sampled_[b];
+        auto& width_array = ex_irf_width_sampled_[b];
+        auto& val_array   = ex_irf_sampled_[b];
 
-    Eigen::MatrixXd vals_new(6, t_new.size());
-    // we need to scale t to be [0,1] for spline use
-    // TODO: change this to accomodate variable dt instead of const dt
-    Eigen::VectorXd t_old_scaled = Eigen::VectorXd::LinSpaced(t_old.size(), 0, 1);
-    Eigen::VectorXd t_new_scaled = Eigen::VectorXd::LinSpaced(t_new.size(), 0, 1);
+        // Copy time array
+        auto time_array_old = time_array;
 
-    Eigen::Spline<double, 6> spline =
-        Eigen::SplineFitting<Eigen::Spline<double, 6>>::Interpolate(vals_old, 3, t_old_scaled);
-    for (int i = 0; i < t_new.rows(); i++) {
-        vals_new.col(i) = spline(t_new_scaled[i]);
+        // 1) Resample time
+        auto t0    = time_array_old[0];
+        auto t1    = time_array_old[time_array_old.size() - 1];
+        time_array = Eigen::VectorXd::LinSpaced(static_cast<int>(ceil((t1 - t0) / dt)), t0, t1);
+
+        // 2) Resample width
+        CalculateWidthIRF();
+
+        // 3) Resample values
+        assert(val_array.rows() == 6);
+        Eigen::MatrixXd vals_new(6, time_array.size());
+
+        // We need to scale t to be [0,1] for spline use
+        Eigen::VectorXd t_old_scaled = Eigen::VectorXd::LinSpaced(time_array_old.size(), 0, 1);
+        Eigen::VectorXd t_new_scaled = Eigen::VectorXd::LinSpaced(time_array.size(), 0, 1);
+
+        // Use spline to get new values
+        Eigen::Spline<double, 6> spline =
+            Eigen::SplineFitting<Eigen::Spline<double, 6>>::Interpolate(val_array, 3, t_old_scaled);
+        for (int i = 0; i < time_array.rows(); i++) {
+            vals_new.col(i) = spline(t_new_scaled[i]);
+        }
+
+        val_array = vals_new;
     }
-
-    //std::cout << "Old time vector:\n" << t_old << std::endl;
-    //std::cout << "Old values:\n" << vals_old << std::endl;
-    //std::cout << "New time vector:\n" << t_new << std::endl;
-    //std::cout << "New values:\n" << vals_new << std::endl;  // assuming new_vals is the output of the function
-
-
-    return vals_new;
 }
 
-Eigen::VectorXd IrregularWaves::ResampleTime(const Eigen::VectorXd& t_old, const double dt_new) {
-    double dt_old    = t_old[1] - t_old[0];
-    int size_new     = static_cast<int>(ceil(t_old.size() * dt_old / dt_new));
-    double t_initial = t_old[0];
-    double t_final   = t_old[t_old.size() - 1];
-    // t_0 and t_final should be the same in old/new versions, use new time step, which means a different number of
-    // timesteps
-    Eigen::VectorXd t_new = Eigen::VectorXd::LinSpaced(size_new, t_initial, t_final);
+void IrregularWaves::CalculateWidthIRF() {
+    for (unsigned int b = 0; b < num_bodies_; b++) {
+        auto& time_array  = ex_irf_time_sampled_[b];
+        auto& width_array = ex_irf_width_sampled_[b];
 
-    int N_old = t_old.size() - 1;
-    int N_new = t_new.size() - 1;
-
-    return t_new;
+        width_array.resize(time_array.size());
+        for (int ii = 0; ii < width_array.size(); ii++) {
+            width_array[ii] = 0.0;
+            if (ii < time_array.size() - 1) {
+                width_array[ii] += 0.5 * abs(time_array[ii + 1] - time_array[ii]);
+            }
+            if (ii > 0) {
+                width_array[ii] += 0.5 * abs(time_array[ii] - time_array[ii - 1]);
+            }
+        }
+    }
 }
 
 Eigen::VectorXd IrregularWaves::SetSpectrumFrequencies(double start, double end, int num_points) {
@@ -677,7 +412,8 @@ void IrregularWaves::CreateSpectrum() {
     spectrum_frequencies_ = Eigen::VectorXd::LinSpaced(1000, 0.001, 1.0);
 
     // Calculate the Pierson-Moskowitz Spectrum
-    spectral_densities_ = JONSWAPSpectrumHz(spectrum_frequencies_, wave_height_, wave_period_, peak_enhancement_factor_);
+    spectral_densities_ =
+        JONSWAPSpectrumHz(spectrum_frequencies_, wave_height_, wave_period_, peak_enhancement_factor_);
 
     // Open a file stream for writing
     std::ofstream outputFile("spectral_densities.txt");
@@ -735,11 +471,39 @@ void IrregularWaves::CreateFreeSurfaceElevation() {
     // UpdateNumTimesteps();
     int num_timesteps = static_cast<int>(simulation_duration_ / simulation_dt_) + 1;
 
-    Eigen::VectorXd time_index = Eigen::VectorXd::LinSpaced(num_timesteps, 0, simulation_duration_);
+    double t_irf_min = 0.0;
+    double t_irf_max = 0.0;
+    for (auto ii = 0; ii < ex_irf_time_sampled_.size(); ii++) {
+        if (ex_irf_time_sampled_[ii][0] < t_irf_min) {
+            t_irf_min = ex_irf_time_sampled_[ii][0];
+        }
+        if (ex_irf_time_sampled_[ii][0] > t_irf_max) {
+            t_irf_max = ex_irf_time_sampled_[ii][0];
+        }
+        if (ex_irf_time_sampled_[ii][ex_irf_time_sampled_[ii].size() - 1] > t_irf_max) {
+            t_irf_max = ex_irf_time_sampled_[ii][ex_irf_time_sampled_[ii].size() - 1];
+        }
+        if (ex_irf_time_sampled_[ii][ex_irf_time_sampled_[ii].size() - 1] < t_irf_min) {
+            t_irf_min = ex_irf_time_sampled_[ii][ex_irf_time_sampled_[ii].size() - 1];
+        }
+    }
+
+    auto time_array = Eigen::VectorXd::LinSpaced(num_timesteps, 0, simulation_duration_ + 2 * (t_irf_max - t_irf_min));
+
+    // Save time array as a std::vector
+    free_surface_time_sampled_.resize(time_array.size());
+    Eigen::VectorXd::Map(&free_surface_time_sampled_[0], time_array.size()) = time_array;
+    for (int ii = 0; ii < free_surface_time_sampled_.size(); ii++) {
+        free_surface_time_sampled_[ii] += -t_irf_max;
+    }
+
+    std::cout << "Precalculating free surface elevation from " + std::to_string(free_surface_time_sampled_.front()) +
+                     " to " + std::to_string(free_surface_time_sampled_.back()) + "."
+              << std::endl;
 
     // Calculate the free surface elevation
-    free_surface_elevation_ =
-        FreeSurfaceElevation(spectrum_frequencies_, spectral_densities_, time_index, sim_data_.water_depth, seed_);
+    free_surface_elevation_sampled_ =
+        FreeSurfaceElevation(spectrum_frequencies_, spectral_densities_, time_array, sim_data_.water_depth, seed_);
 
     // Apply ramp if ramp_duration is greater than 0
     if (ramp_duration_ > 0.0) {
@@ -748,17 +512,18 @@ void IrregularWaves::CreateFreeSurfaceElevation() {
         Eigen::VectorXd ramp = Eigen::VectorXd::LinSpaced(ramp_timesteps, 0.0, 1.0);
 
         for (size_t i = 0; i < ramp.size(); ++i) {
-            free_surface_elevation_[i] *= ramp[i];
+            free_surface_elevation_sampled_[i] *= ramp[i];
         }
     }
 
     // Open a file stream for writing
     std::ofstream eta_output("eta.txt");
+
     // Check if the file stream is open
     if (eta_output.is_open()) {
         // Write the spectral densities and their corresponding frequencies to the file
-        for (size_t i = 0; i < free_surface_elevation_.size(); ++i) {
-            eta_output << time_index[i] << " : " << free_surface_elevation_[i] << std::endl;
+        for (size_t i = 0; i < free_surface_elevation_sampled_.size(); ++i) {
+            eta_output << free_surface_time_sampled_[i] << " : " << free_surface_elevation_sampled_[i] << std::endl;
         }
         // Close the file stream
         eta_output.close();
@@ -766,42 +531,85 @@ void IrregularWaves::CreateFreeSurfaceElevation() {
         std::cerr << "Unable to open file for writing." << std::endl;
     }
 
-    // std::vector<std::array<double, 3>> free_surface_3d_pts    = CreateFreeSurface3DPts(eta, time_index);
-    // std::vector<std::array<size_t, 3>> free_surface_triangles = CreateFreeSurfaceTriangles(time_index.size());
-
-    // WriteFreeSurfaceMeshObj(free_surface_3d_pts, free_surface_triangles, "fse_mesh.obj");
+    std::cout << "Finished precalculating free surface elevation." << std::endl;
 }
 
 double IrregularWaves::ExcitationConvolution(int body, int dof, double time) {
-    double f_ex  = 0.0;
-    double width = ex_irf_time_resampled_[body][1] - ex_irf_time_resampled_[body][0];
-    // std::cout << "width=" << width << std::endl;
-    for (size_t j = 0; j < ex_irf_time_resampled_[0].size(); ++j) {
-        double tau        = ex_irf_time_resampled_[0][j];
-        double t_tau      = time - tau;
-        
-        double ex_irf_val = ex_irf_resampled_[body](dof, j);
+    double f_ex           = 0.0;
+    auto& irf_time_array  = ex_irf_time_sampled_[body];
+    auto& irf_val_mat     = ex_irf_sampled_[body];
+    auto& irf_width_array = ex_irf_width_sampled_[body];
 
-        if (0.0 < t_tau && t_tau < free_surface_elevation_.size() * width) {
-            size_t eta_index = static_cast<size_t>(t_tau / width);
-            double eta_val   = free_surface_elevation_[eta_index - 1];
+    // asumptions: irf_time_array in ascending order, free_surface_time_sampled_ in ascending order
+    // get initial index
+    auto tmin    = free_surface_time_sampled_.front();
+    auto tmax    = free_surface_time_sampled_.back();
+    double t_tau = time - irf_time_array[0];
+    int idx      = 0;
+    if (t_tau <= tmin) {
+        idx = 0;
+    } else if (t_tau >= tmax) {
+        idx = free_surface_time_sampled_.size() - 2;
+    } else {
+        idx = get_lower_index(t_tau, free_surface_time_sampled_);
+    }
 
-            //std::cout << "ex_irf_val = " << ex_irf_val << std::endl;
-            //std::cout << "eta_val = " << eta_val << std::endl;
-            //std::cout << "width = " << width << std::endl;
+    // loop for all irf time values
+    for (size_t j = 0; j < irf_time_array.size(); ++j) {
+        double tau   = irf_time_array[j];
+        double t_tau = time - tau;
+        if (tmin <= t_tau && t_tau <= tmax) {
+            // find next index if current lower bound > t_tau
+            while (free_surface_time_sampled_[idx] > t_tau) {
+                idx -= 1;
+            }
 
-            f_ex += ex_irf_val * eta_val * width;  // eta is wave elevation
+            // free surface time values
+            auto t1 = free_surface_time_sampled_[idx];
+            auto t2 = free_surface_time_sampled_[idx + 1];
+
+            // get free surface elevation
+            double eta_val;
+            if (t_tau == t1) {
+                eta_val = free_surface_time_sampled_[idx];
+            } else if (t_tau == t2) {
+                eta_val = free_surface_time_sampled_[idx + 1];
+            } else if (t_tau > t1 && t_tau < t2) {
+                // linearly interpolate free surface elevation between bounds
+                auto eta1 = free_surface_elevation_sampled_[idx];
+                auto eta2 = free_surface_elevation_sampled_[idx + 1];
+                // weights
+                auto w1 = (t2 - t_tau) / (t2 - t1);
+                auto w2 = 1.0 - w1;
+                // weighted value
+                auto eta_val = w1 * eta1 + w2 * eta2;
+            } else {
+                throw std::runtime_error("Excitation convolution: wrong tau value " + std::to_string(tau) +
+                                         " not between " + std::to_string(t1) + " and " + std::to_string(t2) + ".");
+            }
+
+            // add to excitation force
+            f_ex += irf_val_mat(dof, j) * eta_val * irf_width_array[j];
+
+        } else {
+            // throw error if trying to compute convolution after the maximum precomputed free elevation time
+            throw std::runtime_error(
+                "Excitation convolution: trying to find free surface elevation at a time out of bounds from the "
+                "precomputed free surface elevation (" +
+                std::to_string(t_tau) + "not in [" + std::to_string(tmin) + ", " + std::to_string(tmax) +
+                "]). Excitation force ignored at this time step.");
         }
     }
 
     return f_ex;
 }
 
- void IrregularWaves::SetUpWaveMesh(std::string filename) {
-    mesh_file_name_             = filename;
+void IrregularWaves::SetUpWaveMesh(std::string filename) {
+    mesh_file_name_            = filename;
     int num_timesteps          = static_cast<int>(simulation_duration_ / simulation_dt_) + 1;
     Eigen::VectorXd time_index = Eigen::VectorXd::LinSpaced(num_timesteps, 0, simulation_duration_);
-    std::vector<std::array<double, 3>> free_surface_3d_pts = CreateFreeSurface3DPts(free_surface_elevation_, time_index);
+    std::vector<std::array<double, 3>> free_surface_3d_pts =
+        CreateFreeSurface3DPts(free_surface_elevation_sampled_, time_index);
     std::vector<std::array<size_t, 3>> free_surface_triangles = CreateFreeSurfaceTriangles(time_index.size());
 
     WriteFreeSurfaceMeshObj(free_surface_3d_pts, free_surface_triangles, mesh_file_name_);
