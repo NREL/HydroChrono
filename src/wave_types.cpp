@@ -530,7 +530,7 @@ double IrregularWaves::ExcitationConvolution(int body, int dof, double time) {
     auto tmin    = free_surface_time_sampled_.front();
     auto tmax    = free_surface_time_sampled_.back();
     double t_tau = time - irf_time_array[0];
-    int idx   = 0;
+    int idx      = 0;
     if (t_tau <= tmin) {
         idx = 0;
     } else if (t_tau >= tmax) {
@@ -549,26 +549,38 @@ double IrregularWaves::ExcitationConvolution(int body, int dof, double time) {
                 idx -= 1;
             }
 
-            // linearly interpolate free surface elevation between bounds
             // free surface time values
             auto t1 = free_surface_time_sampled_[idx];
             auto t2 = free_surface_time_sampled_[idx + 1];
-            // double check that t_tau is between bounds
-            if (t_tau < t1 || t_tau > t2) {
+
+            // get free surface elevation
+            double eta_val;
+            if (t_tau == t1) {
+                eta_val = free_surface_time_sampled_[idx];
+            } else if (t_tau == t2) {
+                eta_val = free_surface_time_sampled_[idx + 1];
+            } else if (t_tau > t1 && t_tau < t2) {
+                // linearly interpolate free surface elevation between bounds
+                auto eta1 = free_surface_elevation_sampled_[idx];
+                auto eta2 = free_surface_elevation_sampled_[idx + 1];
+                // weights
+                auto w1 = (t2 - t_tau) / (t2 - t1);
+                auto w2 = 1.0 - w1;
+                // weighted value
+                auto eta_val = w1 * eta1 + w2 * eta2;
+            } else {
                 throw std::runtime_error("Excitation convolution: wrong tau value " + std::to_string(tau) +
                                          " not between " + std::to_string(t1) + " and " + std::to_string(t2) + ".");
             }
-            // free surface elevation values
-            auto eta1 = free_surface_elevation_sampled_[idx];
-            auto eta2 = free_surface_elevation_sampled_[idx + 1];
-            // weights
-            auto w1 = (t2 - t_tau) / (t2 - t1);
-            auto w2 = 1.0 - w1;
-            // weighted value
-            auto eta_val = w1 * eta1 + w2 * eta2;
 
             // add to excitation force
             f_ex += irf_val_mat(dof, j) * eta_val * irf_width_array[j];
+
+        } else {
+            throw std::runtime_error(
+                "Excitation convolution: trying to find free surface elevation at a time out of bounds from "
+                "the precomputed free surface elevation (" +
+                std::to_string(t_tau) + "not in [" + std::to_string(tmin) + ", " + std::to_string(tmax) + "]).");
         }
     }
 

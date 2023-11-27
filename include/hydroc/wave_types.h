@@ -366,6 +366,11 @@ class IrregularWaves : public WaveBase {
     /**
      * @brief Calculates the component of force from Convolution integral for specified body, dof, time.
      *
+     * The discretization uses the time series of the of the IRF relative to the current time step.
+     * Linear interpolation is done for the free surface elevation if time_sim-time_irf is between two
+     * values of the time series of the precomputed free surface elevation.
+     * Trapezoidal integration is used to compute the force.
+     *
      * @param body which body currently calculating for
      * @param dof which degree of freedom to calculate force value for
      * @param time the time to compute force for
