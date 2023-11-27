@@ -193,6 +193,13 @@ class TestHydro {
     /**
      * @brief Computes the Radiation Damping force with convolution history for a 6N dimensional system.
      *
+     * The discretization uses the time series of the the RIRF relative to the current step.
+     * Linear interpolation is done on the velocity history if time_sim-time_rirf is between two values of the time
+     * history. Trapezoidal integration is used to compute the force.
+     *
+     * Time history is automatically added in this function (so it should only be called once per time step), and
+     * history that is older than the maximum RIRF time value is automatically removed.
+     *
      * @return 6N dimensional force for 6 DOF and N bodies in system.
      */
     std::vector<double> ComputeForceRadiationDampingConv();

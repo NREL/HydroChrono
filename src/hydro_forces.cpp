@@ -306,14 +306,12 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 
     assert(numRows * size > 0 && numCols > 0);
 
-    std::vector<double> tmp_s(numRows * size, 0.0);
-
-    // Helper function for tmp_s indexing
-    auto TmpSIndex = [&](int row, int step) { return (row * size) + step; };
-
     // time history
     auto t_sim = bodies_[0]->GetChTime();
     auto t_min = t_sim - rirf_time_vector.tail<1>()[0];
+    if (time_history_.size() > 0 && t_sim == time_history_.front()) {
+        throw std::runtime_error("Tried to compute the radiation damping convolution twice within the same time step!");
+    }
     time_history_.insert(time_history_.begin(), t_sim);
 
     // velocity history
