@@ -170,7 +170,17 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
 
     // Set up time vector
     rirf_time_vector = file_info_.GetRIRFTimeVector();
-    rirf_timestep_   = rirf_time_vector[1] - rirf_time_vector[0];
+    // width array
+    rirf_width_vector.resize(rirf_time_vector.size());
+    for (int ii = 0; ii < rirf_width_vector.size(); ii++) {
+        rirf_width_vector[ii] = 0.0;
+        if (ii < rirf_time_vector.size() - 1) {
+            rirf_width_vector[ii] += 0.5 * abs(rirf_time_vector[ii + 1] - rirf_time_vector[ii]);
+        }
+        if (ii > 0) {
+            rirf_width_vector[ii] += 0.5 * abs(rirf_time_vector[ii] - rirf_time_vector[ii - 1]);
+        }
+    }
 
     // Total degrees of freedom
     int total_dofs = kDofPerBody * num_bodies_;
@@ -303,7 +313,7 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 
     // time history
     auto t_sim = bodies_[0]->GetChTime();
-    auto t_min = t_sim - rirf_timestep_ * size;
+    auto t_min = t_sim - rirf_time_vector.tail<1>()[0];
     time_history_.insert(time_history_.begin(), t_sim);
 
     // velocity history
@@ -333,7 +343,7 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 
         // iterate over RIRF steps
         for (int step = 0; step < size; step++) {
-            auto t_rirf = t_sim - rirf_timestep_ * step;
+            auto t_rirf = t_sim - rirf_time_vector[step];
             while (time_history_[idx_history + 1] > t_rirf && idx_history < time_history_.size() - 1) {
                 idx_history += 1;
             }
@@ -368,17 +378,9 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 
                     // iterate over rows
                     for (int row = 0; row < numRows; row++) {
-                        tmp_s[TmpSIndex(row, step)] += GetRIRFval(row, col, step) * vel_weighted;
+                        force_radiation_damping_[row] +=
+                            GetRIRFval(row, col, step) * vel_weighted * rirf_width_vector[step];
                     }
-                }
-            }
-
-            if (step > 0) {
-                // cummulate values for current step on all rows
-                for (int row = 0; row < numRows; row++) {
-                    // Integrate tmp_s
-                    force_radiation_damping_[row] += (tmp_s[TmpSIndex(row, step - 1)] + tmp_s[TmpSIndex(row, step)]) /
-                                                     2.0 * (rirf_time_vector[step] - rirf_time_vector[step - 1]);
                 }
             }
         }

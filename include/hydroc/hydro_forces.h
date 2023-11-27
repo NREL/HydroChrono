@@ -244,8 +244,8 @@ class TestHydro {
     // Additional properties related to equilibrium and hydrodynamics
     std::vector<double> equilibrium_;
     std::vector<double> cb_minus_cg_;
-    double rirf_timestep_;
     Eigen::VectorXd rirf_time_vector;  // Assumed consistent for each body
+    Eigen::VectorXd rirf_width_vector;
 
     // Properties for velocity history management and time tracking
     std::vector<std::vector<std::vector<double>>> velocity_history_;
