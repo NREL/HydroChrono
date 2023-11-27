@@ -240,30 +240,13 @@ IrregularWaves::IrregularWaves(const IrregularWaveParams& params)
       simulation_dt_(params.simulation_dt_),
       simulation_duration_(params.simulation_duration_),
       ramp_duration_(params.ramp_duration_),
-      seed_(params.seed_) {
-    std::cout << "Creating IrregularWaves object..." << std::endl;
+      seed_(params.seed_) {}
+
+void IrregularWaves::InitializeIRFVectors() {
     ex_irf_sampled_.resize(num_bodies_);
     ex_irf_time_sampled_.resize(num_bodies_);
     ex_irf_width_sampled_.resize(num_bodies_);
-    std::cout << "eta_file_path (1)" << eta_file_path_ << std::endl;
-    if (!eta_file_path_.empty()) {
-        std::cout << "Reading eta.txt..." << std::endl;
-        ReadEtaFromFile();
-        spectrumCreated_ = false;
-    } else if (wave_height_ != 0.0 && wave_period_ != 0.0) {
-        CreateSpectrum();
-        CreateFreeSurfaceElevation();
-        spectrumCreated_ = true;
-    }
-    std::cout << "eta.txt read." << std::endl;
 
-    std::vector<Eigen::MatrixXd> ex_irf_old(num_bodies_);
-    std::vector<Eigen::VectorXd> ex_irf_time_old(num_bodies_);
-
-    std::cout << "IrregularWaves instantiated..." << std::endl;
-}
-
-void IrregularWaves::InitializeIRFVectors() {
     std::vector<Eigen::MatrixXd> ex_irf_old(num_bodies_);
     std::vector<Eigen::VectorXd> ex_irf_time_old(num_bodies_);
 
@@ -276,6 +259,15 @@ void IrregularWaves::InitializeIRFVectors() {
     // Resample excitation IRF time series
     if (simulation_dt_ > 0.0) {
         ResampleIRF(simulation_dt_);
+    }
+
+    if (!eta_file_path_.empty()) {
+        ReadEtaFromFile();
+        spectrumCreated_ = false;
+    } else if (wave_height_ != 0.0 && wave_period_ != 0.0) {
+        CreateSpectrum();
+        CreateFreeSurfaceElevation();
+        spectrumCreated_ = true;
     }
 }
 
@@ -296,10 +288,10 @@ std::vector<double> IrregularWaves::GetEtaTimeData() {
 }
 
 void IrregularWaves::ReadEtaFromFile() {
-    std::cout << "ReadEtaFromFile()" << std::endl;
+    std::cout << "Reading eta file " << eta_file_path_ << "." << std::endl;
     std::ifstream file(eta_file_path_);
     if (!file) {
-        throw std::runtime_error("Unable to open file at: " + eta_file_path_);
+        throw std::runtime_error("Unable to open file at: " + eta_file_path_ + ".");
     }
 
     std::string line;
@@ -309,11 +301,12 @@ void IrregularWaves::ReadEtaFromFile() {
         std::stringstream ss(line);
         char delimiter;
         if (!(ss >> time >> delimiter >> eta) || delimiter != ':') {
-            throw std::runtime_error("Could not parse line: " + line);
+            throw std::runtime_error("Could not parse line: " + line + ".");
         }
         time_data_.push_back(time);
         free_surface_elevation_sampled_.push_back(eta);
     }
+    std::cout << "Finished reading eta file." << std::endl;
 }
 
 Eigen::MatrixXd IrregularWaves::GetExcitationIRF(int b) const {
@@ -478,11 +471,35 @@ void IrregularWaves::CreateFreeSurfaceElevation() {
     // UpdateNumTimesteps();
     int num_timesteps = static_cast<int>(simulation_duration_ / simulation_dt_) + 1;
 
-    auto time_array = Eigen::VectorXd::LinSpaced(num_timesteps, 0, simulation_duration_);
+    double t_irf_min = 0.0;
+    double t_irf_max = 0.0;
+    for (auto ii = 0; ii < ex_irf_time_sampled_.size(); ii++) {
+        if (ex_irf_time_sampled_[ii][0] < t_irf_min) {
+            t_irf_min = ex_irf_time_sampled_[ii][0];
+        }
+        if (ex_irf_time_sampled_[ii][0] > t_irf_max) {
+            t_irf_max = ex_irf_time_sampled_[ii][0];
+        }
+        if (ex_irf_time_sampled_[ii][ex_irf_time_sampled_[ii].size() - 1] > t_irf_max) {
+            t_irf_max = ex_irf_time_sampled_[ii][ex_irf_time_sampled_[ii].size() - 1];
+        }
+        if (ex_irf_time_sampled_[ii][ex_irf_time_sampled_[ii].size() - 1] < t_irf_min) {
+            t_irf_min = ex_irf_time_sampled_[ii][ex_irf_time_sampled_[ii].size() - 1];
+        }
+    }
+
+    auto time_array = Eigen::VectorXd::LinSpaced(num_timesteps, 0, simulation_duration_ + 2 * (t_irf_max - t_irf_min));
 
     // Save time array as a std::vector
     free_surface_time_sampled_.resize(time_array.size());
     Eigen::VectorXd::Map(&free_surface_time_sampled_[0], time_array.size()) = time_array;
+    for (int ii = 0; ii < free_surface_time_sampled_.size(); ii++) {
+        free_surface_time_sampled_[ii] += -t_irf_max;
+    }
+
+    std::cout << "Precalculating free surface elevation from " + std::to_string(free_surface_time_sampled_.front()) +
+                     " to " + std::to_string(free_surface_time_sampled_.back()) + "."
+              << std::endl;
 
     // Calculate the free surface elevation
     free_surface_elevation_sampled_ =
@@ -514,9 +531,7 @@ void IrregularWaves::CreateFreeSurfaceElevation() {
         std::cerr << "Unable to open file for writing." << std::endl;
     }
 
-    // std::vector<std::array<double, 3>> free_surface_3d_pts    = CreateFreeSurface3DPts(eta, time_index);
-    // std::vector<std::array<size_t, 3>> free_surface_triangles = CreateFreeSurfaceTriangles(time_index.size());
-    // WriteFreeSurfaceMeshObj(free_surface_3d_pts, free_surface_triangles, "fse_mesh.obj");
+    std::cout << "Finished precalculating free surface elevation." << std::endl;
 }
 
 double IrregularWaves::ExcitationConvolution(int body, int dof, double time) {
@@ -577,10 +592,12 @@ double IrregularWaves::ExcitationConvolution(int body, int dof, double time) {
             f_ex += irf_val_mat(dof, j) * eta_val * irf_width_array[j];
 
         } else {
+            // throw error if trying to compute convolution after the maximum precomputed free elevation time
             throw std::runtime_error(
-                "Excitation convolution: trying to find free surface elevation at a time out of bounds from "
-                "the precomputed free surface elevation (" +
-                std::to_string(t_tau) + "not in [" + std::to_string(tmin) + ", " + std::to_string(tmax) + "]).");
+                "Excitation convolution: trying to find free surface elevation at a time out of bounds from the "
+                "precomputed free surface elevation (" +
+                std::to_string(t_tau) + "not in [" + std::to_string(tmin) + ", " + std::to_string(tmax) +
+                "]). Excitation force ignored at this time step.");
         }
     }
 
