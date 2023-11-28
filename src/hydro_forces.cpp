@@ -336,7 +336,7 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
         }
     }
 
-    if (convTrapz_ && time_history_.size() > 1) {
+    if (time_history_.size() > 1) {
         int idx_history = 0;
 
         // iterate over RIRF steps
@@ -352,32 +352,39 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
             // iterate over bodies
             for (int idx_body = 0; idx_body < num_bodies_; idx_body++) {
                 auto& velocity_history_body = velocity_history_[idx_body];
+                std::vector<double> vel(kDofPerBody);
 
                 // interpolate velocity at t_rirf from recorded velocity history
                 // time values
                 auto t1 = time_history_[idx_history + 1];
                 auto t2 = time_history_[idx_history];
-                if (t_rirf < t1 || t_rirf > t2) {
+                if (t_rirf == t1) {
+                    vel = velocity_history_body[idx_history + 1];
+                } else if (t_rirf == t2) {
+                    vel = velocity_history_body[idx_history];
+                } else if (t_rirf > t1 && t_rirf < t2) {
+                    // weights
+                    auto w1 = (t2 - t_rirf) / (t2 - t1);
+                    auto w2 = 1.0 - w1;
+                    // velocity values
+                    auto vel1 = velocity_history_body[idx_history + 1];
+                    auto vel2 = velocity_history_body[idx_history];
+                    for (int dof = 0; dof < kDofPerBody; dof++) {
+                        vel[dof] = w1 * vel1[dof] + w2 * vel2[dof];
+                    }
+                } else {
                     throw std::runtime_error("Radiation convolution: wrong interpolation: " + std::to_string(t_rirf) +
                                              " not between " + std::to_string(t1) + " and " + std::to_string(t2) + ".");
                 }
-                // weights
-                auto w1 = (t2 - t_rirf) / (t2 - t1);
-                auto w2 = 1.0 - w1;
-                // velocity values
-                auto vel1 = velocity_history_body[idx_history + 1];
-                auto vel2 = velocity_history_body[idx_history];
 
                 for (int dof = 0; dof < kDofPerBody; dof++) {
                     // get column index
                     int col = dof + idx_body * kDofPerBody;
-                    // get weighted velocity for DOF
-                    auto vel_weighted = w1 * vel1[dof] + w2 * vel2[dof];
 
                     // iterate over rows
                     for (int row = 0; row < numRows; row++) {
                         force_radiation_damping_[row] +=
-                            GetRIRFval(row, col, step) * vel_weighted * rirf_width_vector[step];
+                            GetRIRFval(row, col, step) * vel[dof] * rirf_width_vector[step];
                     }
                 }
             }
@@ -442,8 +449,6 @@ double TestHydro::CoordinateFuncForBody(int b, int dof_index) {
     std::fill(force_radiation_damping_.begin(), force_radiation_damping_.end(), 0.0);
     std::fill(force_waves_.begin(), force_waves_.end(), 0.0);
 
-    // Compute forces using the trapezoidal rule (or other methods in the future)
-    convTrapz_               = true;
     force_hydrostatic_       = ComputeForceHydrostatics();
     force_radiation_damping_ = ComputeForceRadiationDampingConv();
     force_waves_             = ComputeForceWaves();

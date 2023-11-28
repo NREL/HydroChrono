@@ -153,7 +153,6 @@ class ChLoadAddedMass;
 // TODO: Split TestHydro class from its helper classes for clearer code structure.
 class TestHydro {
   public:
-    bool convTrapz_;  // for use in ComputeForceRadiationDampingConv()
     TestHydro() = delete;
 
     /**
