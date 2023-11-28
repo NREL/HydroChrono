@@ -7,11 +7,10 @@
 // TODO: this include statement list looks good
 #include <H5Cpp.h>
 #include <hydroc/h5fileinfo.h>
-#include <filesystem> // std::filesystem::absolute
+#include <filesystem>  // std::filesystem::absolute
 
 using namespace chrono;  // TODO narrow this using namespace to specify what we use from chrono or put chrono:: in front
                          // of it all?
-
 
 H5FileInfo::H5FileInfo(std::string file, int num_bod) {
     h5_file_name_ = file;
@@ -41,7 +40,7 @@ HydroData H5FileInfo::ReadH5Data() {
     for (int i = 0; i < num_bodies_; i++) {
         // body data
         data_to_init.body_data_[i].body_name = "body" + std::to_string(i + 1);
-        std::string bodyName                = data_to_init.body_data_[i].body_name;  // shortcut for reading later
+        std::string bodyName                 = data_to_init.body_data_[i].body_name;  // shortcut for reading later
         data_to_init.body_data_[i].body_num  = i;
 
         InitScalar(userH5File, bodyName + "/properties/disp_vol", data_to_init.body_data_[i].disp_vol);
@@ -54,7 +53,8 @@ HydroData H5FileInfo::ReadH5Data() {
 
         Init1D(userH5File, bodyName + "/properties/cg", data_to_init.body_data_[i].cg);
         Init1D(userH5File, bodyName + "/properties/cb", data_to_init.body_data_[i].cb);
-        Init2D(userH5File, bodyName + "/hydro_coeffs/linear_restoring_stiffness", data_to_init.body_data_[i].lin_matrix);
+        Init2D(userH5File, bodyName + "/hydro_coeffs/linear_restoring_stiffness",
+               data_to_init.body_data_[i].lin_matrix);
         Init2D(userH5File, bodyName + "/hydro_coeffs/added_mass/inf_freq", data_to_init.body_data_[i].inf_added_mass);
         data_to_init.body_data_[i].inf_added_mass *= rho;
         Init3D(userH5File, bodyName + "/hydro_coeffs/radiation_damping/impulse_response_fun/K",
@@ -242,5 +242,17 @@ int HydroData::GetRIRFDims(int i) const {
 }
 
 Eigen::VectorXd HydroData::GetRIRFTimeVector() const {
-    return body_data_[0].rirf_time_vector;
+    double tol = 1e-10;
+    // check if all time vectors are the same within tolerance
+    auto& rirf_time_vector = body_data_[0].rirf_time_vector;
+    for (size_t ii = 1; ii < body_data_.size(); ii++) {
+        for (size_t jj = 0; jj < body_data_[ii].rirf_time_vector.size(); jj++) {
+            if (abs(body_data_[ii].rirf_time_vector[jj] - rirf_time_vector[jj]) > tol) {
+                throw std::runtime_error(
+                    "RIRF time vectors have to be exactly the same for all bodies. Difference found in body " +
+                    std::to_string(jj) + " at time index " + std::to_string(jj) + ".");
+            }
+        }
+    }
+    return rirf_time_vector;
 }

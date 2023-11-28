@@ -114,6 +114,7 @@ The :math:`K_{rad}(t)` function is derived by implementing the inverse continuou
 
 This transform allows the frequency domain coefficients, :math:`B(\omega)`, to be remapped into the time domain, thus producing the radiation impulse response function, :math:`K_{rad}(t)`. The :math:`B(\omega)` values can be sourced using open-source BEM software.
 
+In HydroChrono, the force is computed through trapezoidal integration at the time values given by the RIRF time array relative to the current simulation time step. Linear interpolation is done for the velocity history if a given time value is between two values of the time series of the stored velocity history.
 Wave excitation force, :math:`F_{exc}(t)`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

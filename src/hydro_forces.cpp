@@ -14,16 +14,16 @@
 #include <chrono/physics/ChLoad.h>
 #include <unsupported/Eigen/Splines>
 
+#include <Eigen/Dense>
 #include <algorithm>
 #include <cmath>
+#include <fstream>
+#include <iostream>
 #include <memory>
 #include <numeric>  // std::accumulate
 #include <random>
-#include <vector>
-#include <Eigen/Dense>
-#include <fstream>
-#include <iostream>
 #include <stdexcept>
+#include <vector>
 
 const int kDofPerBody  = 6;
 const int kDofLinOrRot = 3;
@@ -96,7 +96,7 @@ ForceFunc6d::ForceFunc6d() : forces_{{this, 0}, {this, 1}, {this, 2}, {this, 3},
 
 ForceFunc6d::ForceFunc6d(std::shared_ptr<ChBody> object, TestHydro* user_all_forces) : ForceFunc6d() {
     body_             = object;
-    std::string temp = body_->GetNameString();   // remove "body" from "bodyN", convert N to int, get body num
+    std::string temp  = body_->GetNameString();  // remove "body" from "bodyN", convert N to int, get body num
     b_num_            = stoi(temp.erase(0, 4));  // 1 indexed TODO: fix b_num starting here to be 0 indexed
     all_hydro_forces_ = user_all_forces;         // TODO switch to smart pointers? does this use = ?
     if (all_hydro_forces_ == NULL) {
@@ -166,19 +166,31 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
     : bodies_(user_bodies),
       num_bodies_(bodies_.size()),
       file_info_(H5FileInfo(h5_file_name, num_bodies_).ReadH5Data()) {
-
-    prev_time   = -1;
-    offset_rirf = 0;
+    prev_time = -1;
 
     // Set up time vector
     rirf_time_vector = file_info_.GetRIRFTimeVector();
-    rirf_timestep_   = rirf_time_vector[1] - rirf_time_vector[0];
+    // width array
+    rirf_width_vector.resize(rirf_time_vector.size());
+    for (int ii = 0; ii < rirf_width_vector.size(); ii++) {
+        rirf_width_vector[ii] = 0.0;
+        if (ii < rirf_time_vector.size() - 1) {
+            rirf_width_vector[ii] += 0.5 * abs(rirf_time_vector[ii + 1] - rirf_time_vector[ii]);
+        }
+        if (ii > 0) {
+            rirf_width_vector[ii] += 0.5 * abs(rirf_time_vector[ii] - rirf_time_vector[ii - 1]);
+        }
+    }
 
     // Total degrees of freedom
     int total_dofs = kDofPerBody * num_bodies_;
 
     // Initialize vectors
-    velocity_history_.assign(file_info_.GetRIRFDims(2) * total_dofs, 0.0);
+    time_history_.clear();
+    velocity_history_.clear();
+    for (int b = 0; b < num_bodies_; ++b) {
+        velocity_history_.push_back(std::vector<std::vector<double>>(0));
+    }
     force_hydrostatic_.assign(total_dofs, 0.0);
     force_radiation_damping_.assign(total_dofs, 0.0);
     total_force_.assign(total_dofs, 0.0);
@@ -238,48 +250,12 @@ void TestHydro::AddWaves(std::shared_ptr<WaveBase> waves) {
     user_waves_->Initialize();
 }
 
-double TestHydro::GetVelHistoryVal(int step, int c) const {
-    if (step < 0 || step >= file_info_.GetRIRFDims(2) || c < 0 || c >= num_bodies_ * kDofPerBody) {
-        std::cout << "wrong vel history index " << std::endl;
-        return 0;
-    }
-
-    int index            = c % kDofPerBody;
-    int b                = c / kDofPerBody;  // 0 indexed
-    int calculated_index = index + (kDofPerBody * b) + (kDofPerBody * num_bodies_ * step);
-
-    if (calculated_index >= num_bodies_ * kDofPerBody * file_info_.GetRIRFDims(2) || calculated_index < 0) {
-        std::cout << "bad vel history math" << std::endl;
-        return 0;
-    }
-
-    return velocity_history_[calculated_index];
-}
-
-double TestHydro::SetVelHistory(double val, int step, int b_num, int index) {
-    if (step < 0 || step >= file_info_.GetRIRFDims(2) || b_num < 1 || b_num > num_bodies_ || index < 0 ||
-        index >= kDofPerBody) {
-        std::cout << "bad set vel history indexing" << std::endl;
-        return 0;
-    }
-
-    int calculated_index = index + (kDofPerBody * (b_num - 1)) + (kDofPerBody * num_bodies_ * step);
-
-    if (calculated_index < 0 || calculated_index >= num_bodies_ * kDofPerBody * file_info_.GetRIRFDims(2)) {
-        std::cout << "bad set vel history math" << std::endl;
-        return 0;
-    }
-
-    velocity_history_[calculated_index] = val;
-    return val;
-}
-
 std::vector<double> TestHydro::ComputeForceHydrostatics() {
     assert(num_bodies_ > 0);
 
-    const double rho      = file_info_.GetRhoVal();
-    const auto g_acc      = bodies_[0]->GetSystem()->Get_G_acc();  // assuming all bodies in same system
-    const double gg       = g_acc.Length();
+    const double rho = file_info_.GetRhoVal();
+    const auto g_acc = bodies_[0]->GetSystem()->Get_G_acc();  // assuming all bodies in same system
+    const double gg  = g_acc.Length();
 
     for (int b = 0; b < num_bodies_; b++) {
         std::shared_ptr<chrono::ChBody> body = bodies_[b];
@@ -294,7 +270,7 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 
         chrono::ChVectorN<double, kDofPerBody> body_displacement;
         for (int ii = 0; ii < kDofLinOrRot; ii++) {
-            body_displacement[ii]              = body_position[ii] - body_equilibrium[ii];
+            body_displacement[ii]                = body_position[ii] - body_equilibrium[ii];
             body_displacement[ii + kDofLinOrRot] = body_rotation[ii] - body_equilibrium[ii + kDofLinOrRot];
         }
 
@@ -328,69 +304,92 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
     const int numRows = kDofPerBody * num_bodies_;
     const int numCols = kDofPerBody * num_bodies_;
 
-    // "Shift" everything left 1
-    offset_rirf--;  // Starts as 0 before timestep change
-
-    // Keep offset close to 0, avoids small chance of overflow errors in long simulations
-    if (offset_rirf < -1 * size) {
-        offset_rirf += size;
-    }
-
     assert(numRows * size > 0 && numCols > 0);
 
-    std::vector<double> timeseries(numRows * numCols * size, 0.0);
-    std::vector<double> tmp_s(numRows * size, 0.0);
+    // time history
+    auto t_sim = bodies_[0]->GetChTime();
+    auto t_min = t_sim - rirf_time_vector.tail<1>()[0];
+    if (time_history_.size() > 0 && t_sim == time_history_.front()) {
+        throw std::runtime_error("Tried to compute the radiation damping convolution twice within the same time step!");
+    }
+    time_history_.insert(time_history_.begin(), t_sim);
 
-    // Helper function for timeseries indexing
-    auto TimeseriesIndex = [&](int row, int col, int step) { return (row * numCols * size) + (col * size) + step; };
+    // velocity history
+    for (int b = 0; b < num_bodies_; b++) {
+        auto& body                  = bodies_[b];
+        auto& velocity_history_body = velocity_history_[b];
 
-    // Helper function for tmp_s indexing
-    auto TmpSIndex = [&](int row, int step) { return (row * size) + step; };
+        auto vel                    = body->GetPos_dt();
+        auto wvel                   = body->GetWvel_par();
+        std::vector<double> vel_vec = {vel[0], vel[1], vel[2], wvel[0], wvel[1], wvel[2]};
+        velocity_history_body.insert(velocity_history_body.begin(), vel_vec);
+    }
 
-    // Helper function for circular indexing
-    auto CircularIndex = [&](int value) { return ((value % size) + size) % size; };
-
-    // Set last entry as velocity
-    for (int i = 0; i < 3; i++) {
-        for (int b = 1; b <= num_bodies_; b++) {
-            int vi = CircularIndex(size + offset_rirf);
-            SetVelHistory(bodies_[b - 1]->GetPos_dt()[i], vi, b, i);
-            SetVelHistory(bodies_[b - 1]->GetWvel_par()[i], vi, b, i + 3);
+    // remove unnecessary history
+    if (time_history_.size() > 1) {
+        while (time_history_[time_history_.size() - 2] < t_min) {
+            time_history_.pop_back();
+            for (int b = 0; b < num_bodies_; b++) {
+                auto& velocity_history_body = velocity_history_[b];
+                velocity_history_body.pop_back();
+            }
         }
     }
 
-    if (convTrapz_) {
-        for (int row = 0; row < numRows; row++) {
-            for (int st = 0; st < size; st++) {
-                int vi                    = CircularIndex(st + offset_rirf);
-                tmp_s[TmpSIndex(row, st)] = 0;
-                for (int col = 0; col < numCols; col++) {
-                    timeseries[TimeseriesIndex(row, col, st)] = GetRIRFval(row, col, st) * GetVelHistoryVal(vi, col);
-                    tmp_s[TmpSIndex(row, st)] += timeseries[TimeseriesIndex(row, col, st)];
+    if (time_history_.size() > 1) {
+        int idx_history = 0;
+
+        // iterate over RIRF steps
+        for (int step = 0; step < size; step++) {
+            auto t_rirf = t_sim - rirf_time_vector[step];
+            while (time_history_[idx_history + 1] > t_rirf && idx_history < time_history_.size() - 1) {
+                idx_history += 1;
+            }
+            if (idx_history >= time_history_.size() - 1) {
+                break;
+            }
+
+            // iterate over bodies
+            for (int idx_body = 0; idx_body < num_bodies_; idx_body++) {
+                auto& velocity_history_body = velocity_history_[idx_body];
+                std::vector<double> vel(kDofPerBody);
+
+                // interpolate velocity at t_rirf from recorded velocity history
+                // time values
+                auto t1 = time_history_[idx_history + 1];
+                auto t2 = time_history_[idx_history];
+                if (t_rirf == t1) {
+                    vel = velocity_history_body[idx_history + 1];
+                } else if (t_rirf == t2) {
+                    vel = velocity_history_body[idx_history];
+                } else if (t_rirf > t1 && t_rirf < t2) {
+                    // weights
+                    auto w1 = (t2 - t_rirf) / (t2 - t1);
+                    auto w2 = 1.0 - w1;
+                    // velocity values
+                    auto vel1 = velocity_history_body[idx_history + 1];
+                    auto vel2 = velocity_history_body[idx_history];
+                    for (int dof = 0; dof < kDofPerBody; dof++) {
+                        vel[dof] = w1 * vel1[dof] + w2 * vel2[dof];
+                    }
+                } else {
+                    throw std::runtime_error("Radiation convolution: wrong interpolation: " + std::to_string(t_rirf) +
+                                             " not between " + std::to_string(t1) + " and " + std::to_string(t2) + ".");
                 }
-                if (st > 0) {
-                    // Integrate tmp_s
-                    force_radiation_damping_[row] += (tmp_s[TmpSIndex(row, st - 1)] + tmp_s[TmpSIndex(row, st)]) / 2.0 *
-                                                     (rirf_time_vector[st] - rirf_time_vector[st - 1]);
+
+                for (int dof = 0; dof < kDofPerBody; dof++) {
+                    // get column index
+                    int col = dof + idx_body * kDofPerBody;
+
+                    // iterate over rows
+                    for (int row = 0; row < numRows; row++) {
+                        force_radiation_damping_[row] +=
+                            GetRIRFval(row, col, step) * vel[dof] * rirf_width_vector[step];
+                    }
                 }
             }
         }
     }
-    //else {
-    //    // Convolution integral assuming fixed dt
-    //    for (int row = 0; row < numRows; row++) {
-    //        double sumVelHistoryAndRIRF = 0.0;
-    //        for (int col = 0; col < numCols; col++) {
-    //            for (int st = 0; st < size; st++) {
-    //                int vi                                    = CircularIndex(st + offset_rirf);
-    //                timeseries[TimeseriesIndex(row, col, st)] = GetRIRFval(row, col, st) * GetVelHistoryVal(vi, col);
-    //                sumVelHistoryAndRIRF += timeseries[TimeseriesIndex(row, col, st)];
-    //            }
-    //        }
-    //        force_radiation_damping_[row] -= sumVelHistoryAndRIRF * rirf_timestep;
-    //    }
-    //}
-
     return force_radiation_damping_;
 }
 
@@ -450,8 +449,6 @@ double TestHydro::CoordinateFuncForBody(int b, int dof_index) {
     std::fill(force_radiation_damping_.begin(), force_radiation_damping_.end(), 0.0);
     std::fill(force_waves_.begin(), force_waves_.end(), 0.0);
 
-    // Compute forces using the trapezoidal rule (or other methods in the future)
-    convTrapz_               = true;
     force_hydrostatic_       = ComputeForceHydrostatics();
     force_radiation_damping_ = ComputeForceRadiationDampingConv();
     force_waves_             = ComputeForceWaves();
