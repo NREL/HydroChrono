@@ -153,7 +153,6 @@ class ChLoadAddedMass;
 // TODO: Split TestHydro class from its helper classes for clearer code structure.
 class TestHydro {
   public:
-    bool convTrapz_;  // for use in ComputeForceRadiationDampingConv()
     TestHydro() = delete;
 
     /**
@@ -192,6 +191,13 @@ class TestHydro {
 
     /**
      * @brief Computes the Radiation Damping force with convolution history for a 6N dimensional system.
+     *
+     * The discretization uses the time series of the the RIRF relative to the current step.
+     * Linear interpolation is done on the velocity history if time_sim-time_rirf is between two values of the time
+     * history. Trapezoidal integration is used to compute the force.
+     *
+     * Time history is automatically added in this function (so it should only be called once per time step), and
+     * history that is older than the maximum RIRF time value is automatically removed.
      *
      * @return 6N dimensional force for 6 DOF and N bodies in system.
      */
@@ -244,12 +250,12 @@ class TestHydro {
     // Additional properties related to equilibrium and hydrodynamics
     std::vector<double> equilibrium_;
     std::vector<double> cb_minus_cg_;
-    double rirf_timestep_;
     Eigen::VectorXd rirf_time_vector;  // Assumed consistent for each body
-    int offset_rirf;                   // For managing the circular nature of velocity history in convolution
+    Eigen::VectorXd rirf_width_vector;
 
     // Properties for velocity history management and time tracking
-    std::vector<double> velocity_history_;
+    std::vector<std::vector<std::vector<double>>> velocity_history_;
+    std::vector<double> time_history_;
     double prev_time;
 
     // Added mass related properties
