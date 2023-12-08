@@ -1,4 +1,0 @@
-Name, Symbol, Value, Units
-Initial Time, :math:`t_0`, 0.0, |UNIT_TIME|
-Initial Height, :math:`y_0`, 1.0, |UNIT_LENGTH|
-

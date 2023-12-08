@@ -1,9 +1,0 @@
-Name, Symbol, Value, Units
-Temperature, T, 298.15, K
-Water Density, rho_water, 1e3, kg/m^3
-Gravity, g, 9.81, m/s^2
-Water Depth, L_w, infinite, m
-Sphere Radius, r, 5, m
-Sphere Centre, C_centre, [0.0, 0.0, 0.0], m
-Sphere Center of Gravity, C_G, [0.0, 0.0, -2.0], m
-Sphere Mass, m, 261.8e3, kg
