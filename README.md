@@ -22,7 +22,3 @@ Visit the [HydroChrono website](https://nrel.github.io/HydroChrono/) for informa
 - Support seamless transitioning from potential flow to CFD and SPH for detailed FSI analysis.
 - Develop a Python API to broaden accessibility and ease of use.
 - Foster and support open-source collaboration in the research community.
-
-<p align="center">
-  <img src="docs\assets\img\wave_animation2.gif" alt="Wave Energy" width="300">
-</p>
