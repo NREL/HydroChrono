@@ -22,11 +22,11 @@ title: HydroChrono
 copyright:             © 2023 National Renewable Energy Laboratory. All rights reserved.
 email: hydrochrono@outlook.com
 description: >- # this means to ignore newlines until "baseurl:"
-  HydroChrono is a powerful, fully open-source simulation tool for offshore renewable energy systems. It leverages [Project Chrono](https://projectchrono.org/) to model complex floating multibody systems and their subsystems.
+  [HydroChrono](https://github.com/NREL/HydroChrono/) is a powerful, fully open-source simulation tool for offshore renewable energy systems. It leverages [Project Chrono](https://projectchrono.org/) to model complex floating multibody systems and their subsystems.
 baseurl: "/HydroChrono"
 url: "" # the base hostname & protocol for your site, e.g. http://example.com
 twitter_username: NREL
-github_username:  NREL/HydroChrono
+github_username:  NREL
 
 # Build settings
 remote_theme: hydecorp/hydejack@v9.1.6
