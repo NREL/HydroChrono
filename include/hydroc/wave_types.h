@@ -361,7 +361,7 @@ class IrregularWaves : public WaveBase {
 
     /** @brief Calculates width (used for excitation convolution).
      */
-    void IrregularWaves::CalculateWidthIRF();
+    void CalculateWidthIRF();
 
     /**
      * @brief Calculates the component of force from Convolution integral for specified body, dof, time.
