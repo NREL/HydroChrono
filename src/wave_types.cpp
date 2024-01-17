@@ -582,7 +582,7 @@ double IrregularWaves::ExcitationConvolution(int body, int dof, double time) {
                 auto w1 = (t2 - t_tau) / (t2 - t1);
                 auto w2 = 1.0 - w1;
                 // weighted value
-                auto eta_val = w1 * eta1 + w2 * eta2;
+                eta_val = w1 * eta1 + w2 * eta2;
             } else {
                 throw std::runtime_error("Excitation convolution: wrong tau value " + std::to_string(tau) +
                                          " not between " + std::to_string(t1) + " and " + std::to_string(t2) + ".");
