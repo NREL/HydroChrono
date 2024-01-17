@@ -278,8 +278,3 @@ export(
     FILE "${CMAKE_CURRENT_BINARY_DIR}/cmake/HydroChronoTargets.cmake"
     NAMESPACE HydroChrono::
 )
-
-# ================
-# Documentation
-# ================
-add_subdirectory(doc)
