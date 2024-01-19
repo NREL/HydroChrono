@@ -89,6 +89,38 @@ if(TARGET demo_sphere_decay)
 
 endif()
 
+
+# DEMO Sphere irregular waves
+if(TARGET demo_sphere_irreg_waves)
+        add_test (
+                NAME demo_sphere_irreg_waves_01
+                COMMAND $<TARGET_FILE:demo_sphere_irreg_waves> ${HYDROCHRONO_DATA_DIR} --nogui
+        )
+        set_tests_properties(
+                demo_sphere_irreg_waves_01
+                PROPERTIES LABELS "medium;core"
+        )
+        # Define the range of file numbers we want to iterate over
+        set(FILE_RANGE_START 1)
+        set(FILE_RANGE_END 10)
+
+        # Loop over the file numbers and create tests
+        set(FILE_RST ${CMAKE_CURRENT_BINARY_DIR}/results/sphere_irreg_waves.txt)
+        set(FILE_REF ${HYDROCHRONO_DATA_DIR}/sphere/postprocessing/ref_sphere_irreg_waves.txt)
+
+        add_test(NAME demo_sphere_irreg_waves_ref_${FILE_NUMBER}
+                COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/../demos/sphere/compare_irreg_waves.py ${FILE_REF} ${FILE_RST}
+        )
+        set_tests_properties(
+                demo_sphere_irreg_waves_ref_${FILE_NUMBER}
+                PROPERTIES
+                LABELS "demos;ref"
+                DEPENDS demo_irreg_waves_01
+                REQUIRED_FILES ${FILE_RST}
+                FIXTURES_REQUIRED demo_sphere_irreg_waves_01_file
+        )
+endif()
+
 # Compares to the HydroChrono simulation itself
 # Commit ID for the HydroChrono used is 745bdabd60c
 if(TARGET demo_sphere_reg_waves)
@@ -125,18 +157,6 @@ if(TARGET demo_sphere_reg_waves)
         endforeach()
 
 
-endif()
-
-# Not touched for now
-if(TARGET demo_sphere_irreg_waves)
-        add_test (
-                NAME demo_sphere_irreg_waves_01
-                COMMAND $<TARGET_FILE:demo_sphere_irreg_waves> ${HYDROCHRONO_DATA_DIR} --nogui
-        )
-        set_tests_properties(
-                demo_sphere_irreg_waves_01
-                PROPERTIES LABELS "medium;core"
-        )
 endif()
 
 
