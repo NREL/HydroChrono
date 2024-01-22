@@ -324,16 +324,7 @@ class IrregularWaves : public WaveBase {
     void AddH5Data(std::vector<HydroData::IrregularWaveInfo>& irreg_h5_data, HydroData::SimulationParameters& sim_data);
 
   private:
-    unsigned int num_bodies_;
-    double simulation_dt_;
-    double simulation_duration_;
-    double ramp_duration_;
-    std::string eta_file_path_;
-    double wave_height_;
-    double wave_period_;
-    double peak_enhancement_factor_;
-    bool is_normalized_ = false;
-    int seed_;
+    IrregularWaveParams params_;
     std::vector<double> spectrum_;
     std::vector<double> time_data_;
     std::vector<double> free_surface_elevation_sampled_;
