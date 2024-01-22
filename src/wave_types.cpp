@@ -237,6 +237,7 @@ IrregularWaves::IrregularWaves(const IrregularWaveParams& params)
       wave_height_(params.wave_height_),
       wave_period_(params.wave_period_),
       peak_enhancement_factor_(params.peak_enhancement_factor_),
+      is_normalized_(params.is_normalized_),
       simulation_dt_(params.simulation_dt_),
       simulation_duration_(params.simulation_duration_),
       ramp_duration_(params.ramp_duration_),
@@ -413,7 +414,7 @@ void IrregularWaves::CreateSpectrum() {
 
     // Calculate the Pierson-Moskowitz Spectrum
     spectral_densities_ =
-        JONSWAPSpectrumHz(spectrum_frequencies_, wave_height_, wave_period_, peak_enhancement_factor_);
+        JONSWAPSpectrumHz(spectrum_frequencies_, wave_height_, wave_period_, peak_enhancement_factor_, is_normalized_);
 
     // Open a file stream for writing
     std::ofstream outputFile("spectral_densities.txt");
@@ -449,8 +450,11 @@ Eigen::VectorXd PiersonMoskowitzSpectrumHz(Eigen::VectorXd& f, double Hs, double
     return spectral_densities;
 }
 
-Eigen::VectorXd JONSWAPSpectrumHz(Eigen::VectorXd& f, double Hs, double Tp, double gamma) {
+Eigen::VectorXd JONSWAPSpectrumHz(Eigen::VectorXd& f, double Hs, double Tp, double gamma, bool is_normalized) {
     auto spectral_densities = PiersonMoskowitzSpectrumHz(f, Hs, Tp);
+
+    // only used if is_normalized is true
+    double normalization_factor = (1 - 0.287 * log(gamma));
 
     // Scale spectral densities from PM to JONSWAP with gamma factor
     for (size_t i = 0; i < spectral_densities.size(); ++i) {
@@ -461,8 +465,10 @@ Eigen::VectorXd JONSWAPSpectrumHz(Eigen::VectorXd& f, double Hs, double Tp, doub
             sigma = 0.09;
         }
         spectral_densities[i] *= pow(gamma, exp(-(1.0 / (2.0 * pow(sigma, 2))) * pow(f[i] * Tp - 1.0, 2)));
+        if (is_normalized) {
+            spectral_densities[i] *= normalization_factor;
+        }
     }
-
     return spectral_densities;
 }
 

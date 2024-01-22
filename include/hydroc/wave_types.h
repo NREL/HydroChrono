@@ -13,7 +13,11 @@
 // todo move this helper function somewhere else?
 Eigen::VectorXd PiersonMoskowitzSpectrumHz(Eigen::VectorXd& f, double Hs, double Tp);
 
-Eigen::VectorXd JONSWAPSpectrumHz(Eigen::VectorXd& f, double Hs, double Tp, double gamma = 3.3);
+Eigen::VectorXd JONSWAPSpectrumHz(Eigen::VectorXd& f,
+                                  double Hs,
+                                  double Tp,
+                                  double gamma       = 3.3,
+                                  bool is_normalized = false);
 
 std::vector<double> FreeSurfaceElevation(const Eigen::VectorXd& freqs_hz,
                                          const Eigen::VectorXd& spectral_densities,
@@ -239,6 +243,7 @@ struct IrregularWaveParams {
     double wave_height_             = 0.0;
     double wave_period_             = 0.0;
     double peak_enhancement_factor_ = 1.0;
+    bool is_normalized_             = false;
     int seed_                       = 1;
 };
 
@@ -327,6 +332,7 @@ class IrregularWaves : public WaveBase {
     double wave_height_;
     double wave_period_;
     double peak_enhancement_factor_;
+    bool is_normalized_ = false;
     int seed_;
     std::vector<double> spectrum_;
     std::vector<double> time_data_;
