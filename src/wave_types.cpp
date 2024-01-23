@@ -401,7 +401,16 @@ Eigen::VectorXd IrregularWaves::SetSpectrumFrequencies(double start, double end,
 
 void IrregularWaves::CreateSpectrum() {
     // Define the frequency vector
-    spectrum_frequencies_ = Eigen::VectorXd::LinSpaced(1000, 0.001, 1.0);
+    int nf;
+    if (params_.nfrequencies_ == 0) {
+        // automatically calculate number of frequencies necessary so that timeseries does not repeat itself
+        double df = 1.0 / params_.simulation_duration_;
+        nf = std::ceil((params_.frequency_max_-params_.frequency_min_) / df);
+
+    } else {
+        nf = params_.nfrequencies_;
+    }
+    spectrum_frequencies_ = Eigen::VectorXd::LinSpaced(nf, params_.frequency_min_, params_.frequency_max_);
 
     // Calculate the Pierson-Moskowitz Spectrum
     spectral_densities_ =

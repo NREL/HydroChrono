@@ -242,6 +242,9 @@ struct IrregularWaveParams {
     std::string eta_file_path_;
     double wave_height_             = 0.0;
     double wave_period_             = 0.0;
+    double frequency_min_           = 0.001;
+    double frequency_max_           = 1.0;
+    double nfrequencies_            = 0;
     double peak_enhancement_factor_ = 1.0;
     bool is_normalized_             = false;
     int seed_                       = 1;

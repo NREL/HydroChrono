@@ -120,6 +120,9 @@ int main(int argc, char* argv[]) {
     params.simulation_duration_ = simulationDuration;
     params.ramp_duration_       = 0.0;
     params.eta_file_path_       = (DATADIR / "sphere" / "eta" / "eta.txt").lexically_normal().generic_string();
+    params.frequency_min_       = 0.001;
+    params.frequency_max_       = 1.0;
+    params.nfrequencies_        = 1000;
 
     std::shared_ptr<IrregularWaves> my_hydro_inputs;  // declare outside the try-catch block
 
