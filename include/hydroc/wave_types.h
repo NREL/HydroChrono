@@ -13,7 +13,11 @@
 // todo move this helper function somewhere else?
 Eigen::VectorXd PiersonMoskowitzSpectrumHz(Eigen::VectorXd& f, double Hs, double Tp);
 
-Eigen::VectorXd JONSWAPSpectrumHz(Eigen::VectorXd& f, double Hs, double Tp, double gamma = 3.3);
+Eigen::VectorXd JONSWAPSpectrumHz(Eigen::VectorXd& f,
+                                  double Hs,
+                                  double Tp,
+                                  double gamma       = 3.3,
+                                  bool is_normalized = false);
 
 std::vector<double> FreeSurfaceElevation(const Eigen::VectorXd& freqs_hz,
                                          const Eigen::VectorXd& spectral_densities,
@@ -238,7 +242,11 @@ struct IrregularWaveParams {
     std::string eta_file_path_;
     double wave_height_             = 0.0;
     double wave_period_             = 0.0;
+    double frequency_min_           = 0.001;
+    double frequency_max_           = 1.0;
+    double nfrequencies_            = 0;
     double peak_enhancement_factor_ = 1.0;
+    bool is_normalized_             = false;
     int seed_                       = 1;
 };
 
@@ -319,15 +327,7 @@ class IrregularWaves : public WaveBase {
     void AddH5Data(std::vector<HydroData::IrregularWaveInfo>& irreg_h5_data, HydroData::SimulationParameters& sim_data);
 
   private:
-    unsigned int num_bodies_;
-    double simulation_dt_;
-    double simulation_duration_;
-    double ramp_duration_;
-    std::string eta_file_path_;
-    double wave_height_;
-    double wave_period_;
-    double peak_enhancement_factor_;
-    int seed_;
+    IrregularWaveParams params_;
     std::vector<double> spectrum_;
     std::vector<double> time_data_;
     std::vector<double> free_surface_elevation_sampled_;

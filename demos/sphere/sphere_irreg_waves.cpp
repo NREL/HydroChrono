@@ -139,15 +139,18 @@ int main(int argc, char* argv[]) {
     spring_1->SetDampingCoefficient(damping_coef);
     system.AddLink(spring_1);
 
-    auto my_hydro_inputs = std::make_shared<IrregularWave>();
-    //my_hydro_inputs->mode                   = WaveMode::irregular;                     // uses regular wave mode
-    my_hydro_inputs->wave_height_            = 2.0;
-    my_hydro_inputs->wave_period_            = 12.0;
-    my_hydro_inputs->simulation_duration_    = simulationDuration;
-    my_hydro_inputs->simulation_dt_          = timestep;
-    my_hydro_inputs->ramp_duration_          = 60.0;
-    //my_hydro_inputs->ramp_duration = 0.0;
-    //my_hydro_inputs->SetSpectrumFrequencies(0.001, 1.0, 1000);
+    IrregularWaveParams wave_inputs;
+    wave_inputs.num_bodies_          = bodies.size();
+    wave_inputs.simulation_dt_       = timestep;
+    wave_inputs.simulation_duration_ = simulationDuration;
+    wave_inputs.ramp_duration_       = 60.0;
+    wave_inputs.wave_height_         = 2.0;
+    wave_inputs.wave_period_         = 12.0;
+    wave_inputs.frequency_min_       = 0.001;
+    wave_inputs.frequency_max_       = 1.0;
+    wave_inputs.nfrequencies_        = 1000;
+
+    auto my_hydro_inputs = std::make_shared<IrregularWave>(wave_inputs);
     //TODO add option for PiersonMoskowitzSpectrumHz or other spectrum, have a default, do PM for now
 
     std::vector<std::shared_ptr<ChBody>> bodies;
