@@ -66,10 +66,11 @@ struct PTOConfig {
 
     // Optional fields for specific joint types
     // For linear spring-damper
-    double rest_length_;            // Rest length of the spring
-    double spring_radius_  = 0.5;   // Radius of the spring (for visualization)
-    int spring_resolution_ = 1280;  // Resolution of the spring shape
-    int spring_turns_      = 16;    // Number of turns in the spring shape
+    std::optional<double> rest_length_;  // Rest length of the spring
+    double spring_radius_  = 0.5;        // Radius of the spring (for visualization)
+    int spring_resolution_ = 1280;       // Resolution of the spring shape
+    int spring_turns_      = 16;         // Number of turns in the spring shape
+    std::optional<double> pretension_;   // Pre-tension in the spring
 
     // For rotational PTO
     ChVector<> rotation_axis_ = ChVector<>(0, 0, 1);  // Default rotation axis
@@ -467,6 +468,8 @@ std::vector<PTOConfig> ParsePTOConfig(const std::string& file_name) {
             current_config.location_ = ExtractAndAssignVector(line);
         } else if (line.find(".restLength = ") != std::string::npos) {
             current_config.rest_length_ = ExtractAndAssignDouble(line, ".restLength = ");
+        } else if (line.find(".pretension = ") != std::string::npos) {
+            current_config.pretension_ = ExtractAndAssignDouble(line, ".pretension = ");
         }
     }
     // Save the last parsed config
