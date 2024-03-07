@@ -10,13 +10,13 @@ Welcome to HydroChrono! To get started with using HydroChrono, follow the steps 
 ### Downloading HydroChrono
 
 1. Navigate to the [Releases](https://github.com/NREL/HydroChrono/releases) page of the HydroChrono repository.
-2. Look for the latest release (currently v0.3) and download the `hydrochrono_wsi_v0.3.exe` file.
+2. Look for the latest release (currently v0.3) and download the `hydrochrono_wsi.exe` file.
 
 ### Running HydroChrono
 
 To run HydroChrono, you'll need to use the command line. Here's a basic overview of the usage:
 
-`hydrochrono_wsi_v0.3.exe [InputFile.m] [resultsDir] [--gui/--nogui] [--quiet] [--nohydro]`
+`hydrochrono_wsi.exe [InputFile.m] [resultsDir] [--gui/--nogui] [--quiet] [--nohydro]`
 
 
 - `[InputFile.m]`: The path to the input file (in WEC-Sim format) that contains your simulation configurations.
@@ -29,9 +29,9 @@ To run HydroChrono, you'll need to use the command line. Here's a basic overview
 
 In the `HydroChrono\examples\wsi` directory, you'll find example .m files that you can use to test the application. Here's how you might run a simulation with one of these example files:
 
-`hydrochrono_wsi_v0.3.exe HydroChrono\examples\wsi\rm3\wecSimInputFile.m results --gui`
+`hydrochrono_wsi.exe HydroChrono\examples\wsi\rm3\wecSimInputFile.m results --gui`
 
-This command runs a simulation using `example1.m` as the input file, saves the results to a directory called `results`, and runs without the GUI.
+This command runs a simulation using `rm3\wecSimInputFile.m` as the input file, saves the results to a directory called `results`, and runs without the GUI.
 
 ### Warning
 
