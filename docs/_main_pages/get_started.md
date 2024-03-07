@@ -16,7 +16,7 @@ Welcome to HydroChrono! To get started with using HydroChrono, follow the steps 
 
 To run HydroChrono, you'll need to use the command line. Here's a basic overview of the usage:
 
-hydrochrono_wsi_v0.3.exe [InputFile.m] [resultsDir] [--gui/--nogui] [--quiet] [--nohydro]
+`hydrochrono_wsi_v0.3.exe [InputFile.m] [resultsDir] [--gui/--nogui] [--quiet] [--nohydro]`
 
 
 - `[InputFile.m]`: The path to the input file (in WEC-Sim format) that contains your simulation configurations.
