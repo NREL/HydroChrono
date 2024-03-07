@@ -25,6 +25,8 @@ void UI::Init(chrono::ChSystem* system, const char* title) {
 
 void UI::SetCamera(double x, double y, double z, double dirx, double diry, double dirz) {}
 
+void UI::ShowFrames(bool show) {}
+
 bool UI::IsRunning(double timestep) {
     return true;
 }
@@ -41,11 +43,12 @@ std::shared_ptr<hydroc::gui::UI> hydroc::gui::CreateUI(bool visualizationOn) {
 class hydroc::gui::GUIImpl {
   public:
     GUIImpl();
-    GUIImpl(const GUIImpl&)            = delete;
+    GUIImpl(const GUIImpl&) = delete;
     GUIImpl& operator=(const GUIImpl&) = delete;
 
     void Init(UI& ui, chrono::ChSystem*, const char* title);
     void SetCamera(double x, double y, double z, double dirx, double diry, double dirz);
+    void ShowFrames(bool show);
     bool IsRunning(double timestep);
 
   private:
@@ -108,6 +111,15 @@ void GUIImpl::Init(UI& ui, chrono::ChSystem* system, const char* title) {
 
 void GUIImpl::SetCamera(double x, double y, double z, double dirx, double diry, double dirz) {
     pVis->AddCamera({x, y, z}, {dirx, diry, dirz});
+}
+
+void GUIImpl::ShowFrames(bool show) {
+    if (pVis) {  // Check if the visualization pointer is valid
+        pVis->EnableLinkFrameDrawing(show);
+        pVis->EnableBodyFrameDrawing(show);
+    } else {
+        std::cerr << "Visualization pointer is not valid." << std::endl;
+    }
 }
 
 bool GUIImpl::IsRunning(double timestep) {
@@ -174,8 +186,6 @@ bool GUIImpl::IsRunning(double timestep) {
 
 #endif  // HYDROCHRONO_HAVE_IRRLICHT
 
-//
-
 GUI::GUI() : pImpl(std::make_shared<hydroc::gui::GUIImpl>()) {
     simulationStarted = false;  // Simulation is Paused
 }
@@ -187,6 +197,13 @@ void GUI::Init(chrono::ChSystem* system, const char* title) {
 
 void GUI::SetCamera(double x, double y, double z, double dirx, double diry, double dirz) {
     pImpl->SetCamera(x, y, z, dirx, diry, dirz);
+}
+
+void GUI::ShowFrames(bool show) {
+    // Call the implementation in GUIImpl
+    if (pImpl) {
+        pImpl->ShowFrames(show);
+    }
 }
 
 bool GUI::IsRunning(double timestep) {

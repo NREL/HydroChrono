@@ -199,6 +199,38 @@ target_link_libraries(demo_rm3_reg_waves
     HydroChrono
 )
 
+# =====================
+# HYDROCHRONO_WSI
+# =====================
+add_executable(demo_hydrochrono_wsi)
+
+target_sources(
+    demo_hydrochrono_wsi
+
+    PRIVATE
+    demo_hydrochrono_wsi.cpp
+)
+
+if(HYDROCHRONO_ENABLE_IRRLICHT)
+	target_compile_definitions(demo_hydrochrono_wsi
+		PRIVATE 
+		HYDROCHRONO_HAVE_IRRLICHT=1
+	)
+endif()
+
+target_include_directories(
+	demo_hydrochrono_wsi
+
+	PRIVATE
+	    ${CMAKE_CURRENT_SOURCE_DIR}/
+	    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_link_libraries(demo_hydrochrono_wsi 
+    PRIVATE
+	HydroChronoGUI	
+    HydroChrono
+)
 
 # =====================
 # OSWEC_DECAY
