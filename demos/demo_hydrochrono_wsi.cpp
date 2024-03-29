@@ -27,7 +27,16 @@ struct SimulationConfig {
     double ramp_time_;        // Ramp time
     double end_time_;         // End time
     double time_step_;        // Time step
+
+    // Camera parameters
+    double camera_x_     = 0;
+    double camera_y_     = -50;
+    double camera_z_     = 5;
+    double camera_pitch_ = 0;
+    double camera_yaw_   = 0;
+    double camera_roll_  = 0;
 };
+
 
 // Struct for wave configuration
 struct WaveConfig {
@@ -67,7 +76,7 @@ struct PTOConfig {
     // Optional fields for specific joint types
     // For linear spring-damper
     std::optional<double> rest_length_;  // Rest length of the spring
-    double spring_radius_  = 0.5;        // Radius of the spring (for visualization)
+    double spring_radius_  = 0.05;        // Radius of the spring (for visualization)
     int spring_resolution_ = 1280;       // Resolution of the spring shape
     int spring_turns_      = 16;         // Number of turns in the spring shape
     std::optional<double> pretension_;   // Pre-tension in the spring
@@ -87,14 +96,16 @@ struct AllConfigurations {
 
 //// Parser - helper functions
 
-// Helper function to extract a string within single quotes
+// Helper function to extract a string within single quotes and conditionally prepend a directory
 std::string ExtractAndAssignString(const std::string& line,
                                    const std::string& directory = "",
                                    bool append_directory        = true) {
     size_t start          = line.find("'") + 1;
     size_t end            = line.find_last_of("'");
     std::string extracted = line.substr(start, end - start);
-    if (append_directory && !directory.empty()) {
+
+    // Prepend the directory only if the extracted path is relative and appending is enabled
+    if (append_directory && !directory.empty() && !std::filesystem::path(extracted).is_absolute()) {
         extracted = directory + "/" + extracted;
     }
     return extracted;
@@ -286,6 +297,18 @@ SimulationConfig ParseSimulationConfig(const std::string& file_name) {
             iss >> token >> token >> config.end_time_;
         } else if (line.find("simu.dt =") != std::string::npos) {
             iss >> token >> token >> config.time_step_;
+        } else if (line.find("simu.cameraX =") != std::string::npos) {
+            iss >> token >> token >> config.camera_x_;
+        } else if (line.find("simu.cameraY =") != std::string::npos) {
+            iss >> token >> token >> config.camera_y_;
+        } else if (line.find("simu.cameraZ =") != std::string::npos) {
+            iss >> token >> token >> config.camera_z_;
+        } else if (line.find("simu.cameraRoll =") != std::string::npos) {
+            iss >> token >> token >> config.camera_roll_;
+        } else if (line.find("simu.cameraPitch =") != std::string::npos) {
+            iss >> token >> token >> config.camera_pitch_;
+        } else if (line.find("simu.cameraYaw =") != std::string::npos) {
+            iss >> token >> token >> config.camera_yaw_;
         }
     }
 
@@ -460,16 +483,21 @@ std::vector<PTOConfig> ParsePTOConfig(const std::string& file_name) {
             current_config.stiffness_ = ExtractAndAssignDouble(line, ".stiffness = ");
         } else if (line.find(".damping = ") != std::string::npos) {
             current_config.damping_ = ExtractAndAssignDouble(line, ".damping = ");
+        } else if (line.find(".rest_length = ") != std::string::npos) {
+            current_config.rest_length_ = ExtractAndAssignDouble(line, ".rest_length = ");
+        } else if (line.find(".pretension = ") != std::string::npos) {
+            current_config.pretension_ = ExtractAndAssignDouble(line, ".pretension = ");
         } else if (line.find(".bodies = [") != std::string::npos) {
             current_config.connected_bodies_ = ExtractBodies(line);
         } else if (line.find(".attachments = ") != std::string::npos) {
             current_config.attachment_points_ = ExtractAttachments(line);
-        } else if (line.find(".location = [") != std::string::npos && current_config.attachment_points_.empty()) {
-            current_config.location_ = ExtractAndAssignVector(line);
-        } else if (line.find(".restLength = ") != std::string::npos) {
-            current_config.rest_length_ = ExtractAndAssignDouble(line, ".restLength = ");
-        } else if (line.find(".pretension = ") != std::string::npos) {
-            current_config.pretension_ = ExtractAndAssignDouble(line, ".pretension = ");
+            // Visualization parameters
+        } else if (line.find(".spring_radius = ") != std::string::npos) {
+            current_config.spring_radius_ = ExtractAndAssignDouble(line, ".spring_radius = ");
+        } else if (line.find(".spring_resolution = ") != std::string::npos) {
+            current_config.spring_resolution_ = static_cast<int>(ExtractAndAssignDouble(line, ".spring_resolution = "));
+        } else if (line.find(".spring_turns = ") != std::string::npos) {
+            current_config.spring_turns_ = static_cast<int>(ExtractAndAssignDouble(line, ".spring_turns = "));
         }
     }
     // Save the last parsed config
@@ -479,6 +507,7 @@ std::vector<PTOConfig> ParsePTOConfig(const std::string& file_name) {
     PrintParsedPTOSummary(configs);
     return configs;
 }
+
 
 // Function to parse the input file
 AllConfigurations ParseConfigurations(const std::string& file_path) {
@@ -625,8 +654,8 @@ std::shared_ptr<ChBody> CreateSingleBody(
 
     if (body_config.type_ == "hydrodynamic-body") {
         // For hydrodynamic bodies, use ChBodyEasyMesh
-        std::string absolute_geometry_file = std::filesystem::absolute(body_config.geometry_file_).string();
-        body                               = chrono_types::make_shared<ChBodyEasyMesh>(absolute_geometry_file,
+        //std::string absolute_geometry_file = std::filesystem::absolute(body_config.geometry_file_).string();
+        body = chrono_types::make_shared<ChBodyEasyMesh>(body_config.geometry_file_,
                                                          1000.0,  // Density
                                                          false,  // Automatically evaluate mass
                                                          true,    // Visualization
@@ -716,6 +745,18 @@ ChVector<> GetChVectorFromConfig(const std::vector<double>& vecConfig) {
 void ConfigurePTOLink(const PTOConfig& pto_config, std::shared_ptr<ChLinkTSDA>& pto_link) {
     pto_link->SetSpringCoefficient(pto_config.stiffness_);
     pto_link->SetDampingCoefficient(pto_config.damping_);
+
+    // Check if rest_length is provided and set it
+    if (pto_config.rest_length_.has_value()) {
+        pto_link->SetRestLength(pto_config.rest_length_.value());
+    }
+
+    // Check if pretension is provided and set it as actuator force
+    if (pto_config.pretension_.has_value()) {
+        pto_link->SetActuatorForce(pto_config.pretension_.value());
+    }
+
+    // Add visual representation of the spring-damper
     pto_link->AddVisualShape(chrono_types::make_shared<ChSpringShape>(
         pto_config.spring_radius_, pto_config.spring_resolution_, pto_config.spring_turns_));
 }
@@ -998,7 +1039,7 @@ SystemAndComponents SetupSystem(const AllConfigurations& configurations, bool hy
     std::cout << "\n\n======== Setting up system...  ========" << std::endl;
 
     sac.system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
-    // sac.system.SetTimestepperType(ChTimestepper::Type::EULER_IMPLICIT_LINEARIZED);
+    sac.system.SetTimestepperType(ChTimestepper::Type::EULER_IMPLICIT);
     sac.system.SetSolverType(ChSolver::Type::GMRES);
     sac.system.SetStep(configurations.simu_config.time_step_);
 
@@ -1064,7 +1105,9 @@ std::shared_ptr<hydroc::gui::UI> SetupVisualization(const CommandLineArgs& args,
     // Initialize UI if visualization is enabled
     auto ui = hydroc::gui::CreateUI(visualization_on);
     ui->Init(&sac.system, configurations.simu_config.model_name_.c_str());
-    ui->SetCamera(0, -50, -10, 0, 0, -10);
+    ui->SetCamera(configurations.simu_config.camera_x_, configurations.simu_config.camera_y_,
+                  configurations.simu_config.camera_z_, configurations.simu_config.camera_pitch_,
+                  configurations.simu_config.camera_yaw_, configurations.simu_config.camera_roll_);
     ui->ShowFrames(true);
 
     return ui;  // Return the created UI object
@@ -1214,29 +1257,55 @@ void RunSimulation(const AllConfigurations& configurations,
                    SystemAndComponents& sac,
                    hydroc::gui::UI& ui,
                    SimulationOutput* output) {
-    std::cout << "\n======== Running simulation... ========" << std::endl;
-    while (sac.system.GetChTime() <= configurations.simu_config.end_time_) {
-        if (!ui.IsRunning(configurations.simu_config.time_step_)) break;
+    using Clock = std::chrono::high_resolution_clock;
+    std::cout << "\n======== Running simulation with GUI... ========\n";
 
-        if (ui.simulationStarted) {
-            sac.system.DoStepDynamics(configurations.simu_config.time_step_);
-            output->AppendSimulationData(sac.system.GetChTime(), sac.all_bodies, sac.ptos);
+    auto start_time = Clock::now();
+
+    // Run the simulation
+    try {
+        while (sac.system.GetChTime() <= configurations.simu_config.end_time_) {
+            if (!ui.IsRunning(configurations.simu_config.time_step_)) {
+                std::cout << "Simulation stopped by user.\n";
+                break;
+            }
+
+            if (ui.simulationStarted) {
+                sac.system.DoStepDynamics(configurations.simu_config.time_step_);
+                output->AppendSimulationData(sac.system.GetChTime(), sac.all_bodies, sac.ptos);
+            }
         }
+    } catch (const std::exception& e) {
+        std::cerr << "Exception during simulation with GUI: " << e.what() << '\n';
     }
+
+    auto end_time = Clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time);
+    std::cout << "Simulation with GUI completed in " << std::fixed << std::setprecision(3) << duration.count()
+              << " seconds.\n";
 }
 
 void RunSimulation(const AllConfigurations& configurations, SystemAndComponents& sac, SimulationOutput* output) {
-    std::cout << "\n======== Running simulation... ========" << std::endl;
+    using Clock = std::chrono::high_resolution_clock;
+    std::cout << "\n======== Running headless simulation... ========\n";
+
+    auto start_time = Clock::now();
+
+    // Run the simulation
     try {
         while (sac.system.GetChTime() <= configurations.simu_config.end_time_) {
             sac.system.DoStepDynamics(configurations.simu_config.time_step_);
             output->AppendSimulationData(sac.system.GetChTime(), sac.all_bodies, sac.ptos);
         }
     } catch (const std::exception& e) {
-        std::cerr << "Exception during simulation: " << e.what() << std::endl;
+        std::cerr << "Exception during headless simulation: " << e.what() << '\n';
     }
-}
 
+    auto end_time = Clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time);
+    std::cout << "Headless simulation completed in " << std::fixed << std::setprecision(3) << duration.count()
+              << " seconds.\n";
+}
 // usage: [hydrochrono.exe] [InputFile.m] [resultsDir] [--gui/--nogui] [--quiet] [--nohydro]
 int main(int argc, char* argv[]) {
     hydroc::SetInitialEnvironment(argc, argv);
