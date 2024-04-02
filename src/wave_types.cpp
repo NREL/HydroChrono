@@ -120,9 +120,9 @@ std::vector<double> ComputeWaveNumbers(const std::vector<double>& omegas,
 
 std::vector<double> FreeSurfaceElevation(const Eigen::VectorXd& freqs_hz,
                                          const Eigen::VectorXd& spectral_densities,
+                                         const Eigen::VectorXd& wave_phases,
                                          const Eigen::VectorXd& time_index,
-                                         double water_depth,
-                                         int seed) {
+                                         double water_depth) {
     double delta_f = freqs_hz(Eigen::last) / freqs_hz.size();
     std::vector<double> omegas(freqs_hz.size());
 
@@ -149,17 +149,10 @@ std::vector<double> FreeSurfaceElevation(const Eigen::VectorXd& freqs_hz,
         }
     }
 
-    std::mt19937 rng(seed);
-    std::uniform_real_distribution<double> dist(0.0, 2 * M_PI);
-    std::vector<double> phases(omegas.size());
-    for (size_t i = 0; i < phases.size(); ++i) {
-        phases[i] = dist(rng);
-    }
-
     std::vector<double> eta(time_index.size(), 0.0);
     for (size_t i = 0; i < spectral_densities.size(); ++i) {
         for (size_t j = 0; j < time_index.size(); ++j) {
-            eta[j] += sqrt_A[i] * std::cos(omegas_t[j][i] + phases[i]);
+            eta[j] += sqrt_A[i] * std::cos(omegas_t[j][i] + wave_phases[i]);
         }
     }
 
@@ -231,8 +224,7 @@ void WriteFreeSurfaceMeshObj(const std::vector<std::array<double, 3>>& points,
     out.close();
 }
 
-IrregularWaves::IrregularWaves(const IrregularWaveParams& params)
-    : params_(params) {}
+IrregularWaves::IrregularWaves(const IrregularWaveParams& params) : params_(params) {}
 
 void IrregularWaves::InitializeIRFVectors() {
     ex_irf_sampled_.resize(params_.num_bodies_);
@@ -405,16 +397,24 @@ void IrregularWaves::CreateSpectrum() {
     if (params_.nfrequencies_ == 0) {
         // automatically calculate number of frequencies necessary so that timeseries does not repeat itself
         double df = 1.0 / params_.simulation_duration_;
-        nf = std::ceil((params_.frequency_max_-params_.frequency_min_) / df);
+        nf        = std::ceil((params_.frequency_max_ - params_.frequency_min_) / df);
 
     } else {
         nf = params_.nfrequencies_;
     }
     spectrum_frequencies_ = Eigen::VectorXd::LinSpaced(nf, params_.frequency_min_, params_.frequency_max_);
 
+    // define random phases
+    wave_phases_ = Eigen::VectorXd(nf);
+    std::mt19937 rng(params_.seed_);
+    std::uniform_real_distribution<double> dist(0.0, 2 * M_PI);
+    for (size_t i = 0; i < nf; ++i) {
+        wave_phases_[i] = dist(rng);
+    }
+
     // Calculate the Pierson-Moskowitz Spectrum
-    spectral_densities_ =
-        JONSWAPSpectrumHz(spectrum_frequencies_,params_. wave_height_,params_. wave_period_, params_.peak_enhancement_factor_, params_.is_normalized_);
+    spectral_densities_ = JONSWAPSpectrumHz(spectrum_frequencies_, params_.wave_height_, params_.wave_period_,
+                                            params_.peak_enhancement_factor_, params_.is_normalized_);
 
     // Open a file stream for writing
     std::ofstream outputFile("spectral_densities.txt");
@@ -494,7 +494,8 @@ void IrregularWaves::CreateFreeSurfaceElevation() {
         }
     }
 
-    auto time_array = Eigen::VectorXd::LinSpaced(num_timesteps, 0, params_.simulation_duration_ + 2 * (t_irf_max - t_irf_min));
+    auto time_array =
+        Eigen::VectorXd::LinSpaced(num_timesteps, 0, params_.simulation_duration_ + 2 * (t_irf_max - t_irf_min));
 
     // Save time array as a std::vector
     free_surface_time_sampled_.resize(time_array.size());
@@ -508,8 +509,8 @@ void IrregularWaves::CreateFreeSurfaceElevation() {
               << std::endl;
 
     // Calculate the free surface elevation
-    free_surface_elevation_sampled_ =
-        FreeSurfaceElevation(spectrum_frequencies_, spectral_densities_, time_array, sim_data_.water_depth, params_.seed_);
+    free_surface_elevation_sampled_ = FreeSurfaceElevation(spectrum_frequencies_, spectral_densities_, wave_phases_,
+                                                           time_array, sim_data_.water_depth);
 
     // Apply ramp if ramp_duration is greater than 0
     if (params_.ramp_duration_ > 0.0) {
