@@ -122,37 +122,22 @@ std::vector<double> FreeSurfaceElevation(const Eigen::VectorXd& freqs_hz,
                                          const Eigen::VectorXd& spectral_densities,
                                          const Eigen::VectorXd& wave_phases,
                                          const Eigen::VectorXd& time_index,
+                                         double position,
                                          double water_depth) {
-    double delta_f = freqs_hz(Eigen::last) / freqs_hz.size();
-    std::vector<double> omegas(freqs_hz.size());
-
+    int nf = freqs_hz.size();
+    std::vector<double> omegas(nf);
     for (size_t i = 0; i < freqs_hz.size(); ++i) {
         omegas[i] = 2 * M_PI * freqs_hz[i];
     }
+    double delta_f = freqs_hz(Eigen::last) / nf;
 
     std::vector<double> wave_numbers = ComputeWaveNumbers(omegas, water_depth);
 
-    std::vector<double> A(spectral_densities.size());
-    for (size_t i = 0; i < spectral_densities.size(); ++i) {
-        A[i] = 2 * spectral_densities[i] * delta_f;
-    }
-
-    std::vector<double> sqrt_A(A.size());
-    for (size_t i = 0; i < A.size(); ++i) {
-        sqrt_A[i] = std::sqrt(A[i]);
-    }
-
-    std::vector<std::vector<double>> omegas_t(time_index.size(), std::vector<double>(omegas.size()));
-    for (size_t i = 0; i < time_index.size(); ++i) {
-        for (size_t j = 0; j < omegas.size(); ++j) {
-            omegas_t[i][j] = time_index[i] * omegas[j];
-        }
-    }
-
     std::vector<double> eta(time_index.size(), 0.0);
-    for (size_t i = 0; i < spectral_densities.size(); ++i) {
+    for (size_t i = 0; i < nf; ++i) {
         for (size_t j = 0; j < time_index.size(); ++j) {
-            eta[j] += sqrt_A[i] * std::cos(omegas_t[j][i] + wave_phases[i]);
+            eta[j] += std::sqrt(2 * spectral_densities[i] * delta_f) *
+                      std::cos(wave_numbers[i] * position - omegas[i] * time_index[j] + wave_phases[i]);
         }
     }
 
@@ -509,8 +494,9 @@ void IrregularWaves::CreateFreeSurfaceElevation() {
               << std::endl;
 
     // Calculate the free surface elevation
+    double position                 = 0.0;
     free_surface_elevation_sampled_ = FreeSurfaceElevation(spectrum_frequencies_, spectral_densities_, wave_phases_,
-                                                           time_array, sim_data_.water_depth);
+                                                           time_array, position, sim_data_.water_depth);
 
     // Apply ramp if ramp_duration is greater than 0
     if (params_.ramp_duration_ > 0.0) {

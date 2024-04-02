@@ -23,6 +23,7 @@ std::vector<double> FreeSurfaceElevation(const Eigen::VectorXd& freqs_hz,
                                          const Eigen::VectorXd& spectral_densities,
                                          const Eigen::VectorXd& time_array,
                                          const Eigen::VectorXd& wave_phases,
+                                         double position,
                                          double water_depth);
 
 enum class WaveMode {
