@@ -19,12 +19,23 @@ Eigen::VectorXd JONSWAPSpectrumHz(Eigen::VectorXd& f,
                                   double gamma       = 3.3,
                                   bool is_normalized = false);
 
-std::vector<double> FreeSurfaceElevation(const Eigen::VectorXd& freqs_hz,
-                                         const Eigen::VectorXd& spectral_densities,
-                                         const Eigen::VectorXd& time_array,
-                                         const Eigen::VectorXd& wave_phases,
-                                         double position,
-                                         double water_depth);
+double GetFreeSurfaceElevation(const Eigen::VectorXd& freqs_hz,
+                               const Eigen::VectorXd& spectral_densities,
+                               const Eigen::VectorXd& spectral_widths,
+                               const Eigen::VectorXd& wave_phases,
+                               const Eigen::VectorXd& wavenumbers,
+                               const Eigen::Vector3d& position,
+                               double time_value,
+                               double water_depth);
+
+std::vector<double> GetFreeSurfaceElevationTimeSeries(const Eigen::VectorXd& freqs_hz,
+                                                      const Eigen::VectorXd& spectral_densities,
+                                                      const Eigen::VectorXd& spectral_widths,
+                                                      const Eigen::VectorXd& wave_phases,
+                                                      const Eigen::VectorXd& wavenumbers,
+                                                      const Eigen::Vector3d& position,
+                                                      const Eigen::VectorXd& time_array,
+                                                      double water_depth);
 
 enum class WaveMode {
     /// @brief No waves
@@ -345,6 +356,8 @@ class IrregularWaves : public WaveBase {
     std::vector<Eigen::VectorXd> ex_irf_width_sampled_;
     Eigen::VectorXd spectrum_frequencies_;
     Eigen::VectorXd spectral_densities_;
+    Eigen::VectorXd spectral_widths_;
+    Eigen::VectorXd wavenumbers_;
     Eigen::VectorXd wave_phases_;
     std::string mesh_file_name_;
 

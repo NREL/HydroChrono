@@ -86,12 +86,12 @@ double RegularWave::GetExcitationPhaseInterp(int b, int i, int j, double freq_in
     return excitationPhase;
 }
 
-std::vector<double> ComputeWaveNumbers(const std::vector<double>& omegas,
-                                       double water_depth,
-                                       double g           = 9.81,
-                                       double tolerance   = 1e-6,
-                                       int max_iterations = 100) {
-    std::vector<double> wave_numbers(omegas.size());
+Eigen::VectorXd ComputeWaveNumbers(const Eigen::VectorXd& omegas,
+                                   double water_depth,
+                                   double g,
+                                   double tolerance   = 1e-6,
+                                   int max_iterations = 100) {
+    Eigen::VectorXd wavenumbers(omegas.size());
 
     for (size_t i = 0; i < omegas.size(); ++i) {
         double omega = omegas[i];
@@ -112,33 +112,43 @@ std::vector<double> ComputeWaveNumbers(const std::vector<double>& omegas,
             iterations++;
         }
 
-        wave_numbers[i] = k;
+        wavenumbers[i] = k;
     }
 
-    return wave_numbers;
+    return wavenumbers;
 }
 
-std::vector<double> FreeSurfaceElevation(const Eigen::VectorXd& freqs_hz,
-                                         const Eigen::VectorXd& spectral_densities,
-                                         const Eigen::VectorXd& wave_phases,
-                                         const Eigen::VectorXd& time_index,
-                                         double position,
-                                         double water_depth) {
-    int nf = freqs_hz.size();
-    std::vector<double> omegas(nf);
+double GetFreeSurfaceElevation(const Eigen::VectorXd& freqs_hz,
+                               const Eigen::VectorXd& spectral_densities,
+                               const Eigen::VectorXd& spectral_widths,
+                               const Eigen::VectorXd& wave_phases,
+                               const Eigen::VectorXd& wavenumbers,
+                               const Eigen::Vector3d& position,
+                               double time_value,
+                               double water_depth) {
+    // x position assuming wave direction along global X axis
+    double x_pos = position.x();
+
+    double eta = 0.0;
     for (size_t i = 0; i < freqs_hz.size(); ++i) {
-        omegas[i] = 2 * M_PI * freqs_hz[i];
+        eta += std::sqrt(2 * spectral_densities[i] * spectral_widths[i]) *
+               std::cos(wavenumbers[i] * x_pos - 2 * M_PI * freqs_hz[i] * time_value + wave_phases[i]);
     }
-    double delta_f = freqs_hz(Eigen::last) / nf;
+    return eta;
+}
 
-    std::vector<double> wave_numbers = ComputeWaveNumbers(omegas, water_depth);
-
+std::vector<double> GetFreeSurfaceElevationTimeSeries(const Eigen::VectorXd& freqs_hz,
+                                                      const Eigen::VectorXd& spectral_densities,
+                                                      const Eigen::VectorXd& spectral_widths,
+                                                      const Eigen::VectorXd& wave_phases,
+                                                      const Eigen::VectorXd& wavenumbers,
+                                                      const Eigen::Vector3d& position,
+                                                      const Eigen::VectorXd& time_index,
+                                                      double water_depth) {
     std::vector<double> eta(time_index.size(), 0.0);
-    for (size_t i = 0; i < nf; ++i) {
-        for (size_t j = 0; j < time_index.size(); ++j) {
-            eta[j] += std::sqrt(2 * spectral_densities[i] * delta_f) *
-                      std::cos(wave_numbers[i] * position - omegas[i] * time_index[j] + wave_phases[i]);
-        }
+    for (size_t j = 0; j < time_index.size(); ++j) {
+        eta[j] += GetFreeSurfaceElevation(freqs_hz, spectral_densities, spectral_widths, wave_phases, wavenumbers,
+                                          position, time_index[j], water_depth);
     }
 
     return eta;
@@ -285,6 +295,7 @@ Eigen::MatrixXd IrregularWaves::GetExcitationIRF(int b) const {
 void IrregularWaves::AddH5Data(std::vector<HydroData::IrregularWaveInfo>& irreg_h5_data,
                                HydroData::SimulationParameters& sim_data) {
     wave_info_ = irreg_h5_data;
+    sim_data_  = sim_data;
 
     InitializeIRFVectors();
 }
@@ -345,21 +356,25 @@ void IrregularWaves::ResampleIRF(double dt) {
     }
 }
 
+Eigen::VectorXd GetWidthArray(const Eigen::VectorXd& input_array) {
+    auto width_array = Eigen::VectorXd(input_array.size());
+    for (int ii = 0; ii < width_array.size(); ii++) {
+        width_array[ii] = 0.0;
+        if (ii < input_array.size() - 1) {
+            width_array[ii] += 0.5 * abs(input_array[ii + 1] - input_array[ii]);
+        }
+        if (ii > 0) {
+            width_array[ii] += 0.5 * abs(input_array[ii] - input_array[ii - 1]);
+        }
+    }
+    return width_array;
+}
+
 void IrregularWaves::CalculateWidthIRF() {
     for (unsigned int b = 0; b < params_.num_bodies_; b++) {
         auto& time_array  = ex_irf_time_sampled_[b];
         auto& width_array = ex_irf_width_sampled_[b];
-
-        width_array.resize(time_array.size());
-        for (int ii = 0; ii < width_array.size(); ii++) {
-            width_array[ii] = 0.0;
-            if (ii < time_array.size() - 1) {
-                width_array[ii] += 0.5 * abs(time_array[ii + 1] - time_array[ii]);
-            }
-            if (ii > 0) {
-                width_array[ii] += 0.5 * abs(time_array[ii] - time_array[ii - 1]);
-            }
-        }
+        width_array       = GetWidthArray(time_array);
     }
 }
 
@@ -389,7 +404,14 @@ void IrregularWaves::CreateSpectrum() {
     }
     spectrum_frequencies_ = Eigen::VectorXd::LinSpaced(nf, params_.frequency_min_, params_.frequency_max_);
 
-    // define random phases
+    // Calculate the Pierson-Moskowitz Spectrum
+    spectral_densities_ = JONSWAPSpectrumHz(spectrum_frequencies_, params_.wave_height_, params_.wave_period_,
+                                            params_.peak_enhancement_factor_, params_.is_normalized_);
+
+    // precompute spectral widths
+    spectral_widths_ = GetWidthArray(spectrum_frequencies_);
+
+    // precompute random phases
     wave_phases_ = Eigen::VectorXd(nf);
     std::mt19937 rng(params_.seed_);
     std::uniform_real_distribution<double> dist(0.0, 2 * M_PI);
@@ -397,9 +419,9 @@ void IrregularWaves::CreateSpectrum() {
         wave_phases_[i] = dist(rng);
     }
 
-    // Calculate the Pierson-Moskowitz Spectrum
-    spectral_densities_ = JONSWAPSpectrumHz(spectrum_frequencies_, params_.wave_height_, params_.wave_period_,
-                                            params_.peak_enhancement_factor_, params_.is_normalized_);
+    // precompute wavenumbers
+    auto omegas   = 2 * M_PI * spectrum_frequencies_;
+    wavenumbers_ = ComputeWaveNumbers(omegas, sim_data_.water_depth, sim_data_.g);
 
     // Open a file stream for writing
     std::ofstream outputFile("spectral_densities.txt");
@@ -494,9 +516,12 @@ void IrregularWaves::CreateFreeSurfaceElevation() {
               << std::endl;
 
     // Calculate the free surface elevation
-    double position                 = 0.0;
-    free_surface_elevation_sampled_ = FreeSurfaceElevation(spectrum_frequencies_, spectral_densities_, wave_phases_,
-                                                           time_array, position, sim_data_.water_depth);
+    // position assumed at (0.0, 0.0, 0.0)
+    auto position = Eigen::Vector3d(0.0, 0.0, 0.0);
+    // get timeseries
+    free_surface_elevation_sampled_ =
+        GetFreeSurfaceElevationTimeSeries(spectrum_frequencies_, spectral_densities_, spectral_widths_, wave_phases_,
+                                          wavenumbers_, position, time_array, sim_data_.water_depth);
 
     // Apply ramp if ramp_duration is greater than 0
     if (params_.ramp_duration_ > 0.0) {
