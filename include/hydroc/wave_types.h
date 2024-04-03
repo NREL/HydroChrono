@@ -69,6 +69,9 @@ class WaveBase {
     virtual double GetElevation(const Eigen::Vector3d& position, double time) = 0;
 
     virtual Eigen::Vector3d GetVelocity(const Eigen::Vector3d& position, double time) = 0;
+
+    /// @brief Mean water level
+    double mwl_ = 0.0;
 };
 
 /**

@@ -60,11 +60,11 @@ Eigen::Vector3d GetWaterVelocity(const Eigen::Vector3d& position,
                                  double amplitude,
                                  double phase,
                                  double wavenumber,
-                                 double water_depth) {
+                                 double water_depth,
+                                 double mwl) {
     // assuming wave along global X axis position
     auto x_pos = position.x();
-    // assume mean water level at z = 0.0
-    double mwl = 0.0;
+    // position relative to mean water level
     auto z_pos = position.z() - mwl;
 
     // get water velocity
@@ -92,13 +92,14 @@ Eigen::Vector3d GetWaterVelocityIrregular(const Eigen::Vector3d& position,
                                           const Eigen::VectorXd& spectral_widths,
                                           const Eigen::VectorXd& wave_phases,
                                           const Eigen::VectorXd& wavenumbers,
-                                          double water_depth) {
+                                          double water_depth,
+                                          double mwl) {
     auto water_velocity = Eigen::Vector3d(0.0, 0.0, 0.0);
     for (size_t i = 0; i < freqs_hz.size(); ++i) {
         auto amplitude = std::sqrt(2 * spectral_densities[i] * spectral_widths[i]);
         auto omega     = 2 * M_PI * freqs_hz[i];
         water_velocity +=
-            GetWaterVelocity(position, time, omega, amplitude, wave_phases[i], wavenumbers[i], water_depth);
+            GetWaterVelocity(position, time, omega, amplitude, wave_phases[i], wavenumbers[i], water_depth, mwl);
     }
     return water_velocity;
 }
@@ -173,7 +174,7 @@ void RegularWave::AddH5Data(std::vector<HydroData::RegularWaveInfo>& reg_h5_data
 
 Eigen::Vector3d RegularWave::GetVelocity(const Eigen::Vector3d& position, double time) {
     return GetWaterVelocity(position, time, regular_wave_omega_, regular_wave_amplitude_, regular_wave_phase_,
-                            wavenumber_, sim_data_.water_depth);
+                            wavenumber_, sim_data_.water_depth, mwl_);
 };
 
 double RegularWave::GetElevation(const Eigen::Vector3d& position, double time) {
@@ -383,15 +384,14 @@ Eigen::Vector3d IrregularWaves::GetVelocity(const Eigen::Vector3d& position, dou
     if (params_.wave_stretching_) {
         auto eta = GetEtaIrregular(position, time, spectrum_frequencies_, spectral_densities_, spectral_widths_,
                                    wave_phases_, wavenumbers_);
-        // assuming mean water level at 0.0
-        double mwl = 0.0;
-        auto z_pos = position.z() - mwl;
+        // position relative to mean water level
+        auto z_pos = position.z() - mwl_;
         // Wheeler stretching
         position_stretched[2] = sim_data_.water_depth * (z_pos - eta) / (sim_data_.water_depth + eta);
     }
 
     return GetWaterVelocityIrregular(position_stretched, time, spectrum_frequencies_, spectral_densities_,
-                                     spectral_widths_, wave_phases_, wavenumbers_, sim_data_.water_depth);
+                                     spectral_widths_, wave_phases_, wavenumbers_, sim_data_.water_depth, mwl_);
 };
 
 double IrregularWaves::GetElevation(const Eigen::Vector3d& position, double time) {
