@@ -54,6 +54,54 @@ std::vector<double> GetEtaIrregularTimeSeries(const Eigen::Vector3d& position,
     return eta;
 }
 
+Eigen::Vector3d GetWaterVelocity(const Eigen::Vector3d& position,
+                                 double time,
+                                 double omega,
+                                 double amplitude,
+                                 double phase,
+                                 double wavenumber,
+                                 double water_depth) {
+    // assuming wave along global X axis position
+    auto x_pos = position.x();
+    // assume water level at z = 0.0
+    auto z_pos = position.z();
+
+    // get water velocity
+    auto water_velocity = Eigen::Vector3d(0.0, 0.0, 0.0);
+    if (2 * M_PI / wavenumber > water_depth) {
+        // deep water
+        water_velocity[0] =
+            omega * amplitude * std::exp(wavenumber * z_pos) * cos(wavenumber * x_pos - omega * time + phase);
+        water_velocity[2] =
+            omega * amplitude * std::exp(wavenumber * z_pos) * sin(wavenumber * x_pos - omega * time + phase);
+    } else {
+        // shallow water
+        water_velocity[0] = omega * amplitude * std::cosh(wavenumber * (z_pos + water_depth)) /
+                            std::sinh(wavenumber * water_depth) * cos(wavenumber * x_pos - omega * time + phase);
+        water_velocity[2] = omega * amplitude * std::sinh(wavenumber * (z_pos + water_depth)) /
+                            std::sinh(wavenumber * water_depth) * sin(wavenumber * x_pos - omega * time + phase);
+    }
+    return water_velocity;
+}
+
+Eigen::Vector3d GetWaterVelocityIrregular(const Eigen::Vector3d& position,
+                                          double time,
+                                          const Eigen::VectorXd& freqs_hz,
+                                          const Eigen::VectorXd& spectral_densities,
+                                          const Eigen::VectorXd& spectral_widths,
+                                          const Eigen::VectorXd& wave_phases,
+                                          const Eigen::VectorXd& wavenumbers,
+                                          double water_depth) {
+    auto water_velocity = Eigen::Vector3d(0.0, 0.0, 0.0);
+    for (size_t i = 0; i < freqs_hz.size(); ++i) {
+        auto amplitude = std::sqrt(2 * spectral_densities[i] * spectral_widths[i]);
+        auto omega     = 2 * M_PI * freqs_hz[i];
+        water_velocity +=
+            GetWaterVelocity(position, time, omega, amplitude, wave_phases[i], wavenumbers[i], water_depth);
+    }
+    return water_velocity;
+}
+
 double ComputeWaveNumber(double omega,
                          double water_depth,
                          double g,
@@ -121,6 +169,11 @@ void RegularWave::AddH5Data(std::vector<HydroData::RegularWaveInfo>& reg_h5_data
     wave_info_ = reg_h5_data;
     sim_data_  = sim_data;
 }
+
+Eigen::Vector3d RegularWave::GetVelocity(const Eigen::Vector3d& position, double time) {
+    return GetWaterVelocity(position, time, regular_wave_omega_, regular_wave_amplitude_, regular_wave_phase_,
+                            wavenumber_, sim_data_.water_depth);
+};
 
 double RegularWave::GetElevation(const Eigen::Vector3d& position, double time) {
     return GetEta(position, time, regular_wave_omega_, regular_wave_amplitude_, regular_wave_phase_, wavenumber_);
@@ -322,6 +375,11 @@ void IrregularWaves::AddH5Data(std::vector<HydroData::IrregularWaveInfo>& irreg_
 
     InitializeIRFVectors();
 }
+
+Eigen::Vector3d IrregularWaves::GetVelocity(const Eigen::Vector3d& position, double time) {
+    return GetWaterVelocityIrregular(position, time, spectrum_frequencies_, spectral_densities_, spectral_widths_,
+                                     wave_phases_, wavenumbers_, sim_data_.water_depth);
+};
 
 double IrregularWaves::GetElevation(const Eigen::Vector3d& position, double time) {
     return GetEtaIrregular(position, time, spectrum_frequencies_, spectral_densities_, spectral_widths_, wave_phases_,

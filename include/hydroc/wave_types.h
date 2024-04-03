@@ -67,6 +67,8 @@ class WaveBase {
     virtual WaveMode GetWaveMode()                   = 0;
 
     virtual double GetElevation(const Eigen::Vector3d& position, double time) = 0;
+
+    virtual Eigen::Vector3d GetVelocity(const Eigen::Vector3d& position, double time) = 0;
 };
 
 /**
@@ -90,6 +92,9 @@ class NoWave : public WaveBase {
     Eigen::VectorXd GetForceAtTime(double t) override;
     WaveMode GetWaveMode() override { return mode_; }
     double GetElevation(const Eigen::Vector3d& position, double time) override { return 0.0; };
+    Eigen::Vector3d GetVelocity(const Eigen::Vector3d& position, double time) override {
+        return Eigen::Vector3d(0.0, 0.0, 0.0);
+    }
 
   private:
     unsigned int num_bodies_;
@@ -160,6 +165,8 @@ class RegularWave : public WaveBase {
     void AddH5Data(std::vector<HydroData::RegularWaveInfo>& reg_h5_data, HydroData::SimulationParameters& sim_data);
 
     double GetElevation(const Eigen::Vector3d& position, double time) override;
+
+    Eigen::Vector3d GetVelocity(const Eigen::Vector3d& position, double time) override;
 
   private:
     unsigned int num_bodies_;
@@ -347,6 +354,8 @@ class IrregularWaves : public WaveBase {
     void AddH5Data(std::vector<HydroData::IrregularWaveInfo>& irreg_h5_data, HydroData::SimulationParameters& sim_data);
 
     double GetElevation(const Eigen::Vector3d& position, double time) override;
+
+    Eigen::Vector3d GetVelocity(const Eigen::Vector3d& position, double time) override;
 
   private:
     IrregularWaveParams params_;
