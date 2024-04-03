@@ -275,6 +275,7 @@ struct IrregularWaveParams {
     double peak_enhancement_factor_ = 1.0;
     bool is_normalized_             = false;
     int seed_                       = 1;
+    bool wave_stretching_           = true;
 };
 
 class IrregularWaves : public WaveBase {
