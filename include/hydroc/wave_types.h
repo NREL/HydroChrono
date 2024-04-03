@@ -65,6 +65,8 @@ class WaveBase {
      */
     virtual Eigen::VectorXd GetForceAtTime(double t) = 0;
     virtual WaveMode GetWaveMode()                   = 0;
+
+    virtual double GetElevation(const Eigen::Vector3d& position, double time) = 0;
 };
 
 /**
@@ -87,6 +89,7 @@ class NoWave : public WaveBase {
      */
     Eigen::VectorXd GetForceAtTime(double t) override;
     WaveMode GetWaveMode() override { return mode_; }
+    double GetElevation(const Eigen::Vector3d& position, double time) override { return 0.0; };
 
   private:
     unsigned int num_bodies_;
@@ -144,6 +147,7 @@ class RegularWave : public WaveBase {
     // user input variables
     double regular_wave_amplitude_;
     double regular_wave_omega_;
+    double regular_wave_phase_ = 0.0;
 
     /**
      * @brief Initializes other member variables for timestep calculations later.
@@ -153,15 +157,19 @@ class RegularWave : public WaveBase {
      *
      * @param reg_h5_data reference to chunk of h5 data needed for RegularWave calculations
      */
-    void AddH5Data(std::vector<HydroData::RegularWaveInfo>& reg_h5_data);
+    void AddH5Data(std::vector<HydroData::RegularWaveInfo>& reg_h5_data, HydroData::SimulationParameters& sim_data);
+
+    double GetElevation(const Eigen::Vector3d& position, double time) override;
 
   private:
     unsigned int num_bodies_;
     const WaveMode mode_ = WaveMode::regular;
     std::vector<HydroData::RegularWaveInfo> wave_info_;
+    HydroData::SimulationParameters sim_data_;
     Eigen::VectorXd excitation_force_mag_;
     Eigen::VectorXd excitation_force_phase_;
     Eigen::VectorXd force_;
+    double wavenumber_;
 
     /**
      * @brief Finds omega_max and number of frequencies, then gets omega_max / num_freqs.
@@ -337,6 +345,8 @@ class IrregularWaves : public WaveBase {
      * @param irreg_h5_data reference to chunk of h5 data needed for IrregularWave calculations
      */
     void AddH5Data(std::vector<HydroData::IrregularWaveInfo>& irreg_h5_data, HydroData::SimulationParameters& sim_data);
+
+    double GetElevation(const Eigen::Vector3d& position, double time) override;
 
   private:
     IrregularWaveParams params_;
