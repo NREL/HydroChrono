@@ -286,6 +286,7 @@ class IrregularWaves : public WaveBase {
     IrregularWaves(const IrregularWaveParams& params);
     void Initialize() override {}
 
+    void CreateSpectrum();
     std::vector<double> GetSpectrum();
     std::vector<double> GetFreeSurfaceElevation();
     std::vector<double> GetEtaTimeData();
@@ -386,7 +387,6 @@ class IrregularWaves : public WaveBase {
 
     void InitializeIRFVectors();
     void ReadEtaFromFile();
-    void CreateSpectrum();
     void CreateFreeSurfaceElevation();
 
     Eigen::MatrixXd GetExcitationIRF(int b) const;
