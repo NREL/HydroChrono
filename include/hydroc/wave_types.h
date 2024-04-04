@@ -72,6 +72,10 @@ class WaveBase {
 
     /// @brief Mean water level
     double mwl_ = 0.0;
+    /// @brief Gravitational acceleration
+    double g_ = 9.81;
+    /// @brief Water depth
+    double water_depth_ = 0.0;
 };
 
 /**
@@ -175,7 +179,6 @@ class RegularWave : public WaveBase {
     unsigned int num_bodies_;
     const WaveMode mode_ = WaveMode::regular;
     std::vector<HydroData::RegularWaveInfo> wave_info_;
-    HydroData::SimulationParameters sim_data_;
     Eigen::VectorXd excitation_force_mag_;
     Eigen::VectorXd excitation_force_phase_;
     Eigen::VectorXd force_;
@@ -374,7 +377,6 @@ class IrregularWaves : public WaveBase {
     // unsigned int num_bodies_;
     // const WaveMode mode_ = WaveMode::irregular;
     std::vector<HydroData::IrregularWaveInfo> wave_info_;
-    HydroData::SimulationParameters sim_data_;
     std::vector<Eigen::MatrixXd> ex_irf_sampled_;
     std::vector<Eigen::VectorXd> ex_irf_time_sampled_;
     std::vector<Eigen::VectorXd> ex_irf_width_sampled_;

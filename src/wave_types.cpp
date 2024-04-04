@@ -163,18 +163,19 @@ void RegularWave::Initialize() {
         }
     }
 
-    wavenumber_ = ComputeWaveNumber(regular_wave_omega_, sim_data_.water_depth, sim_data_.g);
+    wavenumber_ = ComputeWaveNumber(regular_wave_omega_, water_depth_, g_);
 }
 
 void RegularWave::AddH5Data(std::vector<HydroData::RegularWaveInfo>& reg_h5_data,
                             HydroData::SimulationParameters& sim_data) {
-    wave_info_ = reg_h5_data;
-    sim_data_  = sim_data;
+    wave_info_   = reg_h5_data;
+    water_depth_ = sim_data.water_depth;
+    g_           = sim_data.g;
 }
 
 Eigen::Vector3d RegularWave::GetVelocity(const Eigen::Vector3d& position, double time) {
     return GetWaterVelocity(position, time, regular_wave_omega_, regular_wave_amplitude_, regular_wave_phase_,
-                            wavenumber_, sim_data_.water_depth, mwl_);
+                            wavenumber_, water_depth_, mwl_);
 };
 
 double RegularWave::GetElevation(const Eigen::Vector3d& position, double time) {
@@ -372,8 +373,9 @@ Eigen::MatrixXd IrregularWaves::GetExcitationIRF(int b) const {
 
 void IrregularWaves::AddH5Data(std::vector<HydroData::IrregularWaveInfo>& irreg_h5_data,
                                HydroData::SimulationParameters& sim_data) {
-    wave_info_ = irreg_h5_data;
-    sim_data_  = sim_data;
+    wave_info_   = irreg_h5_data;
+    water_depth_ = sim_data.water_depth;
+    g_           = sim_data.g;
 
     InitializeIRFVectors();
 }
@@ -387,11 +389,11 @@ Eigen::Vector3d IrregularWaves::GetVelocity(const Eigen::Vector3d& position, dou
         // position relative to mean water level
         auto z_pos = position.z() - mwl_;
         // Wheeler stretching
-        position_stretched[2] = sim_data_.water_depth * (z_pos - eta) / (sim_data_.water_depth + eta);
+        position_stretched[2] = water_depth_ * (z_pos - eta) / (water_depth_ + eta);
     }
 
     return GetWaterVelocityIrregular(position_stretched, time, spectrum_frequencies_, spectral_densities_,
-                                     spectral_widths_, wave_phases_, wavenumbers_, sim_data_.water_depth, mwl_);
+                                     spectral_widths_, wave_phases_, wavenumbers_, water_depth_, mwl_);
 };
 
 double IrregularWaves::GetElevation(const Eigen::Vector3d& position, double time) {
@@ -520,7 +522,7 @@ void IrregularWaves::CreateSpectrum() {
 
     // precompute wavenumbers
     auto omegas  = 2 * M_PI * spectrum_frequencies_;
-    wavenumbers_ = ComputeWaveNumbers(omegas, sim_data_.water_depth, sim_data_.g);
+    wavenumbers_ = ComputeWaveNumbers(omegas, water_depth_, g_);
 
     // Open a file stream for writing
     std::ofstream outputFile("spectral_densities.txt");
