@@ -69,7 +69,7 @@ Eigen::Vector3d GetWaterVelocity(const Eigen::Vector3d& position,
 
     // get water velocity
     auto water_velocity = Eigen::Vector3d(0.0, 0.0, 0.0);
-    if (2 * M_PI / wavenumber > water_depth) {
+    if (2 * M_PI / wavenumber > water_depth || wavenumber * water_depth > 500.0) {
         // deep water
         water_velocity[0] =
             omega * amplitude * std::exp(wavenumber * z_pos) * cos(wavenumber * x_pos - omega * time + phase);
@@ -109,6 +109,10 @@ double ComputeWaveNumber(double omega,
                          double g,
                          double tolerance   = 1e-6,
                          int max_iterations = 100) {
+    if (water_depth <= 0.0) {
+        throw std::runtime_error("Cannot compute wavenumber with water depth: " + std::to_string(water_depth) + ".");
+    }
+
     // Initial guess for wave number (using deep water approximation)
     double k = omega * omega / g;
 
