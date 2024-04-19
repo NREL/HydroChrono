@@ -20,6 +20,8 @@ int main(int argc, char* argv[]) {
     // auto start = std::chrono::high_resolution_clock::now();
     std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
+    SetChronoDataPath(CHRONO_DATA_DIR);
+
     if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
         return 1;
     }
@@ -41,16 +43,17 @@ int main(int argc, char* argv[]) {
     double timestep = 0.08;
     system.SetTimestepperType(ChTimestepper::Type::HHT);
     system.SetSolverType(ChSolver::Type::GMRES);
-    system.GetSolver()->AsIterative()->SetMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
+    system.GetSolver()->AsIterative()->SetMaxIterations(
+        300);  // the higher, the easier to keep the constraints satisfied.
     double simulationDuration = 1000.0;
 
     // Create user interface
     std::shared_ptr<hydroc::gui::UI> pui = hydroc::gui::CreateUI(visualizationOn);
-    hydroc::gui::UI& ui = *pui.get();
+    hydroc::gui::UI& ui                  = *pui.get();
 
     // some io/viz options
-    bool profilingOn     = true;
-    bool saveDataOn      = true;
+    bool profilingOn = true;
+    bool saveDataOn  = true;
     std::vector<double> time_vector;
     std::vector<double> base_pitch;
     std::vector<double> base_surge;
@@ -150,8 +153,8 @@ int main(int argc, char* argv[]) {
         outputFile.open("./results/DeepCWind_decay.txt");
         if (!outputFile.is_open()) {
             if (!std::filesystem::exists("./results")) {
-                std::cout << "Path " << std::filesystem::absolute("./results")
-                          << " does not exist, creating it now..." << std::endl;
+                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
+                          << std::endl;
                 std::filesystem::create_directory("./results");
                 outputFile.open("./results/DeepCWind_decay.txt");
                 if (!outputFile.is_open()) {

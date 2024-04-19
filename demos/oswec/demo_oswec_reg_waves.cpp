@@ -60,6 +60,9 @@ std::array<double, 3> add_vectors(std::array<double, 3> v1, std::array<double, 3
 
 
 int main(int argc, char* argv[]) {
+
+    SetChronoDataPath(CHRONO_DATA_DIR);
+
     std::vector<double> periods = {4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0, 18.0, 18.5, 19.0, 19.25, 19.5, 20.0, 21.0, 22.0, 24.0};
     int reg_wave_num_max        = periods.size();
 

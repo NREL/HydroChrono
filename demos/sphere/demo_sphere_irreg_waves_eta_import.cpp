@@ -21,6 +21,8 @@ using namespace chrono;
 int main(int argc, char* argv[]) {
     std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
+    SetChronoDataPath(CHRONO_DATA_DIR);
+
     if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
         return 1;
     }
@@ -60,8 +62,8 @@ int main(int argc, char* argv[]) {
     ground->EnableCollision(false);
 
     // some io/viz options
-    bool profilingOn     = true;
-    bool saveDataOn      = true;
+    bool profilingOn = true;
+    bool saveDataOn  = true;
     std::vector<double> time_vector;
     std::vector<double> heave_position;
 
@@ -90,8 +92,7 @@ int main(int argc, char* argv[]) {
 
     // add prismatic joint between sphere and ground (limit to heave motion only)
     auto prismatic = chrono_types::make_shared<ChLinkLockPrismatic>();
-    prismatic->Initialize(sphereBody, ground, false, ChFramed(ChVector3d(0, 0, -2)),
-                          ChFramed(ChVector3d(0, 0, -5)));
+    prismatic->Initialize(sphereBody, ground, false, ChFramed(ChVector3d(0, 0, -2)), ChFramed(ChVector3d(0, 0, -5)));
     system.AddLink(prismatic);
 
     // Create the spring between body_1 and ground. The spring end points are
@@ -132,7 +133,6 @@ int main(int argc, char* argv[]) {
         std::cerr << "Caught unknown exception.\n";
     }
 
-
     std::cout << "Creating TestHydro..." << std::endl;
     TestHydro hydro_forces(bodies, h5fname);
 
@@ -147,29 +147,30 @@ int main(int argc, char* argv[]) {
     fse_plane->EnableCollision(false);
     system.AddBody(fse_plane);
 
-    //std::cout << "SetUpWaveMesh..." << std::endl;
-    //my_hydro_inputs->SetUpWaveMesh();
-    //std::shared_ptr<ChBody> fse_mesh = chrono_types::make_shared<ChBodyEasyMesh>(  //
-    //    my_hydro_inputs->GetMeshFile(),                                            // file name
-    //    1000,                                                                      // density
-    //    false,                                                                     // do not evaluate mass automatically
-    //    true,                                                                      // create visualization asset
-    //    false                                                                      // do not collide
+    // std::cout << "SetUpWaveMesh..." << std::endl;
+    // my_hydro_inputs->SetUpWaveMesh();
+    // std::shared_ptr<ChBody> fse_mesh = chrono_types::make_shared<ChBodyEasyMesh>(  //
+    //     my_hydro_inputs->GetMeshFile(),                                            // file name
+    //     1000,                                                                      // density
+    //     false,                                                                     // do not evaluate mass
+    //     automatically true,                                                                      // create
+    //     visualization asset false                                                                      // do not
+    //     collide
     //);
-    //fse_mesh->SetMass(1.0);
-    //fse_mesh->SetPos_dt(my_hydro_inputs->GetWaveMeshVelocity());
-    //std::cout << "system.Add(fse_mesh)..." << std::endl;
-    //system.Add(fse_mesh);
-    //auto fse_prismatic = chrono_types::make_shared<ChLinkLockPrismatic>();
-    //fse_prismatic->Initialize(fse_plane, fse_mesh, ChFramed(ChVector3d(1.0, 0.0, 0.0), QuatFromAnglY(CH_PI_2)));
-    //system.AddLink(fse_prismatic);
+    // fse_mesh->SetMass(1.0);
+    // fse_mesh->SetPos_dt(my_hydro_inputs->GetWaveMeshVelocity());
+    // std::cout << "system.Add(fse_mesh)..." << std::endl;
+    // system.Add(fse_mesh);
+    // auto fse_prismatic = chrono_types::make_shared<ChLinkLockPrismatic>();
+    // fse_prismatic->Initialize(fse_plane, fse_mesh, ChFramed(ChVector3d(1.0, 0.0, 0.0), QuatFromAnglY(CH_PI_2)));
+    // system.AddLink(fse_prismatic);
 
     //// Create a visualization material
-    //std::cout << "Create a visualization material..." << std::endl;
-    //auto fse_texture = chrono_types::make_shared<ChVisualMaterial>();
-    //fse_texture->SetDiffuseColor(ChColor(0.026f, 0.084f, 0.168f));
-    //fse_texture->SetOpacity(0.1);
-    //fse_mesh->GetVisualShape(0)->SetMaterial(0, fse_texture);
+    // std::cout << "Create a visualization material..." << std::endl;
+    // auto fse_texture = chrono_types::make_shared<ChVisualMaterial>();
+    // fse_texture->SetDiffuseColor(ChColor(0.026f, 0.084f, 0.168f));
+    // fse_texture->SetOpacity(0.1);
+    // fse_mesh->GetVisualShape(0)->SetMaterial(0, fse_texture);
 
     // for profiling
     auto start = std::chrono::high_resolution_clock::now();

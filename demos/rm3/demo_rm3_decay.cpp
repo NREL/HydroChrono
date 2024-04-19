@@ -19,6 +19,8 @@ using namespace chrono;
 int main(int argc, char* argv[]) {
     std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
+    SetChronoDataPath(CHRONO_DATA_DIR);
+
     if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
         return 1;
     }
@@ -44,7 +46,8 @@ int main(int argc, char* argv[]) {
     double timestep = 0.01;
     system.SetTimestepperType(ChTimestepper::Type::HHT);
     system.SetSolverType(ChSolver::Type::GMRES);
-    system.GetSolver()->AsIterative()->SetMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
+    system.GetSolver()->AsIterative()->SetMaxIterations(
+        300);  // the higher, the easier to keep the constraints satisfied.
     ChRealtimeStepTimer realtime_timer;
     double simulationDuration = 40.0;
 
@@ -160,8 +163,8 @@ int main(int argc, char* argv[]) {
         profilingFile.open("./results/rm3_decay_duration_ms.txt");
         if (!profilingFile.is_open()) {
             if (!std::filesystem::exists("./results")) {
-                std::cout << "Path " << std::filesystem::absolute("./results")
-                          << " does not exist, creating it now..." << std::endl;
+                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
+                          << std::endl;
                 std::filesystem::create_directory("./results");
                 profilingFile.open("./results/rm3_duration_ms.txt");
                 if (!profilingFile.is_open()) {
@@ -179,8 +182,8 @@ int main(int argc, char* argv[]) {
         outputFile.open("./results/rm3_decay.txt");
         if (!outputFile.is_open()) {
             if (!std::filesystem::exists("./results")) {
-                std::cout << "Path " << std::filesystem::absolute("./results")
-                          << " does not exist, creating it now..." << std::endl;
+                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
+                          << std::endl;
                 std::filesystem::create_directory("./results");
                 outputFile.open("./results/rm3_decay.txt");
                 if (!outputFile.is_open()) {

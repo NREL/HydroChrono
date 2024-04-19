@@ -14,6 +14,7 @@ if(HYDROCHRONO_ENABLE_IRRLICHT)
 	target_compile_definitions(demo_sphere_decay 
 		PRIVATE 
 		HYDROCHRONO_HAVE_IRRLICHT=1
+		"CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
 	)
 endif()
 
@@ -49,6 +50,7 @@ if(HYDROCHRONO_ENABLE_IRRLICHT)
 	target_compile_definitions(demo_sphere_reg_waves 
 		PRIVATE 
 		HYDROCHRONO_HAVE_IRRLICHT=1
+		"CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
 	)
 endif()
 
@@ -83,6 +85,7 @@ if(HYDROCHRONO_ENABLE_IRRLICHT)
 	target_compile_definitions(demo_sphere_irreg_waves 
 		PRIVATE 
 		HYDROCHRONO_HAVE_IRRLICHT=1
+		"CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
 	)
 endif()
 
@@ -116,6 +119,7 @@ if(HYDROCHRONO_ENABLE_IRRLICHT)
 	target_compile_definitions(demo_sphere_irreg_waves_eta_import 
 		PRIVATE 
 		HYDROCHRONO_HAVE_IRRLICHT=1
+		"CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
 	)
 endif()
 
@@ -148,6 +152,7 @@ if(HYDROCHRONO_ENABLE_IRRLICHT)
 	target_compile_definitions(demo_rm3_decay
 		PRIVATE 
 		HYDROCHRONO_HAVE_IRRLICHT=1
+		"CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
 	)
 endif()
 
@@ -182,6 +187,7 @@ if(HYDROCHRONO_ENABLE_IRRLICHT)
 	target_compile_definitions(demo_rm3_reg_waves
 		PRIVATE 
 		HYDROCHRONO_HAVE_IRRLICHT=1
+		"CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
 	)
 endif()
 
@@ -216,6 +222,7 @@ if(HYDROCHRONO_ENABLE_IRRLICHT)
 	target_compile_definitions(demo_oswec_decay
 		PRIVATE 
 		HYDROCHRONO_HAVE_IRRLICHT=1
+		"CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
 	)
 endif()
 
@@ -249,6 +256,7 @@ if(HYDROCHRONO_ENABLE_IRRLICHT)
 	target_compile_definitions(demo_oswec_reg_waves
 		PRIVATE 
 		HYDROCHRONO_HAVE_IRRLICHT=1
+		"CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
 	)
 endif()
 
@@ -282,6 +290,7 @@ if(HYDROCHRONO_ENABLE_IRRLICHT)
 	target_compile_definitions(demo_f3of_DT1
 		PRIVATE
 		HYDROCHRONO_HAVE_IRRLICHT=1
+		"CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
 	)
 endif()
 
@@ -315,6 +324,7 @@ if(HYDROCHRONO_ENABLE_IRRLICHT)
 	target_compile_definitions(demo_f3of_DT2
 		PRIVATE
 		HYDROCHRONO_HAVE_IRRLICHT=1
+		"CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
 	)
 endif()
 
@@ -347,6 +357,7 @@ if(HYDROCHRONO_ENABLE_IRRLICHT)
 	target_compile_definitions(demo_f3of_DT3
 		PRIVATE
 		HYDROCHRONO_HAVE_IRRLICHT=1
+		"CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
 	)
 endif()
 
@@ -380,6 +391,7 @@ if(HYDROCHRONO_ENABLE_IRRLICHT)
 	target_compile_definitions(demo_DeepCWind_decay
 		PRIVATE
 		HYDROCHRONO_HAVE_IRRLICHT=1
+		"CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
 	)
 endif()
 
