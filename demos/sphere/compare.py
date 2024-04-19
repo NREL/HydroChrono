@@ -23,15 +23,12 @@ if __name__ == '__main__':
     print(testData.shape)
 
 
-
-    testData[:,1] += 2.0  # shift to recenter decay at sea level 0
-
     nval = testData.shape[0]
 
     # resample refData to testData sampling rate
     # Suppose dt is constant with same computation physical time  
     x = np.linspace(testData[0, 0], testData[nval-1, 0], nval)
-    y1 = np.interp(x, refData[:,0], refData[:,6])
+    y1 = np.interp(x, refData[:,0], refData[:,1])
     y2 = np.interp(x, testData[:,0], testData[:,1])
 
     yd = y1 - y2
