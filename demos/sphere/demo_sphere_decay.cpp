@@ -11,7 +11,6 @@
 
 // Use the namespaces of Chrono
 using namespace chrono;
-using namespace chrono::geometry;
 
 // usage: ./sphere_deca.exe [DATADIR] [--nogui]
 //
@@ -19,7 +18,7 @@ using namespace chrono::geometry;
 // environment variable to give the data_directory.
 //
 int main(int argc, char* argv[]) {
-    GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
+    std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
     if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
         return 1;
@@ -41,12 +40,11 @@ int main(int argc, char* argv[]) {
     // system/solver settings
     ChSystemNSC system;
 
-    system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
+    system.SetGravitationalAcceleration(ChVector3d(0.0, 0.0, -9.81));
 
     double timestep = 0.015;
     system.SetSolverType(ChSolver::Type::GMRES);
-    system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
-    system.SetStep(timestep);
+    system.GetSolver()->AsIterative()->SetMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
     ChRealtimeStepTimer realtime_timer;
     double simulationDuration = 40.0;
 
@@ -73,8 +71,8 @@ int main(int argc, char* argv[]) {
     );
 
     // define the body's initial conditions
-    sphereBody->SetNameString("body1");  // must set body name correctly! (must match .h5 file)
-    sphereBody->SetPos(ChVector<>(0, 0, -1));
+    sphereBody->SetName("body1");  // must set body name correctly! (must match .h5 file)
+    sphereBody->SetPos(ChVector3d(0, 0, -1));
     sphereBody->SetMass(261.8e3);
 
     // Create a visualization material

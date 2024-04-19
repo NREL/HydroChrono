@@ -59,21 +59,14 @@ class ChLoadAddedMass : public chrono::ChLoadCustomMultiple {
      * @brief This is the function that sets the infinite added mass matrix every timestep.
      *
      * From Chrono docs:
-     * For efficiency reasons, do not let the parent class do automatic differentiation
-     * to compute the R, K matrices. Use analytic expressions instead. For example, R is
-     * the well known gyroscopic damping matrix. Also, compute the M matrix.
+     * Compute the K=-dQ/dx, R=-dQ/dv, M=-dQ/da Jacobians.
+     * Implementation in a derived class should load the Jacobian matrices K, R, M in the structure 'm_jacobians'.
+     * Note the sign that is flipped because we assume equations are written with Q moved to left-hand side.
      *
      * @param state_x state position to evaluate jacobians
      * @param state_w state speed to evaluate jacobians
-     * @param mK result -dQ/dx
-     * @param mR result -dQ/dv
-     * @param mM result -dQ/da
      */
-    virtual void ComputeJacobian(ChState* state_x,
-                                 ChStateDelta* state_w,
-                                 ChMatrixRef mK,
-                                 ChMatrixRef mR,
-                                 ChMatrixRef mM) override;
+    virtual void ComputeJacobian(ChState* state_x, ChStateDelta* state_w) override;
 
     /**
      * @brief Computes LoadIntLoadResidual_Mv for vector w, const c, and vector R. Also carried over from chrono
