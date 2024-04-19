@@ -19,6 +19,8 @@ using namespace chrono;
 int main(int argc, char* argv[]) {
     std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
+    SetChronoDataPath(CHRONO_DATA_DIR);
+
     if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
         return 1;
     }
@@ -43,7 +45,8 @@ int main(int argc, char* argv[]) {
     system.SetGravitationalAcceleration(ChVector3d(0.0, 0.0, -9.81));
     double timestep = 0.02;
     system.SetSolverType(ChSolver::Type::SPARSE_QR);
-    system.GetSolver()->AsIterative()->SetMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
+    system.GetSolver()->AsIterative()->SetMaxIterations(
+        300);  // the higher, the easier to keep the constraints satisfied.
     ChRealtimeStepTimer realtime_timer;
     double simulationDuration = 300.0;
 
@@ -222,8 +225,8 @@ int main(int argc, char* argv[]) {
         outputFile.open("./results/CHRONO_F3OF_DT2_PITCH.txt");
         if (!outputFile.is_open()) {
             if (!std::filesystem::exists("./results")) {
-                std::cout << "Path " << std::filesystem::absolute("./results")
-                          << " does not exist, creating it now..." << std::endl;
+                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
+                          << std::endl;
                 std::filesystem::create_directory("./results");
                 outputFile.open("./results/CHRONO_F3OF_DT2_PITCH.txt");
                 if (!outputFile.is_open()) {

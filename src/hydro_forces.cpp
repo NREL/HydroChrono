@@ -96,7 +96,7 @@ ForceFunc6d::ForceFunc6d() : forces_{{this, 0}, {this, 1}, {this, 2}, {this, 3},
 
 ForceFunc6d::ForceFunc6d(std::shared_ptr<ChBody> object, TestHydro* user_all_forces) : ForceFunc6d() {
     body_             = object;
-    std::string temp  = body_->GetName();  // remove "body" from "bodyN", convert N to int, get body num
+    std::string temp  = body_->GetName();        // remove "body" from "bodyN", convert N to int, get body num
     b_num_            = stoi(temp.erase(0, 4));  // 1 indexed TODO: fix b_num starting here to be 0 indexed
     all_hydro_forces_ = user_all_forces;         // TODO switch to smart pointers? does this use = ?
     if (all_hydro_forces_ == NULL) {

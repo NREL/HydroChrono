@@ -21,6 +21,8 @@ using namespace chrono;
 int main(int argc, char* argv[]) {
     std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
+    SetChronoDataPath(CHRONO_DATA_DIR);
+
     if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
         return 1;
     }
@@ -37,7 +39,7 @@ int main(int argc, char* argv[]) {
         (DATADIR / "sphere" / "geometry" / "oes_task10_sphere.obj").lexically_normal().generic_string();
     auto h5fname = (DATADIR / "sphere" / "hydroData" / "sphere.h5").lexically_normal().generic_string();
 
-//    // system/solver settings
+    //    // system/solver settings
     ChSystemNSC system;
     system.SetGravitationalAcceleration(ChVector3d(0.0, 0.0, -9.81));
     double timestep = 0.015;
@@ -60,11 +62,11 @@ int main(int argc, char* argv[]) {
     ground->EnableCollision(false);
 
     // some io/viz options
-    bool profilingOn     = true;
-    bool saveDataOn      = true;
+    bool profilingOn = true;
+    bool saveDataOn  = true;
     std::vector<double> time_vector;
     std::vector<double> heave_position;
-//
+    //
     // set up body from a mesh
     std::cout << "Attempting to open mesh file: " << body1_meshfame << std::endl;
     std::shared_ptr<ChBody> sphereBody = chrono_types::make_shared<ChBodyEasyMesh>(  //
@@ -74,7 +76,7 @@ int main(int argc, char* argv[]) {
         true,   // create visualization asset
         false   // do not collide
     );
-//
+    //
     // define the body's initial conditions
     system.Add(sphereBody);
     sphereBody->SetName("body1");  // must set body name correctly! (must match .h5 file)
@@ -90,8 +92,7 @@ int main(int argc, char* argv[]) {
 
     // add prismatic joint between sphere and ground (limit to heave motion only)
     auto prismatic = chrono_types::make_shared<ChLinkLockPrismatic>();
-    prismatic->Initialize(sphereBody, ground, false, ChFramed(ChVector3d(0, 0, -2)),
-                          ChFramed(ChVector3d(0, 0, -5)));
+    prismatic->Initialize(sphereBody, ground, false, ChFramed(ChVector3d(0, 0, -2)), ChFramed(ChVector3d(0, 0, -5)));
     system.AddLink(prismatic);
 
     // create the spring between body_1 and ground. The spring end points are

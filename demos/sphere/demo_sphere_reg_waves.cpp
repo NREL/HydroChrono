@@ -18,9 +18,11 @@ using namespace chrono;
 // environment variable to give the data_directory.
 //
 int main(int argc, char* argv[]) {
+    SetChronoDataPath(CHRONO_DATA_DIR);
+
     std::vector<double> task10_wave_amps_0005 = {0.044, 0.078, 0.095, 0.123, 0.177, 0.24, 0.314, 0.397, 0.491, 0.594};
     std::vector<double> task10_wave_amps_002  = {0.177, 0.314, 0.380, 0.491, 0.706, 0.961, 1.256, 1.589, 1.962, 2.374};
-    std::vector<double> task10_wave_amps = task10_wave_amps_002;
+    std::vector<double> task10_wave_amps      = task10_wave_amps_002;
 
     double task10_wave_omegas[]    = {2.094395102, 1.570796327, 1.427996661, 1.256637061, 1.047197551,
                                       0.897597901, 0.785398163, 0.698131701, 0.628318531, 0.571198664};
@@ -31,7 +33,6 @@ int main(int argc, char* argv[]) {
     std::cout << reg_wave_num_max;
 
     for (int reg_wave_num = 1; reg_wave_num <= reg_wave_num_max; ++reg_wave_num) {
-
         std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
         if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
@@ -56,7 +57,8 @@ int main(int argc, char* argv[]) {
         system.SetGravitationalAcceleration(ChVector3d(0.0, 0.0, -9.81));
         double timestep = 0.015;
         system.SetSolverType(ChSolver::Type::GMRES);
-        system.GetSolver()->AsIterative()->SetMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
+        system.GetSolver()->AsIterative()->SetMaxIterations(
+            300);  // the higher, the easier to keep the constraints satisfied.
         ChRealtimeStepTimer realtime_timer;
         double simulation_duration = 600.0;
 
@@ -121,7 +123,7 @@ int main(int argc, char* argv[]) {
         spring_1->SetDampingCoefficient(damping_coef);
         system.AddLink(spring_1);
 
-        auto my_hydro_inputs                    = std::make_shared<RegularWave>(1);
+        auto my_hydro_inputs                     = std::make_shared<RegularWave>(1);
         my_hydro_inputs->regular_wave_amplitude_ = task10_wave_amps[reg_wave_num - 1];    // 0.095;
         my_hydro_inputs->regular_wave_omega_     = task10_wave_omegas[reg_wave_num - 1];  // 1.427996661;
 
@@ -155,7 +157,7 @@ int main(int argc, char* argv[]) {
         if (profilingOn) {
             std::string out_file = "./results/sphere_reg_waves_" + std::to_string(reg_wave_num) + "_duration.txt";
             std::ofstream outputFile(out_file);
-            //profilingFile.open("./results/sphere_reg_waves_duration.txt");
+            // profilingFile.open("./results/sphere_reg_waves_duration.txt");
             if (!outputFile.is_open()) {
                 if (!std::filesystem::exists("./results")) {
                     std::cout << "Path " << std::filesystem::absolute("./results")

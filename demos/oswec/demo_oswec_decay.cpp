@@ -58,9 +58,10 @@ std::array<double, 3> add_vectors(std::array<double, 3> v1, std::array<double, 3
     return {v1[0] + v2[0], v1[1] + v2[1], v1[2] + v2[2]};
 }
 
-
 int main(int argc, char* argv[]) {
     std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
+
+    SetChronoDataPath(CHRONO_DATA_DIR);
 
     if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
         return 1;
@@ -86,7 +87,8 @@ int main(int argc, char* argv[]) {
     double timestep = 0.03;
     // system.SetTimestepperType(ChTimestepper::Type::HHT);
     system.SetSolverType(ChSolver::Type::GMRES);
-    // system.GetSolver()->AsIterative()->SetMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
+    // system.GetSolver()->AsIterative()->SetMaxIterations(300);  // the higher, the easier to keep the constraints
+    // satisfied.
     ChRealtimeStepTimer realtime_timer;
     double simulationDuration = 400.0;
 
@@ -114,7 +116,6 @@ int main(int argc, char* argv[]) {
     std::cout << "The rotated vector is [" << rotated_hinge_to_cg[0] << ", " << rotated_hinge_to_cg[1] << ", "
               << rotated_hinge_to_cg[2] << "]" << std::endl;
     std::cout << "The rotated vector is [" << new_cg[0] << ", " << new_cg[1] << ", " << new_cg[2] << "]" << std::endl;
-
 
     // set up body from a mesh
     std::cout << "Attempting to open mesh file: " << body1_meshfame << std::endl;
@@ -219,8 +220,8 @@ int main(int argc, char* argv[]) {
         profilingFile.open("./results/oswec_duration.txt");
         if (!profilingFile.is_open()) {
             if (!std::filesystem::exists("./results")) {
-                std::cout << "Path " << std::filesystem::absolute("./results")
-                          << " does not exist, creating it now..." << std::endl;
+                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
+                          << std::endl;
                 std::filesystem::create_directory("./results/");
                 profilingFile.open("./results/oswec_duration.txt");
                 if (!profilingFile.is_open()) {
@@ -238,8 +239,8 @@ int main(int argc, char* argv[]) {
         outputFile.open("./results/oswec_decay.txt");
         if (!outputFile.is_open()) {
             if (!std::filesystem::exists("./results")) {
-                std::cout << "Path " << std::filesystem::absolute("./results")
-                          << " does not exist, creating it now..." << std::endl;
+                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
+                          << std::endl;
                 std::filesystem::create_directory("./results/");
                 outputFile.open("./results/oswec_decay.txt");
                 if (!outputFile.is_open()) {
