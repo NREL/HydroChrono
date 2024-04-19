@@ -24,18 +24,15 @@ ChLoadAddedMass::ChLoadAddedMass(const std::vector<HydroData::BodyInfo>& user_h5
     infinite_added_mass_system = infinite_added_mass;
 }
 
-void ChLoadAddedMass::ComputeJacobian(ChState* state_x,       ///< state position to evaluate jacobians
-                                      ChStateDelta* state_w,  ///< state speed to evaluate jacobians
-                                      ChMatrixRef mK,         ///< result dQ/dx
-                                      ChMatrixRef mR,         ///< result dQ/dv
-                                      ChMatrixRef mM          ///< result dQ/da
+void ChLoadAddedMass::ComputeJacobian(ChState* state_x,      ///< state position to evaluate jacobians
+                                      ChStateDelta* state_w  ///< state speed to evaluate jacobians
 ) {
     // The following ensures that the added mass matrix matches the size of the ChSystem mass matrix. It is necessary
     // for systems that have both hydro and non-hydro bodies when adding a system-wide load.
     // @todo if possible, remove hack by using initialiazer function called AFTER the ChSystem is assembled.
 
     // get mass matrix size
-    auto mmrows = system->GetNcoords_w();  // number of rows in system mass matrix
+    auto mmrows = system->GetNumCoordsVelLevel();  // number of rows in system mass matrix
     // check if ChSystem mass matrix size different from added mass matrix size
     if (mmrows != infinite_added_mass_system.rows() && mmrows > 0) {
         // initialize/update system matrix;
@@ -44,19 +41,19 @@ void ChLoadAddedMass::ComputeJacobian(ChState* state_x,       ///< state positio
         infinite_added_mass_system.block(0, 0, amrows, amrows) = infinite_added_mass;
     }
     // set mass matrix here
-    jacobians->M = infinite_added_mass_system;
+    m_jacobians->M = infinite_added_mass_system;
 
     // R gyroscopic damping matrix terms (6Nx6N)
     // 0 for added mass
-    jacobians->R.setZero();
+    m_jacobians->R.setZero();
 
     // K inertial stiffness matrix terms (6Nx6N)
     // 0 for added mass
-    jacobians->K.setZero();
+    m_jacobians->K.setZero();
 }
 
 void ChLoadAddedMass::LoadIntLoadResidual_Mv(ChVectorDynamic<>& R, const ChVectorDynamic<>& w, const double c) {
-    if (!this->jacobians) return;
+    if (!this->m_jacobians) return;
 
     // if (!loadable->IsSubBlockActive(0))
     //	return;
@@ -70,5 +67,5 @@ void ChLoadAddedMass::LoadIntLoadResidual_Mv(ChVectorDynamic<>& R, const ChVecto
     // R.segment(loadable->GetSubBlockOffset(0) + 3, 3) += c * (this->mass * chrono::Vcross(this->c_m, a_x) + this->I *
     // a_w).eigen();
     // since R is a vector, we can probably just do R += C*M*a with no need to separate w into a_x and a_w above
-    R += c * jacobians->M * w;
+    R += c * m_jacobians->M * w;
 }

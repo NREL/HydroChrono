@@ -12,7 +12,6 @@
 
 // Use the namespaces of Chrono
 using namespace chrono;
-using namespace chrono::geometry;
 
 // usage: ./<demos>.exe [DATADIR] [--nogui]
 //
@@ -20,7 +19,7 @@ using namespace chrono::geometry;
 // environment variable to give the data_directory.
 //
 int main(int argc, char* argv[]) {
-    GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
+    std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
     if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
         return 1;
@@ -40,11 +39,10 @@ int main(int argc, char* argv[]) {
 
     // system/solver settings
     ChSystemNSC system;
-    system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
+    system.SetGravitationalAcceleration(ChVector3d(0.0, 0.0, -9.81));
     double timestep = 0.015;
     system.SetSolverType(ChSolver::Type::GMRES);
-    system.SetSolverMaxIterations(300);
-    system.SetStep(timestep);
+    system.GetSolver()->AsIterative()->SetMaxIterations(300);
     ChRealtimeStepTimer realtime_timer;
     double simulationDuration = 600.0;
 
@@ -56,10 +54,10 @@ int main(int argc, char* argv[]) {
     // Setup Ground
     auto ground = chrono_types::make_shared<ChBody>();
     system.AddBody(ground);
-    ground->SetPos(ChVector<>(0, 0, -5));
-    ground->SetIdentifier(-1);
-    ground->SetBodyFixed(true);
-    ground->SetCollide(false);
+    ground->SetPos(ChVector3d(0, 0, -5));
+    ground->SetTag(-1);
+    ground->SetFixed(true);
+    ground->EnableCollision(false);
 
     // some io/viz options
     bool profilingOn     = true;
@@ -79,8 +77,8 @@ int main(int argc, char* argv[]) {
 
     // define the body's initial conditions
     system.Add(sphereBody);
-    sphereBody->SetNameString("body1");  // must set body name correctly! (must match .h5 file)
-    sphereBody->SetPos(ChVector<>(0, 0, -2));
+    sphereBody->SetName("body1");  // must set body name correctly! (must match .h5 file)
+    sphereBody->SetPos(ChVector3d(0, 0, -2));
     sphereBody->SetMass(261.8e3);
 
     // Create a visualization material
@@ -92,8 +90,8 @@ int main(int argc, char* argv[]) {
 
     // add prismatic joint between sphere and ground (limit to heave motion only)
     auto prismatic = chrono_types::make_shared<ChLinkLockPrismatic>();
-    prismatic->Initialize(sphereBody, ground, false, ChCoordsys<>(ChVector<>(0, 0, -2)),
-                          ChCoordsys<>(ChVector<>(0, 0, -5)));
+    prismatic->Initialize(sphereBody, ground, false, ChFramed(ChVector3d(0, 0, -2)),
+                          ChFramed(ChVector3d(0, 0, -5)));
     system.AddLink(prismatic);
 
     // Create the spring between body_1 and ground. The spring end points are
@@ -102,8 +100,8 @@ int main(int argc, char* argv[]) {
     double spring_coef  = 0.0;
     double damping_coef = 0.0;
     auto spring_1       = chrono_types::make_shared<ChLinkTSDA>();
-    spring_1->Initialize(sphereBody, ground, false, ChVector<>(0, 0, -2),
-                         ChVector<>(0, 0, -5));  // false means positions are in global frame
+    spring_1->Initialize(sphereBody, ground, false, ChVector3d(0, 0, -2),
+                         ChVector3d(0, 0, -5));  // false means positions are in global frame
     spring_1->SetSpringCoefficient(spring_coef);
     spring_1->SetDampingCoefficient(damping_coef);
     system.AddLink(spring_1);
@@ -144,9 +142,9 @@ int main(int argc, char* argv[]) {
     std::cout << "Creating fse mesh..." << std::endl;
     // set up free surface from a mesh
     auto fse_plane = chrono_types::make_shared<ChBody>();
-    fse_plane->SetPos(ChVector<>(0, 0, 0));
-    fse_plane->SetBodyFixed(true);
-    fse_plane->SetCollide(false);
+    fse_plane->SetPos(ChVector3d(0, 0, 0));
+    fse_plane->SetFixed(true);
+    fse_plane->EnableCollision(false);
     system.AddBody(fse_plane);
 
     //std::cout << "SetUpWaveMesh..." << std::endl;
@@ -163,7 +161,7 @@ int main(int argc, char* argv[]) {
     //std::cout << "system.Add(fse_mesh)..." << std::endl;
     //system.Add(fse_mesh);
     //auto fse_prismatic = chrono_types::make_shared<ChLinkLockPrismatic>();
-    //fse_prismatic->Initialize(fse_plane, fse_mesh, ChCoordsys<>(ChVector<>(1.0, 0.0, 0.0), Q_from_AngY(CH_C_PI_2)));
+    //fse_prismatic->Initialize(fse_plane, fse_mesh, ChFramed(ChVector3d(1.0, 0.0, 0.0), QuatFromAnglY(CH_PI_2)));
     //system.AddLink(fse_prismatic);
 
     //// Create a visualization material

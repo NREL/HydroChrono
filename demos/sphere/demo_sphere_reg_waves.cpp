@@ -11,7 +11,6 @@
 
 // Use the namespaces of Chrono
 using namespace chrono;
-using namespace chrono::geometry;
 
 // usage: ./<demos>.exe [DATADIR] [--nogui]
 //
@@ -33,7 +32,7 @@ int main(int argc, char* argv[]) {
 
     for (int reg_wave_num = 1; reg_wave_num <= reg_wave_num_max; ++reg_wave_num) {
 
-        GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
+        std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
         if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
             return 1;
@@ -54,11 +53,10 @@ int main(int argc, char* argv[]) {
 
         // system/solver settings
         ChSystemNSC system;
-        system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
+        system.SetGravitationalAcceleration(ChVector3d(0.0, 0.0, -9.81));
         double timestep = 0.015;
         system.SetSolverType(ChSolver::Type::GMRES);
-        system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
-        system.SetStep(timestep);
+        system.GetSolver()->AsIterative()->SetMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
         ChRealtimeStepTimer realtime_timer;
         double simulation_duration = 600.0;
 
@@ -70,10 +68,10 @@ int main(int argc, char* argv[]) {
         // Setup Ground
         auto ground = chrono_types::make_shared<ChBody>();
         system.AddBody(ground);
-        ground->SetPos(ChVector<>(0, 0, -5));
-        ground->SetIdentifier(-1);
-        ground->SetBodyFixed(true);
-        ground->SetCollide(false);
+        ground->SetPos(ChVector3d(0, 0, -5));
+        ground->SetTag(-1);
+        ground->SetFixed(true);
+        ground->EnableCollision(false);
 
         // some io/viz options
         bool profilingOn = true;
@@ -95,8 +93,8 @@ int main(int argc, char* argv[]) {
 
         // define the body's initial conditions
         system.Add(sphereBody);
-        sphereBody->SetNameString("body1");  // must set body name correctly! (must match .h5 file)
-        sphereBody->SetPos(ChVector<>(0, 0, -2));
+        sphereBody->SetName("body1");  // must set body name correctly! (must match .h5 file)
+        sphereBody->SetPos(ChVector3d(0, 0, -2));
         sphereBody->SetMass(261.8e3);
 
         // Create a visualization material
@@ -106,8 +104,8 @@ int main(int argc, char* argv[]) {
 
         // add prismatic joint between sphere and ground (limit to heave motion only)
         auto prismatic = chrono_types::make_shared<ChLinkLockPrismatic>();
-        prismatic->Initialize(sphereBody, ground, false, ChCoordsys<>(ChVector<>(0, 0, -2)),
-                              ChCoordsys<>(ChVector<>(0, 0, -5)));
+        prismatic->Initialize(sphereBody, ground, false, ChFramed(ChVector3d(0, 0, -2)),
+                              ChFramed(ChVector3d(0, 0, -5)));
         system.AddLink(prismatic);
 
         // Create the spring between body_1 and ground. The spring end points are
@@ -116,8 +114,8 @@ int main(int argc, char* argv[]) {
         double spring_coef  = 0.0;
         double damping_coef = task10_damping_coeffs[reg_wave_num - 1];
         auto spring_1       = chrono_types::make_shared<ChLinkTSDA>();
-        spring_1->Initialize(sphereBody, ground, false, ChVector<>(0, 0, -2),
-                             ChVector<>(0, 0, -5));  // false means positions are in global frame
+        spring_1->Initialize(sphereBody, ground, false, ChVector3d(0, 0, -2),
+                             ChVector3d(0, 0, -5));  // false means positions are in global frame
         // spring_1->SetRestLength(rest_length); // if not set, the rest length is calculated from initial position
         spring_1->SetSpringCoefficient(spring_coef);
         spring_1->SetDampingCoefficient(damping_coef);
