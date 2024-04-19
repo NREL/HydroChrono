@@ -72,7 +72,7 @@ if(TARGET demo_sphere_decay)
         )
 
         set(FILE_RST ${CMAKE_CURRENT_BINARY_DIR}/results/sphere_decay.txt)
-        set(FILE_REF ${HYDROCHRONO_DATA_DIR}/sphere/postprocessing/sphere_decay_comparison.txt)
+        set(FILE_REF ${HYDROCHRONO_DATA_DIR}/sphere/postprocessing/sphere_decay_hc_data.txt)
 
         add_test(NAME demo_sphere_decay_ref
                 COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/../demos/sphere/compare.py ${FILE_REF} ${FILE_RST}
