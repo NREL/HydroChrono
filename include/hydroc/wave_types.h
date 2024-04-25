@@ -70,6 +70,8 @@ class WaveBase {
 
     virtual Eigen::Vector3d GetVelocity(const Eigen::Vector3d& position, double time) = 0;
 
+    virtual Eigen::Vector3d GetAcceleration(const Eigen::Vector3d& position, double time) = 0;
+
     /// @brief Mean water level
     double mwl_ = 0.0;
     /// @brief Gravitational acceleration
@@ -100,6 +102,9 @@ class NoWave : public WaveBase {
     WaveMode GetWaveMode() override { return mode_; }
     double GetElevation(const Eigen::Vector3d& position, double time) override { return 0.0; };
     Eigen::Vector3d GetVelocity(const Eigen::Vector3d& position, double time) override {
+        return Eigen::Vector3d(0.0, 0.0, 0.0);
+    }
+    Eigen::Vector3d GetAcceleration(const Eigen::Vector3d& position, double time) override {
         return Eigen::Vector3d(0.0, 0.0, 0.0);
     }
 
@@ -174,6 +179,8 @@ class RegularWave : public WaveBase {
     double GetElevation(const Eigen::Vector3d& position, double time) override;
 
     Eigen::Vector3d GetVelocity(const Eigen::Vector3d& position, double time) override;
+
+    Eigen::Vector3d GetAcceleration(const Eigen::Vector3d& position, double time) override;
 
   private:
     unsigned int num_bodies_;
@@ -364,6 +371,8 @@ class IrregularWaves : public WaveBase {
     double GetElevation(const Eigen::Vector3d& position, double time) override;
 
     Eigen::Vector3d GetVelocity(const Eigen::Vector3d& position, double time) override;
+
+    Eigen::Vector3d GetAcceleration(const Eigen::Vector3d& position, double time) override;
 
   private:
     IrregularWaveParams params_;
