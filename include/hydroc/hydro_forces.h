@@ -78,7 +78,7 @@ class ComponentFunc : public ChFunction {
      * @param x Time from simulation.
      * @return Force on body in the specified degree of freedom at time x.
      */
-    virtual double Get_y(double x) const override;
+    virtual double GetVal(double x) const override;
 
   private:
     ForceFunc6d* base_;  ///< Pointer to the full 6D force on the body.

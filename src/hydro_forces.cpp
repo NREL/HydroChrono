@@ -69,7 +69,7 @@ ComponentFunc::ComponentFunc(const ComponentFunc& old) {
     index_ = old.index_;
 }
 
-double ComponentFunc::Get_y(double x) const {
+double ComponentFunc::GetVal(double x) const {
     if (base_ == NULL) {
         std::cout << "base == Null!" << std::endl;
         return 0;
@@ -90,13 +90,13 @@ ForceFunc6d::ForceFunc6d() : forces_{{this, 0}, {this, 1}, {this, 2}, {this, 3},
     chrono_torque_ = chrono_types::make_shared<ChForce>();
     chrono_force_->SetAlign(ChForce::AlignmentFrame::WORLD_DIR);
     chrono_torque_->SetAlign(ChForce::AlignmentFrame::WORLD_DIR);
-    chrono_force_->SetNameString("hydroforce");
-    chrono_torque_->SetNameString("hydrotorque");
+    chrono_force_->SetName("hydroforce");
+    chrono_torque_->SetName("hydrotorque");
 }
 
 ForceFunc6d::ForceFunc6d(std::shared_ptr<ChBody> object, TestHydro* user_all_forces) : ForceFunc6d() {
     body_             = object;
-    std::string temp  = body_->GetNameString();  // remove "body" from "bodyN", convert N to int, get body num
+    std::string temp  = body_->GetName();        // remove "body" from "bodyN", convert N to int, get body num
     b_num_            = stoi(temp.erase(0, 4));  // 1 indexed TODO: fix b_num starting here to be 0 indexed
     all_hydro_forces_ = user_all_forces;         // TODO switch to smart pointers? does this use = ?
     if (all_hydro_forces_ == NULL) {
@@ -254,7 +254,7 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
     assert(num_bodies_ > 0);
 
     const double rho = file_info_.GetRhoVal();
-    const auto g_acc = bodies_[0]->GetSystem()->Get_G_acc();  // assuming all bodies in same system
+    const auto g_acc = bodies_[0]->GetSystem()->GetGravitationalAcceleration();  // assuming all bodies in same system
     const double gg  = g_acc.Length();
 
     for (int b = 0; b < num_bodies_; b++) {
@@ -266,7 +266,7 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 
         // hydrostatic stiffness due to offset from equilibrium
         const auto body_position = body->GetPos();
-        const auto body_rotation = body->GetRot().Q_to_Euler123();
+        const auto body_rotation = body->GetRot().GetCardanAnglesXYZ();
 
         chrono::ChVectorN<double, kDofPerBody> body_displacement;
         for (int ii = 0; ii < kDofLinOrRot; ii++) {
@@ -288,7 +288,7 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 
         int r_offset = kDofLinOrRot * b;
         const auto cg2cb =
-            chrono::ChVector<double>(cb_minus_cg_[r_offset], cb_minus_cg_[r_offset + 1], cb_minus_cg_[r_offset + 2]);
+            chrono::ChVector3d(cb_minus_cg_[r_offset], cb_minus_cg_[r_offset + 1], cb_minus_cg_[r_offset + 2]);
         const auto buoyancy2 = cg2cb % buoyancy;
 
         for (int ii = 0; ii < kDofLinOrRot; ii++) {
@@ -319,8 +319,8 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
         auto& body                  = bodies_[b];
         auto& velocity_history_body = velocity_history_[b];
 
-        auto vel                    = body->GetPos_dt();
-        auto wvel                   = body->GetWvel_par();
+        auto vel                    = body->GetPosDt();
+        auto wvel                   = body->GetAngVelParent();
         std::vector<double> vel_vec = {vel[0], vel[1], vel[2], wvel[0], wvel[1], wvel[2]};
         velocity_history_body.insert(velocity_history_body.begin(), vel_vec);
     }

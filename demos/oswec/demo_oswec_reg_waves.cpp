@@ -11,7 +11,6 @@
 
 // Use the namespaces of Chrono
 using namespace chrono;
-using namespace chrono::geometry;
 
 // usage: ./<demos>.exe [DATADIR] [--nogui]
 //
@@ -61,11 +60,14 @@ std::array<double, 3> add_vectors(std::array<double, 3> v1, std::array<double, 3
 
 
 int main(int argc, char* argv[]) {
+
+    SetChronoDataPath(CHRONO_DATA_DIR);
+
     std::vector<double> periods = {4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0, 18.0, 18.5, 19.0, 19.25, 19.5, 20.0, 21.0, 22.0, 24.0};
     int reg_wave_num_max        = periods.size();
 
     for (int reg_wave_num = 1; reg_wave_num <= reg_wave_num_max; ++reg_wave_num) {
-        GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
+        std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
         if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
             return 1;
@@ -87,12 +89,11 @@ int main(int argc, char* argv[]) {
         // system/solver settings
         ChSystemNSC system;
 
-        system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
+        system.SetGravitationalAcceleration(ChVector3d(0.0, 0.0, -9.81));
         double timestep = 0.03;
         // system.SetTimestepperType(ChTimestepper::Type::HHT);
         system.SetSolverType(ChSolver::Type::GMRES);
-        // system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
-        system.SetStep(timestep);
+        // system.GetSolver()->AsIterative()->SetMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
         ChRealtimeStepTimer realtime_timer;
         double simulationDuration = 1000.0;
 
@@ -139,13 +140,13 @@ int main(int argc, char* argv[]) {
 
         // define the float's initial conditions
         system.Add(flap_body);
-        flap_body->SetNameString("body1");
-        auto ang_rad = CH_C_PI / 18.0;
-        // flap_body->SetPos(ChVector<>(new_cg[0], new_cg[1], new_cg[2]));
-        flap_body->SetPos(ChVector<>(0.0, 0.0, -3.9));
-        //flap_body->SetRot(Q_from_AngAxis(ang_rad, VECT_Y));
+        flap_body->SetName("body1");
+        auto ang_rad = CH_PI / 18.0;
+        // flap_body->SetPos(ChVector3d(new_cg[0], new_cg[1], new_cg[2]));
+        flap_body->SetPos(ChVector3d(0.0, 0.0, -3.9));
+        //flap_body->SetRot(QuatFromAngleY(ang_rad));
         flap_body->SetMass(127000.0);
-        flap_body->SetInertiaXX(ChVector<>(1.85e6, 1.85e6, 1.85e6));
+        flap_body->SetInertiaXX(ChVector3d(1.85e6, 1.85e6, 1.85e6));
         // notes: mass and inertia added to added mass and system mass correctly.
 
         // set up body from a mesh
@@ -165,19 +166,19 @@ int main(int argc, char* argv[]) {
 
         // define the plate's initial conditions
         system.Add(base_body);
-        base_body->SetNameString("body2");
-        base_body->SetPos(ChVector<>(0, 0, -10.15));
+        base_body->SetName("body2");
+        base_body->SetPos(ChVector3d(0, 0, -10.15));
         base_body->SetMass(1e9);
-        base_body->SetInertiaXX(ChVector<>(1e6, 1e6, 1e6));
-        // base_body->SetBodyFixed(true);
+        base_body->SetInertiaXX(ChVector3d(1e6, 1e6, 1e6));
+        // base_body->SetFixed(true);
 
         // create ground
         auto ground = chrono_types::make_shared<ChBody>();
         system.AddBody(ground);
-        ground->SetPos(ChVector<>(0, 0, -10.15));
-        ground->SetIdentifier(-1);
-        ground->SetBodyFixed(true);
-        ground->SetCollide(false);
+        ground->SetPos(ChVector3d(0, 0, -10.15));
+        ground->SetTag(-1);
+        ground->SetFixed(true);
+        ground->EnableCollision(false);
         // fix base to ground with special constraint (don't use setfixed() because of mass matrix)
         auto anchor = chrono_types::make_shared<ChLinkMateGeneric>();
         anchor->Initialize(base_body, ground, false, base_body->GetVisualModelFrame(),
@@ -186,9 +187,9 @@ int main(int argc, char* argv[]) {
         anchor->SetConstrainedCoords(true, true, true, true, true, true);  // x, y, z, Rx, Ry, Rz
 
         // define base-fore flap joint
-        ChQuaternion<> revoluteRot = Q_from_AngX(CH_C_PI / 2.0);
+        ChQuaternion<> revoluteRot = QuatFromAngleX(CH_PI / 2.0);
         auto revolute              = chrono_types::make_shared<ChLinkLockRevolute>();
-        revolute->Initialize(base_body, flap_body, ChCoordsys<>(ChVector<>(0.0, 0.0, -8.9), revoluteRot));
+        revolute->Initialize(base_body, flap_body, ChFramed(ChVector3d(0.0, 0.0, -8.9), revoluteRot));
         system.AddLink(revolute);
 
         // auto default_dont_add_waves = std::make_shared<NoWave>(2);
@@ -198,9 +199,9 @@ int main(int argc, char* argv[]) {
         bodies.push_back(flap_body);
         bodies.push_back(base_body);
 
-        auto my_hydro_inputs                    = std::make_shared<RegularWave>(bodies.size());
+        auto my_hydro_inputs                    = std::make_shared<RegularWave>(static_cast<unsigned int>(bodies.size()));
         my_hydro_inputs->regular_wave_amplitude_ = 0.01;
-        my_hydro_inputs->regular_wave_omega_     = (2 * CH_C_PI)/(periods[reg_wave_num - 1]);
+        my_hydro_inputs->regular_wave_omega_     = (2 * CH_PI)/(periods[reg_wave_num - 1]);
 
         //// attach hydrodynamic forces to body
         /*std::vector<std::shared_ptr<ChBody>> bodies;
@@ -224,7 +225,7 @@ int main(int argc, char* argv[]) {
 
                 // append data to output vector
                 time_vector.push_back(system.GetChTime());
-                flap_rot.push_back(flap_body->GetRot().Q_to_Euler123().y());
+                flap_rot.push_back(flap_body->GetRot().GetCardanAnglesXYZ().y());
             }
         }
 

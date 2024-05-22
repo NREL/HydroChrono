@@ -10,9 +10,8 @@ using namespace hydroc::gui;
     #include <chrono_irrlicht/ChVisualSystemIrrlicht.h>
 
     #include <chrono/core/ChCoordsys.h>
-    #include <chrono/core/ChMathematics.h>
     #include <chrono/core/ChQuaternion.h>
-    #include <chrono/core/ChVector.h>
+    #include <chrono/core/ChVector3.h>
 
     #include <chrono/assets/ChVisualSystem.h>
     #include <chrono_irrlicht/ChIrrMeshTools.h>
@@ -102,7 +101,7 @@ void GUIImpl::Init(UI& ui, chrono::ChSystem* system, const char* title) {
 
     pVis->AddLogo();
     pVis->AddSkyBox();
-    pVis->AddCamera(chrono::ChVector<>(8, -25, 15), chrono::ChVector<>(0, 0, 0));
+    pVis->AddCamera(chrono::ChVector3d(8, -25, 15), chrono::ChVector3d(0, 0, 0));
     pVis->AddTypicalLights();
 }
 
@@ -118,7 +117,7 @@ bool GUIImpl::IsRunning(double timestep) {
 
     // Add grid to materialize horizontal plane
     tools::drawGrid(pVis.get(), 1, 1, 30, 30,
-                    chrono::ChCoordsys<>(chrono::ChVector<>(0, 0.0, 0), chrono::Q_from_AngZ(chrono::CH_C_PI_2)),
+                    chrono::ChCoordsys<>(chrono::ChVector3d(0, 0.0, 0), chrono::QuatFromAngleZ(chrono::CH_PI_2)),
                     chrono::ChColor(.1f, .1f, .1f), true);
 
     pVis->EndScene();

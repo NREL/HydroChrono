@@ -3,7 +3,6 @@
 #include <hydroc/hydro_forces.h>
 
 #include <chrono/core/ChRealtimeStep.h>
-#include <chrono/physics/ChLinkMate.h>
 
 #include <chrono>   // std::chrono::high_resolution_clock::now
 #include <iomanip>  // std::setprecision
@@ -11,7 +10,6 @@
 
 // Use the namespaces of Chrono
 using namespace chrono;
-using namespace chrono::geometry;
 
 // usage: ./sphere_deca.exe [DATADIR] [--nogui]
 //
@@ -20,7 +18,9 @@ using namespace chrono::geometry;
 //
 int main(int argc, char* argv[]) {
     // auto start = std::chrono::high_resolution_clock::now();
-    GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
+    std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
+
+    SetChronoDataPath(CHRONO_DATA_DIR);
 
     if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
         return 1;
@@ -39,21 +39,21 @@ int main(int argc, char* argv[]) {
 
     // system/solver settings
     ChSystemSMC system;
-    system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
+    system.SetGravitationalAcceleration(ChVector3d(0.0, 0.0, -9.81));
     double timestep = 0.08;
     system.SetTimestepperType(ChTimestepper::Type::HHT);
     system.SetSolverType(ChSolver::Type::GMRES);
-    system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
-    system.SetStep(timestep);
+    system.GetSolver()->AsIterative()->SetMaxIterations(
+        300);  // the higher, the easier to keep the constraints satisfied.
     double simulationDuration = 1000.0;
 
     // Create user interface
     std::shared_ptr<hydroc::gui::UI> pui = hydroc::gui::CreateUI(visualizationOn);
-    hydroc::gui::UI& ui = *pui.get();
+    hydroc::gui::UI& ui                  = *pui.get();
 
     // some io/viz options
-    bool profilingOn     = true;
-    bool saveDataOn      = true;
+    bool profilingOn = true;
+    bool saveDataOn  = true;
     std::vector<double> time_vector;
     std::vector<double> base_pitch;
     std::vector<double> base_surge;
@@ -70,33 +70,33 @@ int main(int argc, char* argv[]) {
 
     // define the base's initial conditions
     system.Add(base);
-    base->SetNameString("body1");
-    auto cg = ChVector<>(0.0, 0.0, -7.53);
+    base->SetName("body1");
+    auto cg = ChVector3d(0.0, 0.0, -7.53);
     // offset used for heave/surge decay test
-    auto offset = ChVector<>(0.0, 0.0, 0.0);
+    auto offset = ChVector3d(0.0, 0.0, 0.0);
     base->SetPos(cg + offset);
     // Use for pitch decay test
-    double ang_rad = -3.95 * CH_C_PI / 180.0;
-    base->SetRot(Q_from_AngAxis(ang_rad, VECT_Y));
+    double ang_rad = -3.95 * CH_PI / 180.0;
+    base->SetRot(QuatFromAngleY(ang_rad));
     base->SetMass(1.419625e7);
-    base->SetInertiaXX(ChVector<>(1.2898e10, 1.2851e10, 1.4189e10));
+    base->SetInertiaXX(ChVector3d(1.2898e10, 1.2851e10, 1.4189e10));
 
     // add fixed ground for linear damping (surge or pitch)
     auto ground = chrono_types::make_shared<ChBody>();
     system.AddBody(ground);
     ground->SetPos(cg);
-    ground->SetRot(Q_from_AngAxis(CH_C_PI / 2.0, VECT_X));
-    ground->SetIdentifier(-1);
-    ground->SetBodyFixed(true);
-    ground->SetCollide(false);
+    ground->SetRot(QuatFromAngleX(CH_PI / 2.0));
+    ground->SetTag(-1);
+    ground->SetFixed(true);
+    ground->EnableCollision(false);
 
     // define damping in pitch
     auto rot_damp = chrono_types::make_shared<ChLinkRSDA>();
     // need to set damping to 31 MN-m/(rad/s)
     rot_damp->SetDampingCoefficient(31e6);
     // puts Z axis for link into screen, keeping x axis the same (to the right)
-    ChQuaternion<> rev_rot = Q_from_AngAxis(CH_C_PI / 2.0, VECT_X);  // do not change
-    rot_damp->Initialize(base, ground, false, ChCoordsys(cg, rev_rot), ChCoordsys(cg, rev_rot));
+    ChQuaternion<> rev_rot = QuatFromAngleX(CH_PI / 2.0);  // do not change
+    rot_damp->Initialize(base, ground, false, ChFramed(cg, rev_rot), ChFramed(cg, rev_rot));
     system.AddLink(rot_damp);
 
     // set up hydro forces
@@ -120,7 +120,7 @@ int main(int argc, char* argv[]) {
             // append data to output vector
             time_vector.push_back(system.GetChTime());
             base_surge.push_back(base->GetPos().x());
-            base_pitch.push_back(base->GetRot().Q_to_Euler123().y());
+            base_pitch.push_back(base->GetRot().GetCardanAnglesXYZ().y());
         }
     }
 
@@ -153,8 +153,8 @@ int main(int argc, char* argv[]) {
         outputFile.open("./results/DeepCWind_decay.txt");
         if (!outputFile.is_open()) {
             if (!std::filesystem::exists("./results")) {
-                std::cout << "Path " << std::filesystem::absolute("./results")
-                          << " does not exist, creating it now..." << std::endl;
+                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
+                          << std::endl;
                 std::filesystem::create_directory("./results");
                 outputFile.open("./results/DeepCWind_decay.txt");
                 if (!outputFile.is_open()) {

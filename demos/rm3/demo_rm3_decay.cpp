@@ -10,7 +10,6 @@
 
 // Use the namespaces of Chrono
 using namespace chrono;
-using namespace chrono::geometry;
 
 // usage: ./<demos>.exe [DATADIR] [--nogui]
 //
@@ -18,7 +17,9 @@ using namespace chrono::geometry;
 // environment variable to give the data_directory.
 //
 int main(int argc, char* argv[]) {
-    GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
+    std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
+
+    SetChronoDataPath(CHRONO_DATA_DIR);
 
     if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
         return 1;
@@ -40,13 +41,13 @@ int main(int argc, char* argv[]) {
     // system/solver settings
     ChSystemNSC system;
 
-    system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
+    system.SetGravitationalAcceleration(ChVector3d(0.0, 0.0, -9.81));
 
     double timestep = 0.01;
     system.SetTimestepperType(ChTimestepper::Type::HHT);
     system.SetSolverType(ChSolver::Type::GMRES);
-    system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
-    system.SetStep(timestep);
+    system.GetSolver()->AsIterative()->SetMaxIterations(
+        300);  // the higher, the easier to keep the constraints satisfied.
     ChRealtimeStepTimer realtime_timer;
     double simulationDuration = 40.0;
 
@@ -74,11 +75,11 @@ int main(int argc, char* argv[]) {
 
     // define the float's initial conditions
     system.Add(float_body1);
-    float_body1->SetNameString("body1");
-    float_body1->SetPos(ChVector<>(0, 0, (-0.72 + 0.1)));
+    float_body1->SetName("body1");
+    float_body1->SetPos(ChVector3d(0, 0, (-0.72 + 0.1)));
     float_body1->SetMass(725834);
-    float_body1->SetInertiaXX(ChVector<>(20907301.0, 21306090.66, 37085481.11));
-    // float_body1->SetCollide(false);
+    float_body1->SetInertiaXX(ChVector3d(20907301.0, 21306090.66, 37085481.11));
+    // float_body1->EnableCollision(false);
 
     // Create a visualization material
     auto red = chrono_types::make_shared<ChVisualMaterial>();
@@ -102,20 +103,20 @@ int main(int argc, char* argv[]) {
 
     // define the plate's initial conditions
     system.Add(plate_body2);
-    plate_body2->SetNameString("body2");
-    plate_body2->SetPos(ChVector<>(0, 0, (-21.29)));
+    plate_body2->SetName("body2");
+    plate_body2->SetPos(ChVector3d(0, 0, (-21.29)));
     plate_body2->SetMass(886691);
-    plate_body2->SetInertiaXX(ChVector<>(94419614.57, 94407091.24, 28542224.82));
-    // plate_body2->SetCollide(false);
+    plate_body2->SetInertiaXX(ChVector3d(94419614.57, 94407091.24, 28542224.82));
+    // plate_body2->EnableCollision(false);
 
     // add prismatic joint between the two bodies
     auto prismatic = chrono_types::make_shared<ChLinkLockPrismatic>();
-    prismatic->Initialize(float_body1, plate_body2, false, ChCoordsys<>(ChVector<>(0, 0, -0.72)),
-                          ChCoordsys<>(ChVector<>(0, 0, -21.29)));
+    prismatic->Initialize(float_body1, plate_body2, false, ChFramed(ChVector3d(0, 0, -0.72)),
+                          ChFramed(ChVector3d(0, 0, -21.29)));
     system.AddLink(prismatic);
 
     auto prismatic_pto = chrono_types::make_shared<ChLinkTSDA>();
-    prismatic_pto->Initialize(float_body1, plate_body2, false, ChVector<>(0, 0, -0.72), ChVector<>(0, 0, -21.29));
+    prismatic_pto->Initialize(float_body1, plate_body2, false, ChVector3d(0, 0, -0.72), ChVector3d(0, 0, -21.29));
     prismatic_pto->SetDampingCoefficient(0.0);
     system.AddLink(prismatic_pto);
 
@@ -162,8 +163,8 @@ int main(int argc, char* argv[]) {
         profilingFile.open("./results/rm3_decay_duration_ms.txt");
         if (!profilingFile.is_open()) {
             if (!std::filesystem::exists("./results")) {
-                std::cout << "Path " << std::filesystem::absolute("./results")
-                          << " does not exist, creating it now..." << std::endl;
+                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
+                          << std::endl;
                 std::filesystem::create_directory("./results");
                 profilingFile.open("./results/rm3_duration_ms.txt");
                 if (!profilingFile.is_open()) {
@@ -181,8 +182,8 @@ int main(int argc, char* argv[]) {
         outputFile.open("./results/rm3_decay.txt");
         if (!outputFile.is_open()) {
             if (!std::filesystem::exists("./results")) {
-                std::cout << "Path " << std::filesystem::absolute("./results")
-                          << " does not exist, creating it now..." << std::endl;
+                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
+                          << std::endl;
                 std::filesystem::create_directory("./results");
                 outputFile.open("./results/rm3_decay.txt");
                 if (!outputFile.is_open()) {
