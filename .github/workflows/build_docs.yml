@@ -1,0 +1,38 @@
+name: Build and Deploy Docs
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out repo
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.8
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install sphinx matplotlib h5py pandas sphinxcontrib-bibtex
+
+    - name: Build docs using sphinx-build
+      run: |
+        cd doc/user
+        sphinx-build -b html . _build/html
+
+    - name: Deploy to GitHub Pages
+      uses: JamesIves/github-pages-deploy-action@v4
+      with:
+        GITHUB_TOKEN: ${{ secrets.GH_PAGES_TOKEN }}  # You can use the default GITHUB_TOKEN or your PAT.
+        BRANCH: gh-pages
+        FOLDER: doc/user/_build/html
