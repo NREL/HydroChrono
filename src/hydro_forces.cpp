@@ -237,7 +237,7 @@ void TestHydro::AddWaves(std::shared_ptr<WaveBase> waves) {
     switch (user_waves_->GetWaveMode()) {
         case WaveMode::regular: {
             auto reg = std::static_pointer_cast<RegularWave>(user_waves_);
-            reg->AddH5Data(file_info_.GetRegularWaveInfos());
+            reg->AddH5Data(file_info_.GetRegularWaveInfos(), file_info_.GetSimulationInfo());
             break;
         }
         case WaveMode::irregular: {

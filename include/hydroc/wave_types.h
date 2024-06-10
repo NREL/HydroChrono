@@ -19,11 +19,23 @@ Eigen::VectorXd JONSWAPSpectrumHz(Eigen::VectorXd& f,
                                   double gamma       = 3.3,
                                   bool is_normalized = false);
 
-std::vector<double> FreeSurfaceElevation(const Eigen::VectorXd& freqs_hz,
-                                         const Eigen::VectorXd& spectral_densities,
-                                         const Eigen::VectorXd& time_array,
-                                         double water_depth,
-                                         int seed = 1);
+double GetFreeSurfaceElevation(const Eigen::VectorXd& freqs_hz,
+                               const Eigen::VectorXd& spectral_densities,
+                               const Eigen::VectorXd& spectral_widths,
+                               const Eigen::VectorXd& wave_phases,
+                               const Eigen::VectorXd& wavenumbers,
+                               const Eigen::Vector3d& position,
+                               double time_value,
+                               double water_depth);
+
+std::vector<double> GetFreeSurfaceElevationTimeSeries(const Eigen::VectorXd& freqs_hz,
+                                                      const Eigen::VectorXd& spectral_densities,
+                                                      const Eigen::VectorXd& spectral_widths,
+                                                      const Eigen::VectorXd& wave_phases,
+                                                      const Eigen::VectorXd& wavenumbers,
+                                                      const Eigen::Vector3d& position,
+                                                      const Eigen::VectorXd& time_array,
+                                                      double water_depth);
 
 enum class WaveMode {
     /// @brief No waves
@@ -53,6 +65,19 @@ class WaveBase {
      */
     virtual Eigen::VectorXd GetForceAtTime(double t) = 0;
     virtual WaveMode GetWaveMode()                   = 0;
+
+    virtual double GetElevation(const Eigen::Vector3d& position, double time) = 0;
+
+    virtual Eigen::Vector3d GetVelocity(const Eigen::Vector3d& position, double time) = 0;
+
+    virtual Eigen::Vector3d GetAcceleration(const Eigen::Vector3d& position, double time) = 0;
+
+    /// @brief Mean water level
+    double mwl_ = 0.0;
+    /// @brief Gravitational acceleration
+    double g_ = 9.81;
+    /// @brief Water depth
+    double water_depth_ = 0.0;
 };
 
 /**
@@ -75,6 +100,13 @@ class NoWave : public WaveBase {
      */
     Eigen::VectorXd GetForceAtTime(double t) override;
     WaveMode GetWaveMode() override { return mode_; }
+    double GetElevation(const Eigen::Vector3d& position, double time) override { return 0.0; };
+    Eigen::Vector3d GetVelocity(const Eigen::Vector3d& position, double time) override {
+        return Eigen::Vector3d(0.0, 0.0, 0.0);
+    }
+    Eigen::Vector3d GetAcceleration(const Eigen::Vector3d& position, double time) override {
+        return Eigen::Vector3d(0.0, 0.0, 0.0);
+    }
 
   private:
     unsigned int num_bodies_;
@@ -132,6 +164,7 @@ class RegularWave : public WaveBase {
     // user input variables
     double regular_wave_amplitude_;
     double regular_wave_omega_;
+    double regular_wave_phase_ = 0.0;
 
     /**
      * @brief Initializes other member variables for timestep calculations later.
@@ -141,7 +174,13 @@ class RegularWave : public WaveBase {
      *
      * @param reg_h5_data reference to chunk of h5 data needed for RegularWave calculations
      */
-    void AddH5Data(std::vector<HydroData::RegularWaveInfo>& reg_h5_data);
+    void AddH5Data(std::vector<HydroData::RegularWaveInfo>& reg_h5_data, HydroData::SimulationParameters& sim_data);
+
+    double GetElevation(const Eigen::Vector3d& position, double time) override;
+
+    Eigen::Vector3d GetVelocity(const Eigen::Vector3d& position, double time) override;
+
+    Eigen::Vector3d GetAcceleration(const Eigen::Vector3d& position, double time) override;
 
   private:
     unsigned int num_bodies_;
@@ -150,6 +189,7 @@ class RegularWave : public WaveBase {
     Eigen::VectorXd excitation_force_mag_;
     Eigen::VectorXd excitation_force_phase_;
     Eigen::VectorXd force_;
+    double wavenumber_;
 
     /**
      * @brief Finds omega_max and number of frequencies, then gets omega_max / num_freqs.
@@ -248,6 +288,7 @@ struct IrregularWaveParams {
     double peak_enhancement_factor_ = 1.0;
     bool is_normalized_             = false;
     int seed_                       = 1;
+    bool wave_stretching_           = true;
 };
 
 class IrregularWaves : public WaveBase {
@@ -255,6 +296,7 @@ class IrregularWaves : public WaveBase {
     IrregularWaves(const IrregularWaveParams& params);
     void Initialize() override {}
 
+    void CreateSpectrum();
     std::vector<double> GetSpectrum();
     std::vector<double> GetFreeSurfaceElevation();
     std::vector<double> GetEtaTimeData();
@@ -326,6 +368,12 @@ class IrregularWaves : public WaveBase {
      */
     void AddH5Data(std::vector<HydroData::IrregularWaveInfo>& irreg_h5_data, HydroData::SimulationParameters& sim_data);
 
+    double GetElevation(const Eigen::Vector3d& position, double time) override;
+
+    Eigen::Vector3d GetVelocity(const Eigen::Vector3d& position, double time) override;
+
+    Eigen::Vector3d GetAcceleration(const Eigen::Vector3d& position, double time) override;
+
   private:
     IrregularWaveParams params_;
     std::vector<double> spectrum_;
@@ -338,17 +386,18 @@ class IrregularWaves : public WaveBase {
     // unsigned int num_bodies_;
     // const WaveMode mode_ = WaveMode::irregular;
     std::vector<HydroData::IrregularWaveInfo> wave_info_;
-    HydroData::SimulationParameters sim_data_;
     std::vector<Eigen::MatrixXd> ex_irf_sampled_;
     std::vector<Eigen::VectorXd> ex_irf_time_sampled_;
     std::vector<Eigen::VectorXd> ex_irf_width_sampled_;
     Eigen::VectorXd spectrum_frequencies_;
     Eigen::VectorXd spectral_densities_;
+    Eigen::VectorXd spectral_widths_;
+    Eigen::VectorXd wavenumbers_;
+    Eigen::VectorXd wave_phases_;
     std::string mesh_file_name_;
 
     void InitializeIRFVectors();
     void ReadEtaFromFile();
-    void CreateSpectrum();
     void CreateFreeSurfaceElevation();
 
     Eigen::MatrixXd GetExcitationIRF(int b) const;
