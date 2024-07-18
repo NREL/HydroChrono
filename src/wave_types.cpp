@@ -7,6 +7,181 @@
 #include <hydroc/wave_types.h>
 #include <unsupported/Eigen/Splines>
 
+double GetEta(const Eigen::Vector3d& position,
+              double time,
+              double omega,
+              double amplitude,
+              double phase,
+              double wavenumber) {
+    // assuming wave direction along global X axis
+    auto x_pos = position.x();
+
+    auto eta = amplitude * cos(wavenumber * x_pos - omega * time + phase);
+    return eta;
+};
+
+double GetEtaIrregular(const Eigen::Vector3d& position,
+                       double time,
+                       const Eigen::VectorXd& freqs_hz,
+                       const Eigen::VectorXd& spectral_densities,
+                       const Eigen::VectorXd& spectral_widths,
+                       const Eigen::VectorXd& wave_phases,
+                       const Eigen::VectorXd& wavenumbers) {
+    // x position assuming wave direction along global X axis
+    double x_pos = position.x();
+
+    double eta = 0.0;
+    for (size_t i = 0; i < freqs_hz.size(); ++i) {
+        auto amplitude = std::sqrt(2 * spectral_densities[i] * spectral_widths[i]);
+        auto omega     = 2 * M_PI * freqs_hz[i];
+        eta += GetEta(position, time, omega, amplitude, wave_phases[i], wavenumbers[i]);
+    }
+    return eta;
+}
+
+std::vector<double> GetEtaIrregularTimeSeries(const Eigen::Vector3d& position,
+                                              const Eigen::VectorXd& time_index,
+                                              const Eigen::VectorXd& freqs_hz,
+                                              const Eigen::VectorXd& spectral_densities,
+                                              const Eigen::VectorXd& spectral_widths,
+                                              const Eigen::VectorXd& wave_phases,
+                                              const Eigen::VectorXd& wavenumbers) {
+    std::vector<double> eta(time_index.size(), 0.0);
+    for (size_t j = 0; j < time_index.size(); ++j) {
+        eta[j] = GetEtaIrregular(position, time_index[j], freqs_hz, spectral_densities, spectral_widths, wave_phases,
+                                 wavenumbers);
+    }
+    return eta;
+}
+
+Eigen::Vector3d GetWaterVelocity(const Eigen::Vector3d& position,
+                                 double time,
+                                 double omega,
+                                 double amplitude,
+                                 double phase,
+                                 double wavenumber,
+                                 double water_depth,
+                                 double mwl) {
+    // assuming wave along global X axis position
+    auto x_pos = position.x();
+    // position relative to mean water level
+    auto z_pos = position.z() - mwl;
+
+    // get water velocity
+    auto water_velocity = Eigen::Vector3d(0.0, 0.0, 0.0);
+    if (2 * M_PI / wavenumber > water_depth || wavenumber * water_depth > 500.0) {
+        // deep water
+        water_velocity[0] =
+            omega * amplitude * std::exp(wavenumber * z_pos) * cos(wavenumber * x_pos - omega * time + phase);
+        water_velocity[2] =
+            omega * amplitude * std::exp(wavenumber * z_pos) * sin(wavenumber * x_pos - omega * time + phase);
+    } else {
+        // shallow water
+        water_velocity[0] = omega * amplitude * std::cosh(wavenumber * (z_pos + water_depth)) /
+                            std::sinh(wavenumber * water_depth) * cos(wavenumber * x_pos - omega * time + phase);
+        water_velocity[2] = omega * amplitude * std::sinh(wavenumber * (z_pos + water_depth)) /
+                            std::sinh(wavenumber * water_depth) * sin(wavenumber * x_pos - omega * time + phase);
+    }
+    return water_velocity;
+}
+
+Eigen::Vector3d GetWaterAcceleration(const Eigen::Vector3d& position,
+                                     double time,
+                                     double omega,
+                                     double amplitude,
+                                     double phase,
+                                     double wavenumber,
+                                     double water_depth,
+                                     double mwl) {
+    // assuming wave along global X axis position
+    auto x_pos = position.x();
+    // position relative to mean water level
+    auto z_pos = position.z() - mwl;
+
+    // get water velocity
+    auto water_acceleration = Eigen::Vector3d(0.0, 0.0, 0.0);
+    if (2 * M_PI / wavenumber > water_depth || wavenumber * water_depth > 500.0) {
+        // deep water
+        water_acceleration[0] =
+            omega * omega * amplitude * std::exp(wavenumber * z_pos) * sin(wavenumber * x_pos - omega * time + phase);
+        water_acceleration[2] =
+            -omega * omega * amplitude * std::exp(wavenumber * z_pos) * cos(wavenumber * x_pos - omega * time + phase);
+    } else {
+        // shallow water
+        water_acceleration[0] = omega * omega * amplitude * std::cosh(wavenumber * (z_pos + water_depth)) /
+                                std::sinh(wavenumber * water_depth) * sin(wavenumber * x_pos - omega * time + phase);
+        water_acceleration[2] = -omega * omega * amplitude * std::sinh(wavenumber * (z_pos + water_depth)) /
+                                std::sinh(wavenumber * water_depth) * cos(wavenumber * x_pos - omega * time + phase);
+    }
+    return water_acceleration;
+}
+
+Eigen::Vector3d GetWaterVelocityIrregular(const Eigen::Vector3d& position,
+                                          double time,
+                                          const Eigen::VectorXd& freqs_hz,
+                                          const Eigen::VectorXd& spectral_densities,
+                                          const Eigen::VectorXd& spectral_widths,
+                                          const Eigen::VectorXd& wave_phases,
+                                          const Eigen::VectorXd& wavenumbers,
+                                          double water_depth,
+                                          double mwl) {
+    auto water_velocity = Eigen::Vector3d(0.0, 0.0, 0.0);
+    for (size_t i = 0; i < freqs_hz.size(); ++i) {
+        auto amplitude = std::sqrt(2 * spectral_densities[i] * spectral_widths[i]);
+        auto omega     = 2 * M_PI * freqs_hz[i];
+        water_velocity +=
+            GetWaterVelocity(position, time, omega, amplitude, wave_phases[i], wavenumbers[i], water_depth, mwl);
+    }
+    return water_velocity;
+}
+
+Eigen::Vector3d GetWaterAccelerationIrregular(const Eigen::Vector3d& position,
+                                              double time,
+                                              const Eigen::VectorXd& freqs_hz,
+                                              const Eigen::VectorXd& spectral_densities,
+                                              const Eigen::VectorXd& spectral_widths,
+                                              const Eigen::VectorXd& wave_phases,
+                                              const Eigen::VectorXd& wavenumbers,
+                                              double water_depth,
+                                              double mwl) {
+    auto water_acceleration = Eigen::Vector3d(0.0, 0.0, 0.0);
+    for (size_t i = 0; i < freqs_hz.size(); ++i) {
+        auto amplitude = std::sqrt(2 * spectral_densities[i] * spectral_widths[i]);
+        auto omega     = 2 * M_PI * freqs_hz[i];
+        water_acceleration +=
+            GetWaterAcceleration(position, time, omega, amplitude, wave_phases[i], wavenumbers[i], water_depth, mwl);
+    }
+    return water_acceleration;
+}
+
+double ComputeWaveNumber(double omega,
+                         double water_depth,
+                         double g,
+                         double tolerance   = 1e-6,
+                         int max_iterations = 100) {
+    if (water_depth <= 0.0) {
+        throw std::runtime_error("Cannot compute wavenumber with water depth: " + std::to_string(water_depth) + ".");
+    }
+
+    // Initial guess for wave number (using deep water approximation)
+    double k = omega * omega / g;
+
+    int iterations = 0;
+    double error   = 1.0;
+    while (error > tolerance && iterations < max_iterations) {
+        double tanh_kh = std::tanh(k * water_depth);
+        double f       = omega * omega - g * k * tanh_kh;
+        double df      = -2.0 * g * tanh_kh - g * k * water_depth * (1.0 - tanh_kh * tanh_kh);
+
+        double delta_k = f / df;
+        k -= delta_k;
+        error = std::abs(delta_k);
+        iterations++;
+    }
+
+    return k;
+}
+
 Eigen::VectorXd NoWave::GetForceAtTime(double t) {
     unsigned int dof = num_bodies_ * 6;
     Eigen::VectorXd f(dof);
@@ -41,11 +216,30 @@ void RegularWave::Initialize() {
             excitation_force_phase_[body_offset + rowEx] = GetExcitationPhaseInterp(b, rowEx, 0, freq_index_des);
         }
     }
+
+    wavenumber_ = ComputeWaveNumber(regular_wave_omega_, water_depth_, g_);
 }
 
-void RegularWave::AddH5Data(std::vector<HydroData::RegularWaveInfo>& reg_h5_data) {
-    wave_info_ = reg_h5_data;
+void RegularWave::AddH5Data(std::vector<HydroData::RegularWaveInfo>& reg_h5_data,
+                            HydroData::SimulationParameters& sim_data) {
+    wave_info_   = reg_h5_data;
+    water_depth_ = sim_data.water_depth;
+    g_           = sim_data.g;
 }
+
+Eigen::Vector3d RegularWave::GetVelocity(const Eigen::Vector3d& position, double time) {
+    return GetWaterVelocity(position, time, regular_wave_omega_, regular_wave_amplitude_, regular_wave_phase_,
+                            wavenumber_, water_depth_, mwl_);
+};
+
+Eigen::Vector3d RegularWave::GetAcceleration(const Eigen::Vector3d& position, double time) {
+    return GetWaterAcceleration(position, time, regular_wave_omega_, regular_wave_amplitude_, regular_wave_phase_,
+                                wavenumber_, water_depth_, mwl_);
+};
+
+double RegularWave::GetElevation(const Eigen::Vector3d& position, double time) {
+    return GetEta(position, time, regular_wave_omega_, regular_wave_amplitude_, regular_wave_phase_, wavenumber_);
+};
 
 Eigen::VectorXd RegularWave::GetForceAtTime(double t) {
     unsigned int dof = num_bodies_ * 6;
@@ -86,84 +280,16 @@ double RegularWave::GetExcitationPhaseInterp(int b, int i, int j, double freq_in
     return excitationPhase;
 }
 
-std::vector<double> ComputeWaveNumbers(const std::vector<double>& omegas,
-                                       double water_depth,
-                                       double g           = 9.81,
-                                       double tolerance   = 1e-6,
-                                       int max_iterations = 100) {
-    std::vector<double> wave_numbers(omegas.size());
-
+Eigen::VectorXd ComputeWaveNumbers(const Eigen::VectorXd& omegas,
+                                   double water_depth,
+                                   double g,
+                                   double tolerance   = 1e-6,
+                                   int max_iterations = 100) {
+    Eigen::VectorXd wavenumbers(omegas.size());
     for (size_t i = 0; i < omegas.size(); ++i) {
-        double omega = omegas[i];
-
-        // Initial guess for wave number (using deep water approximation)
-        double k = omega * omega / g;
-
-        int iterations = 0;
-        double error   = 1.0;
-        while (error > tolerance && iterations < max_iterations) {
-            double tanh_kh = std::tanh(k * water_depth);
-            double f       = omega * omega - g * k * tanh_kh;
-            double df      = -2.0 * g * tanh_kh - g * k * water_depth * (1.0 - tanh_kh * tanh_kh);
-
-            double delta_k = f / df;
-            k -= delta_k;
-            error = std::abs(delta_k);
-            iterations++;
-        }
-
-        wave_numbers[i] = k;
+        wavenumbers[i] = ComputeWaveNumber(omegas[i], water_depth, g, tolerance, max_iterations);
     }
-
-    return wave_numbers;
-}
-
-std::vector<double> FreeSurfaceElevation(const Eigen::VectorXd& freqs_hz,
-                                         const Eigen::VectorXd& spectral_densities,
-                                         const Eigen::VectorXd& time_index,
-                                         double water_depth,
-                                         int seed) {
-    double delta_f = freqs_hz(Eigen::last) / freqs_hz.size();
-    std::vector<double> omegas(freqs_hz.size());
-
-    for (size_t i = 0; i < freqs_hz.size(); ++i) {
-        omegas[i] = 2 * M_PI * freqs_hz[i];
-    }
-
-    std::vector<double> wave_numbers = ComputeWaveNumbers(omegas, water_depth);
-
-    std::vector<double> A(spectral_densities.size());
-    for (size_t i = 0; i < spectral_densities.size(); ++i) {
-        A[i] = 2 * spectral_densities[i] * delta_f;
-    }
-
-    std::vector<double> sqrt_A(A.size());
-    for (size_t i = 0; i < A.size(); ++i) {
-        sqrt_A[i] = std::sqrt(A[i]);
-    }
-
-    std::vector<std::vector<double>> omegas_t(time_index.size(), std::vector<double>(omegas.size()));
-    for (size_t i = 0; i < time_index.size(); ++i) {
-        for (size_t j = 0; j < omegas.size(); ++j) {
-            omegas_t[i][j] = time_index[i] * omegas[j];
-        }
-    }
-
-    std::mt19937 rng(seed);
-    std::uniform_real_distribution<double> dist(0.0, 2 * M_PI);
-    std::vector<double> phases(omegas.size());
-    for (size_t i = 0; i < phases.size(); ++i) {
-        phases[i] = dist(rng);
-    }
-
-    std::vector<double> eta(time_index.size(), 0.0);
-    for (size_t i = 0; i < spectral_densities.size(); ++i) {
-        for (size_t j = 0; j < time_index.size(); ++j) {
-            eta[j] += sqrt_A[i] * std::cos(omegas_t[j][i] + phases[i]);
-        }
-    }
-
-    return eta;
+    return wavenumbers;
 }
 
 std::vector<std::array<double, 3>> CreateFreeSurface3DPts(const std::vector<double>& eta,
@@ -231,8 +357,7 @@ void WriteFreeSurfaceMeshObj(const std::vector<std::array<double, 3>>& points,
     out.close();
 }
 
-IrregularWaves::IrregularWaves(const IrregularWaveParams& params)
-    : params_(params) {}
+IrregularWaves::IrregularWaves(const IrregularWaveParams& params) : params_(params) {}
 
 void IrregularWaves::InitializeIRFVectors() {
     ex_irf_sampled_.resize(params_.num_bodies_);
@@ -307,10 +432,49 @@ Eigen::MatrixXd IrregularWaves::GetExcitationIRF(int b) const {
 
 void IrregularWaves::AddH5Data(std::vector<HydroData::IrregularWaveInfo>& irreg_h5_data,
                                HydroData::SimulationParameters& sim_data) {
-    wave_info_ = irreg_h5_data;
+    wave_info_   = irreg_h5_data;
+    water_depth_ = sim_data.water_depth;
+    g_           = sim_data.g;
 
     InitializeIRFVectors();
 }
+
+Eigen::Vector3d IrregularWaves::GetVelocity(const Eigen::Vector3d& position, double time) {
+    // apply wave stretching (if enabled)
+    auto position_stretched = position;
+    if (params_.wave_stretching_) {
+        auto eta = GetEtaIrregular(position, time, spectrum_frequencies_, spectral_densities_, spectral_widths_,
+                                   wave_phases_, wavenumbers_);
+        // position relative to mean water level
+        auto z_pos = position.z() - mwl_;
+        // Wheeler stretching
+        position_stretched[2] = water_depth_ * (z_pos - eta) / (water_depth_ + eta);
+    }
+
+    return GetWaterVelocityIrregular(position_stretched, time, spectrum_frequencies_, spectral_densities_,
+                                     spectral_widths_, wave_phases_, wavenumbers_, water_depth_, mwl_);
+};
+
+Eigen::Vector3d IrregularWaves::GetAcceleration(const Eigen::Vector3d& position, double time) {
+    // apply wave stretching (if enabled)
+    auto position_stretched = position;
+    if (params_.wave_stretching_) {
+        auto eta = GetEtaIrregular(position, time, spectrum_frequencies_, spectral_densities_, spectral_widths_,
+                                   wave_phases_, wavenumbers_);
+        // position relative to mean water level
+        auto z_pos = position.z() - mwl_;
+        // Wheeler stretching
+        position_stretched[2] = water_depth_ * (z_pos - eta) / (water_depth_ + eta);
+    }
+
+    return GetWaterAccelerationIrregular(position_stretched, time, spectrum_frequencies_, spectral_densities_,
+                                         spectral_widths_, wave_phases_, wavenumbers_, water_depth_, mwl_);
+};
+
+double IrregularWaves::GetElevation(const Eigen::Vector3d& position, double time) {
+    return GetEtaIrregular(position, time, spectrum_frequencies_, spectral_densities_, spectral_widths_, wave_phases_,
+                           wavenumbers_);
+};
 
 Eigen::VectorXd IrregularWaves::GetForceAtTime(double t) {
     unsigned int total_dofs = params_.num_bodies_ * 6;
@@ -368,21 +532,25 @@ void IrregularWaves::ResampleIRF(double dt) {
     }
 }
 
+Eigen::VectorXd GetWidthArray(const Eigen::VectorXd& input_array) {
+    auto width_array = Eigen::VectorXd(input_array.size());
+    for (int ii = 0; ii < width_array.size(); ii++) {
+        width_array[ii] = 0.0;
+        if (ii < input_array.size() - 1) {
+            width_array[ii] += 0.5 * abs(input_array[ii + 1] - input_array[ii]);
+        }
+        if (ii > 0) {
+            width_array[ii] += 0.5 * abs(input_array[ii] - input_array[ii - 1]);
+        }
+    }
+    return width_array;
+}
+
 void IrregularWaves::CalculateWidthIRF() {
     for (unsigned int b = 0; b < params_.num_bodies_; b++) {
         auto& time_array  = ex_irf_time_sampled_[b];
         auto& width_array = ex_irf_width_sampled_[b];
-
-        width_array.resize(time_array.size());
-        for (int ii = 0; ii < width_array.size(); ii++) {
-            width_array[ii] = 0.0;
-            if (ii < time_array.size() - 1) {
-                width_array[ii] += 0.5 * abs(time_array[ii + 1] - time_array[ii]);
-            }
-            if (ii > 0) {
-                width_array[ii] += 0.5 * abs(time_array[ii] - time_array[ii - 1]);
-            }
-        }
+        width_array       = GetWidthArray(time_array);
     }
 }
 
@@ -405,7 +573,7 @@ void IrregularWaves::CreateSpectrum() {
     if (params_.nfrequencies_ == 0) {
         // automatically calculate number of frequencies necessary so that timeseries does not repeat itself
         double df = 1.0 / params_.simulation_duration_;
-        nf = std::ceil((params_.frequency_max_-params_.frequency_min_) / df);
+        nf        = std::ceil((params_.frequency_max_ - params_.frequency_min_) / df);
 
     } else {
         nf = params_.nfrequencies_;
@@ -413,8 +581,23 @@ void IrregularWaves::CreateSpectrum() {
     spectrum_frequencies_ = Eigen::VectorXd::LinSpaced(nf, params_.frequency_min_, params_.frequency_max_);
 
     // Calculate the Pierson-Moskowitz Spectrum
-    spectral_densities_ =
-        JONSWAPSpectrumHz(spectrum_frequencies_,params_. wave_height_,params_. wave_period_, params_.peak_enhancement_factor_, params_.is_normalized_);
+    spectral_densities_ = JONSWAPSpectrumHz(spectrum_frequencies_, params_.wave_height_, params_.wave_period_,
+                                            params_.peak_enhancement_factor_, params_.is_normalized_);
+
+    // precompute spectral widths
+    spectral_widths_ = GetWidthArray(spectrum_frequencies_);
+
+    // precompute random phases
+    wave_phases_ = Eigen::VectorXd(nf);
+    std::mt19937 rng(params_.seed_);
+    std::uniform_real_distribution<double> dist(0.0, 2 * M_PI);
+    for (size_t i = 0; i < nf; ++i) {
+        wave_phases_[i] = dist(rng);
+    }
+
+    // precompute wavenumbers
+    auto omegas  = 2 * M_PI * spectrum_frequencies_;
+    wavenumbers_ = ComputeWaveNumbers(omegas, water_depth_, g_);
 
     // Open a file stream for writing
     std::ofstream outputFile("spectral_densities.txt");
@@ -494,7 +677,8 @@ void IrregularWaves::CreateFreeSurfaceElevation() {
         }
     }
 
-    auto time_array = Eigen::VectorXd::LinSpaced(num_timesteps, 0, params_.simulation_duration_ + 2 * (t_irf_max - t_irf_min));
+    auto time_array =
+        Eigen::VectorXd::LinSpaced(num_timesteps, 0, params_.simulation_duration_ + 2 * (t_irf_max - t_irf_min));
 
     // Save time array as a std::vector
     free_surface_time_sampled_.resize(time_array.size());
@@ -508,8 +692,11 @@ void IrregularWaves::CreateFreeSurfaceElevation() {
               << std::endl;
 
     // Calculate the free surface elevation
-    free_surface_elevation_sampled_ =
-        FreeSurfaceElevation(spectrum_frequencies_, spectral_densities_, time_array, sim_data_.water_depth, params_.seed_);
+    // position assumed at (0.0, 0.0, 0.0)
+    auto position = Eigen::Vector3d(0.0, 0.0, 0.0);
+    // get timeseries
+    free_surface_elevation_sampled_ = GetEtaIrregularTimeSeries(
+        position, time_array, spectrum_frequencies_, spectral_densities_, spectral_widths_, wave_phases_, wavenumbers_);
 
     // Apply ramp if ramp_duration is greater than 0
     if (params_.ramp_duration_ > 0.0) {
