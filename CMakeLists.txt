@@ -133,9 +133,9 @@ target_include_directories(
 target_compile_definitions(HydroChrono
 
 	PUBLIC
-
-	PRIVATE 
 		CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\"
+	PRIVATE 
+		
 )
 
 target_compile_options(HydroChrono BEFORE 
