@@ -257,7 +257,7 @@ install(
 )
 
 install(
-    DIRECTORY include
+    DIRECTORY include/hydroc
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
