@@ -40,7 +40,7 @@ double GetEtaIrregular(const Eigen::Vector3d& position,
 }
 
 std::vector<double> GetEtaIrregularTimeSeries(const Eigen::Vector3d& position,
-                                              const Eigen::VectorXd& time_index,
+                                              const std::vector<double> time_index,
                                               const Eigen::VectorXd& freqs_hz,
                                               const Eigen::VectorXd& spectral_densities,
                                               const Eigen::VectorXd& spectral_widths,
@@ -697,7 +697,7 @@ void IrregularWaves::CreateFreeSurfaceElevation() {
     auto position = Eigen::Vector3d(0.0, 0.0, 0.0);
     // get timeseries
     free_surface_elevation_sampled_ = GetEtaIrregularTimeSeries(
-        position, time_array, spectrum_frequencies_, spectral_densities_, spectral_widths_, wave_phases_, wavenumbers_);
+        position, free_surface_time_sampled_, spectrum_frequencies_, spectral_densities_, spectral_widths_, wave_phases_, wavenumbers_);
 
     // Apply ramp if ramp_duration is greater than 0
     if (params_.ramp_duration_ > 0.0) {
