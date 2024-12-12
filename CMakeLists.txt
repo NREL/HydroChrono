@@ -63,7 +63,8 @@ else(HYDROCHRONO_ENABLE_IRRLICHT)
 	find_package(Chrono CONFIG REQUIRED)
 endif(HYDROCHRONO_ENABLE_IRRLICHT)
 
-find_package(HDF5 NAMES hdf5 COMPONENTS CXX ${SEARCH_TYPE})
+set(HDF5_USE_STATIC_LIBRARIES ON)
+find_package(HDF5 REQUIRED COMPONENTS CXX)
 
 
 #-----------------------------------------------------------------------------
@@ -113,11 +114,12 @@ target_include_directories(
 	PUBLIC
 	$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
 	$<INSTALL_INTERFACE:include>
-	${CHRONO_INCLUDE_DIRS} 	
+	${CHRONO_INCLUDE_DIRS}
 
 	PRIVATE
 	${CMAKE_CURRENT_SOURCE_DIR}/
 	${CMAKE_CURRENT_SOURCE_DIR}/include
+	${HDF5_INCLUDE_DIRS}
 )
 
 target_compile_definitions(HydroChrono
@@ -143,18 +145,11 @@ set_target_properties(HydroChrono
 	POSITION_INDEPENDENT_CODE ON
 )
 
-# temporary hack
-# seems there is no namespace target hdf5:: on linux
-# for HDF5 version 1.10 to 1.14 ?
-if(NOT TARGET hdf5::hdf5_cpp-static)
-	add_library(hdf5::hdf5_cpp-static ALIAS hdf5_cpp-static)
-endif()
-
 target_link_libraries(HydroChrono 
 	PUBLIC
 		${CHRONO_LIBRARIES}		
 	PRIVATE
-		hdf5::hdf5_cpp-static
+		${HDF5_LIBRARIES}
 
 )
 
@@ -182,9 +177,6 @@ target_include_directories(
 		$<INSTALL_INTERFACE:include>
 		${CHRONO_INCLUDE_DIRS}
 )
-
-if(HYDROCHRONO_ENABLE_IRRLICHT)
-endif(HYDROCHRONO_ENABLE_IRRLICHT)
 
 target_compile_options(HydroChronoGUI BEFORE
 	PUBLIC
