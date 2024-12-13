@@ -33,7 +33,7 @@ endif()
 #--------------------------------------------------------------
 
 project(HydroChrono 
-	VERSION 0.2.3
+	VERSION 0.2.4
 	DESCRIPTION "A hydrodynamic library for use with Project Chrono."
 	LANGUAGES CXX
 )
