@@ -602,6 +602,7 @@ void IrregularWaves::CreateSpectrum() {
 
     // Open a file stream for writing
     std::ofstream outputFile("spectral_densities.txt");
+    outputFile.precision(9);
 
     // Check if the file stream is open
     if (outputFile.is_open()) {
@@ -658,9 +659,6 @@ Eigen::VectorXd JONSWAPSpectrumHz(Eigen::VectorXd& f, double Hs, double Tp, doub
 
 void IrregularWaves::CreateFreeSurfaceElevation() {
     // Create a time index vector
-    // UpdateNumTimesteps();
-    int num_timesteps = static_cast<int>(params_.simulation_duration_ / params_.simulation_dt_) + 1;
-
     double t_irf_min = 0.0;
     double t_irf_max = 0.0;
     for (auto ii = 0; ii < ex_irf_time_sampled_.size(); ii++) {
@@ -677,9 +675,9 @@ void IrregularWaves::CreateFreeSurfaceElevation() {
             t_irf_min = ex_irf_time_sampled_[ii][ex_irf_time_sampled_[ii].size() - 1];
         }
     }
-
-    auto time_array =
-        Eigen::VectorXd::LinSpaced(num_timesteps, 0, params_.simulation_duration_ + 2 * (t_irf_max - t_irf_min));
+    auto duration      = params_.simulation_duration_ + 2 * (t_irf_max - t_irf_min);
+    auto num_timesteps = static_cast<int>(ceil(duration / params_.simulation_dt_));
+    auto time_array    = Eigen::VectorXd::LinSpaced(num_timesteps + 1, 0, num_timesteps * params_.simulation_dt_);
 
     // Save time array as a std::vector
     free_surface_time_sampled_.resize(time_array.size());
@@ -696,22 +694,26 @@ void IrregularWaves::CreateFreeSurfaceElevation() {
     // position assumed at (0.0, 0.0, 0.0)
     auto position = Eigen::Vector3d(0.0, 0.0, 0.0);
     // get timeseries
-    free_surface_elevation_sampled_ = GetEtaIrregularTimeSeries(
-        position, free_surface_time_sampled_, spectrum_frequencies_, spectral_densities_, spectral_widths_, wave_phases_, wavenumbers_);
+    free_surface_elevation_sampled_ =
+        GetEtaIrregularTimeSeries(position, free_surface_time_sampled_, spectrum_frequencies_, spectral_densities_,
+                                  spectral_widths_, wave_phases_, wavenumbers_);
 
     // Apply ramp if ramp_duration is greater than 0
     if (params_.ramp_duration_ > 0.0) {
-        // UpdateRampTimesteps();
-        int ramp_timesteps   = static_cast<int>(params_.ramp_duration_ / params_.simulation_dt_) + 1;
-        Eigen::VectorXd ramp = Eigen::VectorXd::LinSpaced(ramp_timesteps, 0.0, 1.0);
-
-        for (size_t i = 0; i < ramp.size(); ++i) {
-            free_surface_elevation_sampled_[i] *= ramp[i];
+        for (size_t i = 0; i < free_surface_time_sampled_.size(); ++i) {
+            if (free_surface_time_sampled_[i] < params_.ramp_duration_) {
+                if (free_surface_time_sampled_[i] <= 0.0) {
+                    free_surface_elevation_sampled_[i] *= 0.0;
+                } else {
+                    free_surface_elevation_sampled_[i] *= free_surface_time_sampled_[i] / params_.ramp_duration_;
+                }
+            }
         }
     }
 
     // Open a file stream for writing
     std::ofstream eta_output("eta.txt");
+    eta_output.precision(9);
 
     // Check if the file stream is open
     if (eta_output.is_open()) {
@@ -799,9 +801,10 @@ double IrregularWaves::ExcitationConvolution(int body, int dof, double time) {
 }
 
 void IrregularWaves::SetUpWaveMesh(std::string filename) {
-    mesh_file_name_            = filename;
-    int num_timesteps          = static_cast<int>(params_.simulation_duration_ / params_.simulation_dt_) + 1;
-    Eigen::VectorXd time_index = Eigen::VectorXd::LinSpaced(num_timesteps, 0, params_.simulation_duration_);
+    mesh_file_name_   = filename;
+    int num_timesteps = static_cast<int>(ceil(params_.simulation_duration_ / params_.simulation_dt_));
+    Eigen::VectorXd time_index =
+        Eigen::VectorXd::LinSpaced(num_timesteps + 1, 0, num_timesteps * params_.simulation_dt_);
     std::vector<std::array<double, 3>> free_surface_3d_pts =
         CreateFreeSurface3DPts(free_surface_elevation_sampled_, time_index);
     std::vector<std::array<size_t, 3>> free_surface_triangles = CreateFreeSurfaceTriangles(time_index.size());
