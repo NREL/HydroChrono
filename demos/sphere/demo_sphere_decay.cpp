@@ -11,7 +11,6 @@
 
 // Use the namespaces of Chrono
 using namespace chrono;
-using namespace chrono::geometry;
 
 // usage: ./sphere_deca.exe [DATADIR] [--nogui]
 //
@@ -19,7 +18,9 @@ using namespace chrono::geometry;
 // environment variable to give the data_directory.
 //
 int main(int argc, char* argv[]) {
-    GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
+    std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
+
+    SetChronoDataPath(CHRONO_DATA_DIR);
 
     if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
         return 1;
@@ -41,12 +42,12 @@ int main(int argc, char* argv[]) {
     // system/solver settings
     ChSystemNSC system;
 
-    system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
+    system.SetGravitationalAcceleration(ChVector3d(0.0, 0.0, -9.81));
 
     double timestep = 0.015;
     system.SetSolverType(ChSolver::Type::GMRES);
-    system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
-    system.SetStep(timestep);
+    system.GetSolver()->AsIterative()->SetMaxIterations(
+        300);  // the higher, the easier to keep the constraints satisfied.
     ChRealtimeStepTimer realtime_timer;
     double simulationDuration = 40.0;
 
@@ -73,8 +74,8 @@ int main(int argc, char* argv[]) {
     );
 
     // define the body's initial conditions
-    sphereBody->SetNameString("body1");  // must set body name correctly! (must match .h5 file)
-    sphereBody->SetPos(ChVector<>(0, 0, -1));
+    sphereBody->SetName("body1");  // must set body name correctly! (must match .h5 file)
+    sphereBody->SetPos(ChVector3d(0, 0, -1));
     sphereBody->SetMass(261.8e3);
 
     // Create a visualization material
@@ -86,8 +87,8 @@ int main(int argc, char* argv[]) {
 
     // define wave parameters (not used in this demo)
     // Todo define a way to use TestHydro without hydro_inputs/waves
-    //HydroInputs my_hydro_inputs;
-    //my_hydro_inputs.mode = WaveMode::noWaveCIC;
+    // HydroInputs my_hydro_inputs;
+    // my_hydro_inputs.mode = WaveMode::noWaveCIC;
     // my_hydro_inputs.regular_wave_amplitude = 0.022;
     // my_hydro_inputs.regular_wave_omega = 2.10;
 
@@ -99,7 +100,6 @@ int main(int argc, char* argv[]) {
 
     TestHydro hydro_forces(bodies, h5fname);
     hydro_forces.AddWaves(default_dont_add_waves);
-
 
     // for profilingvisualizationOn = false;
     auto start = std::chrono::high_resolution_clock::now();
@@ -128,12 +128,12 @@ int main(int argc, char* argv[]) {
         profilingFile.open("./results/sphere_decay_duration.txt");
         if (!profilingFile.is_open()) {
             if (!std::filesystem::exists("./results")) {
-                std::cout << "Path " << std::filesystem::absolute("./results")
-                          << " does not exist, creating it now..." << std::endl;
+                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
+                          << std::endl;
                 std::filesystem::create_directory("./results");
                 profilingFile.open("./results/sphere_decay_duration.txt");
                 if (!profilingFile.is_open()) {
-                    //TODO instead of ending program, skip to next saveDataOn if statment
+                    // TODO instead of ending program, skip to next saveDataOn if statment
                     std::cout << "Still cannot open file, ending program" << std::endl;
                     return 0;
                 }
@@ -148,8 +148,8 @@ int main(int argc, char* argv[]) {
         outputFile.open("./results/sphere_decay.txt");
         if (!outputFile.is_open()) {
             if (!std::filesystem::exists("./results")) {
-                std::cout << "Path " << std::filesystem::absolute("./results")
-                          << " does not exist, creating it now..." << std::endl;
+                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
+                          << std::endl;
                 std::filesystem::create_directory("./results");
                 outputFile.open("./results/sphere_decay.txt");
                 if (!outputFile.is_open()) {

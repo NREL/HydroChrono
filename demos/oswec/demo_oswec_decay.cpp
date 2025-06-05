@@ -11,7 +11,6 @@
 
 // Use the namespaces of Chrono
 using namespace chrono;
-using namespace chrono::geometry;
 
 // usage: ./<demos>.exe [DATADIR] [--nogui]
 //
@@ -59,9 +58,10 @@ std::array<double, 3> add_vectors(std::array<double, 3> v1, std::array<double, 3
     return {v1[0] + v2[0], v1[1] + v2[1], v1[2] + v2[2]};
 }
 
-
 int main(int argc, char* argv[]) {
-    GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
+    std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
+
+    SetChronoDataPath(CHRONO_DATA_DIR);
 
     if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
         return 1;
@@ -83,12 +83,12 @@ int main(int argc, char* argv[]) {
     // system/solver settings
     ChSystemNSC system;
 
-    system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
+    system.SetGravitationalAcceleration(ChVector3d(0.0, 0.0, -9.81));
     double timestep = 0.03;
     // system.SetTimestepperType(ChTimestepper::Type::HHT);
     system.SetSolverType(ChSolver::Type::GMRES);
-    // system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
-    system.SetStep(timestep);
+    // system.GetSolver()->AsIterative()->SetMaxIterations(300);  // the higher, the easier to keep the constraints
+    // satisfied.
     ChRealtimeStepTimer realtime_timer;
     double simulationDuration = 400.0;
 
@@ -117,7 +117,6 @@ int main(int argc, char* argv[]) {
               << rotated_hinge_to_cg[2] << "]" << std::endl;
     std::cout << "The rotated vector is [" << new_cg[0] << ", " << new_cg[1] << ", " << new_cg[2] << "]" << std::endl;
 
-
     // set up body from a mesh
     std::cout << "Attempting to open mesh file: " << body1_meshfame << std::endl;
     std::shared_ptr<ChBody> flap_body = chrono_types::make_shared<ChBodyEasyMesh>(  //
@@ -135,12 +134,12 @@ int main(int argc, char* argv[]) {
 
     // define the float's initial conditions
     system.Add(flap_body);
-    flap_body->SetNameString("body1");
-    auto ang_rad = CH_C_PI / 18.0;
-    flap_body->SetPos(ChVector<>(new_cg[0], new_cg[1], new_cg[2]));
-    flap_body->SetRot(Q_from_AngAxis(ang_rad, VECT_Y));
+    flap_body->SetName("body1");
+    auto ang_rad = CH_PI / 18.0;
+    flap_body->SetPos(ChVector3d(new_cg[0], new_cg[1], new_cg[2]));
+    flap_body->SetRot(QuatFromAngleY(ang_rad));
     flap_body->SetMass(127000.0);
-    flap_body->SetInertiaXX(ChVector<>(1.85e6, 1.85e6, 1.85e6));
+    flap_body->SetInertiaXX(ChVector3d(1.85e6, 1.85e6, 1.85e6));
     // notes: mass and inertia added to added mass and system mass correctly.
 
     // set up body from a mesh
@@ -160,19 +159,19 @@ int main(int argc, char* argv[]) {
 
     // define the plate's initial conditions
     system.Add(base_body);
-    base_body->SetNameString("body2");
-    base_body->SetPos(ChVector<>(0, 0, -10.15));
+    base_body->SetName("body2");
+    base_body->SetPos(ChVector3d(0, 0, -10.15));
     base_body->SetMass(999);
-    base_body->SetInertiaXX(ChVector<>(1, 1, 1));
-    // base_body->SetBodyFixed(true);
+    base_body->SetInertiaXX(ChVector3d(1, 1, 1));
+    // base_body->SetFixed(true);
 
     // create ground
     auto ground = chrono_types::make_shared<ChBody>();
     system.AddBody(ground);
-    ground->SetPos(ChVector<>(0, 0, -10.15));
-    ground->SetIdentifier(-1);
-    ground->SetBodyFixed(true);
-    ground->SetCollide(false);
+    ground->SetPos(ChVector3d(0, 0, -10.15));
+    ground->SetTag(-1);
+    ground->SetFixed(true);
+    ground->EnableCollision(false);
     // fix base to ground with special constraint (don't use setfixed() because of mass matrix)
     auto anchor = chrono_types::make_shared<ChLinkMateGeneric>();
     anchor->Initialize(base_body, ground, false, base_body->GetVisualModelFrame(), base_body->GetVisualModelFrame());
@@ -180,9 +179,9 @@ int main(int argc, char* argv[]) {
     anchor->SetConstrainedCoords(true, true, true, true, true, true);  // x, y, z, Rx, Ry, Rz
 
     // define base-fore flap joint
-    ChQuaternion<> revoluteRot = Q_from_AngX(CH_C_PI / 2.0);
+    ChQuaternion<> revoluteRot = QuatFromAngleX(CH_PI / 2.0);
     auto revolute              = chrono_types::make_shared<ChLinkLockRevolute>();
-    revolute->Initialize(base_body, flap_body, ChCoordsys<>(ChVector<>(0.0, 0.0, -8.9), revoluteRot));
+    revolute->Initialize(base_body, flap_body, ChFramed(ChVector3d(0.0, 0.0, -8.9), revoluteRot));
     system.AddLink(revolute);
 
     auto default_dont_add_waves = std::make_shared<NoWave>(2);
@@ -208,7 +207,7 @@ int main(int argc, char* argv[]) {
 
             // append data to output vector
             time_vector.push_back(system.GetChTime());
-            flap_rot.push_back(flap_body->GetRot().Q_to_Euler123().y());
+            flap_rot.push_back(flap_body->GetRot().GetCardanAnglesXYZ().y());
         }
     }
 
@@ -221,8 +220,8 @@ int main(int argc, char* argv[]) {
         profilingFile.open("./results/oswec_duration.txt");
         if (!profilingFile.is_open()) {
             if (!std::filesystem::exists("./results")) {
-                std::cout << "Path " << std::filesystem::absolute("./results")
-                          << " does not exist, creating it now..." << std::endl;
+                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
+                          << std::endl;
                 std::filesystem::create_directory("./results/");
                 profilingFile.open("./results/oswec_duration.txt");
                 if (!profilingFile.is_open()) {
@@ -240,8 +239,8 @@ int main(int argc, char* argv[]) {
         outputFile.open("./results/oswec_decay.txt");
         if (!outputFile.is_open()) {
             if (!std::filesystem::exists("./results")) {
-                std::cout << "Path " << std::filesystem::absolute("./results")
-                          << " does not exist, creating it now..." << std::endl;
+                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
+                          << std::endl;
                 std::filesystem::create_directory("./results/");
                 outputFile.open("./results/oswec_decay.txt");
                 if (!outputFile.is_open()) {
