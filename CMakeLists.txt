@@ -35,7 +35,7 @@ endif()
 #--------------------------------------------------------------
 
 project(HydroChrono 
-	VERSION 0.2.5
+	VERSION 0.2.6
 	DESCRIPTION "A hydrodynamic library for use with Project Chrono."
 	LANGUAGES CXX
 )
@@ -59,6 +59,7 @@ option (HYDROCHRONO_ENABLE_IRRLICHT "Enable irrlicht visualization library" ON)
 option (HYDROCHRONO_ENABLE_DEMOS "Enable demo executables" ON)
 option (HYDROCHRONO_ENABLE_USER_DOC "User's documentation" OFF)
 option (HYDROCHRONO_ENABLE_PROG_DOC "Programmer's documentation" OFF)
+option (HYDROCHRONO_ENABLE_LOGGING "Enable debug logging" OFF)
 
 
 # find required packages and libraries to make HydroChrono library
@@ -111,6 +112,7 @@ set(HYDROCHRONO_SOURCES
 	src/hydro_forces.cpp
 	src/helper.cpp
 	src/wave_types.cpp
+	src/logging.cpp
 
 )
 
@@ -133,11 +135,13 @@ target_include_directories(
 )
 
 target_compile_definitions(HydroChrono
-
 	PUBLIC
 		CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\"
+		HYDROCHRONO_VERSION=\"${PROJECT_VERSION}\"
+		CHRONO_VERSION=\"${CHRONO_VERSION}\"
+		HYDROCHRONO_BUILD_TYPE=\"$<IF:$<CONFIG:Debug>,Debug,$<IF:$<CONFIG:Release>,Release,$<IF:$<CONFIG:RelWithDebInfo>,RelWithDebInfo,$<IF:$<CONFIG:MinSizeRel>,MinSizeRel,Unknown>>>>\"
 	PRIVATE 
-		
+		$<$<BOOL:${HYDROCHRONO_ENABLE_LOGGING}>:HYDROCHRONO_ENABLE_LOGGING=1>
 )
 
 target_compile_options(HydroChrono BEFORE 
@@ -280,3 +284,6 @@ export(
     FILE "${CMAKE_CURRENT_BINARY_DIR}/cmake/HydroChronoTargets.cmake"
     NAMESPACE HydroChrono::
 )
+
+# Set build type to Release but enable debug symbols
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Zi /O2")
