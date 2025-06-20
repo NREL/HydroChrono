@@ -35,6 +35,8 @@ if __name__ == '__main__':
     # Show where the plot will be saved
     test_file_path = Path(fname_rst)
     plots_dir = test_file_path.parent / "plots"
+    # Ensure the plots directory exists
+    plots_dir.mkdir(parents=True, exist_ok=True)
     print(f"Plot will be saved to: {plots_dir}")
     print(f"Plot filename: {plots_dir}/Sphere Decay Test_comparison.png")
 

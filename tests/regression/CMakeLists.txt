@@ -66,7 +66,7 @@ if(TARGET sphere_decay_test)
 
     add_test(
         NAME sphere_decay_regression_ref
-        COMMAND ${Python3_EXECUTABLE} ${SPHERE_SRC_DIR}/compare.py ${FILE_REF} ${FILE_RST}
+        COMMAND python compare.py ${FILE_REF} ${FILE_RST}
     )
     
     set_tests_properties(
@@ -74,7 +74,7 @@ if(TARGET sphere_decay_test)
         PROPERTIES 
         LABELS "regression;sphere;decay;reference;core"
         FIXTURES_REQUIRED sphere_decay_regression_file
-        WORKING_DIRECTORY ${SPHERE_RESULTS_DIR}
-        ENVIRONMENT "${TEST_ENVIRONMENT}"
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests/regression/sphere
+        ENVIRONMENT "PATH=${Python3_ROOT_DIR};$ENV{PATH}"
     )
 endif() 
