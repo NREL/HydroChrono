@@ -75,8 +75,11 @@ else(HYDROCHRONO_ENABLE_IRRLICHT)
 endif(HYDROCHRONO_ENABLE_IRRLICHT)
 
 set(HDF5_USE_STATIC_LIBRARIES ON)
-find_package(HDF5 REQUIRED COMPONENTS CXX)
 
+# Configure HDF5 to find its dependencies from its installation
+set(HDF5_ROOT "${HDF5_ROOT}" CACHE PATH "HDF5 root directory")
+
+find_package(HDF5 REQUIRED COMPONENTS CXX)
 
 #-----------------------------------------------------------------------------
 # Fix for VS 2017 15.8 and newer to handle alignment specification with Eigen
@@ -138,7 +141,6 @@ target_compile_definitions(HydroChrono
 	PUBLIC
 		CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\"
 		HYDROCHRONO_VERSION=\"${PROJECT_VERSION}\"
-		CHRONO_VERSION=\"${CHRONO_VERSION}\"
 		HYDROCHRONO_BUILD_TYPE=\"$<IF:$<CONFIG:Debug>,Debug,$<IF:$<CONFIG:Release>,Release,$<IF:$<CONFIG:RelWithDebInfo>,RelWithDebInfo,$<IF:$<CONFIG:MinSizeRel>,MinSizeRel,Unknown>>>>\"
 	PRIVATE 
 		$<$<BOOL:${HYDROCHRONO_ENABLE_LOGGING}>:HYDROCHRONO_ENABLE_LOGGING=1>
@@ -164,7 +166,6 @@ target_link_libraries(HydroChrono
 		${CHRONO_LIBRARIES}		
 	PRIVATE
 		${HDF5_LIBRARIES}
-
 )
 
 # ====================
@@ -231,8 +232,13 @@ if(HYDROCHRONO_ENABLE_TESTS)
 
 	include(CTest)
 	enable_testing()
+    
+    set(CHRONO_DLL_DIR "${Chrono_DIR}/../bin/Release")
+    set(IRRLICHT_DLL_DIR "C:/libs/irrlicht-1.8.4/bin/Win64-VisualStudio")
+    set(TEST_ENVIRONMENT "PATH=${CHRONO_DLL_DIR};${IRRLICHT_DLL_DIR};$ENV{PATH}")
 
 	add_subdirectory(tests)
+	add_subdirectory(tests/verification)
 
 endif(HYDROCHRONO_ENABLE_TESTS)
 
