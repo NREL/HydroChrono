@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-HydroChrono Sphere Verification Test Comparison
+HydroChrono Sphere Regression Test Comparison
 
 This script compares sphere test results against reference data using the
 standardized comparison template.
@@ -27,11 +27,16 @@ if __name__ == '__main__':
         print("       python compare.py default <test_file>  # Uses default reference data")
         sys.exit(1)
 
-    # Use new reference data location
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../..'))
-    default_ref = os.path.join(project_root, 'tests/verification/reference_data/sphere/decay/sphere_decay_hc_data.txt')
+    # Use new reference data location - use correct relative path
+    default_ref = os.path.join(os.path.dirname(__file__), '../reference_data/sphere/decay/sphere_decay_hc_data.txt')
     fname_ref = sys.argv[1] if sys.argv[1] != 'default' else default_ref
     fname_rst = sys.argv[2]
+
+    # Show where the plot will be saved
+    test_file_path = Path(fname_rst)
+    plots_dir = test_file_path.parent / "plots"
+    print(f"Plot will be saved to: {plots_dir}")
+    print(f"Plot filename: {plots_dir}/Sphere Decay Test_comparison.png")
 
     # Sphere-specific configuration
     test_name = "Sphere Decay Test"
@@ -45,4 +50,4 @@ if __name__ == '__main__':
         executable_patterns, pass_criteria
     )
     
-    sys.exit(0 if passed else 1)
+    sys.exit(0 if passed else 1) 

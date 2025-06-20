@@ -1,11 +1,11 @@
-# Sphere Decay Verification Test
-# =============================
+# Sphere Decay Regression Test
+# ===========================
 
 # Create executable in model-based directory
 add_executable(sphere_decay_test)
 
 set(SPHERE_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/sphere)
-set(SPHERE_RELEASE_DIR ${CMAKE_BINARY_DIR}/tests/verification/Release/sphere)
+set(SPHERE_RELEASE_DIR ${CMAKE_BINARY_DIR}/tests/regression/Release/sphere)
 set(SPHERE_RESULTS_DIR ${SPHERE_RELEASE_DIR}/results)
 
 # Use model-based source and let simulation create results automatically
@@ -47,33 +47,33 @@ target_link_libraries(
 # Register as CTest test
 if(TARGET sphere_decay_test)
     add_test(
-        NAME sphere_decay_verification
+        NAME sphere_decay_regression
         COMMAND ${SPHERE_RELEASE_DIR}/sphere_decay_test.exe ${HYDROCHRONO_DATA_DIR} --nogui
     )
     
     set_tests_properties(
-        sphere_decay_verification
+        sphere_decay_regression
         PROPERTIES 
-        LABELS "verification;sphere;decay;small;core"
-        FIXTURES_SETUP sphere_decay_verification_file
+        LABELS "regression;sphere;decay;small;core"
+        FIXTURES_SETUP sphere_decay_regression_file
         WORKING_DIRECTORY ${SPHERE_RELEASE_DIR}
         ENVIRONMENT "${TEST_ENVIRONMENT}"
     )
 
     # Reference comparison test - use the new centralized reference data location
     set(FILE_RST ${SPHERE_RESULTS_DIR}/sphere_decay.txt)
-    set(FILE_REF ${CMAKE_SOURCE_DIR}/tests/verification/reference_data/sphere/decay/sphere_decay_hc_data.txt)
+    set(FILE_REF ${CMAKE_SOURCE_DIR}/tests/regression/reference_data/sphere/decay/sphere_decay_hc_data.txt)
 
     add_test(
-        NAME sphere_decay_verification_ref
+        NAME sphere_decay_regression_ref
         COMMAND ${Python3_EXECUTABLE} ${SPHERE_SRC_DIR}/compare.py ${FILE_REF} ${FILE_RST}
     )
     
     set_tests_properties(
-        sphere_decay_verification_ref
+        sphere_decay_regression_ref
         PROPERTIES 
-        LABELS "verification;sphere;decay;reference;core"
-        FIXTURES_REQUIRED sphere_decay_verification_file
+        LABELS "regression;sphere;decay;reference;core"
+        FIXTURES_REQUIRED sphere_decay_regression_file
         WORKING_DIRECTORY ${SPHERE_RESULTS_DIR}
         ENVIRONMENT "${TEST_ENVIRONMENT}"
     )

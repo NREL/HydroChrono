@@ -5,7 +5,7 @@
 The HydroChrono test system is organized into two distinct test suites that can be run independently or together:
 
 1. **Legacy Tests** (24 tests) - Original demo-based tests
-2. **Verification Tests** (2 tests) - New framework-based tests
+2. **Regression Tests** (2 tests) - New framework-based tests
 
 ## CMake File Structure
 
@@ -13,8 +13,8 @@ The HydroChrono test system is organized into two distinct test suites that can 
 CMakeLists.txt                    # Main project file
 ├── tests/
 │   ├── CMakeLists.txt           # Legacy tests configuration
-│   └── verification/
-│       ├── CMakeLists.txt       # Verification tests configuration
+│   └── regression/
+│       ├── CMakeLists.txt       # Regression tests configuration
 │       ├── sphere/
 │       │   ├── demo_sphere_decay.cpp
 │       │   └── compare.py
@@ -35,7 +35,7 @@ set(TEST_ENVIRONMENT "PATH=${CHRONO_DLL_DIR};${IRRLICHT_DLL_DIR};$ENV{PATH}")
 
 ### Test Labels
 - **Legacy Tests:** `demos`, `core`, `medium`, `long`, `ref`
-- **Verification Tests:** `verification`, `sphere`, `decay`, `small`, `core`, `reference`
+- **Regression Tests:** `regression`, `sphere`, `decay`, `small`, `core`, `reference`
 
 ## Test Execution Commands
 
@@ -44,14 +44,14 @@ set(TEST_ENVIRONMENT "PATH=${CHRONO_DLL_DIR};${IRRLICHT_DLL_DIR};$ENV{PATH}")
 ctest -C Release
 ```
 
-### Only Verification Tests (2 tests)
+### Only Regression Tests (2 tests)
 ```bash
-ctest -C Release -L verification
+ctest -C Release -L regression
 ```
 
 ### Only Legacy Tests (24 tests)
 ```bash
-ctest -C Release -LE verification
+ctest -C Release -LE regression
 ```
 
 ### Specific Test Categories
@@ -74,36 +74,36 @@ ctest -C Release -L "sphere"
 - **Labels:** `demos`, `core`, `medium`, `long`, `ref`
 - **Environment:** Uses `TEST_ENVIRONMENT` from parent scope
 
-### Verification Tests (tests/verification/CMakeLists.txt)
-- **Location:** `tests/verification/CMakeLists.txt`
+### Regression Tests (tests/regression/CMakeLists.txt)
+- **Location:** `tests/regression/CMakeLists.txt`
 - **Structure:** Dedicated test executables with centralized reference data
-- **Labels:** `verification`, `sphere`, `decay`, `small`, `core`, `reference`
+- **Labels:** `regression`, `sphere`, `decay`, `small`, `core`, `reference`
 - **Environment:** Uses `TEST_ENVIRONMENT` from parent scope
 
 ## Adding New Tests
 
-### Adding a New Verification Test
+### Adding a New Regression Test
 
 1. **Create test directory:**
    ```
-   tests/verification/new_test_case/
+   tests/regression/new_test_case/
    ├── demo_new_test_case.cpp
    └── compare.py
    ```
 
 2. **Add reference data:**
    ```
-   tests/verification/reference_data/new_test_case/
+   tests/regression/reference_data/new_test_case/
    └── new_test_case_data.txt
    ```
 
-3. **Update tests/verification/CMakeLists.txt:**
+3. **Update tests/regression/CMakeLists.txt:**
    ```cmake
    # New Test Case
    add_executable(new_test_case_test)
    set_target_properties(new_test_case_test
        PROPERTIES
-       RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests/verification/Release/new_test_case
+       RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests/regression/Release/new_test_case
    )
    
    target_sources(new_test_case_test PRIVATE
@@ -113,13 +113,13 @@ ctest -C Release -L "sphere"
    target_link_libraries(new_test_case_test PRIVATE HydroChrono HydroChronoGUI)
    
    # Register test
-   add_test(NAME new_test_case_verification
-       COMMAND ${CMAKE_BINARY_DIR}/tests/verification/Release/new_test_case/new_test_case_test.exe ${HYDROCHRONO_DATA_DIR} --nogui
+   add_test(NAME new_test_case_regression
+       COMMAND ${CMAKE_BINARY_DIR}/tests/regression/Release/new_test_case/new_test_case_test.exe ${HYDROCHRONO_DATA_DIR} --nogui
    )
    
-   set_tests_properties(new_test_case_verification
+   set_tests_properties(new_test_case_regression
        PROPERTIES 
-       LABELS "verification;new_test_case;small;core"
+       LABELS "regression;new_test_case;small;core"
        ENVIRONMENT "${TEST_ENVIRONMENT}"
    )
    ```
@@ -148,11 +148,11 @@ ctest -C Release -L "sphere"
 
 ### Test Labels
 - Use consistent labeling for easy filtering
-- `verification` label is reserved for new framework tests
+- `regression` label is reserved for new framework tests
 - `demos` label is used for legacy tests
 
 ### File Organization
-- Verification tests use centralized reference data in `tests/verification/reference_data/`
+- Regression tests use centralized reference data in `tests/regression/reference_data/`
 - Legacy tests use reference data in their respective demo directories
 - Test executables are built in separate directories to avoid conflicts
 
@@ -179,8 +179,8 @@ ctest -C Release -L "sphere"
 ctest -C Release -N
 
 # List tests with specific label
-ctest -C Release -L verification -N
+ctest -C Release -L regression -N
 
 # Run with verbose output
-ctest -C Release -L verification --output-on-failure -V
+ctest -C Release -L regression --output-on-failure -V
 ``` 

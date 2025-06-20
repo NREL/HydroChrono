@@ -238,7 +238,7 @@ if(HYDROCHRONO_ENABLE_TESTS)
     set(TEST_ENVIRONMENT "PATH=${CHRONO_DLL_DIR};${IRRLICHT_DLL_DIR};$ENV{PATH}")
 
 	add_subdirectory(tests)
-	add_subdirectory(tests/verification)
+	add_subdirectory(tests/regression)
 
 endif(HYDROCHRONO_ENABLE_TESTS)
 

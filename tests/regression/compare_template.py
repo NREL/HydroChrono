@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-HydroChrono Verification Test Comparison Template
+HydroChrono Regression Test Comparison Template
 
 This template provides a standardized way to compare reference and test data
-across different verification test cases. It generates professional comparison
+across different regression test cases. It generates professional comparison
 plots with consistent formatting and comprehensive information panels.
 
 Usage:
@@ -215,7 +215,7 @@ def apply_modern_style(ax):
 
 def find_executable(test_dir, executable_patterns):
     """
-    Find executable in test directory
+    Find executable in test directory or its parent
     
     Args:
         test_dir: Directory to search in
@@ -224,23 +224,26 @@ def find_executable(test_dir, executable_patterns):
     Returns:
         Path to executable if found, None otherwise
     """
+    search_dirs = [test_dir, test_dir.parent]
+
     try:
-        for pattern in executable_patterns:
-            # Look for common executable names
-            possible_names = [pattern, f"{pattern}.exe", f"{pattern}.out"]
-            
-            for name in possible_names:
-                exe_file = test_dir / name
-                if exe_file.exists():
-                    return exe_file
-            
-            # If not found, look for any executable with the pattern in the name
-            for exe_file in test_dir.glob("*"):
-                if exe_file.is_file() and pattern in exe_file.name:
-                    # Check if it's executable (Unix) or has executable extension (Windows)
-                    if (os.access(exe_file, os.X_OK) or 
-                        exe_file.suffix in ['.exe', '.out', '.app']):
+        for s_dir in search_dirs:
+            for pattern in executable_patterns:
+                # Look for common executable names
+                possible_names = [pattern, f"{pattern}.exe", f"{pattern}.out"]
+                
+                for name in possible_names:
+                    exe_file = s_dir / name
+                    if exe_file.exists():
                         return exe_file
+                
+                # If not found, look for any executable with the pattern in the name
+                for exe_file in s_dir.glob("*"):
+                    if exe_file.is_file() and pattern in exe_file.name:
+                        # Check if it's executable (Unix) or has executable extension (Windows)
+                        if (os.access(exe_file, os.X_OK) or 
+                            exe_file.suffix in ['.exe', '.out', '.app']):
+                            return exe_file
     except Exception as e:
         print(f"Warning: Could not find executable: {e}")
     
@@ -279,7 +282,7 @@ def create_comparison_plot(ref_data, test_data, test_name, output_dir,
     fig_cfg = LAYOUT['figure']
     fig = plt.figure(figsize=fig_cfg['figsize'], facecolor=fig_cfg['facecolor'])
     
-    # Extract model name from executable path
+    # Extract model name from executable path, falling back to test file stem
     model_name = "Unknown Model"
     if executable_path:
         exe_name = os.path.basename(executable_path)
@@ -290,6 +293,8 @@ def create_comparison_plot(ref_data, test_data, test_name, output_dir,
                 break
         else:
             model_name = exe_name
+    elif test_file_path:
+        model_name = Path(test_file_path).stem
     
     # Create Test Information panel
     info_content = (

@@ -6,6 +6,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests)
 # Legacy Tests Configuration
 # =========================
 
+# Note: Regression tests are now handled in tests/regression/CMakeLists.txt
+# and included directly from the main CMakeLists.txt
+
 # Set common test properties, including the PATH environment variable
 # This ensures that test executables can find required DLLs (Chrono, Irrlicht, etc.)
 set(CHRONO_DLL_DIR "${Chrono_DIR}/../bin/Release")
@@ -245,9 +248,8 @@ if(TARGET demo_f3of_DT3)
         )
 endif() 
 
-# Verification Tests
-# =================
-# add_subdirectory(verification)
+# Note: Regression tests are now handled in tests/regression/CMakeLists.txt
+# and included directly from the main CMakeLists.txt
 
 
 
