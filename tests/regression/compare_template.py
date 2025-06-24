@@ -113,15 +113,34 @@ def format_path(path):
 
 def get_cmake_cache_path():
     """Return the canonical path to CMakeCache.txt in the build directory."""
-    # Try from current working directory first (for CTest running from results dir)
-    cwd_path = os.path.join(os.getcwd(), '../../../../../CMakeCache.txt')
-    if os.path.exists(cwd_path):
-        return cwd_path
+    # 1. Check HYDROCHRONO_BUILD_DIR env var
+    build_dir = os.environ.get('HYDROCHRONO_BUILD_DIR')
+    if build_dir:
+        candidate = os.path.join(build_dir, 'CMakeCache.txt')
+        if os.path.exists(candidate):
+            return candidate
     
-    # Fallback to script location relative to project root
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
-    cmake_cache_path = os.path.join(project_root, 'build', 'CMakeCache.txt')
-    return cmake_cache_path if os.path.exists(cmake_cache_path) else None
+    # 2. Search upwards from current directory
+    cur = os.path.abspath(os.getcwd())
+    while True:
+        candidate = os.path.join(cur, 'CMakeCache.txt')
+        if os.path.exists(candidate):
+            return candidate
+        parent = os.path.dirname(cur)
+        if parent == cur:
+            break
+        cur = parent
+    
+    # 3. Fallback to previous logic (relative to script location)
+    possible_paths = [
+        os.path.join(os.path.dirname(__file__), '../../../CMakeCache.txt'),
+        os.path.join(os.path.dirname(__file__), '../../build/CMakeCache.txt'),
+        os.path.join(os.path.dirname(__file__), '../build/CMakeCache.txt'),
+    ]
+    for path in possible_paths:
+        if os.path.exists(path):
+            return path
+    return None
 
 def get_hydrochrono_version():
     """Get HydroChrono version from CMakeCache.txt"""
@@ -249,6 +268,56 @@ def find_executable(test_dir, executable_patterns):
     
     return None
 
+def extract_units_from_label(y_label):
+    """Extract units from y-axis label"""
+    units = None
+    
+    # Common patterns for extracting units from labels
+    if '(' in y_label and ')' in y_label:
+        # Extract text between parentheses
+        start = y_label.find('(')
+        end = y_label.find(')')
+        if start != -1 and end != -1 and end > start:
+            units = y_label[start+1:end].strip()
+    
+    # If no units found in parentheses, check the whole label
+    if not units:
+        y_label_lower = y_label.lower()
+        if 'radian' in y_label_lower or 'rad' in y_label_lower:
+            units = 'rad'
+        elif 'degree' in y_label_lower or 'deg' in y_label_lower:
+            units = 'deg'
+        elif 'meter' in y_label_lower or 'm)' in y_label_lower:
+            units = 'm'
+        elif 'second' in y_label_lower or 's)' in y_label_lower:
+            units = 's'
+        elif 'newton' in y_label_lower or 'n)' in y_label_lower:
+            units = 'N'
+        elif 'watt' in y_label_lower or 'w)' in y_label_lower:
+            units = 'W'
+        else:
+            units = 'units'  # Generic fallback
+    
+    # Normalize common unit variations
+    if units:
+        units_lower = units.lower()
+        if units_lower in ['radians', 'radian']:
+            return 'rad'
+        elif units_lower in ['degrees', 'degree']:
+            return 'deg'
+        elif units_lower in ['meters', 'meter']:
+            return 'm'
+        elif units_lower in ['seconds', 'second']:
+            return 's'
+        elif units_lower in ['newtons', 'newton']:
+            return 'N'
+        elif units_lower in ['watts', 'watt']:
+            return 'W'
+        else:
+            return units
+    
+    return 'units'  # Final fallback
+
 def create_comparison_plot(ref_data, test_data, test_name, output_dir, 
                           ref_file_path=None, test_file_path=None, executable_path=None,
                           y_label="Value", executable_patterns=None):
@@ -338,7 +407,7 @@ def create_comparison_plot(ref_data, test_data, test_name, output_dir,
     ax2.plot(x, yd, color='#dc3545', linewidth=2, label='Error (Ref - Sim)', alpha=0.8)
     ax2.axhline(y=0, color='#6c757d', linestyle='-', alpha=0.4, linewidth=1)
     ax2.set_xlabel('Time (s)', fontsize=11, color='#495057', fontweight='500')
-    ax2.set_ylabel('Error (m)', fontsize=11, color='#495057', fontweight='500')
+    ax2.set_ylabel(f'Error ({extract_units_from_label(y_label)})', fontsize=11, color='#495057', fontweight='500')
     ax2.set_title('Error Analysis', fontsize=13, fontweight='bold', color='#212529', pad=15)
     ax2.legend(fontsize=10, framealpha=0.9)
     apply_modern_style(ax2)
@@ -354,16 +423,17 @@ def create_comparison_plot(ref_data, test_data, test_name, output_dir,
     create_text_panel(fig, LAYOUT['panels']['error_metrics'], content_text)
     
     # Create Data Statistics panel
+    units = extract_units_from_label(y_label)
     stats_content = (
         f"Data Statistics\n\n"
         f"Reference:\n"
-        f"  Mean: {np.mean(ref_data[:,1]):.4f}m\n"
-        f"  Std: {np.std(ref_data[:,1]):.4f}m\n"
-        f"  Range: [{np.min(ref_data[:,1]):.3f}, {np.max(ref_data[:,1]):.3f}]m\n\n"
+        f"  Mean: {np.mean(ref_data[:,1]):.4f} {units}\n"
+        f"  Std: {np.std(ref_data[:,1]):.4f} {units}\n"
+        f"  Range: [{np.min(ref_data[:,1]):.3f}, {np.max(ref_data[:,1]):.3f}] {units}\n\n"
         f"Simulation:\n"
-        f"  Mean: {np.mean(test_data[:,1]):.4f}m\n"
-        f"  Std: {np.std(test_data[:,1]):.4f}m\n"
-        f"  Range: [{np.min(test_data[:,1]):.3f}, {np.max(test_data[:,1]):.3f}]m\n\n"
+        f"  Mean: {np.mean(test_data[:,1]):.4f} {units}\n"
+        f"  Std: {np.std(test_data[:,1]):.4f} {units}\n"
+        f"  Range: [{np.min(test_data[:,1]):.3f}, {np.max(test_data[:,1]):.3f}] {units}\n\n"
         f"Correlation: {np.corrcoef(ref_data[:,1], test_data[:,1])[0,1]:.6f}"
     )
     create_text_panel(fig, LAYOUT['panels']['data_stats'], stats_content)
@@ -478,22 +548,188 @@ def run_comparison(ref_file, test_file, test_name=None, y_label="Value",
     
     return n1, n2
 
-if __name__ == '__main__':
+def run_multi_column_comparison(ref_file, test_file, test_configs, executable_patterns=None, pass_criteria=None):
     """
-    Template usage example - customize this section for your specific test case
+    Run comparison for multiple columns of data, generating separate plots for each
+    
+    Args:
+        ref_file: Path to reference data file
+        test_file: Path to test data file
+        test_configs: List of dicts, each containing:
+            - 'column_index': Column index to plot (1-based)
+            - 'test_name': Name for this specific test/plot
+            - 'y_label': Label for y-axis
+            - 'validation_tolerance': Optional tolerance for validation (defaults to pass_criteria)
+        executable_patterns: List of patterns to search for executable
+        pass_criteria: Tuple of (l2_threshold, linf_threshold) for pass/fail (default)
+    
+    Returns:
+        List of tuples (l2_norm, linf_norm, passed) for each column
     """
-    if len(sys.argv) < 3:
-        print(__doc__)
+    print(f"Comparing multiple columns: {ref_file} vs {test_file}")
+
+    # Load data with error handling
+    try:
+        refData = np.loadtxt(ref_file, skiprows=1)
+        testData = np.loadtxt(test_file, skiprows=1)
+    except (OSError, IOError, ValueError) as e:
+        print(f"Error loading data files: {e}")
+        sys.exit(1)
+    
+    # Validate data
+    if refData.size == 0 or testData.size == 0:
+        print("Error: One or both data files are empty")
+        sys.exit(1)
+    
+    if refData.shape[1] < 2 or testData.shape[1] < 2:
+        print("Error: Data files must have at least 2 columns (time and value)")
         sys.exit(1)
 
-    ref_file = sys.argv[1]
-    test_file = sys.argv[2]
-    test_name = sys.argv[3] if len(sys.argv) > 3 else None
-    y_label = sys.argv[4] if len(sys.argv) > 4 else "Value"
+    print(f"Reference data shape: {refData.shape}")
+    print(f"Test data shape: {testData.shape}")
+
+    # Create plots directory in the same location as the test file
+    test_file_path = Path(test_file)
+    plots_dir = test_file_path.parent / "plots"
     
-    # Customize these for your specific test case
-    executable_patterns = ["test_executable"]  # Add patterns to search for
-    pass_criteria = (1e-4, 0.02)  # (L2 threshold, L-infinity threshold)
+    # Find the executable path
+    executable_path = None
+    if executable_patterns:
+        executable_path = find_executable(test_file_path.parent, executable_patterns)
     
-    run_comparison(ref_file, test_file, test_name, y_label, 
-                  executable_patterns, pass_criteria) 
+    results = []
+    
+    # Generate comparison plot for each column
+    def rel_to_root(path):
+        try:
+            project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
+            return os.path.relpath(path, project_root)
+        except Exception:
+            return str(path)
+    
+    for config in test_configs:
+        column_index = config['column_index']
+        test_name = config['test_name']
+        y_label = config['y_label']
+        validation_tolerance = config.get('validation_tolerance', pass_criteria)
+        
+        print(f"Generating plot for {test_name} (column {column_index})...")
+        
+        try:
+            # Create a temporary data structure for this column
+            # We need to create arrays with time and the specific column data
+            ref_col_data = np.column_stack((refData[:, 0], refData[:, column_index]))
+            test_col_data = np.column_stack((testData[:, 0], testData[:, column_index]))
+            
+            n1, n2 = create_comparison_plot(
+                ref_col_data, test_col_data, test_name, plots_dir, 
+                ref_file_path=rel_to_root(ref_file), 
+                test_file_path=rel_to_root(test_file),
+                executable_path=rel_to_root(str(executable_path)) if executable_path else None,
+                y_label=y_label,
+                executable_patterns=executable_patterns
+            )
+            
+            # Check pass/fail criteria if provided
+            passed = True
+            if validation_tolerance:
+                l2_threshold, linf_threshold = validation_tolerance
+                if (n1 > l2_threshold or n2 > linf_threshold):
+                    print(f"TEST FAILED for {test_name} - L2 Norm: {n1:.2e}, L-infinity Norm: {n2:.2e}")
+                    passed = False
+                else:
+                    print(f"TEST PASSED for {test_name} - L2 Norm: {n1:.2e}, L-infinity Norm: {n2:.2e}")
+            
+            results.append((n1, n2, passed))
+            
+        except Exception as e:
+            print(f"Error creating comparison plot for {test_name}: {e}")
+            results.append((float('inf'), float('inf'), False))
+    
+    return results
+
+if __name__ == '__main__':
+    """
+    Template usage examples for regression tests
+    
+    This section shows how to use the comparison template for different types of tests.
+    """
+    
+    # Example 1: Single column comparison (like sphere test)
+    # Usage: python compare_template.py <ref_file> <test_file>
+    if len(sys.argv) == 3:
+        ref_file = sys.argv[1]
+        test_file = sys.argv[2]
+        
+        # Single column configuration
+        test_name = "Example Single Column Test"
+        y_label = "Example Value (units)"
+        executable_patterns = ["example_test", "example_test.exe"]
+        pass_criteria = (1e-4, 1e-3)  # (L2_threshold, Linf_threshold)
+        
+        # Run single column comparison
+        l2_norm, linf_norm, passed = run_comparison(
+            ref_file, test_file, test_name, y_label, 
+            executable_patterns, pass_criteria
+        )
+        
+        sys.exit(0 if passed else 1)
+    
+    # Example 2: Multi-column comparison (like f3of test)
+    # This would be used in a separate compare.py script:
+    """
+    #!/usr/bin/env python3
+    import sys
+    import os
+    from pathlib import Path
+    
+    # Import the comparison template
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+    from compare_template import run_multi_column_comparison
+    
+    def main():
+        if len(sys.argv) != 3:
+            print("Usage: python compare.py <reference_file> <test_file>")
+            sys.exit(1)
+        
+        ref_file = sys.argv[1]
+        test_file = sys.argv[2]
+        
+        # Test-specific configuration
+        test_name = "Example Multi-Column Test"
+        executable_patterns = ["example_test", "example_test.exe"]
+        
+        # Define columns to plot
+        test_configs = [
+            {
+                'column_index': 2,  # First variable
+                'test_name': f"{test_name} - Variable 1",
+                'y_label': "Variable 1 (units)",
+                'validation_tolerance': (1e-4, 1e-3)
+            },
+            {
+                'column_index': 3,  # Second variable
+                'test_name': f"{test_name} - Variable 2",
+                'y_label': "Variable 2 (units)",
+                'validation_tolerance': (1e-5, 1e-4)
+            }
+        ]
+        
+        # Run multi-column comparison
+        results = run_multi_column_comparison(
+            ref_file, test_file, test_configs, 
+            executable_patterns=executable_patterns
+        )
+        
+        # Check if all passed
+        all_passed = all(result[2] for result in results)
+        sys.exit(0 if all_passed else 1)
+    
+    if __name__ == "__main__":
+        main()
+    """
+    
+    print("Template usage examples:")
+    print("1. Single column: python compare_template.py <ref_file> <test_file>")
+    print("2. Multi-column: Create a compare.py script using the example above")
+    print("3. See the sphere/ and f3of/ directories for working examples") 
