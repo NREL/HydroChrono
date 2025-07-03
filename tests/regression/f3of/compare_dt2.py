@@ -22,7 +22,7 @@ def main():
     
     # Data files - use absolute paths
     hc_data_file = "results/CHRONO_F3OF_DT2_PITCH.txt"
-    ref_data_file = os.path.join(os.path.dirname(__file__), "..", "reference_data", "f3of", "dt2", "hydrochrono_f3of_dt2_pitch.txt")
+    ref_data_file = os.path.join(os.path.dirname(__file__), "..", "reference_data", "f3of", "dt2", "hc_ref_f3of_dt2_pitch.txt")
     
     # Check if files exist
     if not os.path.exists(hc_data_file):

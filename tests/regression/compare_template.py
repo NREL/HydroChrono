@@ -102,14 +102,35 @@ LAYOUT = {
 }
 
 def format_path(path):
-    """Format file paths for display by making them relative to current directory"""
+    """Format file paths for display by making them relative to current directory and removing HydroChrono prefix"""
     if path is None:
         return "Not specified"
     try:
+        # First make it relative to current directory
         rel_path = os.path.relpath(path, os.getcwd())
-        return rel_path if len(rel_path) < len(path) else path
+        if len(rel_path) >= len(path):
+            rel_path = path
+        
+        # Remove "HydroChrono" from the beginning of the path if present
+        if rel_path.startswith("HydroChrono/"):
+            rel_path = rel_path[12:]  # Remove "HydroChrono/"
+        elif rel_path.startswith("HydroChrono\\"):
+            rel_path = rel_path[12:]  # Remove "HydroChrono\"
+        
+        return rel_path
     except (ValueError, OSError):
-        return str(path)
+        # If relative path fails, try to remove HydroChrono from absolute path
+        path_str = str(path)
+        if "HydroChrono" in path_str:
+            # Find the position after "HydroChrono" and remove it
+            hydrochrono_pos = path_str.find("HydroChrono")
+            if hydrochrono_pos != -1:
+                # Remove "HydroChrono" and the following slash/backslash
+                remaining = path_str[hydrochrono_pos + 12:]  # 12 = len("HydroChrono")
+                if remaining.startswith("/") or remaining.startswith("\\"):
+                    remaining = remaining[1:]
+                return remaining
+        return path_str
 
 def get_cmake_cache_path():
     """Return the canonical path to CMakeCache.txt in the build directory."""
@@ -370,7 +391,7 @@ def create_comparison_plot(ref_data, test_data, test_name, output_dir,
         f"Test Information\n\n"
         f"Model/Executable: {model_name}\n"
         f"Reference File: {format_path(ref_file_path)}\n"
-        f"Simulation File: {format_path(test_file_path)}\n"
+        f"Latest File: {format_path(test_file_path)}\n"
         f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
     )
     create_text_panel(fig, LAYOUT['panels']['test_info'], info_content)
@@ -484,8 +505,23 @@ def run_comparison(ref_file, test_file, test_name=None, y_label="Value",
 
     # Load data with error handling
     try:
-        refData = np.loadtxt(ref_file, skiprows=1)
-        testData = np.loadtxt(test_file, skiprows=1)
+        # Try to detect the number of header lines by looking for the first numeric line
+        def find_data_start(filename):
+            with open(filename, 'r') as f:
+                for i, line in enumerate(f):
+                    # Check if line contains numeric data (time value)
+                    try:
+                        float(line.split()[0])
+                        return i
+                    except (ValueError, IndexError):
+                        continue
+            return 0  # Default to 0 if no numeric line found
+        
+        ref_skiprows = find_data_start(ref_file)
+        test_skiprows = find_data_start(test_file)
+        
+        refData = np.loadtxt(ref_file, skiprows=ref_skiprows)
+        testData = np.loadtxt(test_file, skiprows=test_skiprows)
     except (OSError, IOError, ValueError) as e:
         print(f"Error loading data files: {e}")
         sys.exit(1)
@@ -690,10 +726,10 @@ if __name__ == '__main__':
     def main():
         if len(sys.argv) != 3:
             print("Usage: python compare.py <reference_file> <test_file>")
-            sys.exit(1)
-        
-        ref_file = sys.argv[1]
-        test_file = sys.argv[2]
+        sys.exit(1)
+
+    ref_file = sys.argv[1]
+    test_file = sys.argv[2]
         
         # Test-specific configuration
         test_name = "Example Multi-Column Test"

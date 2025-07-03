@@ -6,7 +6,7 @@ This script compares the F3OF DT3 test results with reference data and generates
 comparison plots for flap fore pitch and flap aft pitch using the standardized template.
 
 Usage:
-    python compare.py <reference_file> <test_file>
+    python compare_dt3.py <reference_file> <test_file>
 """
 
 import sys
@@ -22,13 +22,20 @@ def main():
     if len(sys.argv) == 1 or (len(sys.argv) == 3 and sys.argv[1] == 'default'):
         # Use default reference and result file locations
         ref_file = os.path.join(os.path.dirname(__file__), "..", "reference_data", "f3of", "dt3", "hc_ref_f3of_dt3_flap_pitch.txt")
-        test_file = os.path.join("results", "f3of_dt3.txt")
+        
+        # Look for result file in build directory
+        build_dir = os.environ.get('HYDROCHRONO_BUILD_DIR', 'C:/code/HydroChrono/build')
+        test_file = os.path.join(build_dir, "tests", "regression", "Release", "f3of", "results", "f3of_dt3.txt")
+        
+        # Fallback to local results directory if build file not found
+        if not os.path.exists(test_file):
+            test_file = os.path.join("results", "f3of_dt3.txt")
     elif len(sys.argv) == 3:
         ref_file = sys.argv[1]
         test_file = sys.argv[2]
     else:
-        print("Usage: python compare.py <reference_file> <test_file>")
-        print("   or: python compare.py default")
+        print("Usage: python compare_dt3.py <reference_file> <test_file>")
+        print("   or: python compare_dt3.py default")
         sys.exit(1)
     
     # F3OF DT3 specific configuration
@@ -112,4 +119,4 @@ def main():
         sys.exit(1)
 
 if __name__ == "__main__":
-    main()
+    main() 

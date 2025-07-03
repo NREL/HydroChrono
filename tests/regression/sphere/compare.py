@@ -28,7 +28,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
     # Use new reference data location - use correct relative path
-    default_ref = os.path.join(os.path.dirname(__file__), '../reference_data/sphere/decay/sphere_decay_hc_data.txt')
+    default_ref = os.path.join(os.path.dirname(__file__), '../reference_data/sphere/decay/hc_ref_sphere_decay.txt')
     fname_ref = sys.argv[1] if sys.argv[1] != 'default' else default_ref
     fname_rst = sys.argv[2]
 

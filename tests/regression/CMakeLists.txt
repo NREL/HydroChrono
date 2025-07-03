@@ -146,7 +146,7 @@ if(TARGET f3of_dt1_test)
 
     # Reference comparison test - use the new centralized reference data location
     set(FILE_RST ${F3OF_RESULTS_DIR}/CHRONO_F3OF_DT1_SURGE.txt)
-    set(FILE_REF ${CMAKE_SOURCE_DIR}/tests/regression/reference_data/f3of/dt1/hydrochrono_f3of_dt1_surge.txt)
+    set(FILE_REF ${CMAKE_SOURCE_DIR}/tests/regression/reference_data/f3of/dt1/hc_ref_f3of_dt1_surge.txt)
 
     add_test(
         NAME f3of_dt1_regression_ref
@@ -226,7 +226,7 @@ if(TARGET f3of_dt2_test)
 
     # Reference comparison test - use the new centralized reference data location
     set(FILE_RST ${F3OF_RESULTS_DIR}/CHRONO_F3OF_DT2_PITCH.txt)
-    set(FILE_REF ${CMAKE_SOURCE_DIR}/tests/regression/reference_data/f3of/dt2/hydrochrono_f3of_dt2_pitch.txt)
+    set(FILE_REF ${CMAKE_SOURCE_DIR}/tests/regression/reference_data/f3of/dt2/hc_ref_f3of_dt2_pitch.txt)
 
     add_test(
         NAME f3of_dt2_regression_ref
@@ -306,7 +306,7 @@ if(TARGET f3of_dt3_test)
 
     # Reference comparison test - use the new centralized reference data location
     set(FILE_RST ${F3OF_RESULTS_DIR}/f3of_dt3.txt)
-    set(FILE_REF ${CMAKE_SOURCE_DIR}/tests/regression/reference_data/f3of/dt3/hydrochrono_f3of_dt3_flap_pitch.txt)
+    set(FILE_REF ${CMAKE_SOURCE_DIR}/tests/regression/reference_data/f3of/dt3/hc_ref_f3of_dt3_flap_pitch.txt)
 
     add_test(
         NAME f3of_dt3_regression_ref
@@ -319,6 +319,249 @@ if(TARGET f3of_dt3_test)
         LABELS "regression;f3of;dt3;decay;reference;core"
         FIXTURES_REQUIRED f3of_dt3_regression_file
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests/regression/f3of
+        ENVIRONMENT "PATH=${Python3_ROOT_DIR};$ENV{PATH};HYDROCHRONO_BUILD_DIR=${CMAKE_BINARY_DIR}"
+    )
+endif() 
+
+# Sphere Regular Waves Regression Test
+# ===================================
+
+# Create executable in model-based directory
+add_executable(sphere_reg_waves_test)
+
+set(SPHERE_REG_WAVES_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/sphere/reg_waves)
+set(SPHERE_REG_WAVES_RELEASE_DIR ${CMAKE_BINARY_DIR}/tests/regression/Release/sphere/reg_waves)
+set(SPHERE_REG_WAVES_RESULTS_DIR ${SPHERE_REG_WAVES_RELEASE_DIR}/results)
+
+# Use model-based source and let simulation create results automatically
+set_target_properties(sphere_reg_waves_test
+    PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${SPHERE_REG_WAVES_RELEASE_DIR}
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG ${SPHERE_REG_WAVES_RELEASE_DIR}
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE ${SPHERE_REG_WAVES_RELEASE_DIR}
+)
+
+target_sources(
+    sphere_reg_waves_test
+    PRIVATE
+        ${SPHERE_REG_WAVES_SRC_DIR}/sphere_reg_waves_test.cpp
+)
+
+if(HYDROCHRONO_ENABLE_IRRLICHT)
+    target_compile_definitions(sphere_reg_waves_test 
+        PRIVATE 
+        HYDROCHRONO_HAVE_IRRLICHT=1
+        "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
+    )
+endif()
+
+target_include_directories(
+    sphere_reg_waves_test
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../../../src
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../../../src/gui
+)
+
+target_link_libraries(
+    sphere_reg_waves_test
+    PRIVATE
+        HydroChrono
+        HydroChronoGUI
+)
+
+# Register as CTest test
+if(TARGET sphere_reg_waves_test)
+    # Copy test data to the output directory
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/data DESTINATION ${CMAKE_BINARY_DIR}/tests/regression/Release)
+    
+    add_test(
+        NAME sphere_reg_waves_regression
+        COMMAND ${SPHERE_REG_WAVES_RELEASE_DIR}/sphere_reg_waves_test.exe ${HYDROCHRONO_DATA_DIR} --nogui
+    )
+    
+    set_tests_properties(
+        sphere_reg_waves_regression
+        PROPERTIES 
+        LABELS "regression;sphere;reg_waves;core"
+        FIXTURES_SETUP sphere_reg_waves_regression_file
+        WORKING_DIRECTORY ${SPHERE_REG_WAVES_RELEASE_DIR}
+        ENVIRONMENT "${TEST_ENVIRONMENT}"
+    )
+
+    # Reference comparison test
+    add_test(
+        NAME sphere_reg_waves_regression_ref
+        COMMAND python ${CMAKE_SOURCE_DIR}/tests/regression/sphere/reg_waves/compare.py
+    )
+    
+    set_tests_properties(
+        sphere_reg_waves_regression_ref
+        PROPERTIES 
+        LABELS "regression;sphere;reg_waves;reference;core"
+        FIXTURES_REQUIRED sphere_reg_waves_regression_file
+        WORKING_DIRECTORY ${SPHERE_REG_WAVES_RELEASE_DIR}
+        ENVIRONMENT "PATH=${Python3_ROOT_DIR};$ENV{PATH};HYDROCHRONO_BUILD_DIR=${CMAKE_BINARY_DIR}"
+    )
+endif() 
+
+# Sphere Irregular Waves Regression Test
+# =====================================
+
+# Create executable in model-based directory
+add_executable(sphere_irreg_waves_test)
+
+set(SPHERE_IRREG_WAVES_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/sphere/irreg_waves)
+set(SPHERE_IRREG_WAVES_RELEASE_DIR ${CMAKE_BINARY_DIR}/tests/regression/Release/sphere/irreg_waves)
+set(SPHERE_IRREG_WAVES_RESULTS_DIR ${SPHERE_IRREG_WAVES_RELEASE_DIR}/results)
+
+# Use model-based source and let simulation create results automatically
+set_target_properties(sphere_irreg_waves_test
+    PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${SPHERE_IRREG_WAVES_RELEASE_DIR}
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG ${SPHERE_IRREG_WAVES_RELEASE_DIR}
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE ${SPHERE_IRREG_WAVES_RELEASE_DIR}
+)
+
+target_sources(
+    sphere_irreg_waves_test
+    PRIVATE
+        ${SPHERE_IRREG_WAVES_SRC_DIR}/sphere_irreg_waves_test.cpp
+)
+
+if(HYDROCHRONO_ENABLE_IRRLICHT)
+    target_compile_definitions(sphere_irreg_waves_test 
+        PRIVATE 
+        HYDROCHRONO_HAVE_IRRLICHT=1
+        "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
+    )
+endif()
+
+target_include_directories(
+    sphere_irreg_waves_test
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../../../src
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../../../src/gui
+)
+
+target_link_libraries(
+    sphere_irreg_waves_test
+    PRIVATE
+        HydroChrono
+        HydroChronoGUI
+)
+
+# Register as CTest test
+if(TARGET sphere_irreg_waves_test)
+    # Copy test data to the output directory
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/data DESTINATION ${CMAKE_BINARY_DIR}/tests/regression/Release)
+    
+    add_test(
+        NAME sphere_irreg_waves_regression
+        COMMAND ${SPHERE_IRREG_WAVES_RELEASE_DIR}/sphere_irreg_waves_test.exe ${HYDROCHRONO_DATA_DIR} --nogui
+    )
+    
+    set_tests_properties(
+        sphere_irreg_waves_regression
+        PROPERTIES 
+        LABELS "regression;sphere;irreg_waves;core"
+        FIXTURES_SETUP sphere_irreg_waves_regression_file
+        WORKING_DIRECTORY ${SPHERE_IRREG_WAVES_RELEASE_DIR}
+        ENVIRONMENT "${TEST_ENVIRONMENT}"
+    )
+
+    # Reference comparison test
+    add_test(
+        NAME sphere_irreg_waves_regression_ref
+        COMMAND python ${CMAKE_SOURCE_DIR}/tests/regression/sphere/irreg_waves/compare.py
+    )
+    
+    set_tests_properties(
+        sphere_irreg_waves_regression_ref
+        PROPERTIES 
+        LABELS "regression;sphere;irreg_waves;reference;core"
+        FIXTURES_REQUIRED sphere_irreg_waves_regression_file
+        WORKING_DIRECTORY ${SPHERE_IRREG_WAVES_RELEASE_DIR}
+        ENVIRONMENT "PATH=${Python3_ROOT_DIR};$ENV{PATH};HYDROCHRONO_BUILD_DIR=${CMAKE_BINARY_DIR}"
+    )
+endif() 
+
+# Sphere Irregular Waves with ETA Import Regression Test
+# =====================================================
+
+# Create executable in model-based directory
+add_executable(sphere_irreg_waves_eta_test)
+
+set(SPHERE_IRREG_WAVES_ETA_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/sphere/irreg_waves_eta)
+set(SPHERE_IRREG_WAVES_ETA_RELEASE_DIR ${CMAKE_BINARY_DIR}/tests/regression/Release/sphere/irreg_waves_eta)
+set(SPHERE_IRREG_WAVES_ETA_RESULTS_DIR ${SPHERE_IRREG_WAVES_ETA_RELEASE_DIR}/results)
+
+# Use model-based source and let simulation create results automatically
+set_target_properties(sphere_irreg_waves_eta_test
+    PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${SPHERE_IRREG_WAVES_ETA_RELEASE_DIR}
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG ${SPHERE_IRREG_WAVES_ETA_RELEASE_DIR}
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE ${SPHERE_IRREG_WAVES_ETA_RELEASE_DIR}
+)
+
+target_sources(
+    sphere_irreg_waves_eta_test
+    PRIVATE
+        ${SPHERE_IRREG_WAVES_ETA_SRC_DIR}/sphere_irreg_waves_eta_test.cpp
+)
+
+if(HYDROCHRONO_ENABLE_IRRLICHT)
+    target_compile_definitions(sphere_irreg_waves_eta_test 
+        PRIVATE 
+        HYDROCHRONO_HAVE_IRRLICHT=1
+        "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
+    )
+endif()
+
+target_include_directories(
+    sphere_irreg_waves_eta_test
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../../../src
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../../../src/gui
+)
+
+target_link_libraries(
+    sphere_irreg_waves_eta_test
+    PRIVATE
+        HydroChrono
+        HydroChronoGUI
+)
+
+# Register as CTest test
+if(TARGET sphere_irreg_waves_eta_test)
+    # Copy test data to the output directory
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/data DESTINATION ${CMAKE_BINARY_DIR}/tests/regression/Release)
+    
+    add_test(
+        NAME sphere_irreg_waves_eta_regression
+        COMMAND ${SPHERE_IRREG_WAVES_ETA_RELEASE_DIR}/sphere_irreg_waves_eta_test.exe ${HYDROCHRONO_DATA_DIR} --nogui
+    )
+    
+    set_tests_properties(
+        sphere_irreg_waves_eta_regression
+        PROPERTIES 
+        LABELS "regression;sphere;irreg_waves_eta;core"
+        FIXTURES_SETUP sphere_irreg_waves_eta_regression_file
+        WORKING_DIRECTORY ${SPHERE_IRREG_WAVES_ETA_RELEASE_DIR}
+        ENVIRONMENT "${TEST_ENVIRONMENT}"
+    )
+
+    # Reference comparison test
+    add_test(
+        NAME sphere_irreg_waves_eta_regression_ref
+        COMMAND python ${CMAKE_SOURCE_DIR}/tests/regression/sphere/irreg_waves_eta/compare.py
+    )
+    
+    set_tests_properties(
+        sphere_irreg_waves_eta_regression_ref
+        PROPERTIES 
+        LABELS "regression;sphere;irreg_waves_eta;reference;core"
+        FIXTURES_REQUIRED sphere_irreg_waves_eta_regression_file
+        WORKING_DIRECTORY ${SPHERE_IRREG_WAVES_ETA_RELEASE_DIR}
         ENVIRONMENT "PATH=${Python3_ROOT_DIR};$ENV{PATH};HYDROCHRONO_BUILD_DIR=${CMAKE_BINARY_DIR}"
     )
 endif() 
