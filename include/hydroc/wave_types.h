@@ -7,6 +7,7 @@
  * @brief header file for Wavebase and classes inheriting from WaveBase.
  *********************************************************************/
 #pragma once
+
 #include <hydroc/h5fileinfo.h>
 #include <Eigen/Dense>
 
@@ -165,6 +166,7 @@ class RegularWave : public WaveBase {
     double regular_wave_amplitude_;
     double regular_wave_omega_;
     double regular_wave_phase_ = 0.0;
+    double regular_wave_direction_ = 0.0;
 
     /**
      * @brief Initializes other member variables for timestep calculations later.
@@ -200,6 +202,8 @@ class RegularWave : public WaveBase {
      */
     double GetOmegaDelta() const;
 
+    double GetInterpolatedDirectionIndex(double dir_input) const;
+
     /**
      * @brief gets interpolated excitation magnitude value.
      *
@@ -212,7 +216,8 @@ class RegularWave : public WaveBase {
      *
      * @return excitation magnitudes for body b, row i, column j, frequency ix k
      */
-    double GetExcitationMagInterp(int b, int i, int j, double freq_index_des) const;
+    //double GetExcitationMagInterp(int b, int i, int j, double freq_index_des) const;
+    double GetExcitationMagInterp(int b, int i, double dir_index_des, double freq_index_des) const;
 
     /**
      * @brief gets interpolated excitation phase value.
@@ -226,7 +231,8 @@ class RegularWave : public WaveBase {
      *
      * @return excitation phases for body b, row i, column j, frequency ix k
      */
-    double GetExcitationPhaseInterp(int b, int i, int j, double freq_index_des) const;
+    // double GetExcitationPhaseInterp(int b, int i, int j, double freq_index_des) const;
+    double GetExcitationPhaseInterp(int b, int i, double dir_index_des, double freq_index_des) const;
 };
 
 //// class to instantiate WaveBase for irregular waves

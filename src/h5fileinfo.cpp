@@ -5,9 +5,12 @@
  * H5FileInfo.
  *********************************************************************/
 // TODO: this include statement list looks good
+#include "hydroc/h5fileinfo.h"
+#include "chrono/utils/ChConstants.h"
+
 #include <H5Cpp.h>
-#include <hydroc/h5fileinfo.h>
 #include <filesystem>  // std::filesystem::absolute
+#include <cassert>
 
 using namespace chrono;  // TODO narrow this using namespace to specify what we use from chrono or put chrono:: in front
                          // of it all?
@@ -64,8 +67,11 @@ HydroData H5FileInfo::ReadH5Data() {
 
         // reg wave
         Init1D(userH5File, "simulation_parameters/w", data_to_init.reg_wave_data_[i].freq_list);
+        Init1D(userH5File, "simulation_parameters/wave_dir", data_to_init.reg_wave_data_[i].wave_directions_list);
         Init3D(userH5File, bodyName + "/hydro_coeffs/excitation/mag",
                data_to_init.reg_wave_data_[i].excitation_mag_matrix);
+
+        data_to_init.reg_wave_data_[i].wave_directions_list *= CH_DEG_TO_RAD;
 
         // scale by rho * g
         data_to_init.reg_wave_data_[i].excitation_mag_matrix =

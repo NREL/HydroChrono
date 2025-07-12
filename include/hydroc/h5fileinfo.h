@@ -55,6 +55,7 @@ class HydroData {
     };
     struct RegularWaveInfo {
         Eigen::VectorXd freq_list;
+        Eigen::VectorXd wave_directions_list;
         Eigen::Tensor<double, 3> excitation_mag_matrix;
         Eigen::Tensor<double, 3> excitation_phase_matrix;
     };
