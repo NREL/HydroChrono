@@ -160,7 +160,6 @@ double BilinearInterp3D(const MatrixGetter& get_val,
            freq_alpha * (1 - dir_alpha) * v01 + freq_alpha * dir_alpha * v11;
 }
 
-
 }  // end namespace hydroc
 
 #endif

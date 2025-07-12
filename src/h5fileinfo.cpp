@@ -72,7 +72,6 @@ HydroData H5FileInfo::ReadH5Data() {
                data_to_init.reg_wave_data_[i].excitation_mag_matrix);
 
         data_to_init.reg_wave_data_[i].wave_directions_list *= CH_DEG_TO_RAD;
-
         // scale by rho * g
         data_to_init.reg_wave_data_[i].excitation_mag_matrix =
             data_to_init.reg_wave_data_[i].excitation_mag_matrix *

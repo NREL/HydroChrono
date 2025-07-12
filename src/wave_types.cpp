@@ -221,11 +221,7 @@ void RegularWave::AddH5Data(std::vector<HydroData::RegularWaveInfo>& reg_h5_data
 
     double wave_omega_delta = GetOmegaDelta();
     double freq_index_des   = (regular_wave_omega_ / wave_omega_delta) - 1;
-
     double dir_index_des = GetInterpolatedDirectionIndex(regular_wave_direction_);
-
-    std::cout << "dir_index_des = " << dir_index_des << std::endl;
-
     for (int b = 0; b < num_bodies_; b++) {
         for (int rowEx = 0; rowEx < 6; rowEx++) {
             int body_offset = 6 * b;
@@ -234,9 +230,6 @@ void RegularWave::AddH5Data(std::vector<HydroData::RegularWaveInfo>& reg_h5_data
             excitation_force_phase_[body_offset + rowEx] = GetExcitationPhaseInterp(b, rowEx, dir_index_des, freq_index_des);
         }
     }
-    std::cout << "excitation_force_mag_ = " << excitation_force_mag_ << std::endl;
-    std::cout << "excitation_force_phase_ = " << excitation_force_phase_ << std::endl;
-    std::cout << "dir_index_des " << dir_index_des << "freq_index_des " << freq_index_des  << std::endl;
 }
 
 Eigen::Vector3d RegularWave::GetVelocity(const Eigen::Vector3d& position, double time) {
@@ -337,7 +330,6 @@ double RegularWave::GetExcitationPhaseInterp(int b, int i, double dir_index_des,
         [&](int i_, int j_, int k_) { return mat(i_, j_, k_); },
         i, dir_index_des, freq_index_des, mat.dimension(1), mat.dimension(2));
 }
-
 
 Eigen::VectorXd ComputeWaveNumbers(const Eigen::VectorXd& omegas,
                                    double water_depth,
