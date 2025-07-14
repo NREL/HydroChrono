@@ -44,6 +44,10 @@ int main(int argc, char* argv[]) {
     std::vector<double> base_pitch;
     std::vector<double> fore_pitch;
     std::vector<double> aft_pitch;
+    
+    // Output file names
+    std::string filename = "CHRONO_F3OF_DT2_PITCH.txt";
+    std::string filename_duration = "CHRONO_F3OF_DT2_PITCH_DURATION.txt";
 
     // set up body from a mesh
     std::cout << "Attempting to open mesh file: " << body1_meshfame << std::endl;
@@ -177,13 +181,13 @@ int main(int argc, char* argv[]) {
 
     if (profilingOn) {
         std::ofstream profilingFile;
-        profilingFile.open("./results/F3OF_DT2_duration.txt");
+        profilingFile.open("./results/" + filename_duration);
         if (!profilingFile.is_open()) {
             if (!std::filesystem::exists("./results")) {
                 std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
                           << std::endl;
                 std::filesystem::create_directories("./results");
-                profilingFile.open("./results/F3OF_DT2_duration.txt");
+                profilingFile.open("./results/" + filename_duration);
             }
         }
         profilingFile << duration << std::endl;
@@ -192,13 +196,13 @@ int main(int argc, char* argv[]) {
 
     if (saveDataOn) {
         std::ofstream outputFile;
-        outputFile.open("./results/CHRONO_F3OF_DT2_PITCH.txt");
+        outputFile.open("./results/" + filename);
         if (!outputFile.is_open()) {
             if (!std::filesystem::exists("./results")) {
                 std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
                           << std::endl;
                 std::filesystem::create_directories("./results");
-                outputFile.open("./results/CHRONO_F3OF_DT2_PITCH.txt");
+                outputFile.open("./results/" + filename);
             }
         }
         outputFile << "Time (s)    Base Surge (m)Base Pitch (radians)Flap Fore Pitch (radians)Flap Aft Pitch (radians)" << std::endl;

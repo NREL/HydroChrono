@@ -199,15 +199,15 @@ int main(int argc, char* argv[]) {
 
     if (profilingOn) {
         std::ofstream profilingFile;
-        profilingFile.open("./results/f3of_dt3_duration.txt");
+        std::string filename = "CHRONO_F3OF_DT3_FLAP_PITCH.txt";
+        std::string filename_duration = "CHRONO_F3OF_DT3_FLAP_PITCH_DURATION.txt";
+        profilingFile.open("./results/" + filename_duration);
         if (!profilingFile.is_open()) {
             if (!std::filesystem::exists("./results")) {
-                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
-                          << std::endl;
+                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..." << std::endl;
                 std::filesystem::create_directory("./results");
-                profilingFile.open("./results/f3of_dt3_duration.txt");
+                profilingFile.open("./results/" + filename_duration);
                 if (!profilingFile.is_open()) {
-                    // TODO instead of ending program, skip to next saveDataOn if statment
                     std::cout << "Still cannot open file, ending program" << std::endl;
                     return 0;
                 }
@@ -218,13 +218,14 @@ int main(int argc, char* argv[]) {
     }
     if (saveDataOn) {
         std::ofstream outputFile;
-        outputFile.open("./results/f3of_dt3.txt");
+        std::string filename = "CHRONO_F3OF_DT3_FLAP_PITCH.txt";
+        std::string filename_duration = "CHRONO_F3OF_DT3_FLAP_PITCH_DURATION.txt";
+        outputFile.open("./results/CHRONO_F3OF_DT3_FLAP_PITCH.txt");
         if (!outputFile.is_open()) {
             if (!std::filesystem::exists("./results")) {
-                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
-                          << std::endl;
+                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..." << std::endl;
                 std::filesystem::create_directory("./results");
-                outputFile.open("./results/f3of_dt3.txt");
+                outputFile.open("./results/CHRONO_F3OF_DT3_FLAP_PITCH.txt");
                 if (!outputFile.is_open()) {
                     std::cout << "Still cannot open file, ending program" << std::endl;
                     return 0;

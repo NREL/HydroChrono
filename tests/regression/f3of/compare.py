@@ -15,14 +15,15 @@ from pathlib import Path
 import numpy as np
 
 # Import the comparison template
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../utilities'))
 from compare_template import run_multi_column_comparison
 
 def main():
     if len(sys.argv) == 1 or (len(sys.argv) == 3 and sys.argv[1] == 'default'):
         # Use default reference and result file locations
         ref_file = os.path.join(os.path.dirname(__file__), "..", "reference_data", "f3of", "dt3", "hc_ref_f3of_dt3_flap_pitch.txt")
-        test_file = os.path.join("results", "f3of_dt3.txt")
+        build_dir = os.environ.get('HYDROCHRONO_BUILD_DIR', os.path.join(os.path.dirname(__file__), '..', '..', '..', 'build'))
+        test_file = os.path.join(build_dir, "bin", "tests", "regression", "f3of", "results", "CHRONO_F3OF_DT3_FLAP_PITCH.txt")
     elif len(sys.argv) == 3:
         ref_file = sys.argv[1]
         test_file = sys.argv[2]
@@ -101,7 +102,7 @@ def main():
             print("F3OF DT3 TEST PASSED - All comparisons within tolerance")
             print(f"Generated plots:")
             for config in test_configs:
-                plot_name = config['test_name'].replace(' ', '_')
+                plot_name = config['test_name'].lower().replace(' ', '_').replace('-', '_')
                 print(f"  - {config['test_name']}: {plots_dir}/{plot_name}_comparison.png")
         else:
             print("F3OF DT3 TEST FAILED - Some comparisons outside tolerance")

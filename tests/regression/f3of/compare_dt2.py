@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 
 # Import the comparison template
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../utilities'))
 from compare_template import create_comparison_plot
 
 def main():
@@ -20,8 +20,9 @@ def main():
     test_name = "F3OF DT2 Pitch Decay"
     executable_patterns = ["f3of_dt2_test", "f3of_dt2_test.exe"]
     
-    # Data files - use absolute paths
-    hc_data_file = "results/CHRONO_F3OF_DT2_PITCH.txt"
+    # Find the result file
+    build_dir = os.environ.get('HYDROCHRONO_BUILD_DIR', os.path.join(os.path.dirname(__file__), '..', '..', '..', 'build'))
+    hc_data_file = os.path.join(build_dir, "bin", "tests", "regression", "f3of", "results", "CHRONO_F3OF_DT2_PITCH.txt")
     ref_data_file = os.path.join(os.path.dirname(__file__), "..", "reference_data", "f3of", "dt2", "hc_ref_f3of_dt2_pitch.txt")
     
     # Check if files exist
@@ -104,7 +105,7 @@ def main():
             sys.exit(1)
         else:
             print(f"F3OF DT2 TEST PASSED - L2 Norm: {n1:.2e}, L-infinity Norm: {n2:.2e}")
-            print(f"Generated plot: {plots_dir}/{test_name.replace(' ', '_')}_comparison.png")
+            print(f"Generated plot: {plots_dir}/{test_name.lower().replace(' ', '_').replace('-', '_')}_comparison.png")
         
     except Exception as e:
         print(f"Error during comparison: {e}")
