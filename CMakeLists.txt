@@ -35,7 +35,7 @@ endif()
 #--------------------------------------------------------------
 
 project(HydroChrono 
-	VERSION 0.2.5
+	VERSION 0.2.6
 	DESCRIPTION "A hydrodynamic library for use with Project Chrono."
 	LANGUAGES CXX
 )
@@ -59,6 +59,7 @@ option (HYDROCHRONO_ENABLE_IRRLICHT "Enable irrlicht visualization library" ON)
 option (HYDROCHRONO_ENABLE_DEMOS "Enable demo executables" ON)
 option (HYDROCHRONO_ENABLE_USER_DOC "User's documentation" OFF)
 option (HYDROCHRONO_ENABLE_PROG_DOC "Programmer's documentation" OFF)
+option (HYDROCHRONO_ENABLE_LOGGING "Enable debug logging" OFF)
 
 
 # find required packages and libraries to make HydroChrono library
@@ -74,8 +75,11 @@ else(HYDROCHRONO_ENABLE_IRRLICHT)
 endif(HYDROCHRONO_ENABLE_IRRLICHT)
 
 set(HDF5_USE_STATIC_LIBRARIES ON)
-find_package(HDF5 REQUIRED COMPONENTS CXX)
 
+# Configure HDF5 to find its dependencies from its installation
+set(HDF5_ROOT "${HDF5_ROOT}" CACHE PATH "HDF5 root directory")
+
+find_package(HDF5 REQUIRED COMPONENTS CXX)
 
 #-----------------------------------------------------------------------------
 # Fix for VS 2017 15.8 and newer to handle alignment specification with Eigen
@@ -101,6 +105,27 @@ if(MSVC)
     add_compile_options(/wd4251)                   # class needs to have dll-interface
 endif()
 
+# --------------------------------------------------
+# Global output directory structure
+# --------------------------------------------------
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+
+# Replicate for multi-config generators (e.g. Visual Studio, Xcode, Ninja Multi-Config)
+if(CMAKE_CONFIGURATION_TYPES)
+  foreach(cfg ${CMAKE_CONFIGURATION_TYPES})
+    string(TOUPPER "${cfg}" cfg_uc)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${cfg_uc} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${cfg_uc} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${cfg_uc} ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})
+  endforeach()
+endif()
+
+# Category-specific output folders
+set(HYDROCHRONO_DEMO_OUTPUT_DIR ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/demos CACHE PATH "Output directory for demo executables")
+set(HYDROCHRONO_TEST_OUTPUT_DIR ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/tests CACHE PATH "Output directory for test executables")
+
 # =======================
 # HydroChrono Library
 # =======================
@@ -111,6 +136,7 @@ set(HYDROCHRONO_SOURCES
 	src/hydro_forces.cpp
 	src/helper.cpp
 	src/wave_types.cpp
+	src/logging.cpp
 
 )
 
@@ -133,11 +159,12 @@ target_include_directories(
 )
 
 target_compile_definitions(HydroChrono
-
 	PUBLIC
 		CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\"
+		HYDROCHRONO_VERSION=\"${PROJECT_VERSION}\"
+		HYDROCHRONO_BUILD_TYPE=\"$<IF:$<CONFIG:Debug>,Debug,$<IF:$<CONFIG:Release>,Release,$<IF:$<CONFIG:RelWithDebInfo>,RelWithDebInfo,$<IF:$<CONFIG:MinSizeRel>,MinSizeRel,Unknown>>>>\"
 	PRIVATE 
-		
+		$<$<BOOL:${HYDROCHRONO_ENABLE_LOGGING}>:HYDROCHRONO_ENABLE_LOGGING=1>
 )
 
 target_compile_options(HydroChrono BEFORE 
@@ -160,7 +187,6 @@ target_link_libraries(HydroChrono
 		${CHRONO_LIBRARIES}		
 	PRIVATE
 		${HDF5_LIBRARIES}
-
 )
 
 # ====================
@@ -227,8 +253,13 @@ if(HYDROCHRONO_ENABLE_TESTS)
 
 	include(CTest)
 	enable_testing()
+    
+    set(CHRONO_DLL_DIR "${Chrono_DIR}/../bin/Release")
+    set(IRRLICHT_DLL_DIR "C:/libs/irrlicht-1.8.4/bin/Win64-VisualStudio")
+    set(TEST_ENVIRONMENT "PATH=${CHRONO_DLL_DIR};${IRRLICHT_DLL_DIR};$ENV{PATH}")
 
 	add_subdirectory(tests)
+	add_subdirectory(tests/regression)
 
 endif(HYDROCHRONO_ENABLE_TESTS)
 
@@ -280,3 +311,6 @@ export(
     FILE "${CMAKE_CURRENT_BINARY_DIR}/cmake/HydroChronoTargets.cmake"
     NAMESPACE HydroChrono::
 )
+
+# Set build type to Release but enable debug symbols
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Zi /O2")
