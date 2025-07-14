@@ -15,7 +15,7 @@ import os
 from pathlib import Path
 
 # Import the comparison template
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../utilities'))
 from compare_template import run_comparison
 
 if __name__ == '__main__':
@@ -38,10 +38,12 @@ if __name__ == '__main__':
     # Ensure the plots directory exists
     plots_dir.mkdir(parents=True, exist_ok=True)
     print(f"Plot will be saved to: {plots_dir}")
-    print(f"Plot filename: {plots_dir}/Sphere Decay Test_comparison.png")
 
     # Sphere-specific configuration
     test_name = "Sphere Decay Test"
+    # Convert test_name to lowercase with underscores for filename
+    safe_test_name = test_name.lower().replace(' ', '_').replace('-', '_')
+    print(f"Plot filename: {plots_dir}/{safe_test_name}_comparison.png")
     y_label = "Heave (m)"
     executable_patterns = ["sphere_decay_test", "sphere_decay"]
     pass_criteria = (1e-4, 0.02)  # (L2 threshold, L-infinity threshold)

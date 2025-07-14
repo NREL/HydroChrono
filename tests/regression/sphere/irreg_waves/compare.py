@@ -9,8 +9,8 @@ import sys
 import os
 from pathlib import Path
 
-# Add the parent directory to the path to import the comparison template
-sys.path.append(str(Path(__file__).parent.parent.parent))
+# Add the utilities directory to the path to import the comparison template
+sys.path.append(str(Path(__file__).parent.parent.parent / "utilities"))
 from compare_template import run_comparison
 
 def main():
@@ -25,24 +25,11 @@ def main():
     project_root = script_dir.parent.parent.parent.parent  # Go up to project root
     build_dir = project_root / "build"
     
-    # Try to find the result file in the build directory
-    result_file = None
-    possible_paths = [
-        build_dir / "tests" / "regression" / "Release" / "sphere" / "irreg_waves" / "results" / "sphere_irregular_waves.txt",
-        build_dir / "tests" / "regression" / "Debug" / "sphere" / "irreg_waves" / "results" / "sphere_irregular_waves.txt",
-        build_dir / "tests" / "regression" / "sphere" / "irreg_waves" / "results" / "sphere_irregular_waves.txt",
-        Path("results") / "sphere_irregular_waves.txt",  # Fallback to current directory
-    ]
+    # Find the result file
+    result_file = build_dir / "bin" / "tests" / "regression" / "sphere" / "results" / "CHRONO_SPHERE_IRREGULAR_WAVES.txt"
     
-    for path in possible_paths:
-        if path.exists():
-            result_file = path
-            break
-    
-    if result_file is None:
-        print(f"Error: Result file not found. Searched in:")
-        for path in possible_paths:
-            print(f"  {path}")
+    if not result_file.exists():
+        print(f"Error: Result file not found: {result_file}")
         sys.exit(1)
     
     print(f"Comparing sphere irregular waves test...")

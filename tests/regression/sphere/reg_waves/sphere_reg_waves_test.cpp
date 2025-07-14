@@ -155,7 +155,7 @@ int main(int argc, char* argv[]) {
         unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
         if (profilingOn) {
-            std::string out_file = "./results/sphere_reg_waves_" + std::to_string(reg_wave_num) + "_duration.txt";
+            std::string out_file = "./results/CHRONO_SPHERE_REG_WAVES_" + std::to_string(reg_wave_num) + "_DURATION.txt";
             std::ofstream outputFile(out_file);
             // profilingFile.open("./results/sphere_reg_waves_duration.txt");
             if (!outputFile.is_open()) {
@@ -175,7 +175,7 @@ int main(int argc, char* argv[]) {
         }
 
         if (saveDataOn) {
-            std::string out_file = "./results/sphere_reg_waves_" + std::to_string(reg_wave_num) + ".txt";
+            std::string out_file = "./results/CHRONO_SPHERE_REG_WAVES_" + std::to_string(reg_wave_num) + ".txt";
             std::ofstream outputFile(out_file);
             if (!outputFile.is_open()) {
                 if (!std::filesystem::exists("./results")) {

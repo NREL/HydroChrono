@@ -11,8 +11,8 @@ import os
 import glob
 from pathlib import Path
 
-# Add the parent directory to the path to import the comparison template
-sys.path.append(str(Path(__file__).parent.parent.parent))
+# Add the utilities directory to the path to import the comparison template
+sys.path.append(str(Path(__file__).parent.parent.parent / "utilities"))
 from compare_template import run_comparison, run_multi_column_comparison
 
 def main():
@@ -26,28 +26,15 @@ def main():
     project_root = script_dir.parent.parent.parent.parent  # Go up to project root
     build_dir = project_root / "build"
     
-    # Try to find the results directory in the build directory
-    results_dir = None
-    possible_paths = [
-        build_dir / "tests" / "regression" / "Release" / "sphere" / "reg_waves" / "results",
-        build_dir / "tests" / "regression" / "Debug" / "sphere" / "reg_waves" / "results",
-        build_dir / "tests" / "regression" / "sphere" / "reg_waves" / "results",
-        Path("results"),  # Fallback to current directory
-    ]
+    # Find the results directory
+    results_dir = build_dir / "bin" / "tests" / "regression" / "sphere" / "results"
     
-    for path in possible_paths:
-        if path.exists():
-            results_dir = path
-            break
-    
-    if results_dir is None:
-        print(f"Error: Results directory not found. Searched in:")
-        for path in possible_paths:
-            print(f"  {path}")
+    if not results_dir.exists():
+        print(f"Error: Results directory not found: {results_dir}")
         sys.exit(1)
     
     # Find all result files
-    result_files = list(results_dir.glob("sphere_reg_waves_*.txt"))
+    result_files = list(results_dir.glob("CHRONO_SPHERE_REG_WAVES_*.txt"))
     result_files.sort()
     
     if not result_files:

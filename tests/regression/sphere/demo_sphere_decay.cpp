@@ -136,7 +136,7 @@ int main(int argc, char* argv[]) {
     ensure_directory_exists(results_dir);
 
     if (profilingOn) {
-        std::ofstream profilingFile(results_dir / "sphere_decay_duration.txt");
+        std::ofstream profilingFile(results_dir / "CHRONO_SPHERE_DECAY_HEAVE_DURATION.txt");
         if (profilingFile.is_open()) {
             profilingFile << duration << " ms\n";
             profilingFile.close();
@@ -146,7 +146,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (saveDataOn) {
-        std::ofstream outputFile(results_dir / "sphere_decay.txt");
+        std::ofstream outputFile(results_dir / "CHRONO_SPHERE_DECAY_HEAVE.txt");
         if (outputFile.is_open()) {
             outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(12)
                        << "Heave (m)"

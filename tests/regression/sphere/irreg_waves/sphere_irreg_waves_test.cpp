@@ -185,7 +185,7 @@ int main(int argc, char* argv[]) {
     unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
     if (profilingOn) {
-        std::string out_file = "results/sphere_irregular_waves_duration.txt";
+        std::string out_file = "results/CHRONO_SPHERE_IRREGULAR_WAVES_DURATION.txt";
         std::ofstream profilingFile(out_file);
         if (!profilingFile.is_open()) {
             if (!std::filesystem::exists("./results")) {
@@ -204,7 +204,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (saveDataOn) {
-        std::string out_file = "results/sphere_irregular_waves.txt";
+        std::string out_file = "results/CHRONO_SPHERE_IRREGULAR_WAVES.txt";
         std::ofstream outputFile(out_file);
         if (!outputFile.is_open()) {
             if (!std::filesystem::exists("./results")) {
