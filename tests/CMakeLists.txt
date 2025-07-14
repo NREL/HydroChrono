@@ -1,7 +1,16 @@
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
 # Set global output directory for all test executables
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${HYDROCHRONO_TEST_OUTPUT_DIR})
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${HYDROCHRONO_TEST_OUTPUT_DIR})
+
+if(CMAKE_CONFIGURATION_TYPES)
+  foreach(cfg ${CMAKE_CONFIGURATION_TYPES})
+    string(TOUPPER "${cfg}" cfg_uc)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${cfg_uc} ${HYDROCHRONO_TEST_OUTPUT_DIR})
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${cfg_uc} ${HYDROCHRONO_TEST_OUTPUT_DIR})
+  endforeach()
+endif()
 
 # Legacy Tests Configuration
 # =========================
