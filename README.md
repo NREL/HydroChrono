@@ -47,32 +47,74 @@ mkdir build
 cd build
 ```
 
-3. Configure and build the project:
+#### Windows (Visual Studio)
+
+**⚠️ Important:** The build type (Release, Debug, RelWithDebInfo) must match the configuration used when building Project Chrono.
+
 ```powershell
+# Configure the project
 cmake .. -DChrono_DIR="<path_to_chrono_build>/cmake" -DHDF5_DIR="<path_to_hdf5_cmake>" -DPython3_ROOT_DIR="<path_to_python>"
+
+# Build the project
 cmake --build . --config Release
 ```
 
-4. Run the tests:
+**Post-Build Steps (Required before running tests):**
+
+Copy the following DLL files from your Chrono build directory to your build directory's `demos/Release` folder:
+- ChronoEngine.dll
+- ChronoEngine_irrlicht.dll (if using Irrlicht)
+- Irrlicht.dll (if using Irrlicht)
+
+**Run the tests:**
 ```powershell
 ctest -C Release --output-on-failure
+```
+
+#### macOS / Linux
+
+**⚠️ Important:** The build type (Release, Debug, RelWithDebInfo) must match the configuration used when building Project Chrono.
+
+```bash
+# Configure the project
+cmake .. -DChrono_DIR="<path_to_chrono_build>/cmake" -DHDF5_DIR="<path_to_hdf5_cmake>" -DPython3_ROOT_DIR="<path_to_python>" -DCMAKE_BUILD_TYPE=Release
+
+# Build the project
+cmake --build .
+```
+
+**Post-Build Steps (Required before running tests):**
+
+Copy the following shared library files from your Chrono build directory to your build directory's `demos` folder:
+- libChronoEngine.so (Linux) or libChronoEngine.dylib (macOS)
+- libChronoEngine_irrlicht.so (Linux) or libChronoEngine_irrlicht.dylib (macOS) (if using Irrlicht)
+- libIrrlicht.so (Linux) or libIrrlicht.dylib (macOS) (if using Irrlicht)
+
+**Run the tests:**
+```bash
+ctest --output-on-failure
 ```
 
 ### Clean Build
 
 To perform a clean rebuild of the project:
+
+**Windows:**
 ```powershell
 # From the project root
 Remove-Item -Recurse -Force build
 mkdir build
 cd build
 ```
+Then return to the [Windows build steps](#windows-visual-studio) above.
 
-### Post-Build Steps
-
-Copy the following DLL files from your Chrono build directory to your build directory's `demos/Release` folder:
-- ChronoEngine.dll
-- ChronoEngine_irrlicht.dll (if using Irrlicht)
-- Irrlicht.dll (if using Irrlicht)
+**macOS / Linux:**
+```bash
+# From the project root
+rm -rf build
+mkdir build
+cd build
+```
+Then return to the [macOS / Linux build steps](#macos--linux) above.
 
 For detailed build instructions, including Visual Studio setup and running demos, see the [developer documentation](https://nrel.github.io/HydroChrono/developer_docs/build_instructions.html).
