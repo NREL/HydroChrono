@@ -78,7 +78,7 @@ This is the recommended way to build HydroChrono.
    ```
    Note: The Chrono build directory typically contains a `cmake` folder with the Chrono CMake configuration files.
 
-   **⚠️ Important:** The build type (e.g., Release, Debug, RelWithDebInfo) used to build HydroChrono **must match** the build type used when building Project Chrono. On Windows, this is set when running `cmake --build . --config Release`.
+   **⚠️ Important:** The build type (e.g., Release, Debug, RelWithDebInfo) used to build HydroChrono **must match** the build type used when building Project Chrono. On Windows, this is set when running `cmake --build . --config Release`. For more context on build configurations and CMake behavior across platforms, see [CMake Build Configuration Basics](/developer_docs/cmake_build_basics).
 
 3. **Build the Project**
    Compile the project using the following command:
@@ -105,7 +105,7 @@ If you prefer using Visual Studio, you can use the CMake GUI to generate a Visua
    - Enable the following options for additional features: `HYDROCHRONO_ENABLE_DEMOS`, `HYDROCHRONO_ENABLE_IRRLICHT`, and `HYDROCHRONO_ENABLE_TESTS`
    - To build the docs: set `Python3_ROOT_DIR` to your Python environment with required packages
 
-   **⚠️ Important:** The build type (e.g., Release, Debug, RelWithDebInfo) used to build HydroChrono **must match** the build type used when building Project Chrono. On Windows, this is set when running `cmake --build . --config Release`.
+   **⚠️ Important:** The build type (e.g., Release, Debug, RelWithDebInfo) used to build HydroChrono **must match** the build type used when building Project Chrono. On Windows, this is set when running `cmake --build . --config Release`. For more context on build configurations and CMake behavior across platforms, see [CMake Build Configuration Basics](/developer_docs/cmake_build_basics).
 
 3. Click "Generate" to create the Visual Studio solution.
 
