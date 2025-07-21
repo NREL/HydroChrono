@@ -144,14 +144,16 @@ Eigen::Vector3d GetWaterVelocityIrregular(const Eigen::Vector3d& position,
                                           const Eigen::VectorXd& wavenumbers,
                                           double water_depth,
                                           double mwl,
-                                          double wave_direction,
-                                          double wave_spread) {
+                                          const std::vector<double>& wave_direction,
+                                          const std::vector<double>& wave_spread) {
     auto water_velocity = Eigen::Vector3d(0.0, 0.0, 0.0);
-    for (size_t i = 0; i < freqs_hz.size(); ++i) {
-        auto amplitude = std::sqrt(2 * spectral_densities[i] * spectral_widths[i]);
-        auto omega     = 2 * M_PI * freqs_hz[i];
-        water_velocity += GetWaterVelocity(position, time, omega, amplitude, wave_phases[i], wavenumbers[i],
-                                           water_depth, mwl, wave_direction, wave_spread);
+    for (size_t j = 0; j < freqs_hz.size(); ++j) {
+        for (size_t i = 0; i < freqs_hz.size(); ++i) {
+            auto amplitude = std::sqrt(2 * spectral_densities[i] * spectral_widths[i] * wave_spread[j]);
+            auto omega     = 2 * M_PI * freqs_hz[i];
+            water_velocity += GetWaterVelocity(position, time, omega, amplitude, wave_phases[i], wavenumbers[i],
+                                               water_depth, mwl, wave_direction[j], wave_spread[j]);
+        }
     }
     return water_velocity;
 }
@@ -314,27 +316,6 @@ double RegularWave::GetInterpolatedDirectionIndex(double dir_input) const {
 
     throw std::runtime_error("Could not find interpolation interval for direction input.");
 }
-
-/*
-double RegularWave::GetExcitationMagInterp(int b, int i, int j, double freq_index_des) const {
-    double freq_interp_val    = freq_index_des - floor(freq_index_des);
-    double excitationMagFloor = wave_info_[b].excitation_mag_matrix(i, j, (int)floor(freq_index_des));
-    double excitationMagCeil  = wave_info_[b].excitation_mag_matrix(i, j, (int)floor(freq_index_des) + 1);
-    double excitationMag      = (freq_interp_val * (excitationMagCeil - excitationMagFloor)) + excitationMagFloor;
-
-    return excitationMag;
-}
-
-double RegularWave::GetExcitationPhaseInterp(int b, int i, int j, double freq_index_des) const {
-    double freq_interp_val      = freq_index_des - floor(freq_index_des);  // look into c++ modf TODO
-    double excitationPhaseFloor = wave_info_[b].excitation_phase_matrix(
-        i, j, (int)floor(freq_index_des));  // TODO check if freq_index_des is >0, if so just cast instead of floor
-    double excitationPhaseCeil = wave_info_[b].excitation_phase_matrix(i, j, (int)floor(freq_index_des) + 1);
-    double excitationPhase = (freq_interp_val * (excitationPhaseCeil - excitationPhaseFloor)) + excitationPhaseFloor;
-
-    return excitationPhase;
-}
-*/
 
 double RegularWave::GetExcitationMagInterp(int b, int i, double dir_index_des, double freq_index_des) const {
     const auto& mat = wave_info_[b].excitation_mag_matrix;
@@ -606,24 +587,32 @@ Eigen::Vector3d IrregularWaves::GetVelocity(const Eigen::Vector3d& position, dou
 
     return GetWaterVelocityIrregular(position_stretched, time, spectrum_frequencies_, spectral_densities_,
                                      spectral_widths_, wave_phases_, wavenumbers_, water_depth_, mwl_,
-                                     params_.wave_direction_[0], params_.wave_spread_[0]);
+                                     params_.wave_direction_, params_.wave_spread_);
 };
 
 Eigen::Vector3d IrregularWaves::GetAcceleration(const Eigen::Vector3d& position, double time) {
     // apply wave stretching (if enabled)
     auto position_stretched = position;
+    double eta = 0.0;
     if (params_.wave_stretching_) {
-        auto eta = GetEtaIrregular(position, time, spectrum_frequencies_, spectral_densities_, spectral_widths_,
-                                   wave_phases_, wavenumbers_, params_.wave_direction_[0], params_.wave_spread_[0]);
+        for (size_t i = 0; i < params_.wave_direction_.size(); i++) {
+            eta += GetEtaIrregular(position, time, spectrum_frequencies_, spectral_densities_, spectral_widths_,
+                                       wave_phases_, wavenumbers_, params_.wave_direction_[i], params_.wave_spread_[i]);
+        }
         // position relative to mean water level
         auto z_pos = position.z() - mwl_;
         // Wheeler stretching
         position_stretched[2] = water_depth_ * (z_pos - eta) / (water_depth_ + eta);
     }
 
-    return GetWaterAccelerationIrregular(position_stretched, time, spectrum_frequencies_, spectral_densities_,
-                                         spectral_widths_, wave_phases_, wavenumbers_, water_depth_, mwl_,
-                                         params_.wave_direction_[0], params_.wave_spread_[0]);
+    Eigen::Vector3d TotWaterAccelerationIrregular = Eigen::Vector3d::Zero();
+    for (size_t i = 0; i < params_.wave_direction_.size(); i++) {
+        TotWaterAccelerationIrregular += GetWaterAccelerationIrregular(
+            position_stretched, time, spectrum_frequencies_, spectral_densities_,
+                                      spectral_widths_, wave_phases_, wavenumbers_, water_depth_, mwl_,
+                                      params_.wave_direction_[i], params_.wave_spread_[i]);
+    }
+    return TotWaterAccelerationIrregular;
 };
 
 double IrregularWaves::GetElevation(const Eigen::Vector3d& position, double time) {
@@ -916,6 +905,7 @@ double IrregularWaves::ExcitationConvolution(int body, int dof, double time) {
     auto& irf_val_mat     = ex_irf_sampled_[body];
     auto& irf_width_array = ex_irf_width_sampled_[body];
 
+    std::cout << "irf_val_mat = " << irf_val_mat.dimension(1) << std::endl; 
 
     const int num_directions = params_.wave_direction_.size();  // Number of wave directions
     
