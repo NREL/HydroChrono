@@ -1,8 +1,6 @@
 #include "guihelper_impl.h"
 using namespace hydroc::gui;
 
-#ifdef HYDROCHRONO_HAVE_VSG
-
 using namespace chrono::vsg3d;
 
 // -----------------------------------------------------------------------------
@@ -83,5 +81,3 @@ bool GUIImplVSG::IsRunning(double timestep) {
 
     return true;
 }
-
-#endif  // HYDROCHRONO_HAVE_VSG

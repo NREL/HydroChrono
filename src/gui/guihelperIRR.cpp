@@ -1,10 +1,8 @@
 #include "guihelper_impl.h"
 using namespace hydroc::gui;
 
-#ifdef HYDROCHRONO_HAVE_IRRLICHT
-
-    #include <IEventReceiver.h>  // irrlicht
-    #include <chrono_irrlicht/ChIrrMeshTools.h>
+#include <IEventReceiver.h>  // irrlicht
+#include <chrono_irrlicht/ChIrrMeshTools.h>
 
 using namespace chrono::irrlicht;
 
@@ -291,5 +289,3 @@ bool GUIImplIRR::IsRunning(double timestep) {
     return true;
     // ========== END TEMPORARY DIAGNOSTIC CODE ==========
 }
-
-#endif  // HYDROCHRONO_HAVE_IRRLICHT

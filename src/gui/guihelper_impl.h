@@ -30,6 +30,7 @@ namespace gui {
 // Base class for private GUI implementation.
 class GUIImpl {
   public:
+    GUIImpl() {}
     virtual ~GUIImpl() {}
     GUIImpl(const GUIImpl&)            = delete;
     GUIImpl& operator=(const GUIImpl&) = delete;
@@ -40,9 +41,6 @@ class GUIImpl {
     }
     virtual void SetCamera(double x, double y, double z, double dirx, double diry, double dirz) {}
     virtual bool IsRunning(double timestep) { return true; }
-
-  protected:
-    GUIImpl() {}
 };
 
 #ifdef HYDROCHRONO_HAVE_IRRLICHT

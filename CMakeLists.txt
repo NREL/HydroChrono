@@ -416,9 +416,19 @@ set(HCGUI_HEADERS
 
 set(HCGUI_SOURCES
     src/gui/guihelper.cpp
-    src/gui/guihelperIRR.cpp
-    src/gui/guihelperVSG.cpp
 )
+
+if(HYDROCHRONO_ENABLE_IRRLICHT)
+  set(HCGUI_SOURCES ${HCGUI_SOURCES}
+      src/gui/guihelperIRR.cpp
+  )
+endif()
+
+if(HYDROCHRONO_ENABLE_VSG)
+  set(HCGUI_SOURCES ${HCGUI_SOURCES}
+      src/gui/guihelperVSG.cpp
+  )
+endif()
 
 add_library(HydroChronoGUI ${HCGUI_SOURCES} ${HCGUI_HEADERS})
 
