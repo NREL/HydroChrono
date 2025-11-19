@@ -4,8 +4,40 @@
 /*********************************************************************
  * @file  hydro_forces.h
  *
- * @brief Header file of TestHydro main class and helper classes \
+ * @brief Header file of TestHydro main class and helper classes
  * ComponentFunc and ForceFunc6d.
+ *
+ * OVERVIEW:
+ * This header defines the public interface for hydrodynamic force computation
+ * in multibody marine systems. It provides Chrono-compatible force callbacks
+ * that integrate hydrostatics, radiation damping, and wave excitation.
+ *
+ * MAIN RESPONSIBILITIES:
+ * - TestHydro: Main orchestrator class for all hydrodynamic force components
+ * - ForceFunc6d: Wraps 6-DOF force/torque callbacks for Chrono bodies
+ * - ComponentFunc: Per-DOF force function for Chrono's ChForce system
+ *
+ * INTERACTIONS:
+ * - Used by setup_hydro_from_yaml to create and configure TestHydro instances
+ * - Called by Chrono during simulation via ChForce callbacks
+ * - Reads HDF5 data through H5FileInfo (not directly exposed here)
+ * - Uses WaveBase hierarchy for wave excitation (passed in constructor)
+ *
+ * KEY ASSUMPTIONS:
+ * - Bodies are 1-indexed in CoordinateFuncForBody (legacy, from ForceFunc6d)
+ * - All bodies share same H5 file (multibody data in single file)
+ * - 6 DOF per body (surge, sway, heave, roll, pitch, yaw)
+ * - Forces computed once per time step and cached
+ *
+ * KNOWN LIMITATIONS:
+ * - Monolithic design: all physics models mixed in TestHydro
+ * - Tight coupling to Chrono types (hard to test in isolation)
+ * - Body indexing inconsistency (1-indexed vs 0-indexed)
+ * - No per-body enable/disable of force components
+ *
+ * FUTURE REFACTORING:
+ * This class will be replaced by HydroSystem + ChronoHydroCoupler.
+ * TestHydro will become a thin legacy adapter for API stability.
  *********************************************************************/
 
 // TODO: clean up include statements

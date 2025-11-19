@@ -3,6 +3,45 @@
  *
  * @brief Implementation of TestHydro main class and helper classes
  * ComponentFunc and ForceFunc6d.
+ *
+ * OVERVIEW:
+ * This file implements the core hydrodynamic force computation for multibody
+ * marine systems. It connects Chrono physics bodies to hydrodynamic models
+ * (hydrostatics, radiation damping, wave excitation) and applies the
+ * resulting forces during simulation.
+ *
+ * MAIN RESPONSIBILITIES:
+ * - TestHydro: Orchestrates all hydrodynamic force components for multiple bodies
+ * - ForceFunc6d: Wraps Chrono ChForce/ChTorque callbacks for each body
+ * - ComponentFunc: Provides per-DOF force values to Chrono's force system
+ *
+ * INTERACTIONS:
+ * - Reads HDF5 hydrodynamic data via H5FileInfo (equilibrium, stiffness, RIRF kernels)
+ * - Uses WaveBase hierarchy for wave excitation forces
+ * - Applies forces to Chrono bodies through ChForce/ChLoadAddedMass
+ * - Maintains velocity history buffers for radiation convolution
+ *
+ * KEY ASSUMPTIONS:
+ * - All bodies share the same H5 file (multibody data in single file)
+ * - Bodies are 1-indexed in ForceFunc6d interface (legacy)
+ * - 6 DOF per body (surge, sway, heave, roll, pitch, yaw)
+ * - Forces computed once per time step, cached via prev_time check
+ * - Radiation history stored per-body in velocity_history_ vector
+ *
+ * KNOWN LIMITATIONS:
+ * - Monolithic design: all force models mixed in one class
+ * - Tight coupling to Chrono types (hard to test without Chrono)
+ * - Body indexing inconsistency (1-indexed in some places, 0-indexed in others)
+ * - No per-body enable/disable of radiation or excitation (system-wide only)
+ *
+ * DEBUG INSTRUMENTATION:
+ * To enable debug output, compile with -DHYDROCHRONO_DEBUG.
+ * This will print force components, history sizes, and timing info.
+ * Baseline outputs to record:
+ * - Total force vector per time step (total_force_)
+ * - Individual components (hydrostatic, radiation, waves)
+ * - Velocity history size and time span
+ * - RIRF kernel access patterns
  *********************************************************************/
 
 // TODO minimize include statements, move all to header file hydro_forces.h?
@@ -35,6 +74,10 @@
 const int kDofPerBody  = 6;
 const int kDofLinOrRot = 3;
 
+// ------------------------------------------------------------
+// SECTION: Utility functions (legacy)
+// ------------------------------------------------------------
+
 /**
  * @brief Generates a vector of evenly spaced numbers over a specified range.
  *
@@ -58,6 +101,12 @@ std::vector<double> Linspace(double start, double end, int num_points) {
 
     return result;
 }
+
+// ------------------------------------------------------------
+// SECTION: Chrono coupling (connects hydrodynamics to ChBody)
+// ------------------------------------------------------------
+// These classes bridge Chrono's force callback system to TestHydro.
+// TODO: Extract to separate module in future refactor.
 
 // TODO reorder ComponentFunc implementation functions to match the header order of functions
 ComponentFunc::ComponentFunc() {
@@ -167,6 +216,12 @@ void ForceFunc6d::ApplyForceAndTorqueToBody() {
     body_->AddForce(chrono_torque_);
 }
 
+// ------------------------------------------------------------
+// SECTION: TestHydro class (main hydrodynamics orchestrator)
+// ------------------------------------------------------------
+// TODO: This class will be refactored into modular force models.
+// Current structure mixes all physics components together.
+
 TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
                      std::string h5_file_name,
                      std::shared_ptr<WaveBase> waves)
@@ -189,10 +244,11 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
         }
     }
 
-    // Total degrees of freedom
+    // Total degrees of freedom (multibody: 6 DOF per body)
     int total_dofs = kDofPerBody * num_bodies_;
 
     // Initialize vectors
+    // Time-history buffers for radiation convolution (multibody: one per body)
     time_history_.clear();
     velocity_history_.clear();
     for (int b = 0; b < num_bodies_; ++b) {
@@ -204,7 +260,7 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
     equilibrium_.assign(total_dofs, 0.0);
     cb_minus_cg_.assign(kDofLinOrRot * num_bodies_, 0.0);
 
-    // Compute equilibrium and cb_minus_cg_
+    // Compute equilibrium and cb_minus_cg_ (multibody loop)
     for (int b = 0; b < num_bodies_; ++b) {
         for (int i = 0; i < kDofLinOrRot; ++i) {
             unsigned eq_idx = i + kDofPerBody * b;
@@ -215,11 +271,12 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
         }
     }
 
+    // Create Chrono force callbacks for each body (multibody setup)
     for (int b = 0; b < num_bodies_; ++b) {
         force_per_body_.emplace_back(bodies_[b], this);
     }
 
-    // Handle added mass info
+    // Handle added mass info (applied via Chrono load system)
     my_loadcontainer = chrono_types::make_shared<ChLoadContainer>();
 
     std::vector<std::shared_ptr<ChLoadable>> loadables(bodies_.size());
@@ -260,6 +317,12 @@ void TestHydro::AddWaves(std::shared_ptr<WaveBase> waves) {
     user_waves_->Initialize();
 }
 
+// ------------------------------------------------------------
+// SECTION: Hydrostatics (legacy)
+// ------------------------------------------------------------
+// Computes restoring forces from displacement and buoyancy.
+// TODO: Extract to HydrostaticsModel class in future refactor.
+
 std::vector<double> TestHydro::ComputeForceHydrostatics() {
     auto __t0 = std::chrono::steady_clock::now();
     assert(num_bodies_ > 0);
@@ -268,6 +331,12 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
     const auto gravitational_acceleration = bodies_[0]->GetSystem()->GetGravitationalAcceleration();  // same system for all bodies
     const double rho_times_g = rho * gravitational_acceleration.Length();
 
+#ifdef HYDROCHRONO_DEBUG
+    // Debug: log hydrostatics computation start
+    std::cout << "[HYDRO_DEBUG] ComputeForceHydrostatics: num_bodies=" << num_bodies_ << ", rho=" << rho << std::endl;
+#endif
+
+    // Multibody loop: compute hydrostatic forces for each body
     for (int b = 0; b < num_bodies_; ++b) {
         const auto& body = bodies_[b];
 
@@ -316,10 +385,23 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
         body_force_hydrostatic[5] += buoyancy_torque.z();
     }
 
+#ifdef HYDROCHRONO_DEBUG
+    // Debug: log hydrostatics result summary
+    std::cout << "[HYDRO_DEBUG] Hydrostatics complete: max_force=" 
+              << *std::max_element(force_hydrostatic_.begin(), force_hydrostatic_.end()) << std::endl;
+#endif
+
     profile_stats_.hydrostatics_seconds += std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - __t0).count();
     profile_stats_.hydrostatics_calls++;
     return force_hydrostatic_;
 }
+
+// ------------------------------------------------------------
+// SECTION: Radiation convolution + history buffers
+// ------------------------------------------------------------
+// Implements velocity-history convolution for radiation damping.
+// Maintains time-history buffers per body for multibody systems.
+// TODO: Extract to RadiationModel class with dedicated HistoryBuffer.
 
 // Internal helpers (file-local)
 namespace {
@@ -382,6 +464,7 @@ inline bool AdvanceToBracket(const std::vector<double>& time_history,
 } // namespace
 
 // Preprocess the radiation kernel K(t) per body for TaperedDirect mode.
+// TODO: Extract RIRF preprocessing to separate module (rirf_processing).
 void TestHydro::EnsureProcessedRIRF() {
     if (rirf_processed_ready_) {
         return;
@@ -534,6 +617,9 @@ void TestHydro::EnsureProcessedRIRF() {
     rirf_processed_ready_ = true;
 }
 
+// Main radiation convolution computation.
+// Uses velocity history buffers (multibody: one per body).
+// TODO: Extract to RadiationModel class.
 std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
     auto __t0 = std::chrono::steady_clock::now();
     const int rirf_steps = file_info_.GetRIRFDims(2);
@@ -551,15 +637,23 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
     const int rirf_last_index = static_cast<int>(rirf_time_vector.size()) - 1;
     const double history_min_time = simulation_time - (rirf_last_index >= 0 ? rirf_time_vector[rirf_last_index] : 0.0);
 
+#ifdef HYDROCHRONO_DEBUG
+    std::cout << "[HYDRO_DEBUG] Radiation conv: time=" << simulation_time 
+              << ", history_size=" << time_history_.size() 
+              << ", rirf_steps=" << rirf_steps << std::endl;
+#endif
+
     // Prevent duplicate computation within same step
     if (!time_history_.empty() && simulation_time == time_history_.front()) {
         throw std::runtime_error("Tried to compute the radiation damping convolution twice within the same time step!");
     }
 
     // Record current time at the front (most recent first)
+    // Time-history caching: stores simulation time for interpolation
     time_history_.insert(time_history_.begin(), simulation_time);
 
     // Record current velocities per body at the front (matching time_history_ ordering)
+    // Multibody: velocity history stored per body in velocity_history_[b]
     for (int b = 0; b < num_bodies_; ++b) {
         auto& body = bodies_[b];
         auto& velocity_history_body = velocity_history_[b];
@@ -573,17 +667,21 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
         velocity_history_body.insert(velocity_history_body.begin(), std::move(velocity_dof_vector));
     }
 
-    // Prune history older than the max RIRF time span
+    // Prune history older than the max RIRF time span (multibody: prunes all bodies)
     PruneHistory(time_history_, velocity_history_, num_bodies_, history_min_time);
 
     // Nothing to convolve with if we don't yet have at least 2 time points
     if (time_history_.size() <= 1) {
+#ifdef HYDROCHRONO_DEBUG
+        std::cout << "[HYDRO_DEBUG] Radiation conv: insufficient history, returning zero" << std::endl;
+#endif
         profile_stats_.radiation_seconds += std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - __t0).count();
         profile_stats_.radiation_calls++;
         return force_radiation_damping_;
     }
 
     // Walk through RIRF steps and accumulate convolution
+    // Multibody: loops over all bodies and DOFs within each RIRF step
     size_t history_index = 0;  // index into descending time_history_ (front is most recent)
 
 #ifdef _OPENMP
@@ -609,6 +707,7 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
             const double newer_time = time_history_[history_index_local];
             const double older_time = time_history_[history_index_local + 1];
 
+            // Multibody loop: process each body's velocity history
             for (int body_index = 0; body_index < num_bodies_; ++body_index) {
                 const auto& velocity_history_body = velocity_history_[body_index];
                 if (velocity_history_body.size() <= history_index_local) {
@@ -624,6 +723,7 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
                     continue;
                 }
                 const int body_col_offset = body_index * kDofPerBody;
+                // Per-DOF loop: accumulate force contribution for each DOF
                 for (int dof = 0; dof < kDofPerBody; ++dof) {
                     const int col = body_col_offset + dof;
                     const double contribution_scale = interpolated_velocity_dof[dof] * step_width;
@@ -659,6 +759,7 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
         const double newer_time = time_history_[history_index];
         const double older_time = time_history_[history_index + 1];
 
+        // Multibody loop: process each body's velocity history
         for (int body_index = 0; body_index < num_bodies_; ++body_index) {
             const auto& velocity_history_body = velocity_history_[body_index];
             if (velocity_history_body.size() <= history_index) {
@@ -671,6 +772,7 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 
             const double step_width = rirf_width_vector[step];
             const int body_col_offset = body_index * kDofPerBody;
+            // Per-DOF loop: accumulate force contribution for each DOF
             for (int dof = 0; dof < kDofPerBody; ++dof) {
                 const int col = body_col_offset + dof;
                 const double contribution_scale = interpolated_velocity_dof[dof] * step_width;
@@ -683,6 +785,11 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
             }
         }
     }
+#endif
+
+#ifdef HYDROCHRONO_DEBUG
+    std::cout << "[HYDRO_DEBUG] Radiation conv complete: max_force=" 
+              << *std::max_element(force_radiation_damping_.begin(), force_radiation_damping_.end()) << std::endl;
 #endif
 
     profile_stats_.radiation_seconds += std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - __t0).count();
@@ -710,6 +817,12 @@ double TestHydro::GetRIRFval(int row, int col, int st) {
     return file_info_.GetRIRFVal(body_index, row_dof, col, st);
 }
 
+// ------------------------------------------------------------
+// SECTION: Wave excitation
+// ------------------------------------------------------------
+// Delegates to WaveBase hierarchy for excitation force computation.
+// TODO: Extract to ExcitationModel class in future refactor.
+
 Eigen::VectorXd TestHydro::ComputeForceWaves() {
     auto __t0 = std::chrono::steady_clock::now();
     // Ensure bodies_ is not empty
@@ -719,10 +832,22 @@ Eigen::VectorXd TestHydro::ComputeForceWaves() {
 
     force_waves_ = user_waves_->GetForceAtTime(bodies_[0]->GetChTime());
 
+#ifdef HYDROCHRONO_DEBUG
+    std::cout << "[HYDRO_DEBUG] Wave excitation: max_force=" 
+              << force_waves_.maxCoeff() << std::endl;
+#endif
+
     profile_stats_.waves_seconds += std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - __t0).count();
     profile_stats_.waves_calls++;
     return force_waves_;
 }
+
+// ------------------------------------------------------------
+// SECTION: Main force evaluation (Chrono callback entry point)
+// ------------------------------------------------------------
+// Called by Chrono via ForceFunc6d/ComponentFunc callbacks.
+// Coordinates all force components and caches results per time step.
+// TODO: This will become a thin adapter delegating to HydroSystem.
 
 double TestHydro::CoordinateFuncForBody(int b, int dof_index) {
     if (dof_index < 0 || dof_index >= kDofPerBody || b < 1 || b > num_bodies_) {
@@ -738,7 +863,7 @@ double TestHydro::CoordinateFuncForBody(int b, int dof_index) {
         throw std::runtime_error("bodies_ array is empty or invalid in CoordinateFuncForBody");
     }
 
-    // Check if the forces for this time step have already been computed
+    // Time-step caching: reuse forces if already computed this step
     if (bodies_[0]->GetChTime() == prev_time) {
         return total_force_[body_num_offset + dof_index];
     }
@@ -750,14 +875,21 @@ double TestHydro::CoordinateFuncForBody(int b, int dof_index) {
     std::fill(force_radiation_damping_.begin(), force_radiation_damping_.end(), 0.0);
     std::fill(force_waves_.begin(), force_waves_.end(), 0.0);
 
+    // Compute all force components (multibody: all bodies computed together)
     force_hydrostatic_       = ComputeForceHydrostatics();
     force_radiation_damping_ = ComputeForceRadiationDampingConv();
     force_waves_             = ComputeForceWaves();
 
-    // Accumulate total force (consider converting forces to Eigen::VectorXd in the future for direct addition)
+    // Accumulate total force (multibody: sum over all DOFs for all bodies)
+    // Note: radiation damping is subtracted (damping opposes motion)
     for (int index = 0; index < total_dofs; index++) {
         total_force_[index] = force_hydrostatic_[index] - force_radiation_damping_[index] + force_waves_[index];
     }
+
+#ifdef HYDROCHRONO_DEBUG
+    std::cout << "[HYDRO_DEBUG] CoordinateFuncForBody: body=" << b << ", dof=" << dof_index 
+              << ", time=" << prev_time << ", force=" << total_force_[body_num_offset + dof_index] << std::endl;
+#endif
 
     if (body_num_offset + dof_index < 0 || body_num_offset >= total_dofs) {
         throw std::out_of_range("Accessing out-of-bounds index in CoordinateFuncForBody");

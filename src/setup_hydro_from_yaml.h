@@ -5,6 +5,35 @@
  * @file  setup_hydro_from_yaml.h
  *
  * @brief Setup hydrodynamic forces from parsed YAML data.
+ *
+ * OVERVIEW:
+ * This file provides the main entry point for configuring hydrodynamic
+ * forces from YAML configuration files. It bridges parsed configuration
+ * data to the TestHydro force computation system.
+ *
+ * MAIN RESPONSIBILITIES:
+ * - Match Chrono bodies with YAML body configurations by name
+ * - Create appropriate WaveBase implementations from wave settings
+ * - Initialize TestHydro with matched bodies and wave models
+ * - Configure radiation convolution options (Baseline/TaperedDirect)
+ *
+ * INTERACTIONS:
+ * - Takes parsed YAMLHydroData from hydro_yaml_parser
+ * - Takes Chrono bodies from the simulation system
+ * - Returns configured TestHydro instance ready for simulation
+ * - Uses wave_types.h for wave model creation
+ *
+ * KEY ASSUMPTIONS:
+ * - All bodies share the same H5 file (uses first body's h5_file)
+ * - Body names in YAML match Chrono body names exactly
+ * - Bodies are matched in order found in YAML (not sorted)
+ * - Wave settings apply system-wide (not per-body)
+ *
+ * KNOWN LIMITATIONS:
+ * - Single H5 file assumption (no per-body H5 files)
+ * - No validation of body count vs H5 file contents
+ * - Wave configuration is system-wide only
+ * - Body matching is simple string equality (no fuzzy matching)
  *********************************************************************/
 
 #include "hydro_types.h"

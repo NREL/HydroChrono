@@ -2,6 +2,34 @@
  * @file  setup_hydro_from_yaml.cpp
  *
  * @brief Implementation of hydrodynamic setup from YAML data.
+ *
+ * OVERVIEW:
+ * Implements the SetupHydroFromYAML function that connects YAML configuration
+ * to Chrono bodies and creates a configured TestHydro instance. Handles body
+ * matching, wave model creation, and convolution mode setup.
+ *
+ * MAIN RESPONSIBILITIES:
+ * - Match bodies by name between YAML config and Chrono system
+ * - Factory function for WaveBase implementations (RegularWave, IrregularWaves, NoWave)
+ * - TestHydro initialization with matched bodies and H5 file path
+ * - Configuration of radiation convolution options from YAML
+ *
+ * INTERACTIONS:
+ * - Reads hydro_data (YAMLHydroData) from parser
+ * - Accesses Chrono bodies from simulation system
+ * - Creates WaveBase instances via factory pattern
+ * - Configures TestHydro with convolution settings
+ *
+ * KEY ASSUMPTIONS:
+ * - All bodies use same H5 file (takes first body's h5_file)
+ * - Body names match exactly between YAML and Chrono
+ * - Wave parameters are valid (height > 0 for regular waves, etc.)
+ * - Simulation timestep/duration provided for irregular waves
+ *
+ * KNOWN LIMITATIONS:
+ * - Single H5 file per system (no per-body files)
+ * - Body matching fails silently if name not found (logs warning)
+ * - No validation that matched body count matches H5 file structure
  *********************************************************************/
 
 #include "setup_hydro_from_yaml.h"
@@ -21,6 +49,12 @@
 using namespace chrono;
 
 namespace {
+
+// ------------------------------------------------------------
+// SECTION: Wave model factory
+// ------------------------------------------------------------
+// Creates appropriate WaveBase implementation from YAML settings.
+// TODO: Extract to dedicated wave factory module in future refactor.
 
 /**
  * @brief Create a wave object from wave settings.
@@ -121,7 +155,18 @@ std::vector<std::shared_ptr<ChBody>> MatchBodiesByName(
     return matched_bodies;
 }
 
+// ------------------------------------------------------------
+// SECTION: Body matching
+// ------------------------------------------------------------
+// Matches YAML body configurations to Chrono bodies by name.
+// TODO: Extract to separate module, support per-body H5 files.
+
 } // anonymous namespace
+
+// ------------------------------------------------------------
+// SECTION: Main setup function
+// ------------------------------------------------------------
+// Orchestrates body matching, wave creation, and TestHydro initialization.
 
 std::unique_ptr<TestHydro> SetupHydroFromYAML(
     const YAMLHydroData& hydro_data,
@@ -130,7 +175,7 @@ std::unique_ptr<TestHydro> SetupHydroFromYAML(
     double sim_duration,
     double ramp_duration) {
     
-    // Match hydrodynamic bodies with Chrono bodies
+    // Match hydrodynamic bodies with Chrono bodies (multibody: matches all configured bodies)
     std::string h5_file_path;
     auto matched_bodies = MatchBodiesByName(hydro_data.bodies, bodies, h5_file_path);
     
@@ -138,16 +183,16 @@ std::unique_ptr<TestHydro> SetupHydroFromYAML(
         throw std::runtime_error("No hydrodynamic bodies found in Chrono system");
     }
     
-    // Create wave object from settings
+    // Create wave object from settings (system-wide, not per-body)
     auto wave = CreateWaveFromSettings(hydro_data.waves, matched_bodies.size(), 
                                       timestep, sim_duration, ramp_duration);
     
-    // Create and initialize TestHydro
+    // Create and initialize TestHydro (multibody: all matched bodies passed in)
     auto test_hydro = std::make_unique<TestHydro>(matched_bodies, h5_file_path, wave);
     
     hydroc::debug::LogDebug(std::string("Initialized TestHydro with ") + std::to_string(matched_bodies.size()) + " bodies");
 
-    // System-wide convolution settings
+    // System-wide convolution settings (applies to all bodies)
     std::string mode = hydro_data.radiation_convolution_mode;
     hydroc::debug::LogDebug("Parsed convolution mode: '" + mode + "'");
     std::transform(mode.begin(), mode.end(), mode.begin(), ::tolower);
