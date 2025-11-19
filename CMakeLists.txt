@@ -344,6 +344,10 @@ set(HYDROCHRONO_SOURCES
 	src/hydro_yaml_parser.cpp
 	src/setup_hydro_from_yaml.cpp
 	src/hydro/io/hydro_config_loader.cpp
+    src/hydro/waves/wave_base.cpp
+    src/hydro/waves/wave_utilities.cpp
+    src/hydro/waves/regular_wave.cpp
+    src/hydro/waves/irregular_wave.cpp
     # logging consolidated: coordinator + CLI (logging.cpp), backend (logger_backend.cpp)
     src/utils/logger_backend.cpp
     src/utils/logging.cpp

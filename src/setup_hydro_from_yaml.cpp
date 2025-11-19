@@ -33,7 +33,7 @@
  *********************************************************************/
 
 #include "setup_hydro_from_yaml.h"
-#include "src/hydro/io/hydro_config_loader.h"
+#include "hydro/io/hydro_config_loader.h"
 #include <hydroc/hydro_forces.h> // For TestHydro
 #include <hydroc/wave_types.h>    // For WaveBase, RegularWave, IrregularWaves, NoWave
 #include <hydroc/logging.h>         // For Logger
