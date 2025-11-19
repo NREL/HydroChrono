@@ -50,6 +50,7 @@
 #include <hydroc/h5fileinfo.h>
 #include <hydroc/wave_types.h>
 #include <hydroc/logging.h>
+#include "hydro/core/system_state.h"
 
 #include <chrono/physics/ChLoad.h>
 #include <unsupported/Eigen/Splines>
@@ -77,6 +78,48 @@ const int kDofLinOrRot = 3;
 // ------------------------------------------------------------
 // SECTION: Utility functions (legacy)
 // ------------------------------------------------------------
+
+// Internal helper: Build SystemState from all Chrono bodies (legacy implementation).
+// This extracts pose and velocity data from Chrono bodies into the new SystemState structure.
+namespace {
+hydrochrono::hydro::SystemState BuildSystemStateFromChronoBodies(
+    const std::vector<std::shared_ptr<ChBody>>& bodies) {
+    hydrochrono::hydro::SystemState system_state;
+    system_state.bodies.reserve(bodies.size());
+    
+    for (const auto& body : bodies) {
+        hydrochrono::hydro::BodyState body_state;
+        
+        // Extract position and orientation
+        const chrono::ChVector3d position_world = body->GetPos();
+        const chrono::ChVector3d rotation_rpy    = body->GetRot().GetCardanAnglesXYZ();
+        
+        body_state.position[0] = position_world.x();
+        body_state.position[1] = position_world.y();
+        body_state.position[2] = position_world.z();
+        
+        body_state.orientation_rpy[0] = rotation_rpy.x();
+        body_state.orientation_rpy[1] = rotation_rpy.y();
+        body_state.orientation_rpy[2] = rotation_rpy.z();
+        
+        // Extract velocities
+        const auto linear_velocity_world  = body->GetPosDt();
+        const auto angular_velocity_world = body->GetAngVelParent();
+        
+        body_state.linear_velocity[0] = linear_velocity_world.x();
+        body_state.linear_velocity[1] = linear_velocity_world.y();
+        body_state.linear_velocity[2] = linear_velocity_world.z();
+        
+        body_state.angular_velocity[0] = angular_velocity_world.x();
+        body_state.angular_velocity[1] = angular_velocity_world.y();
+        body_state.angular_velocity[2] = angular_velocity_world.z();
+        
+        system_state.bodies.push_back(body_state);
+    }
+    
+    return system_state;
+}
+}  // namespace
 
 /**
  * @brief Generates a vector of evenly spaced numbers over a specified range.
@@ -336,26 +379,30 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
     std::cout << "[HYDRO_DEBUG] ComputeForceHydrostatics: num_bodies=" << num_bodies_ << ", rho=" << rho << std::endl;
 #endif
 
+    // Build SystemState from all Chrono bodies (legacy implementation)
+    const auto system_state = BuildSystemStateFromChronoBodies(bodies_);
+
     // Multibody loop: compute hydrostatic forces for each body
     for (int b = 0; b < num_bodies_; ++b) {
+        const auto& body_state = system_state.bodies[b];
         const auto& body = bodies_[b];
 
         const int body_offset = kDofPerBody * b;
         double* const body_force_hydrostatic = &force_hydrostatic_[body_offset];
         const double* const body_equilibrium = &equilibrium_[body_offset];
 
-        // Current pose
-        const chrono::ChVector3d position_world = body->GetPos();
-        const chrono::ChVector3d rotation_rpy   = body->GetRot().GetCardanAnglesXYZ();
+        // Current pose (from SystemState)
+        const Eigen::Vector3d& position_world = body_state.position;
+        const Eigen::Vector3d& rotation_rpy    = body_state.orientation_rpy;
 
         // 6-DOF displacement from equilibrium (translation xyz, rotation rpy)
         Eigen::Matrix<double, kDofPerBody, 1> displacement_from_equilibrium;
-        displacement_from_equilibrium[0] = position_world.x() - body_equilibrium[0];
-        displacement_from_equilibrium[1] = position_world.y() - body_equilibrium[1];
-        displacement_from_equilibrium[2] = position_world.z() - body_equilibrium[2];
-        displacement_from_equilibrium[3] = rotation_rpy.x()   - body_equilibrium[3];
-        displacement_from_equilibrium[4] = rotation_rpy.y()   - body_equilibrium[4];
-        displacement_from_equilibrium[5] = rotation_rpy.z()   - body_equilibrium[5];
+        displacement_from_equilibrium[0] = position_world[0] - body_equilibrium[0];
+        displacement_from_equilibrium[1] = position_world[1] - body_equilibrium[1];
+        displacement_from_equilibrium[2] = position_world[2] - body_equilibrium[2];
+        displacement_from_equilibrium[3] = rotation_rpy[0]   - body_equilibrium[3];
+        displacement_from_equilibrium[4] = rotation_rpy[1]   - body_equilibrium[4];
+        displacement_from_equilibrium[5] = rotation_rpy[2]   - body_equilibrium[5];
 
         // Linear hydrostatic restoring force/torque
         const Eigen::MatrixXd restoring_stiffness_matrix = file_info_.GetLinMatrix(b);
@@ -652,14 +699,18 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
     // Time-history caching: stores simulation time for interpolation
     time_history_.insert(time_history_.begin(), simulation_time);
 
+    // Build SystemState from all Chrono bodies (legacy implementation)
+    const auto system_state = BuildSystemStateFromChronoBodies(bodies_);
+
     // Record current velocities per body at the front (matching time_history_ ordering)
     // Multibody: velocity history stored per body in velocity_history_[b]
     for (int b = 0; b < num_bodies_; ++b) {
-        auto& body = bodies_[b];
+        const auto& body_state = system_state.bodies[b];
         auto& velocity_history_body = velocity_history_[b];
 
-        const auto linear_velocity_world  = body->GetPosDt();
-        const auto angular_velocity_world = body->GetAngVelParent();
+        // Extract velocities from SystemState
+        const auto& linear_velocity_world  = body_state.linear_velocity;
+        const auto& angular_velocity_world = body_state.angular_velocity;
         std::vector<double> velocity_dof_vector = {
             linear_velocity_world[0], linear_velocity_world[1], linear_velocity_world[2],
             angular_velocity_world[0], angular_velocity_world[1], angular_velocity_world[2]
