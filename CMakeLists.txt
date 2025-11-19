@@ -343,6 +343,7 @@ set(HYDROCHRONO_SOURCES
     # src/simulation_logging.cpp  # removed in streamlined logging
 	src/hydro_yaml_parser.cpp
 	src/setup_hydro_from_yaml.cpp
+	src/hydro/io/hydro_config_loader.cpp
     # logging consolidated: coordinator + CLI (logging.cpp), backend (logger_backend.cpp)
     src/utils/logger_backend.cpp
     src/utils/logging.cpp

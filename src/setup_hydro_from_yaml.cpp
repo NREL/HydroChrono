@@ -33,6 +33,7 @@
  *********************************************************************/
 
 #include "setup_hydro_from_yaml.h"
+#include "src/hydro/io/hydro_config_loader.h"
 #include <hydroc/hydro_forces.h> // For TestHydro
 #include <hydroc/wave_types.h>    // For WaveBase, RegularWave, IrregularWaves, NoWave
 #include <hydroc/logging.h>         // For Logger
@@ -235,4 +236,20 @@ std::unique_ptr<TestHydro> SetupHydroFromYAML(
     }
     
     return test_hydro;
+}
+
+// ------------------------------------------------------------
+// SECTION: Convenience loader + setup helper
+// ------------------------------------------------------------
+// Keeps file parsing and setup logic together for callers that
+// only know the YAML path.
+
+std::unique_ptr<TestHydro> SetupHydroFromYAMLFile(
+    const std::string& hydro_yaml_path,
+    const std::vector<std::shared_ptr<ChBody>>& bodies,
+    double timestep,
+    double sim_duration,
+    double ramp_duration) {
+    const YAMLHydroData hydro_data = hydrochrono::hydro::LoadHydroConfigFromYaml(hydro_yaml_path);
+    return SetupHydroFromYAML(hydro_data, bodies, timestep, sim_duration, ramp_duration);
 }

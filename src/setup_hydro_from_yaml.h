@@ -40,6 +40,7 @@
 #include <chrono/physics/ChBody.h>
 #include <memory>
 #include <vector>
+#include <string>
 
 // Forward declarations
 class TestHydro;
@@ -61,6 +62,26 @@ class TestHydro;
  */
 std::unique_ptr<TestHydro> SetupHydroFromYAML(
     const YAMLHydroData& hydro_data,
+    const std::vector<std::shared_ptr<chrono::ChBody>>& bodies,
+    double timestep,
+    double sim_duration,
+    double ramp_duration
+);
+
+/**
+ * @brief Convenience overload that loads the YAML file and then sets up TestHydro.
+ *
+ * Behaviour matches calling LoadHydroConfigFromYaml followed by SetupHydroFromYAML.
+ *
+ * @param hydro_yaml_path Path to hydro.yaml.
+ * @param bodies Chrono bodies that may receive hydrodynamic forces.
+ * @param timestep Simulation time step (used for irregular waves).
+ * @param sim_duration Simulation duration (irregular waves).
+ * @param ramp_duration Wave ramp duration.
+ * @return Initialized TestHydro object.
+ */
+std::unique_ptr<TestHydro> SetupHydroFromYAMLFile(
+    const std::string& hydro_yaml_path,
     const std::vector<std::shared_ptr<chrono::ChBody>>& bodies,
     double timestep,
     double sim_duration,
