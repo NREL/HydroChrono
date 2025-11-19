@@ -460,7 +460,11 @@ if(HYDROCHRONO_ENABLE_YAML_RUNNER)
     )
 
     target_link_libraries(run_hydrochrono
-        PRIVATE HydroChrono HydroChronoGUI Chrono::Chrono_parsers
+        PRIVATE 
+            HydroChrono 
+            HydroChronoGUI 
+            Chrono::Chrono_core
+            Chrono::Chrono_parsers
     )
 
     # Safety net: if HDF5 was not propagated, link executable explicitly as well
