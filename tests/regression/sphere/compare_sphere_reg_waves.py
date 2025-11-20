@@ -12,7 +12,7 @@ import glob
 from pathlib import Path
 
 # Add the utilities directory to the path to import the comparison template
-sys.path.append(str(Path(__file__).parent.parent.parent / "utilities"))
+sys.path.append(str(Path(__file__).parent.parent / "utilities"))
 from compare_template import run_comparison, run_multi_column_comparison
 
 def main():
@@ -23,18 +23,22 @@ def main():
     
     # Get the results directory from the build directory
     script_dir = Path(__file__).parent
-    project_root = script_dir.parent.parent.parent.parent  # Go up to project root
+    # Repo layout: <root>/tests/regression/sphere/compare_sphere_reg_waves.py
+    # Go up 3 levels to reach project root.
+    project_root = script_dir.parent.parent.parent
     build_dir = project_root / "build"
     
-    # Find the results directory
-    results_dir = build_dir / "bin" / "tests" / "regression" / "sphere" / "results"
+    # C++ regression tests write results under:
+    #   <build>/bin/Release/results/tests/sphere/
+    results_dir = build_dir / "bin" / "Release" / "results" / "tests" / "sphere"
     
     if not results_dir.exists():
         print(f"Error: Results directory not found: {results_dir}")
         sys.exit(1)
     
-    # Find all result files
-    result_files = list(results_dir.glob("CHRONO_SPHERE_REG_WAVES_*.txt"))
+    # Find all result files produced by the C++ test
+    # C++ writes files named: results_sphere_reg_waves_<N>.txt
+    result_files = list(results_dir.glob("results_sphere_reg_waves_*.txt"))
     result_files.sort()
     
     if not result_files:

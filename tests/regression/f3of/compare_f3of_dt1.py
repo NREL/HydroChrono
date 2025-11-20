@@ -21,9 +21,12 @@ def main():
     executable_patterns = ["f3of_dt1_test", "f3of_dt1_test.exe"]
     
     # Find the result file
+    # C++ regression tests write under: <build>/bin/Release/results/tests/f3of/
     build_dir = os.environ.get('HYDROCHRONO_BUILD_DIR', os.path.join(os.path.dirname(__file__), '..', '..', '..', 'build'))
-    hc_data_file = os.path.join(build_dir, "bin", "tests", "regression", "f3of", "results", "CHRONO_F3OF_DT1_SURGE.txt")
-    ref_data_file = os.path.join(os.path.dirname(__file__), "..", "reference_data", "f3of", "dt1", "hc_ref_f3of_dt1_surge.txt")
+    hc_data_file = os.path.join(build_dir, "bin", "Release", "results", "tests", "f3of", "results_f3of_dt1.txt")
+    # Reference data lives under: <project_root>/data/reference_data/f3of/
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+    ref_data_file = os.path.join(project_root, "data", "reference_data", "f3of", "hc_ref_f3of_dt1_surge.txt")
     
     # Check if files exist
     if not os.path.exists(hc_data_file):

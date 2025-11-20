@@ -30,17 +30,21 @@ static path DATADIR{};
 int hydroc::SetInitialEnvironment(int argc, char* argv[]) noexcept {
     const char* env_p = std::getenv("HYDROCHRONO_DATA_DIR");
 
-    if (env_p == nullptr) {
-        if (argc < 2) {
-            hydroc::cli::LogWarning("Usage: .exe [<datadir>] or set HYDROCHRONO_DATA_DIR environment variable");
-
-            DATADIR = absolute(path(HC_DATA_DIR));
-            hydroc::cli::LogInfo(std::string("Set default demos path to '") + getDataDir() + "'");
-        } else {
-            DATADIR = absolute(path(argv[1]));
-        }
-    } else {
+    if (env_p) {
+        // Highest priority: explicit environment override
         DATADIR = absolute(path(env_p));
+        hydroc::cli::LogInfo(std::string("HYDROCHRONO_DATA_DIR set, using '") + getDataDir() + "'");
+    } else {
+        // If first positional argument looks like a path (does not start with '-'),
+        // treat it as the data directory. Otherwise, fall back to the compiled-in
+        // default HC_DATA_DIR (build/install data tree).
+        if (argc >= 2 && argv[1] && argv[1][0] != '-') {
+            DATADIR = absolute(path(argv[1]));
+            hydroc::cli::LogInfo(std::string("Using data directory from CLI: '") + getDataDir() + "'");
+        } else {
+            DATADIR = absolute(path(HC_DATA_DIR));
+            hydroc::cli::LogInfo(std::string("Using default data directory HC_DATA_DIR='") + getDataDir() + "'");
+        }
     }
 
     // Set Chrono data directory

@@ -36,12 +36,30 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // Get model file names - use regression test data directory
-    std::filesystem::path DATADIR = std::filesystem::current_path();
+    // Get model file names - use HydroChrono data directory
+    std::filesystem::path DATADIR(hydroc::getDataDir());
 
-    auto body1_meshfame = (DATADIR / "demos" / "geometry" / "float_cog.obj").lexically_normal().generic_string();
-    auto body2_meshfame = (DATADIR / "demos" / "geometry" / "plate_cog.obj").lexically_normal().generic_string();
-    auto h5fname        = (DATADIR / "demos" / "hydroData" / "rm3.h5").lexically_normal().generic_string();
+    std::filesystem::path body1_path = DATADIR / "demos" / "rm3" / "geometry" / "float_cog.obj";
+    std::filesystem::path body2_path = DATADIR / "demos" / "rm3" / "geometry" / "plate_cog.obj";
+    std::filesystem::path h5_path    = DATADIR / "demos" / "rm3" / "hydroData" / "rm3.h5";
+
+    // Early sanity check so we fail with a clear message if assets are missing
+    if (!std::filesystem::exists(body1_path)) {
+        std::cerr << "ERROR: RM3 regular-waves test: float_cog mesh not found at " << body1_path << std::endl;
+        return 1;
+    }
+    if (!std::filesystem::exists(body2_path)) {
+        std::cerr << "ERROR: RM3 regular-waves test: plate_cog mesh not found at " << body2_path << std::endl;
+        return 1;
+    }
+    if (!std::filesystem::exists(h5_path)) {
+        std::cerr << "ERROR: RM3 regular-waves test: rm3.h5 not found at " << h5_path << std::endl;
+        return 1;
+    }
+
+    auto body1_meshfame = body1_path.lexically_normal().generic_string();
+    auto body2_meshfame = body2_path.lexically_normal().generic_string();
+    auto h5fname        = h5_path.lexically_normal().generic_string();
 
     std::cout << "Looking for mesh files in:" << std::endl;
     std::cout << "  body1: " << body1_meshfame << std::endl;
@@ -60,11 +78,6 @@ int main(int argc, char* argv[]) {
     ChRealtimeStepTimer realtime_timer;
     double simulationDuration = 40.0;
 
-    // Create user interface
-    std::shared_ptr<hydroc::gui::UI> pui = hydroc::gui::CreateUI(visualizationOn);
-
-    hydroc::gui::UI& ui = *pui.get();
-
     // some io/viz options
     bool profilingOn = true;
     bool saveDataOn  = true;
@@ -82,6 +95,7 @@ int main(int argc, char* argv[]) {
         true,   // create visualization asset
         false   // collisions
     );
+    std::cout << "Created float_body1 from mesh." << std::endl;
 
     // define the float's initial conditions
     system.Add(float_body1);
@@ -104,6 +118,7 @@ int main(int argc, char* argv[]) {
         true,   // create visualization asset
         false   // collisions
     );
+    std::cout << "Created plate_body2 from mesh." << std::endl;
 
     // Create a visualization material
     auto blue = chrono_types::make_shared<ChVisualMaterial>();
@@ -128,6 +143,7 @@ int main(int argc, char* argv[]) {
     prismatic_pto->Initialize(float_body1, plate_body2, false, ChVector3d(0, 0, -0.72), ChVector3d(0, 0, -21.29));
     prismatic_pto->SetDampingCoefficient(0.0);
     system.AddLink(prismatic_pto);
+    std::cout << "Added prismatic and PTO links." << std::endl;
 
     // attach hydrodynamic forces to body
     std::vector<std::shared_ptr<ChBody>> bodies;
@@ -138,30 +154,41 @@ int main(int argc, char* argv[]) {
     auto my_hydro_inputs = std::make_shared<RegularWave>(static_cast<unsigned int>(bodies.size()));
     my_hydro_inputs->regular_wave_amplitude_ = 1.0;
     my_hydro_inputs->regular_wave_omega_     = 2.10;
+    std::cout << "Configured RegularWave inputs." << std::endl;
 
+    std::cout << "Constructing TestHydro..." << std::endl;
+    // Use default NoWave; TestHydro will size it correctly for the number of bodies.
     TestHydro hydro_forces(bodies, h5fname);
-    hydro_forces.AddWaves(my_hydro_inputs);
+    std::cout << "TestHydro constructed, adding waves..." << std::endl;
 
+    try {
+        hydro_forces.AddWaves(my_hydro_inputs);
+        std::cout << "Waves added to TestHydro." << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "Exception in TestHydro::AddWaves: " << e.what() << std::endl;
+        return 1;
+    }
     // for profiling
     auto start = std::chrono::high_resolution_clock::now();
 
-    // main simulation loop
-    ui.Init(&system, "RM3 - Regular Wave Test");
-    ui.SetCamera(0, -50, -10, 0, 0, -10);
-
+    std::cout << "Entering simulation loop..." << std::endl;
+    // main simulation loop (headless, no GUI)
+    int step = 0;
     while (system.GetChTime() <= simulationDuration) {
-        if (ui.IsRunning(timestep) == false) break;
-
-        if (ui.simulationStarted) {
-            system.DoStepDynamics(timestep);
-
-            // append data to output vector
-            time_vector.push_back(system.GetChTime());
-            float_heave_position.push_back(float_body1->GetPos().z());
-            float_drift_position.push_back(float_body1->GetPos().x());
-            plate_heave_position.push_back(plate_body2->GetPos().z());
+        if (step % 100 == 0) {
+            std::cout << "Step " << step << ", t = " << system.GetChTime() << std::endl;
         }
+
+        system.DoStepDynamics(timestep);
+        ++step;
+
+        // append data to output vector
+        time_vector.push_back(system.GetChTime());
+        float_heave_position.push_back(float_body1->GetPos().z());
+        float_drift_position.push_back(float_body1->GetPos().x());
+        plate_heave_position.push_back(plate_body2->GetPos().z());
     }
+    std::cout << "Exited simulation loop at t = " << system.GetChTime() << std::endl;
 
     // for profiling
     auto end          = std::chrono::high_resolution_clock::now();

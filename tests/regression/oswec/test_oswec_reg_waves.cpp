@@ -76,12 +76,12 @@ int main(int argc, char* argv[]) {
             visualizationOn = false;
         }
 
-        // Get model file names - use regression test data directory
-        std::filesystem::path DATADIR = std::filesystem::current_path();
+        // Get model file names - use HydroChrono data directory
+        std::filesystem::path DATADIR(hydroc::getDataDir());
 
-        auto body1_meshfname = (DATADIR / "demos" / "geometry" / "flap.obj").lexically_normal().generic_string();
-        auto body2_meshfname = (DATADIR / "demos" / "geometry" / "base.obj").lexically_normal().generic_string();
-        auto h5fname        = (DATADIR / "demos" / "hydroData" / "oswec.h5").lexically_normal().generic_string();
+        auto body1_meshfname = (DATADIR / "demos" / "oswec" / "geometry" / "flap.obj").lexically_normal().generic_string();
+        auto body2_meshfname = (DATADIR / "demos" / "oswec" / "geometry" / "base.obj").lexically_normal().generic_string();
+        auto h5fname        = (DATADIR / "demos" / "oswec" / "hydroData" / "oswec.h5").lexically_normal().generic_string();
 
         // system/solver settings
         ChSystemNSC system;

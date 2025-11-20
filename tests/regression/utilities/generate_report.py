@@ -47,6 +47,9 @@ def find_plot_files(build_dir):
     for model in models:
         # Try different possible paths for the plots directory
         possible_paths = [
+            # New unified location: <build>/bin/Release/results/tests/<model>/plots
+            build_path / "bin" / "Release" / "results" / "tests" / model / "plots",
+            # Legacy / alternative layouts (kept for backward compatibility)
             build_path / "bin" / "tests" / "regression" / model / "results" / "plots",
             build_path / "tests" / "regression" / "Release" / model / "results" / "plots",
             build_path / model / "results" / "plots",  # If running from Release directory
