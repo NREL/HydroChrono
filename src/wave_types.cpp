@@ -19,6 +19,14 @@ bool is_in_deep_water(double wavenumber, double water_depth) {
     }
 }
 
+Eigen::Vector3d GetWheelerStretchedPosition(const Eigen::Vector3d& position, double eta, double water_depth, double mwl) {
+    // position relative to mean water level
+    auto z_pos = position.z() - mwl;
+    // Wheeler stretching
+    auto z_stretched = water_depth * (z_pos - eta) / (water_depth + eta);
+    return Eigen::Vector3d(position.x(), position.y(), z_stretched + mwl);
+}
+
 double GetEta(const Eigen::Vector3d& position,
               double time,
               double omega,
@@ -310,12 +318,7 @@ Eigen::Vector3d RegularWave::GetVelocity(const Eigen::Vector3d& position, double
     // apply wave stretching (if enabled)
     auto position_stretched = position;
     if (wave_stretching_) {
-        auto eta = GetElevation(position, time);
-        // position relative to mean water level
-        auto z_pos = position.z() - mwl_;
-        // Wheeler stretching
-        auto z_stretched = water_depth_ * (z_pos - eta) / (water_depth_ + eta);
-        position_stretched[2] = z_stretched + mwl_;
+        position_stretched = GetWheelerStretchedPosition(position, GetElevation(position, time), water_depth_, mwl_);
     }
     return GetWaterVelocity(position_stretched, time, regular_wave_omega_, regular_wave_amplitude_, regular_wave_phase_,
                             wavenumber_, water_depth_, mwl_);
@@ -325,12 +328,7 @@ Eigen::Vector3d RegularWave::GetAcceleration(const Eigen::Vector3d& position, do
     // apply wave stretching (if enabled)
     auto position_stretched = position;
     if (wave_stretching_) {
-        auto eta = GetElevation(position, time);
-        // position relative to mean water level
-        auto z_pos = position.z() - mwl_;
-        // Wheeler stretching
-        auto z_stretched = water_depth_ * (z_pos - eta) / (water_depth_ + eta);
-        position_stretched[2] = z_stretched + mwl_;
+        position_stretched = GetWheelerStretchedPosition(position, GetElevation(position, time), water_depth_, mwl_);
     }
     return GetWaterAcceleration(position_stretched, time, regular_wave_omega_, regular_wave_amplitude_, regular_wave_phase_,
                                 wavenumber_, water_depth_, mwl_);
@@ -544,13 +542,7 @@ Eigen::Vector3d IrregularWaves::GetVelocity(const Eigen::Vector3d& position, dou
     // apply wave stretching (if enabled)
     auto position_stretched = position;
     if (params_.wave_stretching_) {
-        auto eta = GetEtaIrregular(position, time, spectrum_frequencies_, spectral_densities_, spectral_widths_,
-                                   wave_phases_, wavenumbers_);
-        // position relative to mean water level
-        auto z_pos = position.z() - mwl_;
-        // Wheeler stretching
-        auto z_stretched = water_depth_ * (z_pos - eta) / (water_depth_ + eta);
-        position_stretched[2] = z_stretched + mwl_;
+        position_stretched = GetWheelerStretchedPosition(position, GetElevation(position, time), water_depth_, mwl_);
     }
 
     return GetWaterVelocityIrregular(position_stretched, time, spectrum_frequencies_, spectral_densities_,
@@ -561,13 +553,7 @@ Eigen::Vector3d IrregularWaves::GetAcceleration(const Eigen::Vector3d& position,
     // apply wave stretching (if enabled)
     auto position_stretched = position;
     if (params_.wave_stretching_) {
-        auto eta = GetEtaIrregular(position, time, spectrum_frequencies_, spectral_densities_, spectral_widths_,
-                                   wave_phases_, wavenumbers_);
-        // position relative to mean water level
-        auto z_pos = position.z() - mwl_;
-        // Wheeler stretching
-        auto z_stretched = water_depth_ * (z_pos - eta) / (water_depth_ + eta);
-        position_stretched[2] = z_stretched + mwl_;
+        position_stretched = GetWheelerStretchedPosition(position, GetElevation(position, time), water_depth_, mwl_);
     }
 
     return GetWaterAccelerationIrregular(position_stretched, time, spectrum_frequencies_, spectral_densities_,
