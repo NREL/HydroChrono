@@ -228,6 +228,7 @@ set_target_properties(HydroChrono
 
 target_link_libraries(HydroChrono
   PUBLIC
+    ${CHRONO_LIBRARIES}
     ${CHRONO_TARGETS}             # Chrono::Chrono_core;Chrono::Chrono_irrlicht;...
     $<$<TARGET_EXISTS:Eigen3::Eigen>:Eigen3::Eigen>
   PRIVATE
@@ -366,4 +367,8 @@ export(
 )
 
 # Set build type to Release but enable debug symbols
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Zi /O2")
+if(MSVC)
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Zi /O2")
+else()
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -g -O2")
+endif()
