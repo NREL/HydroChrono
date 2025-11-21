@@ -165,6 +165,7 @@ class RegularWave : public WaveBase {
     double regular_wave_amplitude_;
     double regular_wave_omega_;
     double regular_wave_phase_ = 0.0;
+    bool wave_stretching_ = true;
 
     /**
      * @brief Initializes other member variables for timestep calculations later.
