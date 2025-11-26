@@ -51,6 +51,8 @@
 #include <hydroc/wave_types.h>
 #include <hydroc/logging.h>
 #include "hydro/core/system_state.h"
+#include "hydro/radiation/radiation_rirf_processing.h"
+#include "hydro/radiation/radiation_rirf_convolution.h"
 
 #include <chrono/physics/ChLoad.h>
 #include <unsupported/Eigen/Splines>
@@ -265,6 +267,9 @@ void ForceFunc6d::ApplyForceAndTorqueToBody() {
 // TODO: This class will be refactored into modular force models.
 // Current structure mixes all physics components together.
 
+// Explicit destructor definition (needed for unique_ptr to incomplete type)
+TestHydro::~TestHydro() = default;
+
 TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
                      std::string h5_file_name,
                      std::shared_ptr<WaveBase> waves)
@@ -290,8 +295,12 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
     // Total degrees of freedom (multibody: 6 DOF per body)
     int total_dofs = kDofPerBody * num_bodies_;
 
-    // Initialize vectors
-    // Time-history buffers for radiation convolution (multibody: one per body)
+    // Initialize radiation convolution module
+    const int rirf_steps = file_info_.GetRIRFDims(2);
+    radiation_convolution_ = std::make_unique<hydrochrono::hydro::RadiationRirfConvolution>(
+        num_bodies_, rirf_steps, rirf_time_vector, rirf_width_vector);
+
+    // Initialize vectors (legacy: kept for compatibility, but radiation_convolution_ owns the history)
     time_history_.clear();
     velocity_history_.clear();
     for (int b = 0; b < num_bodies_; ++b) {
@@ -450,223 +459,40 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 // Maintains time-history buffers per body for multibody systems.
 // TODO: Extract to RadiationModel class with dedicated HistoryBuffer.
 
-// Internal helpers (file-local)
-namespace {
-// Remove history entries older than history_min_time.
-inline void PruneHistory(std::vector<double>& time_history,
-                         std::vector<std::vector<std::vector<double>>>& velocity_history,
-                         int num_bodies,
-                         double history_min_time) {
-    while (time_history.size() > 1 && time_history[time_history.size() - 2] < history_min_time) {
-        time_history.pop_back();
-        for (int b = 0; b < num_bodies; ++b) {
-            auto& velocity_history_body = velocity_history[b];
-            if (!velocity_history_body.empty()) {
-                velocity_history_body.pop_back();
-            }
-        }
-    }
-}
-
-// Interpolate 6-DOF velocities at a query time from two bracketing samples.
-inline void InterpolateVelocity6D(const std::vector<std::vector<double>>& velocity_history_body,
-                                  size_t newer_index,
-                                  double query_time,
-                                  double older_time,
-                                  double newer_time,
-                                  double out_velocity[kDofPerBody]) {
-    if (query_time == older_time) {
-        const auto& older_velocity = velocity_history_body[newer_index + 1];
-        for (int dof = 0; dof < kDofPerBody; ++dof) out_velocity[dof] = older_velocity[dof];
-        return;
-    }
-    if (query_time == newer_time) {
-        const auto& newer_velocity = velocity_history_body[newer_index];
-        for (int dof = 0; dof < kDofPerBody; ++dof) out_velocity[dof] = newer_velocity[dof];
-        return;
-    }
-    if (query_time > older_time && query_time < newer_time) {
-        const double time_delta   = (newer_time - older_time);
-        const double weight_older = (time_delta != 0.0) ? ((newer_time - query_time) / time_delta) : 0.0;
-        const double weight_newer = 1.0 - weight_older;
-        const auto& older_velocity = velocity_history_body[newer_index + 1];
-        const auto& newer_velocity = velocity_history_body[newer_index];
-        for (int dof = 0; dof < kDofPerBody; ++dof) {
-            out_velocity[dof] = weight_older * older_velocity[dof] + weight_newer * newer_velocity[dof];
-        }
-        return;
-    }
-    throw std::runtime_error("Radiation convolution: interpolation error; query_time not bracketed by history.");
-}
-
-// Advance index so that time_history[index] >= query_time >= time_history[index+1] (newest first ordering).
-inline bool AdvanceToBracket(const std::vector<double>& time_history,
-                             size_t& index,
-                             double query_time) {
-    while ((index + 1) < time_history.size() && time_history[index + 1] > query_time) {
-        ++index;
-    }
-    return ((index + 1) < time_history.size());
-}
-} // namespace
+// Legacy helper functions removed - now in RadiationRirfConvolution class
 
 // Preprocess the radiation kernel K(t) per body for TaperedDirect mode.
-// TODO: Extract RIRF preprocessing to separate module (rirf_processing).
 void TestHydro::EnsureProcessedRIRF() {
     if (rirf_processed_ready_) {
         return;
     }
 
     const int steps = file_info_.GetRIRFDims(2);
-    const int cols  = kDofPerBody * num_bodies_;
-    const int rows  = kDofPerBody;
+    
+    // Convert TaperedDirectOptions to hydrochrono::hydro::TaperedDirectOptions
+    hydrochrono::hydro::TaperedDirectOptions opts;
+    opts.smoothing = tapered_opts_.smoothing;
+    opts.window_length = tapered_opts_.window_length;
+    opts.rirf_end_time = tapered_opts_.rirf_end_time;
+    opts.taper_start_percent = tapered_opts_.taper_start_percent;
+    opts.taper_end_percent = tapered_opts_.taper_end_percent;
+    opts.taper_final_amplitude = tapered_opts_.taper_final_amplitude;
+    opts.export_plot_csv = tapered_opts_.export_plot_csv;
 
-    rirf_processed_.clear();
-    rirf_processed_.resize(num_bodies_);
+    // Create lambda to get RIRF values from file_info_
+    auto get_rirf_val = [this](int body, int row_dof, int col, int step) -> double {
+        return file_info_.GetRIRFVal(body, row_dof, col, step);
+    };
 
-    // SG smoothing coefficients for 5-point quadratic: [-3, 12, 17, 12, -3] / 35
-    const double sg5[5] = { -3.0 / 35.0, 12.0 / 35.0, 17.0 / 35.0, 12.0 / 35.0, -3.0 / 35.0 };
-
-    for (int b = 0; b < num_bodies_; ++b) {
-        Eigen::Tensor<double, 3> processed(rows, cols, steps);
-
-        // Calculate effective steps for this body (same for all channels)
-        int effective_steps = steps;
-        if (tapered_opts_.rirf_end_time > 0.0) {
-            // Calculate the step index corresponding to the end time
-            double dt = rirf_time_vector[1] - rirf_time_vector[0]; // assume uniform time step
-            int end_step = static_cast<int>(std::floor(tapered_opts_.rirf_end_time / dt));
-            effective_steps = std::min(end_step, steps);
-        }
-
-        // Diagnostic aggregation across channels
-        int max_tc_index = 0;
-        int max_taper_len = 0;
-        int max_effective_len = steps;
-
-        for (int row_dof = 0; row_dof < rows; ++row_dof) {
-            for (int col = 0; col < cols; ++col) {
-                // Load raw (rho-scaled) kernel time series
-                std::vector<double> k_raw(steps);
-                for (int s = 0; s < steps; ++s) {
-                    k_raw[s] = file_info_.GetRIRFVal(b, row_dof, col, s);
-                }
-                
-                // Apply RIRF truncation if specified
-                if (tapered_opts_.rirf_end_time > 0.0) {
-                    // Truncate the raw kernel
-                    k_raw.resize(effective_steps);
-                }
-
-                // Light smoothing
-                std::vector<double> k_smooth(effective_steps);
-                if (tapered_opts_.smoothing == "moving_average") {
-                    const int w = std::max(3, tapered_opts_.window_length);
-                    const int half = w / 2;
-                    for (int s = 0; s < effective_steps; ++s) {
-                        int a = std::max(0, s - half);
-                        int b = std::min(effective_steps - 1, s + half);
-                        double sum = 0.0; int cnt = 0;
-                        for (int i = a; i <= b; ++i) { sum += k_raw[i]; ++cnt; }
-                        k_smooth[s] = (cnt > 0) ? (sum / cnt) : k_raw[s];
-                    }
-                } else {
-                    // default: SG quadratic with window 5
-                    if (effective_steps >= 5) {
-                        // copy edges as-is for simplicity
-                        k_smooth[0] = k_raw[0];
-                        k_smooth[1] = k_raw[1];
-                        for (int s = 2; s <= effective_steps - 3; ++s) {
-                            k_smooth[s] = sg5[0] * k_raw[s - 2] + sg5[1] * k_raw[s - 1] + sg5[2] * k_raw[s] + sg5[3] * k_raw[s + 1] + sg5[4] * k_raw[s + 2];
-                        }
-                        k_smooth[effective_steps - 2] = k_raw[effective_steps - 2];
-                        k_smooth[effective_steps - 1] = k_raw[effective_steps - 1];
-                    } else {
-                        k_smooth = k_raw; // too short to smooth
-                    }
-                }
-
-                // Simple taper control: start and end percentages
-                int tc_index = static_cast<int>(std::floor(tapered_opts_.taper_start_percent * static_cast<double>(effective_steps)));
-                int tc_end = static_cast<int>(std::floor(tapered_opts_.taper_end_percent * static_cast<double>(effective_steps)));
-                tc_index = std::max(0, std::min(tc_index, effective_steps));
-                tc_end = std::max(tc_index, std::min(tc_end, effective_steps));
-
-                // Apply half-cosine taper from start to end percentage
-                int taper_len = tc_end - tc_index;
-                int effective_len = tc_end;
-
-                const double pi_const = 3.14159265358979323846;
-                for (int s = 0; s < effective_steps; ++s) {
-                    double val = k_smooth[s];
-                    if (s < tc_index) {
-                        // keep original value
-                    } else if (s < tc_end && taper_len > 0) {
-                        double t = (static_cast<double>(s - tc_index)) / static_cast<double>(taper_len);
-                        // Half-cosine taper: goes from 1.0 to taper_final_amplitude
-                        // taper_final_amplitude = 0.0 means complete zero, 1.0 means no change
-                        double w = tapered_opts_.taper_final_amplitude + (1.0 - tapered_opts_.taper_final_amplitude) * 0.5 * (1.0 + std::cos(pi_const * t));
-                        val *= w;
-                    } else {
-                        val = 0.0;
-                    }
-                    processed(row_dof, col, s) = val;
-                }
-                
-                // Zero out any remaining steps beyond effective_steps
-                for (int s = effective_steps; s < steps; ++s) {
-                    processed(row_dof, col, s) = 0.0;
-                }
-
-                if (tc_index > max_tc_index) max_tc_index = tc_index;
-                if (taper_len > max_taper_len) max_taper_len = taper_len;
-                if (effective_len > max_effective_len) max_effective_len = effective_len;
-            }
-        }
-
-        rirf_processed_[b] = std::move(processed);
-
-        LOG_DEBUG("TaperedDirect kernel (body " << b
-                  << ") Start: " << tapered_opts_.taper_start_percent
-                  << ", End: " << tapered_opts_.taper_end_percent
-                  << ", Final Amp: " << tapered_opts_.taper_final_amplitude
-                  << ", RIRF End Time: " << (tapered_opts_.rirf_end_time > 0.0 ? std::to_string(tapered_opts_.rirf_end_time) + "s" : "full")
-                  << ", Max Tc index: " << max_tc_index
-                  << ", Max taper length: " << max_taper_len
-                  << ", Max effective length: " << max_effective_len
-                  << "/" << steps);
-
-        if (tapered_opts_.export_plot_csv) {
-            // Write small CSV summaries for inspection: times, representative channel before/after
-            try {
-                const std::string base = std::string("rirf_body") + std::to_string(b) + std::string("_summary.csv");
-                std::filesystem::path out_dir = diagnostics_output_dir_.empty() ? std::filesystem::current_path() : std::filesystem::path(diagnostics_output_dir_);
-                std::filesystem::path out_path = out_dir / base;
-                std::ofstream ofs(out_path.string());
-                ofs << "step,time,k_before,k_after\n";
-                // pick row=0,col=0 as representative
-                for (int s = 0; s < effective_steps; ++s) {
-                    double t = (s < rirf_time_vector.size()) ? rirf_time_vector[s] : static_cast<double>(s);
-                    double before = file_info_.GetRIRFVal(b, 0, 0, s);
-                    double after = rirf_processed_[b](0, 0, s);
-                    ofs << s << "," << t << "," << before << "," << after << "\n";
-                }
-                // Only log the directory once (body 0)
-                if (b == 0) {
-                    LOG_INFO("RIRF CSVs written in " << out_dir.string());
-                }
-            } catch (...) {
-                // ignore export errors
-            }
-        }
-    }
+    // Process RIRF kernels using the dedicated module
+    rirf_processed_ = hydrochrono::hydro::ProcessRirfKernels(
+        num_bodies_, steps, rirf_time_vector, get_rirf_val, opts, diagnostics_output_dir_);
 
     rirf_processed_ready_ = true;
 }
 
 // Main radiation convolution computation.
 // Uses velocity history buffers (multibody: one per body).
-// TODO: Extract to RadiationModel class.
 std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
     auto __t0 = std::chrono::steady_clock::now();
     const int rirf_steps = file_info_.GetRIRFDims(2);
@@ -674,169 +500,52 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 
     assert(total_dofs > 0 && rirf_steps > 0);
 
-    // If using TaperedDirect, ensure processed kernel is ready before any parallel region
+    // If using TaperedDirect, ensure processed kernel is ready
     if (convolution_mode_ == RadiationConvolutionMode::TaperedDirect) {
         EnsureProcessedRIRF();
     }
 
-    // Current time and minimum history time window required
+    // Current time
     const double simulation_time = bodies_[0]->GetChTime();
-    const int rirf_last_index = static_cast<int>(rirf_time_vector.size()) - 1;
-    const double history_min_time = simulation_time - (rirf_last_index >= 0 ? rirf_time_vector[rirf_last_index] : 0.0);
 
 #ifdef HYDROCHRONO_DEBUG
     std::cout << "[HYDRO_DEBUG] Radiation conv: time=" << simulation_time 
-              << ", history_size=" << time_history_.size() 
               << ", rirf_steps=" << rirf_steps << std::endl;
 #endif
-
-    // Prevent duplicate computation within same step
-    if (!time_history_.empty() && simulation_time == time_history_.front()) {
-        throw std::runtime_error("Tried to compute the radiation damping convolution twice within the same time step!");
-    }
-
-    // Record current time at the front (most recent first)
-    // Time-history caching: stores simulation time for interpolation
-    time_history_.insert(time_history_.begin(), simulation_time);
 
     // Build SystemState from all Chrono bodies (legacy implementation)
     const auto system_state = BuildSystemStateFromChronoBodies(bodies_);
 
-    // Record current velocities per body at the front (matching time_history_ ordering)
-    // Multibody: velocity history stored per body in velocity_history_[b]
+    // Prepare body velocities for recording
+    std::vector<std::vector<double>> body_velocities(num_bodies_);
     for (int b = 0; b < num_bodies_; ++b) {
         const auto& body_state = system_state.bodies[b];
-        auto& velocity_history_body = velocity_history_[b];
-
-        // Extract velocities from SystemState
-        const auto& linear_velocity_world  = body_state.linear_velocity;
-        const auto& angular_velocity_world = body_state.angular_velocity;
-        std::vector<double> velocity_dof_vector = {
-            linear_velocity_world[0], linear_velocity_world[1], linear_velocity_world[2],
-            angular_velocity_world[0], angular_velocity_world[1], angular_velocity_world[2]
+        body_velocities[b] = {
+            body_state.linear_velocity[0], body_state.linear_velocity[1], body_state.linear_velocity[2],
+            body_state.angular_velocity[0], body_state.angular_velocity[1], body_state.angular_velocity[2]
         };
-        velocity_history_body.insert(velocity_history_body.begin(), std::move(velocity_dof_vector));
     }
 
-    // Prune history older than the max RIRF time span (multibody: prunes all bodies)
-    PruneHistory(time_history_, velocity_history_, num_bodies_, history_min_time);
+    // Record velocities in the convolution module
+    radiation_convolution_->RecordVelocities(simulation_time, body_velocities);
 
-    // Nothing to convolve with if we don't yet have at least 2 time points
-    if (time_history_.size() <= 1) {
-#ifdef HYDROCHRONO_DEBUG
-        std::cout << "[HYDRO_DEBUG] Radiation conv: insufficient history, returning zero" << std::endl;
-#endif
-        profile_stats_.radiation_seconds += std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - __t0).count();
-        profile_stats_.radiation_calls++;
-        return force_radiation_damping_;
+    // Also update legacy history buffers for compatibility (used by GetRIRFval and other legacy code)
+    time_history_.insert(time_history_.begin(), simulation_time);
+    for (int b = 0; b < num_bodies_; ++b) {
+        velocity_history_[b].insert(velocity_history_[b].begin(), body_velocities[b]);
     }
 
-    // Walk through RIRF steps and accumulate convolution
-    // Multibody: loops over all bodies and DOFs within each RIRF step
-    size_t history_index = 0;  // index into descending time_history_ (front is most recent)
+    // Create lambda to get RIRF values (for Baseline mode)
+    auto get_rirf_val = [this](int row, int col, int step) -> double {
+        return GetRIRFval(row, col, step);
+    };
 
-#ifdef _OPENMP
-    const int num_threads = omp_get_max_threads();
-    std::vector<std::vector<double>> thread_locals(num_threads, std::vector<double>(total_dofs, 0.0));
+    // Compute forces using the convolution module
+    const std::vector<Eigen::Tensor<double, 3>>* processed_rirf = 
+        (convolution_mode_ == RadiationConvolutionMode::TaperedDirect && rirf_processed_ready_) 
+        ? &rirf_processed_ : nullptr;
 
-    #pragma omp parallel
-    {
-        const int tid = omp_get_thread_num();
-        auto& local_out = thread_locals[tid];
-
-        size_t history_index_local = history_index;
-        #pragma omp for schedule(static)
-        for (int step = 0; step < rirf_steps; ++step) {
-            const double rirf_query_time = simulation_time - rirf_time_vector[step];
-
-            size_t time_index = history_index_local;
-            if (!AdvanceToBracket(time_history_, time_index, rirf_query_time)) {
-                continue;  // not enough older history to interpolate
-            }
-            history_index_local = time_index;
-
-            const double newer_time = time_history_[history_index_local];
-            const double older_time = time_history_[history_index_local + 1];
-
-            // Multibody loop: process each body's velocity history
-            for (int body_index = 0; body_index < num_bodies_; ++body_index) {
-                const auto& velocity_history_body = velocity_history_[body_index];
-                if (velocity_history_body.size() <= history_index_local) {
-                    continue;  // inconsistent; should not happen in normal flow
-                }
-
-                double interpolated_velocity_dof[kDofPerBody];
-                InterpolateVelocity6D(velocity_history_body, history_index_local, rirf_query_time,
-                                      older_time, newer_time, interpolated_velocity_dof);
-
-                const double step_width = rirf_width_vector[step];
-                if (step_width == 0.0) {
-                    continue;
-                }
-                const int body_col_offset = body_index * kDofPerBody;
-                // Per-DOF loop: accumulate force contribution for each DOF
-                for (int dof = 0; dof < kDofPerBody; ++dof) {
-                    const int col = body_col_offset + dof;
-                    const double contribution_scale = interpolated_velocity_dof[dof] * step_width;
-                    if (contribution_scale == 0.0) {
-                        continue;
-                    }
-                    for (int row = 0; row < total_dofs; ++row) {
-                        local_out[row] += GetRIRFval(row, col, step) * contribution_scale;
-                    }
-                }
-            }
-        }
-    }
-
-    // Deterministic combine of thread-local accumulators
-    for (int t = 0; t < num_threads; ++t) {
-        const auto& local = thread_locals[t];
-        for (int row = 0; row < total_dofs; ++row) {
-            force_radiation_damping_[row] += local[row];
-        }
-    }
-#else
-    double* force_radiation_out = force_radiation_damping_.data();
-    for (int step = 0; step < rirf_steps; ++step) {
-        const double rirf_query_time = simulation_time - rirf_time_vector[step];
-
-        size_t time_index = history_index;
-        if (!AdvanceToBracket(time_history_, time_index, rirf_query_time)) {
-            break;  // not enough older history to interpolate
-        }
-        history_index = time_index;
-
-        const double newer_time = time_history_[history_index];
-        const double older_time = time_history_[history_index + 1];
-
-        // Multibody loop: process each body's velocity history
-        for (int body_index = 0; body_index < num_bodies_; ++body_index) {
-            const auto& velocity_history_body = velocity_history_[body_index];
-            if (velocity_history_body.size() <= history_index) {
-                continue;  // skip if inconsistent; should not happen in normal flow
-            }
-
-            double interpolated_velocity_dof[kDofPerBody];
-            InterpolateVelocity6D(velocity_history_body, history_index, rirf_query_time,
-                                  older_time, newer_time, interpolated_velocity_dof);
-
-            const double step_width = rirf_width_vector[step];
-            const int body_col_offset = body_index * kDofPerBody;
-            // Per-DOF loop: accumulate force contribution for each DOF
-            for (int dof = 0; dof < kDofPerBody; ++dof) {
-                const int col = body_col_offset + dof;
-                const double contribution_scale = interpolated_velocity_dof[dof] * step_width;
-                if (contribution_scale == 0.0) {
-                    continue;
-                }
-                for (int row = 0; row < total_dofs; ++row) {
-                    force_radiation_out[row] += GetRIRFval(row, col, step) * contribution_scale;
-                }
-            }
-        }
-    }
-#endif
+    force_radiation_damping_ = radiation_convolution_->ComputeForces(get_rirf_val, processed_rirf);
 
 #ifdef HYDROCHRONO_DEBUG
     std::cout << "[HYDRO_DEBUG] Radiation conv complete: max_force=" 

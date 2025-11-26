@@ -45,6 +45,7 @@
 // Standard includes
 #include <cstdio>
 #include <filesystem>
+#include <memory>
 
 // Chrono library includes
 #include <chrono/solver/ChIterativeSolverLS.h>
@@ -67,6 +68,10 @@
 // Hydroc library includes
 #include <hydroc/h5fileinfo.h>
 #include <hydroc/wave_types.h>
+
+namespace hydrochrono::hydro {
+class RadiationRirfConvolution;
+}
 
 using namespace chrono;
 using namespace chrono::fea;
@@ -210,6 +215,9 @@ class TestHydro {
     TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
               std::string h5_file_name,
               std::shared_ptr<WaveBase> waves = std::make_shared<NoWave>());
+
+    // Destructor (defined in .cpp to allow unique_ptr to incomplete type)
+    ~TestHydro();
 
     // Deleted copy constructor and assignment operator for safety.
     TestHydro(const TestHydro& old) = delete;
@@ -367,6 +375,9 @@ class TestHydro {
 
     // Hydrodynamics profiling data (accumulated over run)
     HydroProfileStats profile_stats_;
+
+    // Radiation damping convolution module
+    std::unique_ptr<hydrochrono::hydro::RadiationRirfConvolution> radiation_convolution_;
 
     // Convolution kernel preprocessing (optional)
     RadiationConvolutionMode convolution_mode_ = RadiationConvolutionMode::Baseline;
