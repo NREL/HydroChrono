@@ -53,6 +53,7 @@
 #include "hydro/core/system_state.h"
 #include "hydro/core/chrono_state_utils.h"
 #include "hydro/models/hydrostatics_model.h"
+#include "hydro/models/radiation_model.h"
 #include "hydro/radiation/radiation_rirf_processing.h"
 #include "hydro/radiation/radiation_rirf_convolution.h"
 
@@ -389,11 +390,10 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 }
 
 // ------------------------------------------------------------
-// SECTION: Radiation convolution + history buffers
+// SECTION: Radiation convolution (delegates to RadiationModel)
 // ------------------------------------------------------------
-// Implements velocity-history convolution for radiation damping.
-// Maintains time-history buffers per body for multibody systems.
-// TODO: Extract to RadiationModel class with dedicated HistoryBuffer.
+// Delegates to RadiationModel for force computation.
+// Legacy history buffers maintained for compatibility.
 
 // Legacy helper functions removed - now in RadiationRirfConvolution class
 
@@ -427,8 +427,42 @@ void TestHydro::EnsureProcessedRIRF() {
     rirf_processed_ready_ = true;
 }
 
+void TestHydro::InvalidateRadiationModel() {
+    radiation_model_.reset();
+}
+
+void TestHydro::EnsureRadiationModel() {
+    if (radiation_model_) {
+        return;  // Already created
+    }
+
+    const int rirf_steps = file_info_.GetRIRFDims(2);
+    
+    // Convert TestHydro::RadiationConvolutionMode to hydrochrono::hydro::RadiationConvolutionMode
+    hydrochrono::hydro::RadiationConvolutionMode model_mode;
+    if (convolution_mode_ == RadiationConvolutionMode::TaperedDirect) {
+        model_mode = hydrochrono::hydro::RadiationConvolutionMode::TaperedDirect;
+    } else {
+        model_mode = hydrochrono::hydro::RadiationConvolutionMode::Baseline;
+    }
+
+    // Convert TaperedDirectOptions to hydrochrono::hydro::TaperedDirectOptions
+    hydrochrono::hydro::TaperedDirectOptions model_opts;
+    model_opts.smoothing = tapered_opts_.smoothing;
+    model_opts.window_length = tapered_opts_.window_length;
+    model_opts.rirf_end_time = tapered_opts_.rirf_end_time;
+    model_opts.taper_start_percent = tapered_opts_.taper_start_percent;
+    model_opts.taper_end_percent = tapered_opts_.taper_end_percent;
+    model_opts.taper_final_amplitude = tapered_opts_.taper_final_amplitude;
+    model_opts.export_plot_csv = tapered_opts_.export_plot_csv;
+
+    radiation_model_ = std::make_unique<hydrochrono::hydro::RadiationModel>(
+        file_info_, num_bodies_, rirf_steps, rirf_time_vector, rirf_width_vector,
+        model_mode, model_opts, diagnostics_output_dir_);
+}
+
 // Main radiation convolution computation.
-// Uses velocity history buffers (multibody: one per body).
+// Delegates to RadiationModel for force computation.
 std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
     auto __t0 = std::chrono::steady_clock::now();
     const int rirf_steps = file_info_.GetRIRFDims(2);
@@ -436,10 +470,8 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 
     assert(total_dofs > 0 && rirf_steps > 0);
 
-    // If using TaperedDirect, ensure processed kernel is ready
-    if (convolution_mode_ == RadiationConvolutionMode::TaperedDirect) {
-        EnsureProcessedRIRF();
-    }
+    // Ensure radiation model exists with current settings
+    EnsureRadiationModel();
 
     // Current time
     const double simulation_time = bodies_[0]->GetChTime();
@@ -453,7 +485,16 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
     hydrochrono::hydro::SystemState system_state;
     hydrochrono::hydro::BuildSystemStateFromChronoBodies(bodies_, system_state);
 
-    // Prepare body velocities for recording
+    // Compute forces using the radiation model
+    hydrochrono::hydro::BodyForces body_forces(num_bodies_);
+    for (int b = 0; b < num_bodies_; ++b) {
+        body_forces[b].resize(kDofPerBody);
+        body_forces[b].setZero();
+    }
+    radiation_model_->Compute(system_state, simulation_time, body_forces);
+
+    // Also update legacy history buffers for compatibility (used by GetRIRFval and other legacy code)
+    // Extract velocities for legacy buffer update
     std::vector<std::vector<double>> body_velocities(num_bodies_);
     for (int b = 0; b < num_bodies_; ++b) {
         const auto& body_state = system_state.bodies[b];
@@ -462,27 +503,22 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
             body_state.angular_velocity[0], body_state.angular_velocity[1], body_state.angular_velocity[2]
         };
     }
-
-    // Record velocities in the convolution module
-    radiation_convolution_->RecordVelocities(simulation_time, body_velocities);
-
-    // Also update legacy history buffers for compatibility (used by GetRIRFval and other legacy code)
     time_history_.insert(time_history_.begin(), simulation_time);
     for (int b = 0; b < num_bodies_; ++b) {
         velocity_history_[b].insert(velocity_history_[b].begin(), body_velocities[b]);
     }
 
-    // Create lambda to get RIRF values (for Baseline mode)
-    auto get_rirf_val = [this](int row, int col, int step) -> double {
-        return GetRIRFval(row, col, step);
-    };
+    // Also update legacy radiation_convolution_ for compatibility
+    radiation_convolution_->RecordVelocities(simulation_time, body_velocities);
 
-    // Compute forces using the convolution module
-    const std::vector<Eigen::Tensor<double, 3>>* processed_rirf = 
-        (convolution_mode_ == RadiationConvolutionMode::TaperedDirect && rirf_processed_ready_) 
-        ? &rirf_processed_ : nullptr;
-
-    force_radiation_damping_ = radiation_convolution_->ComputeForces(get_rirf_val, processed_rirf);
+    // Convert BodyForces back to legacy flat 6N vector format
+    force_radiation_damping_.assign(kDofPerBody * num_bodies_, 0.0);
+    for (int b = 0; b < num_bodies_; ++b) {
+        const int body_offset = kDofPerBody * b;
+        for (int i = 0; i < kDofPerBody; ++i) {
+            force_radiation_damping_[body_offset + i] = body_forces[b][i];
+        }
+    }
 
 #ifdef HYDROCHRONO_DEBUG
     std::cout << "[HYDRO_DEBUG] Radiation conv complete: max_force=" 

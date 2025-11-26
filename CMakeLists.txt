@@ -352,6 +352,7 @@ set(HYDROCHRONO_SOURCES
     src/hydro/radiation/radiation_rirf_convolution.cpp
     src/hydro/core/chrono_state_utils.cpp
     src/hydro/models/hydrostatics_model.cpp
+    src/hydro/models/radiation_model.cpp
     # logging consolidated: coordinator + CLI (logging.cpp), backend (logger_backend.cpp)
     src/utils/logger_backend.cpp
     src/utils/logging.cpp

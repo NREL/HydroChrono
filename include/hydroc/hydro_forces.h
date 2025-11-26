@@ -72,6 +72,7 @@
 namespace hydrochrono::hydro {
 class RadiationRirfConvolution;
 class HydrostaticsModel;
+class RadiationModel;
 }
 
 using namespace chrono;
@@ -282,7 +283,10 @@ class TestHydro {
     /**
      * @brief Set the radiation convolution mode. Default is Baseline.
      */
-    void SetRadiationConvolutionMode(RadiationConvolutionMode mode) { convolution_mode_ = mode; }
+    void SetRadiationConvolutionMode(RadiationConvolutionMode mode) {
+        convolution_mode_ = mode;
+        InvalidateRadiationModel();  // Invalidate model to recreate with new settings
+    }
 
         struct TaperedDirectOptions {
             // smoothing: "sg" (Savitzky–Golay) or "moving_average"
@@ -302,12 +306,18 @@ class TestHydro {
     /**
      * @brief Set options for TaperedDirect preprocessing.
      */
-    void SetTaperedDirectOptions(const TaperedDirectOptions& opts) { tapered_opts_ = opts; }
+    void SetTaperedDirectOptions(const TaperedDirectOptions& opts) {
+        tapered_opts_ = opts;
+        InvalidateRadiationModel();  // Invalidate model to recreate with new settings
+    }
 
     /**
      * @brief Set the directory where diagnostics (e.g., CSVs) should be written.
      */
-    void SetDiagnosticsOutputDirectory(const std::string& dir) { diagnostics_output_dir_ = dir; }
+    void SetDiagnosticsOutputDirectory(const std::string& dir) {
+        diagnostics_output_dir_ = dir;
+        InvalidateRadiationModel();  // Invalidate model to recreate with new settings
+    }
 
     /**
      * @brief Calculates or retrieves the total force on a specific body in a particular degree of freedom.
@@ -383,6 +393,9 @@ class TestHydro {
     // Hydrostatics force model
     std::unique_ptr<hydrochrono::hydro::HydrostaticsModel> hydrostatics_model_;
 
+    // Radiation damping force model
+    std::unique_ptr<hydrochrono::hydro::RadiationModel> radiation_model_;
+
     // Convolution kernel preprocessing (optional)
     RadiationConvolutionMode convolution_mode_ = RadiationConvolutionMode::Baseline;
     bool rirf_processed_ready_ = false;
@@ -391,6 +404,11 @@ class TestHydro {
     std::string diagnostics_output_dir_;
 
     void EnsureProcessedRIRF();
+
+    // Helper to ensure radiation model exists with current settings
+    void EnsureRadiationModel();
+    // Helper to invalidate radiation model (requires full type definition)
+    void InvalidateRadiationModel();
 };
 
 #endif
