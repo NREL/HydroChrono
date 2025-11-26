@@ -1,9 +1,9 @@
 /*********************************************************************
- * @file  radiation_model.cpp
- * @brief Implementation of radiation damping force model.
+ * @file  radiation_component.cpp
+ * @brief Implementation of radiation damping force component.
  *********************************************************************/
 
-#include "radiation_model.h"
+#include "radiation_component.h"
 #include <hydroc/h5fileinfo.h>
 
 #include <Eigen/Dense>
@@ -13,7 +13,7 @@
 
 namespace hydrochrono::hydro {
 
-RadiationModel::RadiationModel(
+RadiationComponent::RadiationComponent(
     const HydroData& file_info,
     int num_bodies,
     int rirf_steps,
@@ -35,7 +35,7 @@ RadiationModel::RadiationModel(
     assert(num_bodies_ > 0);
 }
 
-void RadiationModel::EnsureProcessedRIRF() {
+void RadiationComponent::EnsureProcessedRIRF() {
     if (rirf_processed_ready_) {
         return;
     }
@@ -54,10 +54,10 @@ void RadiationModel::EnsureProcessedRIRF() {
     rirf_processed_ready_ = true;
 }
 
-double RadiationModel::GetRIRFval(int row, int col, int st) {
+double RadiationComponent::GetRIRFval(int row, int col, int st) {
     if (row < 0 || row >= kDofPerBody * num_bodies_ || col < 0 || col >= kDofPerBody * num_bodies_ || st < 0 ||
         st >= file_info_.GetRIRFDims(2)) {
-        throw std::out_of_range("rirfval index out of range in RadiationModel");
+        throw std::out_of_range("rirfval index out of range in RadiationComponent");
     }
 
     int body_index = row / kDofPerBody;
@@ -74,7 +74,7 @@ double RadiationModel::GetRIRFval(int row, int col, int st) {
     return file_info_.GetRIRFVal(body_index, row_dof, col, st);
 }
 
-void RadiationModel::Compute(const SystemState& state,
+void RadiationComponent::Compute(const SystemState& state,
                              double time,
                              BodyForces& inout_forces) {
     assert(static_cast<int>(state.bodies.size()) == num_bodies_);

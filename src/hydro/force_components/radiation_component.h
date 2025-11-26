@@ -1,12 +1,12 @@
 /*********************************************************************
- * @file  radiation_model.h
- * @brief Radiation damping force model (velocity history convolution).
+ * @file  radiation_component.h
+ * @brief Radiation damping force component (velocity history convolution).
  *********************************************************************/
 
-#ifndef HYDRO_MODELS_RADIATION_MODEL_H
-#define HYDRO_MODELS_RADIATION_MODEL_H
+#ifndef HYDRO_FORCE_COMPONENTS_RADIATION_COMPONENT_H
+#define HYDRO_FORCE_COMPONENTS_RADIATION_COMPONENT_H
 
-#include "../core/hydro_force_model.h"
+#include "../core/hydro_force_component.h"
 #include "../core/system_state.h"
 #include "../radiation/radiation_rirf_convolution.h"
 #include "../radiation/radiation_rirf_processing.h"
@@ -27,12 +27,12 @@ enum class RadiationConvolutionMode {
 };
 
 /**
- * @brief Radiation damping force model (RIRF convolution).
+ * @brief Radiation damping force component (RIRF convolution).
  * 
  * Computes radiation damping forces via convolution of RIRF kernels
  * with body velocity history. Supports Baseline and TaperedDirect modes.
  */
-class RadiationModel : public IHydroForceModel {
+class RadiationComponent : public IHydroForceComponent {
 public:
     /**
      * @brief Constructor.
@@ -46,7 +46,7 @@ public:
      * @param tapered_opts Options for TaperedDirect preprocessing
      * @param diagnostics_output_dir Directory for diagnostics output (CSV files)
      */
-    RadiationModel(const HydroData& file_info,
+    RadiationComponent(const HydroData& file_info,
                   int num_bodies,
                   int rirf_steps,
                   const Eigen::VectorXd& rirf_time_vector,
@@ -92,5 +92,5 @@ private:
 
 }  // namespace hydrochrono::hydro
 
-#endif  // HYDRO_MODELS_RADIATION_MODEL_H
+#endif  // HYDRO_FORCE_COMPONENTS_RADIATION_COMPONENT_H
 

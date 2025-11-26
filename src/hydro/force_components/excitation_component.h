@@ -1,12 +1,12 @@
 /*********************************************************************
- * @file  excitation_model.h
- * @brief Wave excitation force model.
+ * @file  excitation_component.h
+ * @brief Wave excitation force component.
  *********************************************************************/
 
-#ifndef HYDRO_MODELS_EXCITATION_MODEL_H
-#define HYDRO_MODELS_EXCITATION_MODEL_H
+#ifndef HYDRO_FORCE_COMPONENTS_EXCITATION_COMPONENT_H
+#define HYDRO_FORCE_COMPONENTS_EXCITATION_COMPONENT_H
 
-#include "../core/hydro_force_model.h"
+#include "../core/hydro_force_component.h"
 #include "../core/system_state.h"
 #include "../waves/wave_base.h"
 #include <memory>
@@ -14,12 +14,12 @@
 namespace hydrochrono::hydro {
 
 /**
- * @brief Wave excitation force model.
+ * @brief Wave excitation force component.
  * 
  * Computes wave excitation forces by calling WaveBase::GetForceAtTime()
  * and converting the flat 6N vector to per-body forces.
  */
-class ExcitationModel : public IHydroForceModel {
+class ExcitationComponent : public IHydroForceComponent {
 public:
     /**
      * @brief Constructor.
@@ -27,7 +27,7 @@ public:
      * @param waves Shared pointer to WaveBase instance for force computation
      * @param num_bodies Number of bodies in the system
      */
-    ExcitationModel(std::shared_ptr<WaveBase> waves, int num_bodies);
+    ExcitationComponent(std::shared_ptr<WaveBase> waves, int num_bodies);
 
     /**
      * @brief Compute wave excitation force contribution.
@@ -52,5 +52,5 @@ private:
 
 }  // namespace hydrochrono::hydro
 
-#endif  // HYDRO_MODELS_EXCITATION_MODEL_H
+#endif  // HYDRO_FORCE_COMPONENTS_EXCITATION_COMPONENT_H
 

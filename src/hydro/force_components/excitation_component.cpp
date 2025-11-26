@@ -1,22 +1,22 @@
 /*********************************************************************
- * @file  excitation_model.cpp
- * @brief Implementation of wave excitation force model.
+ * @file  excitation_component.cpp
+ * @brief Implementation of wave excitation force component.
  *********************************************************************/
 
-#include "excitation_model.h"
+#include "excitation_component.h"
 
 #include <cassert>
 #include <Eigen/Dense>
 
 namespace hydrochrono::hydro {
 
-ExcitationModel::ExcitationModel(std::shared_ptr<WaveBase> waves, int num_bodies)
+ExcitationComponent::ExcitationComponent(std::shared_ptr<WaveBase> waves, int num_bodies)
     : waves_(waves), num_bodies_(num_bodies) {
     assert(waves_ != nullptr);
     assert(num_bodies_ > 0);
 }
 
-void ExcitationModel::Compute(const SystemState& state,
+void ExcitationComponent::Compute(const SystemState& state,
                               double time,
                               BodyForces& inout_forces) {
     assert(static_cast<int>(inout_forces.size()) == num_bodies_);

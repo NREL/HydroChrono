@@ -6,7 +6,7 @@
  *
  * OVERVIEW:
  * This file implements the core hydrodynamic force computation for multibody
- * marine systems. It connects Chrono physics bodies to hydrodynamic models
+ * marine systems. It connects Chrono physics bodies to hydrodynamic components
  * (hydrostatics, radiation damping, wave excitation) and applies the
  * resulting forces during simulation.
  *
@@ -29,7 +29,7 @@
  * - Radiation history stored per-body in velocity_history_ vector
  *
  * KNOWN LIMITATIONS:
- * - Monolithic design: all force models mixed in one class
+ * - Monolithic design: all force components mixed in one class
  * - Tight coupling to Chrono types (hard to test without Chrono)
  * - Body indexing inconsistency (1-indexed in some places, 0-indexed in others)
  * - No per-body enable/disable of radiation or excitation (system-wide only)
@@ -52,9 +52,9 @@
 #include <hydroc/logging.h>
 #include "hydro/core/system_state.h"
 #include "hydro/core/chrono_state_utils.h"
-#include "hydro/models/hydrostatics_model.h"
-#include "hydro/models/radiation_model.h"
-#include "hydro/models/excitation_model.h"
+#include "hydro/force_components/hydrostatics_component.h"
+#include "hydro/force_components/radiation_component.h"
+#include "hydro/force_components/excitation_component.h"
 #include "hydro/radiation/radiation_rirf_processing.h"
 #include "hydro/radiation/radiation_rirf_convolution.h"
 
@@ -226,7 +226,7 @@ void ForceFunc6d::ApplyForceAndTorqueToBody() {
 // ------------------------------------------------------------
 // SECTION: TestHydro class (main hydrodynamics orchestrator)
 // ------------------------------------------------------------
-// TODO: This class will be refactored into modular force models.
+// TODO: This class will be refactored into modular force components.
 // Current structure mixes all physics components together.
 
 // Explicit destructor definition (needed for unique_ptr to incomplete type)
@@ -285,14 +285,14 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
         }
     }
 
-    // Initialize hydrostatics model
+    // Initialize hydrostatics component
     const auto gravitational_acceleration_ch = bodies_[0]->GetSystem()->GetGravitationalAcceleration();
     const Eigen::Vector3d gravitational_acceleration(
         gravitational_acceleration_ch.x(),
         gravitational_acceleration_ch.y(),
         gravitational_acceleration_ch.z()
     );
-    hydrostatics_model_ = std::make_unique<hydrochrono::hydro::HydrostaticsModel>(
+    hydrostatics_component_ = std::make_unique<hydrochrono::hydro::HydrostaticsComponent>(
         file_info_, num_bodies_, equilibrium_, cb_minus_cg_, gravitational_acceleration);
 
     // Create Chrono force callbacks for each body (multibody setup)
@@ -342,9 +342,9 @@ void TestHydro::AddWaves(std::shared_ptr<WaveBase> waves) {
 }
 
 // ------------------------------------------------------------
-// SECTION: Hydrostatics (delegates to HydrostaticsModel)
+// SECTION: Hydrostatics (delegates to HydrostaticsComponent)
 // ------------------------------------------------------------
-// Delegates to HydrostaticsModel for force computation.
+// Delegates to HydrostaticsComponent for force computation.
 
 std::vector<double> TestHydro::ComputeForceHydrostatics() {
     auto __t0 = std::chrono::steady_clock::now();
@@ -362,13 +362,13 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
     // Get current simulation time
     const double simulation_time = bodies_[0]->GetChTime();
 
-    // Compute forces using the hydrostatics model
+    // Compute forces using the hydrostatics component
     hydrochrono::hydro::BodyForces body_forces(num_bodies_);
     for (int b = 0; b < num_bodies_; ++b) {
         body_forces[b].resize(kDofPerBody);
         body_forces[b].setZero();
     }
-    hydrostatics_model_->Compute(system_state, simulation_time, body_forces);
+    hydrostatics_component_->Compute(system_state, simulation_time, body_forces);
 
     // Convert BodyForces back to legacy flat 6N vector format
     force_hydrostatic_.assign(kDofPerBody * num_bodies_, 0.0);
@@ -391,9 +391,9 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 }
 
 // ------------------------------------------------------------
-// SECTION: Radiation convolution (delegates to RadiationModel)
+// SECTION: Radiation convolution (delegates to RadiationComponent)
 // ------------------------------------------------------------
-// Delegates to RadiationModel for force computation.
+// Delegates to RadiationComponent for force computation.
 // Legacy history buffers maintained for compatibility.
 
 // Legacy helper functions removed - now in RadiationRirfConvolution class
@@ -428,51 +428,51 @@ void TestHydro::EnsureProcessedRIRF() {
     rirf_processed_ready_ = true;
 }
 
-void TestHydro::InvalidateRadiationModel() {
-    radiation_model_.reset();
+void TestHydro::InvalidateRadiationComponent() {
+    radiation_component_.reset();
 }
 
-void TestHydro::EnsureRadiationModel() {
-    if (radiation_model_) {
+void TestHydro::EnsureRadiationComponent() {
+    if (radiation_component_) {
         return;  // Already created
     }
 
     const int rirf_steps = file_info_.GetRIRFDims(2);
     
     // Convert TestHydro::RadiationConvolutionMode to hydrochrono::hydro::RadiationConvolutionMode
-    hydrochrono::hydro::RadiationConvolutionMode model_mode;
+    hydrochrono::hydro::RadiationConvolutionMode component_mode;
     if (convolution_mode_ == RadiationConvolutionMode::TaperedDirect) {
-        model_mode = hydrochrono::hydro::RadiationConvolutionMode::TaperedDirect;
+        component_mode = hydrochrono::hydro::RadiationConvolutionMode::TaperedDirect;
     } else {
-        model_mode = hydrochrono::hydro::RadiationConvolutionMode::Baseline;
+        component_mode = hydrochrono::hydro::RadiationConvolutionMode::Baseline;
     }
 
     // Convert TaperedDirectOptions to hydrochrono::hydro::TaperedDirectOptions
-    hydrochrono::hydro::TaperedDirectOptions model_opts;
-    model_opts.smoothing = tapered_opts_.smoothing;
-    model_opts.window_length = tapered_opts_.window_length;
-    model_opts.rirf_end_time = tapered_opts_.rirf_end_time;
-    model_opts.taper_start_percent = tapered_opts_.taper_start_percent;
-    model_opts.taper_end_percent = tapered_opts_.taper_end_percent;
-    model_opts.taper_final_amplitude = tapered_opts_.taper_final_amplitude;
-    model_opts.export_plot_csv = tapered_opts_.export_plot_csv;
+    hydrochrono::hydro::TaperedDirectOptions component_opts;
+    component_opts.smoothing = tapered_opts_.smoothing;
+    component_opts.window_length = tapered_opts_.window_length;
+    component_opts.rirf_end_time = tapered_opts_.rirf_end_time;
+    component_opts.taper_start_percent = tapered_opts_.taper_start_percent;
+    component_opts.taper_end_percent = tapered_opts_.taper_end_percent;
+    component_opts.taper_final_amplitude = tapered_opts_.taper_final_amplitude;
+    component_opts.export_plot_csv = tapered_opts_.export_plot_csv;
 
-    radiation_model_ = std::make_unique<hydrochrono::hydro::RadiationModel>(
+    radiation_component_ = std::make_unique<hydrochrono::hydro::RadiationComponent>(
         file_info_, num_bodies_, rirf_steps, rirf_time_vector, rirf_width_vector,
-        model_mode, model_opts, diagnostics_output_dir_);
+        component_mode, component_opts, diagnostics_output_dir_);
 }
 
-void TestHydro::EnsureExcitationModel() {
-    if (excitation_model_) {
+void TestHydro::EnsureExcitationComponent() {
+    if (excitation_component_) {
         return;  // Already created
     }
 
-    excitation_model_ = std::make_unique<hydrochrono::hydro::ExcitationModel>(
+    excitation_component_ = std::make_unique<hydrochrono::hydro::ExcitationComponent>(
         user_waves_, num_bodies_);
 }
 
 // Main radiation convolution computation.
-// Delegates to RadiationModel for force computation.
+// Delegates to RadiationComponent for force computation.
 std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
     auto __t0 = std::chrono::steady_clock::now();
     const int rirf_steps = file_info_.GetRIRFDims(2);
@@ -480,8 +480,8 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 
     assert(total_dofs > 0 && rirf_steps > 0);
 
-    // Ensure radiation model exists with current settings
-    EnsureRadiationModel();
+    // Ensure radiation component exists with current settings
+    EnsureRadiationComponent();
 
     // Current time
     const double simulation_time = bodies_[0]->GetChTime();
@@ -495,13 +495,13 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
     hydrochrono::hydro::SystemState system_state;
     hydrochrono::hydro::BuildSystemStateFromChronoBodies(bodies_, system_state);
 
-    // Compute forces using the radiation model
+    // Compute forces using the radiation component
     hydrochrono::hydro::BodyForces body_forces(num_bodies_);
     for (int b = 0; b < num_bodies_; ++b) {
         body_forces[b].resize(kDofPerBody);
         body_forces[b].setZero();
     }
-    radiation_model_->Compute(system_state, simulation_time, body_forces);
+    radiation_component_->Compute(system_state, simulation_time, body_forces);
 
     // Also update legacy history buffers for compatibility (used by GetRIRFval and other legacy code)
     // Extract velocities for legacy buffer update
@@ -563,7 +563,7 @@ double TestHydro::GetRIRFval(int row, int col, int st) {
 // ------------------------------------------------------------
 // SECTION: Wave excitation
 // ------------------------------------------------------------
-// Delegates to ExcitationModel for force computation.
+// Delegates to ExcitationComponent for force computation.
 
 Eigen::VectorXd TestHydro::ComputeForceWaves() {
     auto __t0 = std::chrono::steady_clock::now();
@@ -572,8 +572,8 @@ Eigen::VectorXd TestHydro::ComputeForceWaves() {
         throw std::runtime_error("bodies_ array is empty in ComputeForceWaves");
     }
 
-    // Ensure excitation model exists
-    EnsureExcitationModel();
+    // Ensure excitation component exists
+    EnsureExcitationComponent();
 
     // Get current simulation time
     const double simulation_time = bodies_[0]->GetChTime();
@@ -582,13 +582,13 @@ Eigen::VectorXd TestHydro::ComputeForceWaves() {
     hydrochrono::hydro::SystemState system_state;
     hydrochrono::hydro::BuildSystemStateFromChronoBodies(bodies_, system_state);
 
-    // Compute forces using the excitation model
+    // Compute forces using the excitation component
     hydrochrono::hydro::BodyForces body_forces(num_bodies_);
     for (int b = 0; b < num_bodies_; ++b) {
         body_forces[b].resize(kDofPerBody);
         body_forces[b].setZero();
     }
-    excitation_model_->Compute(system_state, simulation_time, body_forces);
+    excitation_component_->Compute(system_state, simulation_time, body_forces);
 
     // Convert BodyForces back to legacy flat Eigen::VectorXd format (6N)
     force_waves_.resize(kDofPerBody * num_bodies_);

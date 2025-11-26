@@ -1,9 +1,9 @@
 /*********************************************************************
- * @file  hydrostatics_model.cpp
- * @brief Implementation of hydrostatics force model.
+ * @file  hydrostatics_component.cpp
+ * @brief Implementation of hydrostatics force component.
  *********************************************************************/
 
-#include "hydrostatics_model.h"
+#include "hydrostatics_component.h"
 #include <hydroc/h5fileinfo.h>
 
 #include <Eigen/Dense>
@@ -11,7 +11,7 @@
 
 namespace hydrochrono::hydro {
 
-HydrostaticsModel::HydrostaticsModel(
+HydrostaticsComponent::HydrostaticsComponent(
     const HydroData& file_info,
     int num_bodies,
     const std::vector<double>& equilibrium,
@@ -25,7 +25,7 @@ HydrostaticsModel::HydrostaticsModel(
     assert(num_bodies_ > 0);
 }
 
-void HydrostaticsModel::Compute(const SystemState& state,
+void HydrostaticsComponent::Compute(const SystemState& state,
                                 double time,
                                 BodyForces& inout_forces) {
     assert(static_cast<int>(state.bodies.size()) == num_bodies_);

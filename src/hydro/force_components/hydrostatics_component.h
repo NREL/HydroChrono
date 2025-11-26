@@ -1,12 +1,12 @@
 /*********************************************************************
- * @file  hydrostatics_model.h
- * @brief Hydrostatics force model (restoring forces and buoyancy).
+ * @file  hydrostatics_component.h
+ * @brief Hydrostatics force component (restoring forces and buoyancy).
  *********************************************************************/
 
-#ifndef HYDRO_MODELS_HYDROSTATICS_MODEL_H
-#define HYDRO_MODELS_HYDROSTATICS_MODEL_H
+#ifndef HYDRO_FORCE_COMPONENTS_HYDROSTATICS_COMPONENT_H
+#define HYDRO_FORCE_COMPONENTS_HYDROSTATICS_COMPONENT_H
 
-#include "../core/hydro_force_model.h"
+#include "../core/hydro_force_component.h"
 #include "../core/system_state.h"
 #include <Eigen/Dense>
 #include <vector>
@@ -17,12 +17,12 @@ class HydroData;
 namespace hydrochrono::hydro {
 
 /**
- * @brief Hydrostatics force model (restoring stiffness + buoyancy).
+ * @brief Hydrostatics force component (restoring stiffness + buoyancy).
  * 
  * Computes hydrostatic restoring forces from linear stiffness matrix
  * and buoyancy forces at equilibrium position.
  */
-class HydrostaticsModel : public IHydroForceModel {
+class HydrostaticsComponent : public IHydroForceComponent {
 public:
     /**
      * @brief Constructor.
@@ -33,7 +33,7 @@ public:
      * @param cb_minus_cg Center of buoyancy minus center of gravity [3N] (xyz per body)
      * @param gravitational_acceleration Gravitational acceleration vector (m/s^2)
      */
-    HydrostaticsModel(const HydroData& file_info,
+    HydrostaticsComponent(const HydroData& file_info,
                      int num_bodies,
                      const std::vector<double>& equilibrium,
                      const std::vector<double>& cb_minus_cg,
@@ -66,5 +66,5 @@ private:
 
 }  // namespace hydrochrono::hydro
 
-#endif  // HYDRO_MODELS_HYDROSTATICS_MODEL_H
+#endif  // HYDRO_FORCE_COMPONENTS_HYDROSTATICS_COMPONENT_H
 

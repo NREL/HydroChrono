@@ -351,9 +351,9 @@ set(HYDROCHRONO_SOURCES
     src/hydro/radiation/radiation_rirf_processing.cpp
     src/hydro/radiation/radiation_rirf_convolution.cpp
     src/hydro/core/chrono_state_utils.cpp
-    src/hydro/models/hydrostatics_model.cpp
-    src/hydro/models/radiation_model.cpp
-    src/hydro/models/excitation_model.cpp
+    src/hydro/force_components/hydrostatics_component.cpp
+    src/hydro/force_components/radiation_component.cpp
+    src/hydro/force_components/excitation_component.cpp
     # logging consolidated: coordinator + CLI (logging.cpp), backend (logger_backend.cpp)
     src/utils/logger_backend.cpp
     src/utils/logging.cpp

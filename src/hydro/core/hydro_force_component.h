@@ -1,10 +1,10 @@
 /*********************************************************************
- * @file  hydro_force_model.h
- * @brief Interface for hydrodynamic force models.
+ * @file  hydro_force_component.h
+ * @brief Interface for hydrodynamic force components.
  *********************************************************************/
 
-#ifndef HYDRO_CORE_HYDRO_FORCE_MODEL_H
-#define HYDRO_CORE_HYDRO_FORCE_MODEL_H
+#ifndef HYDRO_CORE_HYDRO_FORCE_COMPONENT_H
+#define HYDRO_CORE_HYDRO_FORCE_COMPONENT_H
 
 #include "system_state.h"
 
@@ -13,16 +13,16 @@ namespace hydrochrono::hydro {
 /**
  * @brief Interface for computing hydrodynamic forces.
  * 
- * All force models (hydrostatics, radiation, excitation) implement this
+ * All force components (hydrostatics, radiation, excitation) implement this
  * interface to provide a consistent way to compute forces.
  * 
- * @note Models may maintain internal state (e.g., velocity history for
+ * @note Components may maintain internal state (e.g., velocity history for
  *       radiation damping), but Compute() should be side-effect-free
- *       outside the model instance.
+ *       outside the component instance.
  */
-class IHydroForceModel {
+class IHydroForceComponent {
 public:
-    virtual ~IHydroForceModel() = default;
+    virtual ~IHydroForceComponent() = default;
 
     /**
      * @brief Compute force contribution and add to inout_forces.
@@ -41,5 +41,5 @@ public:
 
 }  // namespace hydrochrono::hydro
 
-#endif  // HYDRO_CORE_HYDRO_FORCE_MODEL_H
+#endif  // HYDRO_CORE_HYDRO_FORCE_COMPONENT_H
 

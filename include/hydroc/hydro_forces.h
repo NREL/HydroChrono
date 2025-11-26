@@ -30,7 +30,7 @@
  * - Forces computed once per time step and cached
  *
  * KNOWN LIMITATIONS:
- * - Monolithic design: all physics models mixed in TestHydro
+ * - Monolithic design: all physics components mixed in TestHydro
  * - Tight coupling to Chrono types (hard to test in isolation)
  * - Body indexing inconsistency (1-indexed vs 0-indexed)
  * - No per-body enable/disable of force components
@@ -71,9 +71,9 @@
 
 namespace hydrochrono::hydro {
 class RadiationRirfConvolution;
-class HydrostaticsModel;
-class RadiationModel;
-class ExcitationModel;
+class HydrostaticsComponent;
+class RadiationComponent;
+class ExcitationComponent;
 }
 
 using namespace chrono;
@@ -286,7 +286,7 @@ class TestHydro {
      */
     void SetRadiationConvolutionMode(RadiationConvolutionMode mode) {
         convolution_mode_ = mode;
-        InvalidateRadiationModel();  // Invalidate model to recreate with new settings
+        InvalidateRadiationComponent();  // Invalidate component to recreate with new settings
     }
 
         struct TaperedDirectOptions {
@@ -309,7 +309,7 @@ class TestHydro {
      */
     void SetTaperedDirectOptions(const TaperedDirectOptions& opts) {
         tapered_opts_ = opts;
-        InvalidateRadiationModel();  // Invalidate model to recreate with new settings
+        InvalidateRadiationComponent();  // Invalidate component to recreate with new settings
     }
 
     /**
@@ -317,7 +317,7 @@ class TestHydro {
      */
     void SetDiagnosticsOutputDirectory(const std::string& dir) {
         diagnostics_output_dir_ = dir;
-        InvalidateRadiationModel();  // Invalidate model to recreate with new settings
+        InvalidateRadiationComponent();  // Invalidate component to recreate with new settings
     }
 
     /**
@@ -391,14 +391,14 @@ class TestHydro {
     // Radiation damping convolution module
     std::unique_ptr<hydrochrono::hydro::RadiationRirfConvolution> radiation_convolution_;
 
-    // Hydrostatics force model
-    std::unique_ptr<hydrochrono::hydro::HydrostaticsModel> hydrostatics_model_;
+    // Hydrostatics force component
+    std::unique_ptr<hydrochrono::hydro::HydrostaticsComponent> hydrostatics_component_;
 
-    // Radiation damping force model
-    std::unique_ptr<hydrochrono::hydro::RadiationModel> radiation_model_;
+    // Radiation damping force component
+    std::unique_ptr<hydrochrono::hydro::RadiationComponent> radiation_component_;
 
-    // Wave excitation force model
-    std::unique_ptr<hydrochrono::hydro::ExcitationModel> excitation_model_;
+    // Wave excitation force component
+    std::unique_ptr<hydrochrono::hydro::ExcitationComponent> excitation_component_;
 
     // Convolution kernel preprocessing (optional)
     RadiationConvolutionMode convolution_mode_ = RadiationConvolutionMode::Baseline;
@@ -409,12 +409,12 @@ class TestHydro {
 
     void EnsureProcessedRIRF();
 
-    // Helper to ensure radiation model exists with current settings
-    void EnsureRadiationModel();
-    // Helper to invalidate radiation model (requires full type definition)
-    void InvalidateRadiationModel();
-    // Helper to ensure excitation model exists
-    void EnsureExcitationModel();
+    // Helper to ensure radiation component exists with current settings
+    void EnsureRadiationComponent();
+    // Helper to invalidate radiation component (requires full type definition)
+    void InvalidateRadiationComponent();
+    // Helper to ensure excitation component exists
+    void EnsureExcitationComponent();
 };
 
 #endif
