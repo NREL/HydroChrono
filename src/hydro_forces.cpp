@@ -51,6 +51,7 @@
 #include <hydroc/wave_types.h>
 #include <hydroc/logging.h>
 #include "hydro/core/system_state.h"
+#include "hydro/core/chrono_state_utils.h"
 #include "hydro/radiation/radiation_rirf_processing.h"
 #include "hydro/radiation/radiation_rirf_convolution.h"
 
@@ -80,48 +81,6 @@ const int kDofLinOrRot = 3;
 // ------------------------------------------------------------
 // SECTION: Utility functions (legacy)
 // ------------------------------------------------------------
-
-// Internal helper: Build SystemState from all Chrono bodies (legacy implementation).
-// This extracts pose and velocity data from Chrono bodies into the new SystemState structure.
-namespace {
-hydrochrono::hydro::SystemState BuildSystemStateFromChronoBodies(
-    const std::vector<std::shared_ptr<ChBody>>& bodies) {
-    hydrochrono::hydro::SystemState system_state;
-    system_state.bodies.reserve(bodies.size());
-    
-    for (const auto& body : bodies) {
-        hydrochrono::hydro::BodyState body_state;
-        
-        // Extract position and orientation
-        const chrono::ChVector3d position_world = body->GetPos();
-        const chrono::ChVector3d rotation_rpy    = body->GetRot().GetCardanAnglesXYZ();
-        
-        body_state.position[0] = position_world.x();
-        body_state.position[1] = position_world.y();
-        body_state.position[2] = position_world.z();
-        
-        body_state.orientation_rpy[0] = rotation_rpy.x();
-        body_state.orientation_rpy[1] = rotation_rpy.y();
-        body_state.orientation_rpy[2] = rotation_rpy.z();
-        
-        // Extract velocities
-        const auto linear_velocity_world  = body->GetPosDt();
-        const auto angular_velocity_world = body->GetAngVelParent();
-        
-        body_state.linear_velocity[0] = linear_velocity_world.x();
-        body_state.linear_velocity[1] = linear_velocity_world.y();
-        body_state.linear_velocity[2] = linear_velocity_world.z();
-        
-        body_state.angular_velocity[0] = angular_velocity_world.x();
-        body_state.angular_velocity[1] = angular_velocity_world.y();
-        body_state.angular_velocity[2] = angular_velocity_world.z();
-        
-        system_state.bodies.push_back(body_state);
-    }
-    
-    return system_state;
-}
-}  // namespace
 
 /**
  * @brief Generates a vector of evenly spaced numbers over a specified range.
@@ -389,7 +348,8 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
 #endif
 
     // Build SystemState from all Chrono bodies (legacy implementation)
-    const auto system_state = BuildSystemStateFromChronoBodies(bodies_);
+    hydrochrono::hydro::SystemState system_state;
+    hydrochrono::hydro::BuildSystemStateFromChronoBodies(bodies_, system_state);
 
     // Multibody loop: compute hydrostatic forces for each body
     for (int b = 0; b < num_bodies_; ++b) {
@@ -514,7 +474,8 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
 #endif
 
     // Build SystemState from all Chrono bodies (legacy implementation)
-    const auto system_state = BuildSystemStateFromChronoBodies(bodies_);
+    hydrochrono::hydro::SystemState system_state;
+    hydrochrono::hydro::BuildSystemStateFromChronoBodies(bodies_, system_state);
 
     // Prepare body velocities for recording
     std::vector<std::vector<double>> body_velocities(num_bodies_);
