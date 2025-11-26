@@ -73,6 +73,7 @@ namespace hydrochrono::hydro {
 class RadiationRirfConvolution;
 class HydrostaticsModel;
 class RadiationModel;
+class ExcitationModel;
 }
 
 using namespace chrono;
@@ -396,6 +397,9 @@ class TestHydro {
     // Radiation damping force model
     std::unique_ptr<hydrochrono::hydro::RadiationModel> radiation_model_;
 
+    // Wave excitation force model
+    std::unique_ptr<hydrochrono::hydro::ExcitationModel> excitation_model_;
+
     // Convolution kernel preprocessing (optional)
     RadiationConvolutionMode convolution_mode_ = RadiationConvolutionMode::Baseline;
     bool rirf_processed_ready_ = false;
@@ -409,6 +413,8 @@ class TestHydro {
     void EnsureRadiationModel();
     // Helper to invalidate radiation model (requires full type definition)
     void InvalidateRadiationModel();
+    // Helper to ensure excitation model exists
+    void EnsureExcitationModel();
 };
 
 #endif

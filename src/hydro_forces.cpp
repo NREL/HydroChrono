@@ -54,6 +54,7 @@
 #include "hydro/core/chrono_state_utils.h"
 #include "hydro/models/hydrostatics_model.h"
 #include "hydro/models/radiation_model.h"
+#include "hydro/models/excitation_model.h"
 #include "hydro/radiation/radiation_rirf_processing.h"
 #include "hydro/radiation/radiation_rirf_convolution.h"
 
@@ -461,6 +462,15 @@ void TestHydro::EnsureRadiationModel() {
         model_mode, model_opts, diagnostics_output_dir_);
 }
 
+void TestHydro::EnsureExcitationModel() {
+    if (excitation_model_) {
+        return;  // Already created
+    }
+
+    excitation_model_ = std::make_unique<hydrochrono::hydro::ExcitationModel>(
+        user_waves_, num_bodies_);
+}
+
 // Main radiation convolution computation.
 // Delegates to RadiationModel for force computation.
 std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
@@ -553,8 +563,7 @@ double TestHydro::GetRIRFval(int row, int col, int st) {
 // ------------------------------------------------------------
 // SECTION: Wave excitation
 // ------------------------------------------------------------
-// Delegates to WaveBase hierarchy for excitation force computation.
-// TODO: Extract to ExcitationModel class in future refactor.
+// Delegates to ExcitationModel for force computation.
 
 Eigen::VectorXd TestHydro::ComputeForceWaves() {
     auto __t0 = std::chrono::steady_clock::now();
@@ -563,7 +572,32 @@ Eigen::VectorXd TestHydro::ComputeForceWaves() {
         throw std::runtime_error("bodies_ array is empty in ComputeForceWaves");
     }
 
-    force_waves_ = user_waves_->GetForceAtTime(bodies_[0]->GetChTime());
+    // Ensure excitation model exists
+    EnsureExcitationModel();
+
+    // Get current simulation time
+    const double simulation_time = bodies_[0]->GetChTime();
+
+    // Build SystemState from all Chrono bodies (legacy implementation)
+    hydrochrono::hydro::SystemState system_state;
+    hydrochrono::hydro::BuildSystemStateFromChronoBodies(bodies_, system_state);
+
+    // Compute forces using the excitation model
+    hydrochrono::hydro::BodyForces body_forces(num_bodies_);
+    for (int b = 0; b < num_bodies_; ++b) {
+        body_forces[b].resize(kDofPerBody);
+        body_forces[b].setZero();
+    }
+    excitation_model_->Compute(system_state, simulation_time, body_forces);
+
+    // Convert BodyForces back to legacy flat Eigen::VectorXd format (6N)
+    force_waves_.resize(kDofPerBody * num_bodies_);
+    for (int b = 0; b < num_bodies_; ++b) {
+        const int body_offset = kDofPerBody * b;
+        for (int i = 0; i < kDofPerBody; ++i) {
+            force_waves_[body_offset + i] = body_forces[b][i];
+        }
+    }
 
 #ifdef HYDROCHRONO_DEBUG
     std::cout << "[HYDRO_DEBUG] Wave excitation: max_force=" 
