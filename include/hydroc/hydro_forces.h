@@ -71,6 +71,7 @@
 
 namespace hydrochrono::hydro {
 class RadiationRirfConvolution;
+class HydrostaticsModel;
 }
 
 using namespace chrono;
@@ -378,6 +379,9 @@ class TestHydro {
 
     // Radiation damping convolution module
     std::unique_ptr<hydrochrono::hydro::RadiationRirfConvolution> radiation_convolution_;
+
+    // Hydrostatics force model
+    std::unique_ptr<hydrochrono::hydro::HydrostaticsModel> hydrostatics_model_;
 
     // Convolution kernel preprocessing (optional)
     RadiationConvolutionMode convolution_mode_ = RadiationConvolutionMode::Baseline;

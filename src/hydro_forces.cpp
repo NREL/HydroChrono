@@ -52,6 +52,7 @@
 #include <hydroc/logging.h>
 #include "hydro/core/system_state.h"
 #include "hydro/core/chrono_state_utils.h"
+#include "hydro/models/hydrostatics_model.h"
 #include "hydro/radiation/radiation_rirf_processing.h"
 #include "hydro/radiation/radiation_rirf_convolution.h"
 
@@ -282,6 +283,16 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
         }
     }
 
+    // Initialize hydrostatics model
+    const auto gravitational_acceleration_ch = bodies_[0]->GetSystem()->GetGravitationalAcceleration();
+    const Eigen::Vector3d gravitational_acceleration(
+        gravitational_acceleration_ch.x(),
+        gravitational_acceleration_ch.y(),
+        gravitational_acceleration_ch.z()
+    );
+    hydrostatics_model_ = std::make_unique<hydrochrono::hydro::HydrostaticsModel>(
+        file_info_, num_bodies_, equilibrium_, cb_minus_cg_, gravitational_acceleration);
+
     // Create Chrono force callbacks for each body (multibody setup)
     for (int b = 0; b < num_bodies_; ++b) {
         force_per_body_.emplace_back(bodies_[b], this);
@@ -329,21 +340,16 @@ void TestHydro::AddWaves(std::shared_ptr<WaveBase> waves) {
 }
 
 // ------------------------------------------------------------
-// SECTION: Hydrostatics (legacy)
+// SECTION: Hydrostatics (delegates to HydrostaticsModel)
 // ------------------------------------------------------------
-// Computes restoring forces from displacement and buoyancy.
-// TODO: Extract to HydrostaticsModel class in future refactor.
+// Delegates to HydrostaticsModel for force computation.
 
 std::vector<double> TestHydro::ComputeForceHydrostatics() {
     auto __t0 = std::chrono::steady_clock::now();
     assert(num_bodies_ > 0);
 
-    const double rho = file_info_.GetRhoVal();
-    const auto gravitational_acceleration = bodies_[0]->GetSystem()->GetGravitationalAcceleration();  // same system for all bodies
-    const double rho_times_g = rho * gravitational_acceleration.Length();
-
 #ifdef HYDROCHRONO_DEBUG
-    // Debug: log hydrostatics computation start
+    const double rho = file_info_.GetRhoVal();
     std::cout << "[HYDRO_DEBUG] ComputeForceHydrostatics: num_bodies=" << num_bodies_ << ", rho=" << rho << std::endl;
 #endif
 
@@ -351,54 +357,24 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
     hydrochrono::hydro::SystemState system_state;
     hydrochrono::hydro::BuildSystemStateFromChronoBodies(bodies_, system_state);
 
-    // Multibody loop: compute hydrostatic forces for each body
+    // Get current simulation time
+    const double simulation_time = bodies_[0]->GetChTime();
+
+    // Compute forces using the hydrostatics model
+    hydrochrono::hydro::BodyForces body_forces(num_bodies_);
     for (int b = 0; b < num_bodies_; ++b) {
-        const auto& body_state = system_state.bodies[b];
-        const auto& body = bodies_[b];
+        body_forces[b].resize(kDofPerBody);
+        body_forces[b].setZero();
+    }
+    hydrostatics_model_->Compute(system_state, simulation_time, body_forces);
 
+    // Convert BodyForces back to legacy flat 6N vector format
+    force_hydrostatic_.assign(kDofPerBody * num_bodies_, 0.0);
+    for (int b = 0; b < num_bodies_; ++b) {
         const int body_offset = kDofPerBody * b;
-        double* const body_force_hydrostatic = &force_hydrostatic_[body_offset];
-        const double* const body_equilibrium = &equilibrium_[body_offset];
-
-        // Current pose (from SystemState)
-        const Eigen::Vector3d& position_world = body_state.position;
-        const Eigen::Vector3d& rotation_rpy    = body_state.orientation_rpy;
-
-        // 6-DOF displacement from equilibrium (translation xyz, rotation rpy)
-        Eigen::Matrix<double, kDofPerBody, 1> displacement_from_equilibrium;
-        displacement_from_equilibrium[0] = position_world[0] - body_equilibrium[0];
-        displacement_from_equilibrium[1] = position_world[1] - body_equilibrium[1];
-        displacement_from_equilibrium[2] = position_world[2] - body_equilibrium[2];
-        displacement_from_equilibrium[3] = rotation_rpy[0]   - body_equilibrium[3];
-        displacement_from_equilibrium[4] = rotation_rpy[1]   - body_equilibrium[4];
-        displacement_from_equilibrium[5] = rotation_rpy[2]   - body_equilibrium[5];
-
-        // Linear hydrostatic restoring force/torque
-        const Eigen::MatrixXd restoring_stiffness_matrix = file_info_.GetLinMatrix(b);
-        const Eigen::Matrix<double, kDofPerBody, 1> restoring_force_torque =
-            -rho_times_g * (restoring_stiffness_matrix * displacement_from_equilibrium);
         for (int i = 0; i < kDofPerBody; ++i) {
-            body_force_hydrostatic[i] += restoring_force_torque[i];
+            force_hydrostatic_[body_offset + i] = body_forces[b][i];
         }
-
-        // Buoyancy force at equilibrium: F = rho * (-g) * displaced_volume
-        const double displaced_volume = file_info_.GetDispVolVal(b);
-        const chrono::ChVector3d buoyancy_force = rho * (-gravitational_acceleration) * displaced_volume;
-        body_force_hydrostatic[0] += buoyancy_force.x();
-        body_force_hydrostatic[1] += buoyancy_force.y();
-        body_force_hydrostatic[2] += buoyancy_force.z();
-
-        // Buoyancy-induced moment about CG: (r_CB - r_CG) x buoyancy
-        const int rotation_offset = kDofLinOrRot * b;
-        const chrono::ChVector3d cg_to_cb(
-            cb_minus_cg_[rotation_offset + 0],
-            cb_minus_cg_[rotation_offset + 1],
-            cb_minus_cg_[rotation_offset + 2]
-        );
-        const chrono::ChVector3d buoyancy_torque = cg_to_cb % buoyancy_force;
-        body_force_hydrostatic[3] += buoyancy_torque.x();
-        body_force_hydrostatic[4] += buoyancy_torque.y();
-        body_force_hydrostatic[5] += buoyancy_torque.z();
     }
 
 #ifdef HYDROCHRONO_DEBUG
