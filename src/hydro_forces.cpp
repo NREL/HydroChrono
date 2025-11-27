@@ -346,9 +346,10 @@ const hydrochrono::hydro::SystemState& TestHydro::GetCachedSystemState(double ti
 }
 
 // ------------------------------------------------------------
-// SECTION: Hydrostatics (delegates to HydrostaticsComponent)
+// SECTION: Hydrostatics (legacy path, delegates to HydrostaticsComponent)
 // ------------------------------------------------------------
-// Delegates to HydrostaticsComponent for force computation.
+// NOTE: This method is kept for backward compatibility but is no longer called by
+// CoordinateFuncForBody(). The main force path now goes through HydroSystem.
 
 std::vector<double> TestHydro::ComputeForceHydrostatics() {
     auto __t0 = std::chrono::steady_clock::now();
@@ -552,6 +553,10 @@ hydrochrono::hydro::BodyForces TestHydro::EvaluateHydroSystem(double time) {
 }
 
 void TestHydro::CompareWithHydroSystem(double time, int total_dofs) {
+    // DEPRECATED: This method is no longer called from CoordinateFuncForBody().
+    // The main force path now routes through HydroSystem, so there's nothing to compare.
+    // This method is kept for potential external use but will likely be removed in a future cleanup.
+
     // Evaluate forces via the persistent HydroSystem path
     hydrochrono::hydro::BodyForces new_forces = EvaluateHydroSystem(time);
 
@@ -596,9 +601,10 @@ void TestHydro::CompareWithHydroSystem(double time, int total_dofs) {
     }
 }
 
-// Main radiation convolution computation.
+// Legacy radiation convolution computation.
 // RadiationComponent is the single source of truth for radiation history and forces.
-// It internally manages velocity history and performs RIRF convolution.
+// NOTE: This method is kept for backward compatibility but is no longer called by
+// CoordinateFuncForBody(). The main force path now goes through HydroSystem.
 std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
     auto __t0 = std::chrono::steady_clock::now();
     const int total_dofs = kDofPerBody * num_bodies_;
@@ -621,7 +627,7 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
     // RadiationComponent::Compute() handles:
     //   - Recording current velocities into its internal history
     //   - Performing RIRF convolution over the velocity history
-    //   - Returning the radiation damping forces
+    //   - Returning the radiation damping forces (negative, since damping opposes motion)
     hydrochrono::hydro::BodyForces body_forces(num_bodies_);
     for (int b = 0; b < num_bodies_; ++b) {
         body_forces[b].resize(kDofPerBody);
@@ -629,12 +635,14 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
     }
     radiation_component_->Compute(system_state, simulation_time, body_forces);
 
-    // Convert BodyForces to legacy flat 6N vector format
+    // Convert BodyForces to legacy flat 6N vector format.
+    // Negate to return positive damping magnitude (legacy convention: CoordinateFuncForBody
+    // used to subtract this, but now HydroSystem handles the sign internally).
     force_radiation_damping_.assign(kDofPerBody * num_bodies_, 0.0);
     for (int b = 0; b < num_bodies_; ++b) {
         const int body_offset = kDofPerBody * b;
         for (int i = 0; i < kDofPerBody; ++i) {
-            force_radiation_damping_[body_offset + i] = body_forces[b][i];
+            force_radiation_damping_[body_offset + i] = -body_forces[b][i];  // Negate for legacy compatibility
         }
     }
 
@@ -669,9 +677,10 @@ double TestHydro::GetRIRFval(int row, int col, int st) {
 }
 
 // ------------------------------------------------------------
-// SECTION: Wave excitation
+// SECTION: Wave excitation (legacy path, delegates to ExcitationComponent)
 // ------------------------------------------------------------
-// Delegates to ExcitationComponent for force computation.
+// NOTE: This method is kept for backward compatibility but is no longer called by
+// CoordinateFuncForBody(). The main force path now goes through HydroSystem.
 
 Eigen::VectorXd TestHydro::ComputeForceWaves() {
     auto __t0 = std::chrono::steady_clock::now();
@@ -718,8 +727,8 @@ Eigen::VectorXd TestHydro::ComputeForceWaves() {
 // SECTION: Main force evaluation (Chrono callback entry point)
 // ------------------------------------------------------------
 // Called by Chrono via ForceFunc6d/ComponentFunc callbacks.
-// Coordinates all force components and caches results per time step.
-// TODO: This will become a thin adapter delegating to HydroSystem.
+// Routes force computation through HydroSystem + ChronoHydroCoupler.
+// Forces are cached per timestep via prev_time check.
 
 double TestHydro::CoordinateFuncForBody(int b, int dof_index) {
     if (dof_index < 0 || dof_index >= kDofPerBody || b < 1 || b > num_bodies_) {
@@ -740,33 +749,35 @@ double TestHydro::CoordinateFuncForBody(int b, int dof_index) {
         return total_force_[body_num_offset + dof_index];
     }
 
-    // Update time and reset forces for this time step
+    // Update time for this new timestep
     prev_time = bodies_[0]->GetChTime();
 
-    // Build SystemState once for this timestep (reused by all force computations)
+    // Build SystemState once for this timestep
     hydrochrono::hydro::BuildSystemStateFromChronoBodies(bodies_, cached_state_);
     cached_state_time_ = prev_time;
 
+    // Ensure HydroSystem + ChronoHydroCoupler are initialized
+    EnsureHydroSystemAndCoupler();
+
+    // Compute total forces via HydroSystem.
+    // HydroSystem::Evaluate() combines all components:
+    //   - Hydrostatics: added with + sign
+    //   - Radiation: added with - sign (damping opposes motion, handled inside RadiationComponent)
+    //   - Excitation: added with + sign
+    // Result: total = hydrostatics - radiation + waves
+    hydrochrono::hydro::BodyForces body_forces = chrono_coupler_->Evaluate(prev_time);
+
+    // Flatten BodyForces into total_force_ (legacy flat 6N format)
     std::fill(total_force_.begin(), total_force_.end(), 0.0);
-    std::fill(force_hydrostatic_.begin(), force_hydrostatic_.end(), 0.0);
-    std::fill(force_radiation_damping_.begin(), force_radiation_damping_.end(), 0.0);
-    std::fill(force_waves_.begin(), force_waves_.end(), 0.0);
-
-    // Compute all force components (multibody: all bodies computed together)
-    force_hydrostatic_       = ComputeForceHydrostatics();
-    force_radiation_damping_ = ComputeForceRadiationDampingConv();
-    force_waves_             = ComputeForceWaves();
-
-    // Accumulate total force (multibody: sum over all DOFs for all bodies)
-    // Note: radiation damping is subtracted (damping opposes motion)
-    for (int index = 0; index < total_dofs; index++) {
-        total_force_[index] = force_hydrostatic_[index] - force_radiation_damping_[index] + force_waves_[index];
+    for (int body_idx = 0; body_idx < num_bodies_; ++body_idx) {
+        const int offset = kDofPerBody * body_idx;
+        for (int dof = 0; dof < kDofPerBody; ++dof) {
+            total_force_[offset + dof] = body_forces[body_idx][dof];
+        }
     }
 
-    // Comparison harness: compare legacy path vs HydroSystem path
-    if (compare_mode_) {
-        CompareWithHydroSystem(prev_time, total_dofs);
-    }
+    // Note: compare_mode_ is no longer used here because the main path IS HydroSystem now.
+    // The legacy per-component path is preserved for external callers but not used by this method.
 
 #ifdef HYDROCHRONO_DEBUG
     std::cout << "[HYDRO_DEBUG] CoordinateFuncForBody: body=" << b << ", dof=" << dof_index 

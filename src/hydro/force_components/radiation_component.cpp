@@ -124,11 +124,13 @@ void RadiationComponent::Compute(const SystemState& state,
         }
     }
 
-    // Map flat vector to per-body forces and add to inout_forces
+    // Map flat vector to per-body forces and add to inout_forces.
+    // Radiation damping opposes motion, so we SUBTRACT (add with negative sign).
+    // This ensures HydroSystem::Evaluate() produces: total = hydrostatics - radiation + waves.
     for (int b = 0; b < num_bodies_; ++b) {
         const int body_offset = kDofPerBody * b;
         for (int i = 0; i < kDofPerBody; ++i) {
-            inout_forces[b][i] += force_flat[body_offset + i];
+            inout_forces[b][i] -= force_flat[body_offset + i];
         }
     }
 }
