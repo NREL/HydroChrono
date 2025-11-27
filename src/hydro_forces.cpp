@@ -19,14 +19,14 @@
  * - Reads HDF5 hydrodynamic data via H5FileInfo (equilibrium, stiffness, RIRF kernels)
  * - Uses WaveBase hierarchy for wave excitation forces
  * - Applies forces to Chrono bodies through ChForce/ChLoadAddedMass
- * - Maintains velocity history buffers for radiation convolution
+ * - RadiationComponent maintains velocity history for radiation convolution
  *
  * KEY ASSUMPTIONS:
  * - All bodies share the same H5 file (multibody data in single file)
  * - Bodies are 1-indexed in ForceFunc6d interface (legacy)
  * - 6 DOF per body (surge, sway, heave, roll, pitch, yaw)
  * - Forces computed once per time step, cached via prev_time check
- * - Radiation history stored per-body in velocity_history_ vector
+ * - RadiationComponent is the single source of truth for radiation history/forces
  *
  * KNOWN LIMITATIONS:
  * - Monolithic design: all force components mixed in one class
@@ -36,11 +36,10 @@
  *
  * DEBUG INSTRUMENTATION:
  * To enable debug output, compile with -DHYDROCHRONO_DEBUG.
- * This will print force components, history sizes, and timing info.
+ * This will print force components and timing info.
  * Baseline outputs to record:
  * - Total force vector per time step (total_force_)
  * - Individual components (hydrostatic, radiation, waves)
- * - Velocity history size and time span
  * - RIRF kernel access patterns
  *********************************************************************/
 
@@ -58,7 +57,6 @@
 #include "hydro/core/hydro_system.h"
 #include "hydro/chrono/chrono_hydro_coupler.h"
 #include "hydro/radiation/radiation_rirf_processing.h"
-#include "hydro/radiation/radiation_rirf_convolution.h"
 
 #include <chrono/physics/ChLoad.h>
 #include <unsupported/Eigen/Splines>
@@ -261,17 +259,7 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
     // Total degrees of freedom (multibody: 6 DOF per body)
     int total_dofs = kDofPerBody * num_bodies_;
 
-    // Initialize radiation convolution module
-    const int rirf_steps = file_info_.GetRIRFDims(2);
-    radiation_convolution_ = std::make_unique<hydrochrono::hydro::RadiationRirfConvolution>(
-        num_bodies_, rirf_steps, rirf_time_vector, rirf_width_vector);
-
-    // Initialize vectors (legacy: kept for compatibility, but radiation_convolution_ owns the history)
-    time_history_.clear();
-    velocity_history_.clear();
-    for (int b = 0; b < num_bodies_; ++b) {
-        velocity_history_.push_back(std::vector<std::vector<double>>(0));
-    }
+    // Initialize force vectors
     force_hydrostatic_.assign(total_dofs, 0.0);
     force_radiation_damping_.assign(total_dofs, 0.0);
     total_force_.assign(total_dofs, 0.0);
@@ -609,13 +597,13 @@ void TestHydro::CompareWithHydroSystem(double time, int total_dofs) {
 }
 
 // Main radiation convolution computation.
-// Delegates to RadiationComponent for force computation.
+// RadiationComponent is the single source of truth for radiation history and forces.
+// It internally manages velocity history and performs RIRF convolution.
 std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
     auto __t0 = std::chrono::steady_clock::now();
-    const int rirf_steps = file_info_.GetRIRFDims(2);
     const int total_dofs = kDofPerBody * num_bodies_;
 
-    assert(total_dofs > 0 && rirf_steps > 0);
+    assert(total_dofs > 0);
 
     // Ensure radiation component exists with current settings
     EnsureRadiationComponent();
@@ -625,11 +613,15 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
     const hydrochrono::hydro::SystemState& system_state = GetCachedSystemState(simulation_time);
 
 #ifdef HYDROCHRONO_DEBUG
+    const int rirf_steps = file_info_.GetRIRFDims(2);
     std::cout << "[HYDRO_DEBUG] Radiation conv: time=" << simulation_time 
               << ", rirf_steps=" << rirf_steps << std::endl;
 #endif
 
-    // Compute forces using the radiation component
+    // RadiationComponent::Compute() handles:
+    //   - Recording current velocities into its internal history
+    //   - Performing RIRF convolution over the velocity history
+    //   - Returning the radiation damping forces
     hydrochrono::hydro::BodyForces body_forces(num_bodies_);
     for (int b = 0; b < num_bodies_; ++b) {
         body_forces[b].resize(kDofPerBody);
@@ -637,25 +629,7 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
     }
     radiation_component_->Compute(system_state, simulation_time, body_forces);
 
-    // Also update legacy history buffers for compatibility (used by GetRIRFval and other legacy code)
-    // Extract velocities for legacy buffer update
-    std::vector<std::vector<double>> body_velocities(num_bodies_);
-    for (int b = 0; b < num_bodies_; ++b) {
-        const auto& body_state = system_state.bodies[b];
-        body_velocities[b] = {
-            body_state.linear_velocity[0], body_state.linear_velocity[1], body_state.linear_velocity[2],
-            body_state.angular_velocity[0], body_state.angular_velocity[1], body_state.angular_velocity[2]
-        };
-    }
-    time_history_.insert(time_history_.begin(), simulation_time);
-    for (int b = 0; b < num_bodies_; ++b) {
-        velocity_history_[b].insert(velocity_history_[b].begin(), body_velocities[b]);
-    }
-
-    // Also update legacy radiation_convolution_ for compatibility
-    radiation_convolution_->RecordVelocities(simulation_time, body_velocities);
-
-    // Convert BodyForces back to legacy flat 6N vector format
+    // Convert BodyForces to legacy flat 6N vector format
     force_radiation_damping_.assign(kDofPerBody * num_bodies_, 0.0);
     for (int b = 0; b < num_bodies_; ++b) {
         const int body_offset = kDofPerBody * b;

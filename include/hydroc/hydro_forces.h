@@ -84,7 +84,6 @@
 
 namespace hydrochrono::hydro {
 // Forward declarations
-class RadiationRirfConvolution;
 class HydrostaticsComponent;
 class RadiationComponent;
 class ExcitationComponent;
@@ -378,9 +377,7 @@ class TestHydro {
     Eigen::VectorXd rirf_time_vector;  // Assumed consistent for each body
     Eigen::VectorXd rirf_width_vector;
 
-    // Properties for velocity history management and time tracking
-    std::vector<std::vector<std::vector<double>>> velocity_history_;
-    std::vector<double> time_history_;
+    // Time tracking for force caching
     double prev_time;
 
     // Cached SystemState: built once per time step and reused by all force computations
@@ -390,26 +387,6 @@ class TestHydro {
     // Added mass related properties
     std::shared_ptr<ChLoadContainer> my_loadcontainer;
     std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia;
-
-    /**
-     * @brief Fetches the velocity history for a specific DOF, body, and timestep.
-     *
-     * @param step The timestep index, ranging from [0,1,...,1000].
-     * @param c The combined index for the body and DOF, where the order is first by body then by DOF.
-     *
-     * @return Velocity history for the specified DOF and body at the given timestep.
-     */
-    double GetVelHistoryVal(int step, int c) const;
-
-    /**
-     * @brief Updates the velocity history for a given timestep, body, and DOF.
-     *
-     * @param val The new value to set.
-     * @param step The timestep index, ranging from [0,1,...,1000].
-     * @param b_num The body number (1-based), indicating which body's data to update.
-     * @param index The DOF index, ranging from [0,1,...,5].
-     */
-    double SetVelHistory(double val, int step, int b_num, int index);
 
     /**
      * @brief Returns the cached SystemState for the given time.
@@ -425,9 +402,6 @@ class TestHydro {
 
     // Hydrodynamics profiling data (accumulated over run)
     HydroProfileStats profile_stats_;
-
-    // Radiation damping convolution module
-    std::unique_ptr<hydrochrono::hydro::RadiationRirfConvolution> radiation_convolution_;
 
     // Hydrostatics force component
     std::unique_ptr<hydrochrono::hydro::HydrostaticsComponent> hydrostatics_component_;
