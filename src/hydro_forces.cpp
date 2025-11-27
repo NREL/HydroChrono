@@ -450,29 +450,7 @@ void TestHydro::EnsureRadiationComponent() {
         return;  // Already created
     }
 
-    const int rirf_steps = file_info_.GetRIRFDims(2);
-    
-    // Convert TestHydro::RadiationConvolutionMode to hydrochrono::hydro::RadiationConvolutionMode
-    hydrochrono::hydro::RadiationConvolutionMode component_mode;
-    if (convolution_mode_ == RadiationConvolutionMode::TaperedDirect) {
-        component_mode = hydrochrono::hydro::RadiationConvolutionMode::TaperedDirect;
-    } else {
-        component_mode = hydrochrono::hydro::RadiationConvolutionMode::Baseline;
-    }
-
-    // Convert TaperedDirectOptions to hydrochrono::hydro::TaperedDirectOptions
-    hydrochrono::hydro::TaperedDirectOptions component_opts;
-    component_opts.smoothing = tapered_opts_.smoothing;
-    component_opts.window_length = tapered_opts_.window_length;
-    component_opts.rirf_end_time = tapered_opts_.rirf_end_time;
-    component_opts.taper_start_percent = tapered_opts_.taper_start_percent;
-    component_opts.taper_end_percent = tapered_opts_.taper_end_percent;
-    component_opts.taper_final_amplitude = tapered_opts_.taper_final_amplitude;
-    component_opts.export_plot_csv = tapered_opts_.export_plot_csv;
-
-    radiation_component_ = std::make_unique<hydrochrono::hydro::RadiationComponent>(
-        file_info_, num_bodies_, rirf_steps, rirf_time_vector, rirf_width_vector,
-        component_mode, component_opts, diagnostics_output_dir_);
+    radiation_component_ = CreateRadiationComponent();
 }
 
 void TestHydro::EnsureExcitationComponent() {
@@ -502,6 +480,44 @@ std::unique_ptr<hydrochrono::hydro::HydrostaticsComponent> TestHydro::CreateHydr
         file_info_, num_bodies_, equilibrium_, cb_minus_cg_, gravitational_acceleration);
 }
 
+std::unique_ptr<hydrochrono::hydro::RadiationComponent> TestHydro::CreateRadiationComponent() const {
+    // Single source of truth for RadiationComponent construction.
+    // Used by EnsureRadiationComponent() and EnsureHydroSystemAndCoupler().
+    // Each RadiationComponent instance owns its own velocity history.
+    //
+    // Configuration inputs:
+    //   - file_info_: BEM data including RIRF kernels
+    //   - num_bodies_: number of bodies in system
+    //   - rirf_time_vector, rirf_width_vector: time discretization for RIRF
+    //   - convolution_mode_: Baseline or TaperedDirect
+    //   - tapered_opts_: preprocessing options for TaperedDirect mode
+    //   - diagnostics_output_dir_: where to write debug CSVs
+
+    const int rirf_steps = file_info_.GetRIRFDims(2);
+
+    // Convert TestHydro::RadiationConvolutionMode to hydrochrono::hydro::RadiationConvolutionMode
+    hydrochrono::hydro::RadiationConvolutionMode component_mode;
+    if (convolution_mode_ == RadiationConvolutionMode::TaperedDirect) {
+        component_mode = hydrochrono::hydro::RadiationConvolutionMode::TaperedDirect;
+    } else {
+        component_mode = hydrochrono::hydro::RadiationConvolutionMode::Baseline;
+    }
+
+    // Convert TestHydro::TaperedDirectOptions to hydrochrono::hydro::TaperedDirectOptions
+    hydrochrono::hydro::TaperedDirectOptions component_opts;
+    component_opts.smoothing = tapered_opts_.smoothing;
+    component_opts.window_length = tapered_opts_.window_length;
+    component_opts.rirf_end_time = tapered_opts_.rirf_end_time;
+    component_opts.taper_start_percent = tapered_opts_.taper_start_percent;
+    component_opts.taper_end_percent = tapered_opts_.taper_end_percent;
+    component_opts.taper_final_amplitude = tapered_opts_.taper_final_amplitude;
+    component_opts.export_plot_csv = tapered_opts_.export_plot_csv;
+
+    return std::make_unique<hydrochrono::hydro::RadiationComponent>(
+        file_info_, num_bodies_, rirf_steps, rirf_time_vector, rirf_width_vector,
+        component_mode, component_opts, diagnostics_output_dir_);
+}
+
 // ------------------------------------------------------------
 // Internal helpers for HydroSystem + ChronoHydroCoupler path
 // ------------------------------------------------------------
@@ -521,25 +537,8 @@ void TestHydro::EnsureHydroSystemAndCoupler() {
     // Hydrostatics component (uses shared factory for consistent construction)
     components.push_back(CreateHydrostaticsComponent());
 
-    // Radiation component (owns its own velocity history)
-    const int rirf_steps = file_info_.GetRIRFDims(2);
-    hydrochrono::hydro::RadiationConvolutionMode component_mode;
-    if (convolution_mode_ == RadiationConvolutionMode::TaperedDirect) {
-        component_mode = hydrochrono::hydro::RadiationConvolutionMode::TaperedDirect;
-    } else {
-        component_mode = hydrochrono::hydro::RadiationConvolutionMode::Baseline;
-    }
-    hydrochrono::hydro::TaperedDirectOptions component_opts;
-    component_opts.smoothing = tapered_opts_.smoothing;
-    component_opts.window_length = tapered_opts_.window_length;
-    component_opts.rirf_end_time = tapered_opts_.rirf_end_time;
-    component_opts.taper_start_percent = tapered_opts_.taper_start_percent;
-    component_opts.taper_end_percent = tapered_opts_.taper_end_percent;
-    component_opts.taper_final_amplitude = tapered_opts_.taper_final_amplitude;
-    component_opts.export_plot_csv = tapered_opts_.export_plot_csv;
-    components.push_back(std::make_unique<hydrochrono::hydro::RadiationComponent>(
-        file_info_, num_bodies_, rirf_steps, rirf_time_vector, rirf_width_vector,
-        component_mode, component_opts, diagnostics_output_dir_));
+    // Radiation component (uses shared factory for consistent construction)
+    components.push_back(CreateRadiationComponent());
 
     // Excitation component (uses shared factory for consistent construction)
     components.push_back(CreateExcitationComponent());

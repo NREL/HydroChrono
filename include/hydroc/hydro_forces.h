@@ -471,6 +471,12 @@ class TestHydro {
     // to ensure consistent construction.
     std::unique_ptr<hydrochrono::hydro::HydrostaticsComponent> CreateHydrostaticsComponent() const;
 
+    // Factory: creates RadiationComponent with current BEM data and convolution settings.
+    // Used by both EnsureRadiationComponent() and EnsureHydroSystemAndCoupler()
+    // to ensure consistent construction.
+    // Note: Each instance owns its own velocity history (they are independent).
+    std::unique_ptr<hydrochrono::hydro::RadiationComponent> CreateRadiationComponent() const;
+
     // Internal helpers for HydroSystem + ChronoHydroCoupler path
     // Constructs hydro_system_ and chrono_coupler_ once; subsequent calls are no-ops.
     void EnsureHydroSystemAndCoupler();
