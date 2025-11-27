@@ -461,6 +461,11 @@ class TestHydro {
     // Helper to ensure excitation component exists
     void EnsureExcitationComponent();
 
+    // Factory: creates ExcitationComponent with current wave configuration.
+    // Used by both EnsureExcitationComponent() and EnsureHydroSystemAndCoupler()
+    // to ensure consistent construction.
+    std::unique_ptr<hydrochrono::hydro::ExcitationComponent> CreateExcitationComponent() const;
+
     // Internal helpers for HydroSystem + ChronoHydroCoupler path
     // Constructs hydro_system_ and chrono_coupler_ once; subsequent calls are no-ops.
     void EnsureHydroSystemAndCoupler();

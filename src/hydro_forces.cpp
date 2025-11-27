@@ -487,8 +487,13 @@ void TestHydro::EnsureExcitationComponent() {
         return;  // Already created
     }
 
-    excitation_component_ = std::make_unique<hydrochrono::hydro::ExcitationComponent>(
-        user_waves_, num_bodies_);
+    excitation_component_ = CreateExcitationComponent();
+}
+
+std::unique_ptr<hydrochrono::hydro::ExcitationComponent> TestHydro::CreateExcitationComponent() const {
+    // Single source of truth for ExcitationComponent construction.
+    // Both EnsureExcitationComponent() and EnsureHydroSystemAndCoupler() use this.
+    return std::make_unique<hydrochrono::hydro::ExcitationComponent>(user_waves_, num_bodies_);
 }
 
 // ------------------------------------------------------------
@@ -537,9 +542,8 @@ void TestHydro::EnsureHydroSystemAndCoupler() {
         file_info_, num_bodies_, rirf_steps, rirf_time_vector, rirf_width_vector,
         component_mode, component_opts, diagnostics_output_dir_));
 
-    // Excitation component
-    components.push_back(std::make_unique<hydrochrono::hydro::ExcitationComponent>(
-        user_waves_, num_bodies_));
+    // Excitation component (uses shared factory for consistent construction)
+    components.push_back(CreateExcitationComponent());
 
     // Construct HydroSystem (takes ownership of components)
     hydro_system_ = std::make_unique<hydrochrono::hydro::HydroSystem>(
