@@ -466,6 +466,11 @@ class TestHydro {
     // to ensure consistent construction.
     std::unique_ptr<hydrochrono::hydro::ExcitationComponent> CreateExcitationComponent() const;
 
+    // Factory: creates HydrostaticsComponent with current equilibrium/stiffness data.
+    // Used by both the TestHydro constructor and EnsureHydroSystemAndCoupler()
+    // to ensure consistent construction.
+    std::unique_ptr<hydrochrono::hydro::HydrostaticsComponent> CreateHydrostaticsComponent() const;
+
     // Internal helpers for HydroSystem + ChronoHydroCoupler path
     // Constructs hydro_system_ and chrono_coupler_ once; subsequent calls are no-ops.
     void EnsureHydroSystemAndCoupler();

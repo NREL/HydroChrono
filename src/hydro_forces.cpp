@@ -289,15 +289,8 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
         }
     }
 
-    // Initialize hydrostatics component
-    const auto gravitational_acceleration_ch = bodies_[0]->GetSystem()->GetGravitationalAcceleration();
-    const Eigen::Vector3d gravitational_acceleration(
-        gravitational_acceleration_ch.x(),
-        gravitational_acceleration_ch.y(),
-        gravitational_acceleration_ch.z()
-    );
-    hydrostatics_component_ = std::make_unique<hydrochrono::hydro::HydrostaticsComponent>(
-        file_info_, num_bodies_, equilibrium_, cb_minus_cg_, gravitational_acceleration);
+    // Initialize hydrostatics component (uses shared factory for consistent construction)
+    hydrostatics_component_ = CreateHydrostaticsComponent();
 
     // Create Chrono force callbacks for each body (multibody setup)
     for (int b = 0; b < num_bodies_; ++b) {
@@ -496,6 +489,19 @@ std::unique_ptr<hydrochrono::hydro::ExcitationComponent> TestHydro::CreateExcita
     return std::make_unique<hydrochrono::hydro::ExcitationComponent>(user_waves_, num_bodies_);
 }
 
+std::unique_ptr<hydrochrono::hydro::HydrostaticsComponent> TestHydro::CreateHydrostaticsComponent() const {
+    // Single source of truth for HydrostaticsComponent construction.
+    // Used by TestHydro constructor and EnsureHydroSystemAndCoupler().
+    const auto gravitational_acceleration_ch = bodies_[0]->GetSystem()->GetGravitationalAcceleration();
+    const Eigen::Vector3d gravitational_acceleration(
+        gravitational_acceleration_ch.x(),
+        gravitational_acceleration_ch.y(),
+        gravitational_acceleration_ch.z()
+    );
+    return std::make_unique<hydrochrono::hydro::HydrostaticsComponent>(
+        file_info_, num_bodies_, equilibrium_, cb_minus_cg_, gravitational_acceleration);
+}
+
 // ------------------------------------------------------------
 // Internal helpers for HydroSystem + ChronoHydroCoupler path
 // ------------------------------------------------------------
@@ -512,15 +518,8 @@ void TestHydro::EnsureHydroSystemAndCoupler() {
     // Build force components for HydroSystem (independent from legacy components)
     std::vector<std::unique_ptr<hydrochrono::hydro::IHydroForceComponent>> components;
 
-    // Hydrostatics component
-    const auto gravitational_acceleration_ch = bodies_[0]->GetSystem()->GetGravitationalAcceleration();
-    const Eigen::Vector3d gravitational_acceleration(
-        gravitational_acceleration_ch.x(),
-        gravitational_acceleration_ch.y(),
-        gravitational_acceleration_ch.z()
-    );
-    components.push_back(std::make_unique<hydrochrono::hydro::HydrostaticsComponent>(
-        file_info_, num_bodies_, equilibrium_, cb_minus_cg_, gravitational_acceleration));
+    // Hydrostatics component (uses shared factory for consistent construction)
+    components.push_back(CreateHydrostaticsComponent());
 
     // Radiation component (owns its own velocity history)
     const int rirf_steps = file_info_.GetRIRFDims(2);
