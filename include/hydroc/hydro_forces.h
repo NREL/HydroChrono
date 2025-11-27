@@ -49,6 +49,7 @@
 // Standard includes
 #include <cstdio>
 #include <filesystem>
+#include <limits>
 #include <memory>
 #include <vector>
 
@@ -77,6 +78,9 @@
 #include <hydroc/h5fileinfo.h>
 #include <hydroc/wave_types.h>
 // Note: hydro_types.h is included at the top to avoid header guard conflicts
+
+// Public hydroc includes (for SystemState)
+#include <hydroc/system_state.h>
 
 namespace hydrochrono::hydro {
 // Forward declarations
@@ -379,6 +383,10 @@ class TestHydro {
     std::vector<double> time_history_;
     double prev_time;
 
+    // Cached SystemState: built once per time step and reused by all force computations
+    hydrochrono::hydro::SystemState cached_state_;
+    double cached_state_time_ = std::numeric_limits<double>::quiet_NaN();
+
     // Added mass related properties
     std::shared_ptr<ChLoadContainer> my_loadcontainer;
     std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia;
@@ -402,6 +410,18 @@ class TestHydro {
      * @param index The DOF index, ranging from [0,1,...,5].
      */
     double SetVelHistory(double val, int step, int b_num, int index);
+
+    /**
+     * @brief Returns the cached SystemState for the given time.
+     *
+     * If cached_state_time_ matches the requested time, returns the cached state.
+     * Otherwise, builds a fresh state and updates the cache (should not happen
+     * in normal flow since CoordinateFuncForBody builds it first).
+     *
+     * @param time Simulation time to get state for
+     * @return Reference to the cached SystemState
+     */
+    const hydrochrono::hydro::SystemState& GetCachedSystemState(double time);
 
     // Hydrodynamics profiling data (accumulated over run)
     HydroProfileStats profile_stats_;

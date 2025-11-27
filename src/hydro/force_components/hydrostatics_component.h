@@ -7,7 +7,7 @@
 #define HYDRO_FORCE_COMPONENTS_HYDROSTATICS_COMPONENT_H
 
 #include "../core/hydro_force_component.h"
-#include "../core/system_state.h"
+#include <hydroc/system_state.h>
 #include <Eigen/Dense>
 #include <vector>
 #include <memory>

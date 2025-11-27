@@ -6,7 +6,7 @@
 #ifndef HYDRO_CHRONO_CHRONO_HYDRO_COUPLER_H
 #define HYDRO_CHRONO_CHRONO_HYDRO_COUPLER_H
 
-#include "../core/system_state.h"
+#include <hydroc/system_state.h>
 #include "../core/hydro_system.h"
 #include "../core/chrono_state_utils.h"
 #include <chrono/physics/ChBody.h>

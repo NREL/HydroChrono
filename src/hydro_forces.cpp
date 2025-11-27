@@ -50,7 +50,7 @@
 #include <hydroc/h5fileinfo.h>
 #include <hydroc/wave_types.h>
 #include <hydroc/logging.h>
-#include "hydro/core/system_state.h"
+#include <hydroc/system_state.h>
 #include "hydro/core/chrono_state_utils.h"
 #include "hydro/force_components/hydrostatics_component.h"
 #include "hydro/force_components/radiation_component.h"
@@ -346,6 +346,25 @@ void TestHydro::AddWaves(std::shared_ptr<WaveBase> waves) {
 }
 
 // ------------------------------------------------------------
+// SECTION: Cached SystemState helper
+// ------------------------------------------------------------
+// Returns the cached SystemState for the given time. In normal flow,
+// CoordinateFuncForBody builds the state at the start of each timestep.
+// This helper provides a fallback if called out of order.
+
+const hydrochrono::hydro::SystemState& TestHydro::GetCachedSystemState(double time) {
+    // Check if cached state is valid for this time
+    if (cached_state_time_ == time) {
+        return cached_state_;
+    }
+
+    // Fallback: build state now (should not happen in normal flow)
+    hydrochrono::hydro::BuildSystemStateFromChronoBodies(bodies_, cached_state_);
+    cached_state_time_ = time;
+    return cached_state_;
+}
+
+// ------------------------------------------------------------
 // SECTION: Hydrostatics (delegates to HydrostaticsComponent)
 // ------------------------------------------------------------
 // Delegates to HydrostaticsComponent for force computation.
@@ -359,12 +378,9 @@ std::vector<double> TestHydro::ComputeForceHydrostatics() {
     std::cout << "[HYDRO_DEBUG] ComputeForceHydrostatics: num_bodies=" << num_bodies_ << ", rho=" << rho << std::endl;
 #endif
 
-    // Build SystemState from all Chrono bodies (legacy implementation)
-    hydrochrono::hydro::SystemState system_state;
-    hydrochrono::hydro::BuildSystemStateFromChronoBodies(bodies_, system_state);
-
-    // Get current simulation time
+    // Get current simulation time and cached state
     const double simulation_time = bodies_[0]->GetChTime();
+    const hydrochrono::hydro::SystemState& system_state = GetCachedSystemState(simulation_time);
 
     // Compute forces using the hydrostatics component
     hydrochrono::hydro::BodyForces body_forces(num_bodies_);
@@ -602,17 +618,14 @@ std::vector<double> TestHydro::ComputeForceRadiationDampingConv() {
     // Ensure radiation component exists with current settings
     EnsureRadiationComponent();
 
-    // Current time
+    // Current time and cached state
     const double simulation_time = bodies_[0]->GetChTime();
+    const hydrochrono::hydro::SystemState& system_state = GetCachedSystemState(simulation_time);
 
 #ifdef HYDROCHRONO_DEBUG
     std::cout << "[HYDRO_DEBUG] Radiation conv: time=" << simulation_time 
               << ", rirf_steps=" << rirf_steps << std::endl;
 #endif
-
-    // Build SystemState from all Chrono bodies (legacy implementation)
-    hydrochrono::hydro::SystemState system_state;
-    hydrochrono::hydro::BuildSystemStateFromChronoBodies(bodies_, system_state);
 
     // Compute forces using the radiation component
     hydrochrono::hydro::BodyForces body_forces(num_bodies_);
@@ -694,12 +707,9 @@ Eigen::VectorXd TestHydro::ComputeForceWaves() {
     // Ensure excitation component exists
     EnsureExcitationComponent();
 
-    // Get current simulation time
+    // Get current simulation time and cached state
     const double simulation_time = bodies_[0]->GetChTime();
-
-    // Build SystemState from all Chrono bodies (legacy implementation)
-    hydrochrono::hydro::SystemState system_state;
-    hydrochrono::hydro::BuildSystemStateFromChronoBodies(bodies_, system_state);
+    const hydrochrono::hydro::SystemState& system_state = GetCachedSystemState(simulation_time);
 
     // Compute forces using the excitation component
     hydrochrono::hydro::BodyForces body_forces(num_bodies_);
@@ -756,6 +766,11 @@ double TestHydro::CoordinateFuncForBody(int b, int dof_index) {
 
     // Update time and reset forces for this time step
     prev_time = bodies_[0]->GetChTime();
+
+    // Build SystemState once for this timestep (reused by all force computations)
+    hydrochrono::hydro::BuildSystemStateFromChronoBodies(bodies_, cached_state_);
+    cached_state_time_ = prev_time;
+
     std::fill(total_force_.begin(), total_force_.end(), 0.0);
     std::fill(force_hydrostatic_.begin(), force_hydrostatic_.end(), 0.0);
     std::fill(force_radiation_damping_.begin(), force_radiation_damping_.end(), 0.0);

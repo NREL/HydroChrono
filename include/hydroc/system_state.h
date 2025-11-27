@@ -3,8 +3,8 @@
  * @brief Common structs for body and system hydrodynamic state.
  *********************************************************************/
 
-#ifndef HYDRO_CORE_SYSTEM_STATE_H
-#define HYDRO_CORE_SYSTEM_STATE_H
+#ifndef HYDROC_SYSTEM_STATE_H
+#define HYDROC_SYSTEM_STATE_H
 
 #include <Eigen/Dense>
 #include <vector>
@@ -36,5 +36,5 @@ struct SystemState {
 
 }  // namespace hydrochrono::hydro
 
-#endif  // HYDRO_CORE_SYSTEM_STATE_H
+#endif  // HYDROC_SYSTEM_STATE_H
 

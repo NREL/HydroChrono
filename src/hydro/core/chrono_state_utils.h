@@ -6,7 +6,7 @@
 #ifndef HYDRO_CORE_CHRONO_STATE_UTILS_H
 #define HYDRO_CORE_CHRONO_STATE_UTILS_H
 
-#include "system_state.h"
+#include <hydroc/system_state.h>
 #include <chrono/physics/ChBody.h>
 #include <memory>
 #include <vector>

@@ -6,7 +6,7 @@
 #ifndef HYDRO_CORE_HYDRO_FORCE_COMPONENT_H
 #define HYDRO_CORE_HYDRO_FORCE_COMPONENT_H
 
-#include "system_state.h"
+#include <hydroc/system_state.h>
 
 namespace hydrochrono::hydro {
 

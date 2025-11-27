@@ -6,7 +6,7 @@
 #ifndef HYDRO_CORE_HYDRO_SYSTEM_H
 #define HYDRO_CORE_HYDRO_SYSTEM_H
 
-#include "system_state.h"
+#include <hydroc/system_state.h>
 #include "hydro_force_component.h"
 #include <vector>
 #include <memory>
