@@ -239,7 +239,9 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
                      std::shared_ptr<WaveBase> waves)
     : bodies_(user_bodies),
       num_bodies_(bodies_.size()),
-      file_info_(H5FileInfo(h5_file_name, num_bodies_).ReadH5Data()) {
+      file_info_(H5FileInfo(h5_file_name, num_bodies_).ReadH5Data()),
+      hydro_system_(nullptr),
+      chrono_coupler_(nullptr) {
     prev_time = -1;
 
     // Set up time vector
@@ -480,17 +482,13 @@ void TestHydro::EnsureExcitationComponent() {
 // TestHydro will gradually become a thin legacy adapter. For now, the old
 // per-component methods still drive the Chrono callbacks.
 
-void TestHydro::EnsureHydroSystemAndCoupler() {
+void TestHydro::EnsureHydroSystemAndCoupler() const {
     if (hydro_system_) {
         return;  // Already created
     }
 
-    // Ensure all components exist (they may be lazy-initialized)
-    EnsureRadiationComponent();
-    EnsureExcitationComponent();
-    // hydrostatics_component_ is already created in constructor
-
-    // Construct new components from the same inputs (keeping existing components unchanged)
+    // Construct fresh, independent components from the same inputs
+    // These are separate from the legacy components (hydrostatics_component_, etc.)
     // These will be moved into HydroSystem
     std::vector<std::unique_ptr<hydrochrono::hydro::IHydroForceComponent>> components;
 
@@ -543,7 +541,7 @@ void TestHydro::EnsureHydroSystemAndCoupler() {
         hydro_system_shared, bodies_);
 }
 
-hydrochrono::hydro::BodyForces TestHydro::EvaluateHydroSystem(double time) {
+hydrochrono::hydro::BodyForces TestHydro::EvaluateHydroSystem(double time) const {
     EnsureHydroSystemAndCoupler();
     return chrono_coupler_->Evaluate(time);
 }

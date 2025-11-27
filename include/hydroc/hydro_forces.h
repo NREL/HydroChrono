@@ -413,9 +413,10 @@ class TestHydro {
     // Wave excitation force component
     std::unique_ptr<hydrochrono::hydro::ExcitationComponent> excitation_component_;
 
-    // HydroSystem + ChronoHydroCoupler (new internal path)
-    std::unique_ptr<hydrochrono::hydro::HydroSystem> hydro_system_;
-    std::unique_ptr<hydrochrono::hydro::ChronoHydroCoupler> chrono_coupler_;
+    // HydroSystem + ChronoHydroCoupler (debug-only comparison path, unused in normal flow)
+    // Mutable to allow lazy initialization from const EvaluateHydroSystem
+    mutable std::unique_ptr<hydrochrono::hydro::HydroSystem> hydro_system_;
+    mutable std::unique_ptr<hydrochrono::hydro::ChronoHydroCoupler> chrono_coupler_;
 
     // Convolution kernel preprocessing (optional)
     RadiationConvolutionMode convolution_mode_ = RadiationConvolutionMode::Baseline;
@@ -433,10 +434,10 @@ class TestHydro {
     // Helper to ensure excitation component exists
     void EnsureExcitationComponent();
 
-    // Internal helpers for HydroSystem + ChronoHydroCoupler path
-    void EnsureHydroSystemAndCoupler();
-    // Evaluate forces via HydroSystem (internal path, not yet used by Chrono callbacks)
-    hydrochrono::hydro::BodyForces EvaluateHydroSystem(double time);
+    // Internal helpers for HydroSystem + ChronoHydroCoupler path (debug-only, unused in normal flow)
+    void EnsureHydroSystemAndCoupler() const;
+    // Evaluate forces via HydroSystem (debug-only comparison path, not called by normal force callbacks)
+    hydrochrono::hydro::BodyForces EvaluateHydroSystem(double time) const;
 };
 
 #endif
