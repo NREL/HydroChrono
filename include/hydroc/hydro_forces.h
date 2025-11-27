@@ -349,6 +349,11 @@ class TestHydro {
     // Hydrodynamics profiling accessors
     HydroProfileStats GetProfileStats() const { return profile_stats_; }
 
+    // Compare mode: when enabled, compares legacy force path vs HydroSystem path
+    // and logs any discrepancies. Default is off.
+    void SetCompareMode(bool enable) { compare_mode_ = enable; }
+    bool GetCompareMode() const { return compare_mode_; }
+
   private:
     // Class properties related to the body and hydrodynamics
     std::vector<std::shared_ptr<ChBody>> bodies_;
@@ -413,10 +418,12 @@ class TestHydro {
     // Wave excitation force component
     std::unique_ptr<hydrochrono::hydro::ExcitationComponent> excitation_component_;
 
-    // HydroSystem + ChronoHydroCoupler (debug-only comparison path, unused in normal flow)
-    // Mutable to allow lazy initialization from const EvaluateHydroSystem
-    mutable std::unique_ptr<hydrochrono::hydro::HydroSystem> hydro_system_;
-    mutable std::unique_ptr<hydrochrono::hydro::ChronoHydroCoupler> chrono_coupler_;
+    // HydroSystem + ChronoHydroCoupler (persistent, constructed once)
+    std::unique_ptr<hydrochrono::hydro::HydroSystem> hydro_system_;
+    std::unique_ptr<hydrochrono::hydro::ChronoHydroCoupler> chrono_coupler_;
+
+    // Compare mode flag: when true, compares legacy vs HydroSystem forces
+    bool compare_mode_ = false;
 
     // Convolution kernel preprocessing (optional)
     RadiationConvolutionMode convolution_mode_ = RadiationConvolutionMode::Baseline;
@@ -434,10 +441,15 @@ class TestHydro {
     // Helper to ensure excitation component exists
     void EnsureExcitationComponent();
 
-    // Internal helpers for HydroSystem + ChronoHydroCoupler path (debug-only, unused in normal flow)
-    void EnsureHydroSystemAndCoupler() const;
-    // Evaluate forces via HydroSystem (debug-only comparison path, not called by normal force callbacks)
-    hydrochrono::hydro::BodyForces EvaluateHydroSystem(double time) const;
+    // Internal helpers for HydroSystem + ChronoHydroCoupler path
+    // Constructs hydro_system_ and chrono_coupler_ once; subsequent calls are no-ops.
+    void EnsureHydroSystemAndCoupler();
+    // Evaluate forces via HydroSystem (used by comparison harness)
+    hydrochrono::hydro::BodyForces EvaluateHydroSystem(double time);
+
+    // Comparison harness: compares legacy forces vs HydroSystem forces and logs discrepancies.
+    // Only called when compare_mode_ is true.
+    void CompareWithHydroSystem(double time, int total_dofs);
 };
 
 #endif

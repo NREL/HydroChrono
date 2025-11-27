@@ -478,18 +478,17 @@ void TestHydro::EnsureExcitationComponent() {
 // ------------------------------------------------------------
 // Internal helpers for HydroSystem + ChronoHydroCoupler path
 // ------------------------------------------------------------
-// HydroSystem + ChronoHydroCoupler are being introduced as the new core path.
-// TestHydro will gradually become a thin legacy adapter. For now, the old
-// per-component methods still drive the Chrono callbacks.
+// HydroSystem + ChronoHydroCoupler are persistent (constructed once).
+// The HydroSystem owns its own force components with independent state.
+// This path is used by the comparison harness and will eventually replace
+// the legacy per-component methods.
 
-void TestHydro::EnsureHydroSystemAndCoupler() const {
-    if (hydro_system_) {
-        return;  // Already created
+void TestHydro::EnsureHydroSystemAndCoupler() {
+    if (hydro_system_ && chrono_coupler_) {
+        return;  // Already constructed; do not recreate
     }
 
-    // Construct fresh, independent components from the same inputs
-    // These are separate from the legacy components (hydrostatics_component_, etc.)
-    // These will be moved into HydroSystem
+    // Build force components for HydroSystem (independent from legacy components)
     std::vector<std::unique_ptr<hydrochrono::hydro::IHydroForceComponent>> components;
 
     // Hydrostatics component
@@ -502,7 +501,7 @@ void TestHydro::EnsureHydroSystemAndCoupler() const {
     components.push_back(std::make_unique<hydrochrono::hydro::HydrostaticsComponent>(
         file_info_, num_bodies_, equilibrium_, cb_minus_cg_, gravitational_acceleration));
 
-    // Radiation component
+    // Radiation component (owns its own velocity history)
     const int rirf_steps = file_info_.GetRIRFDims(2);
     hydrochrono::hydro::RadiationConvolutionMode component_mode;
     if (convolution_mode_ == RadiationConvolutionMode::TaperedDirect) {
@@ -526,7 +525,7 @@ void TestHydro::EnsureHydroSystemAndCoupler() const {
     components.push_back(std::make_unique<hydrochrono::hydro::ExcitationComponent>(
         user_waves_, num_bodies_));
 
-    // Construct HydroSystem
+    // Construct HydroSystem (takes ownership of components)
     hydro_system_ = std::make_unique<hydrochrono::hydro::HydroSystem>(
         num_bodies_, std::move(components));
 
@@ -541,9 +540,54 @@ void TestHydro::EnsureHydroSystemAndCoupler() const {
         hydro_system_shared, bodies_);
 }
 
-hydrochrono::hydro::BodyForces TestHydro::EvaluateHydroSystem(double time) const {
+hydrochrono::hydro::BodyForces TestHydro::EvaluateHydroSystem(double time) {
     EnsureHydroSystemAndCoupler();
     return chrono_coupler_->Evaluate(time);
+}
+
+void TestHydro::CompareWithHydroSystem(double time, int total_dofs) {
+    // Evaluate forces via the persistent HydroSystem path
+    hydrochrono::hydro::BodyForces new_forces = EvaluateHydroSystem(time);
+
+    // Flatten new_forces into legacy ordering: [body0_dof0, ..., body0_dof5, body1_dof0, ...]
+    std::vector<double> new_total(total_dofs, 0.0);
+    for (int body_idx = 0; body_idx < num_bodies_; ++body_idx) {
+        const int offset = kDofPerBody * body_idx;
+        for (int dof = 0; dof < kDofPerBody; ++dof) {
+            new_total[offset + dof] = new_forces[body_idx][dof];
+        }
+    }
+
+    // Comparison tolerances
+    const double abs_tol = 1e-6;  // Absolute tolerance (N or N·m)
+    const double rel_tol = 1e-4;  // Relative tolerance (0.01%)
+
+    // Compare entry-by-entry
+    int mismatch_count = 0;
+    for (int idx = 0; idx < total_dofs; ++idx) {
+        const double legacy_val = total_force_[idx];
+        const double new_val = new_total[idx];
+        const double diff = std::abs(legacy_val - new_val);
+        const double max_abs = std::max(std::abs(legacy_val), std::abs(new_val));
+        const double rel_diff = (max_abs > abs_tol) ? diff / max_abs : 0.0;
+
+        if (diff > abs_tol && rel_diff > rel_tol) {
+            const int body_idx = idx / kDofPerBody;
+            const int dof = idx % kDofPerBody;
+            std::cout << "[COMPARE] Mismatch at t=" << time
+                      << " body=" << body_idx << " dof=" << dof
+                      << ": legacy=" << legacy_val
+                      << " new=" << new_val
+                      << " diff=" << diff
+                      << " rel=" << rel_diff << std::endl;
+            ++mismatch_count;
+        }
+    }
+
+    if (mismatch_count == 0) {
+        // Optionally log success at intervals (every 100 steps or so)
+        // For now, silent when all forces match
+    }
 }
 
 // Main radiation convolution computation.
@@ -726,6 +770,11 @@ double TestHydro::CoordinateFuncForBody(int b, int dof_index) {
     // Note: radiation damping is subtracted (damping opposes motion)
     for (int index = 0; index < total_dofs; index++) {
         total_force_[index] = force_hydrostatic_[index] - force_radiation_damping_[index] + force_waves_[index];
+    }
+
+    // Comparison harness: compare legacy path vs HydroSystem path
+    if (compare_mode_) {
+        CompareWithHydroSystem(prev_time, total_dofs);
     }
 
 #ifdef HYDROCHRONO_DEBUG
