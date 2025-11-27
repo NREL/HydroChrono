@@ -10,7 +10,7 @@
 #ifndef HYDRO_IO_HYDRO_CONFIG_LOADER_H
 #define HYDRO_IO_HYDRO_CONFIG_LOADER_H
 
-#include "../../hydro_types.h"
+#include "hydro_config_types.h"
 #include <string>
 
 namespace hydrochrono {

@@ -36,7 +36,7 @@
  * - Body matching is simple string equality (no fuzzy matching)
  *********************************************************************/
 
-#include "hydro_types.h"
+#include "hydro/io/hydro_config_types.h"
 #include <chrono/physics/ChBody.h>
 #include <memory>
 #include <vector>

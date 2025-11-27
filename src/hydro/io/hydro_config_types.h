@@ -1,10 +1,10 @@
 // TODO: This file will move to src/hydrochrono_hydro/ in a future refactor.
 
-#ifndef HYDRO_TYPES_H
-#define HYDRO_TYPES_H
+#ifndef HYDRO_CONFIG_TYPES_H
+#define HYDRO_CONFIG_TYPES_H
 
 /*********************************************************************
- * @file  hydro_types.h
+ * @file  hydro_config_types.h
  *
  * @brief Data structures for parsed hydro.yaml content.
  *********************************************************************/
@@ -71,4 +71,5 @@ struct YAMLHydroData {
     bool td_export_plot_csv = false;          // dump before/after CSV summaries (false by default)
 };
 
-#endif  // HYDRO_TYPES_H
+#endif  // HYDRO_CONFIG_TYPES_H
+

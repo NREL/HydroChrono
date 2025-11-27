@@ -42,10 +42,18 @@
 
 // TODO: clean up include statements
 
+// Include hydro_types.h FIRST to ensure BodyForces and GeneralizedForce are available
+// before any other includes that might conflict (e.g., hydro_config_types.h)
+#include <hydroc/hydro_types.h>
+
 // Standard includes
 #include <cstdio>
 #include <filesystem>
 #include <memory>
+#include <vector>
+
+// Eigen includes (for GeneralizedForce and BodyForces)
+#include <Eigen/Dense>
 
 // Chrono library includes
 #include <chrono/solver/ChIterativeSolverLS.h>
@@ -68,12 +76,17 @@
 // Hydroc library includes
 #include <hydroc/h5fileinfo.h>
 #include <hydroc/wave_types.h>
+// Note: hydro_types.h is included at the top to avoid header guard conflicts
 
 namespace hydrochrono::hydro {
+// Forward declarations
 class RadiationRirfConvolution;
 class HydrostaticsComponent;
 class RadiationComponent;
 class ExcitationComponent;
+class HydroSystem;
+class ChronoHydroCoupler;
+// Types GeneralizedForce and BodyForces are defined in hydro_types.h (included above)
 }
 
 using namespace chrono;
@@ -400,6 +413,10 @@ class TestHydro {
     // Wave excitation force component
     std::unique_ptr<hydrochrono::hydro::ExcitationComponent> excitation_component_;
 
+    // HydroSystem + ChronoHydroCoupler (new internal path)
+    std::unique_ptr<hydrochrono::hydro::HydroSystem> hydro_system_;
+    std::unique_ptr<hydrochrono::hydro::ChronoHydroCoupler> chrono_coupler_;
+
     // Convolution kernel preprocessing (optional)
     RadiationConvolutionMode convolution_mode_ = RadiationConvolutionMode::Baseline;
     bool rirf_processed_ready_ = false;
@@ -415,6 +432,11 @@ class TestHydro {
     void InvalidateRadiationComponent();
     // Helper to ensure excitation component exists
     void EnsureExcitationComponent();
+
+    // Internal helpers for HydroSystem + ChronoHydroCoupler path
+    void EnsureHydroSystemAndCoupler();
+    // Evaluate forces via HydroSystem (internal path, not yet used by Chrono callbacks)
+    hydrochrono::hydro::BodyForces EvaluateHydroSystem(double time);
 };
 
 #endif

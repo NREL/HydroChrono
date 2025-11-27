@@ -8,6 +8,7 @@
 
 #include <Eigen/Dense>
 #include <vector>
+#include <hydroc/hydro_types.h>
 
 namespace hydrochrono::hydro {
 
@@ -32,21 +33,6 @@ struct BodyState {
 struct SystemState {
     std::vector<BodyState> bodies;
 };
-
-/**
- * @brief Generalized force vector for one body (6 DOF).
- * 
- * Force vector [Fx, Fy, Fz, Mx, My, Mz] for surge, sway, heave,
- * roll, pitch, yaw degrees of freedom.
- */
-using GeneralizedForce = Eigen::VectorXd;
-
-/**
- * @brief Forces for all bodies in the system.
- * 
- * Vector of GeneralizedForce, one per body.
- */
-using BodyForces = std::vector<GeneralizedForce>;
 
 }  // namespace hydrochrono::hydro
 

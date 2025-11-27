@@ -55,6 +55,8 @@
 #include "hydro/force_components/hydrostatics_component.h"
 #include "hydro/force_components/radiation_component.h"
 #include "hydro/force_components/excitation_component.h"
+#include "hydro/core/hydro_system.h"
+#include "hydro/chrono/chrono_hydro_coupler.h"
 #include "hydro/radiation/radiation_rirf_processing.h"
 #include "hydro/radiation/radiation_rirf_convolution.h"
 
@@ -469,6 +471,81 @@ void TestHydro::EnsureExcitationComponent() {
 
     excitation_component_ = std::make_unique<hydrochrono::hydro::ExcitationComponent>(
         user_waves_, num_bodies_);
+}
+
+// ------------------------------------------------------------
+// Internal helpers for HydroSystem + ChronoHydroCoupler path
+// ------------------------------------------------------------
+// HydroSystem + ChronoHydroCoupler are being introduced as the new core path.
+// TestHydro will gradually become a thin legacy adapter. For now, the old
+// per-component methods still drive the Chrono callbacks.
+
+void TestHydro::EnsureHydroSystemAndCoupler() {
+    if (hydro_system_) {
+        return;  // Already created
+    }
+
+    // Ensure all components exist (they may be lazy-initialized)
+    EnsureRadiationComponent();
+    EnsureExcitationComponent();
+    // hydrostatics_component_ is already created in constructor
+
+    // Construct new components from the same inputs (keeping existing components unchanged)
+    // These will be moved into HydroSystem
+    std::vector<std::unique_ptr<hydrochrono::hydro::IHydroForceComponent>> components;
+
+    // Hydrostatics component
+    const auto gravitational_acceleration_ch = bodies_[0]->GetSystem()->GetGravitationalAcceleration();
+    const Eigen::Vector3d gravitational_acceleration(
+        gravitational_acceleration_ch.x(),
+        gravitational_acceleration_ch.y(),
+        gravitational_acceleration_ch.z()
+    );
+    components.push_back(std::make_unique<hydrochrono::hydro::HydrostaticsComponent>(
+        file_info_, num_bodies_, equilibrium_, cb_minus_cg_, gravitational_acceleration));
+
+    // Radiation component
+    const int rirf_steps = file_info_.GetRIRFDims(2);
+    hydrochrono::hydro::RadiationConvolutionMode component_mode;
+    if (convolution_mode_ == RadiationConvolutionMode::TaperedDirect) {
+        component_mode = hydrochrono::hydro::RadiationConvolutionMode::TaperedDirect;
+    } else {
+        component_mode = hydrochrono::hydro::RadiationConvolutionMode::Baseline;
+    }
+    hydrochrono::hydro::TaperedDirectOptions component_opts;
+    component_opts.smoothing = tapered_opts_.smoothing;
+    component_opts.window_length = tapered_opts_.window_length;
+    component_opts.rirf_end_time = tapered_opts_.rirf_end_time;
+    component_opts.taper_start_percent = tapered_opts_.taper_start_percent;
+    component_opts.taper_end_percent = tapered_opts_.taper_end_percent;
+    component_opts.taper_final_amplitude = tapered_opts_.taper_final_amplitude;
+    component_opts.export_plot_csv = tapered_opts_.export_plot_csv;
+    components.push_back(std::make_unique<hydrochrono::hydro::RadiationComponent>(
+        file_info_, num_bodies_, rirf_steps, rirf_time_vector, rirf_width_vector,
+        component_mode, component_opts, diagnostics_output_dir_));
+
+    // Excitation component
+    components.push_back(std::make_unique<hydrochrono::hydro::ExcitationComponent>(
+        user_waves_, num_bodies_));
+
+    // Construct HydroSystem
+    hydro_system_ = std::make_unique<hydrochrono::hydro::HydroSystem>(
+        num_bodies_, std::move(components));
+
+    // Create shared_ptr alias for ChronoHydroCoupler (empty deleter - unique_ptr owns lifetime)
+    std::shared_ptr<hydrochrono::hydro::HydroSystem> hydro_system_shared(
+        hydro_system_.get(), [](hydrochrono::hydro::HydroSystem*) {
+            // Empty deleter - unique_ptr owns the lifetime
+        });
+
+    // Construct ChronoHydroCoupler
+    chrono_coupler_ = std::make_unique<hydrochrono::hydro::ChronoHydroCoupler>(
+        hydro_system_shared, bodies_);
+}
+
+hydrochrono::hydro::BodyForces TestHydro::EvaluateHydroSystem(double time) {
+    EnsureHydroSystemAndCoupler();
+    return chrono_coupler_->Evaluate(time);
 }
 
 // Main radiation convolution computation.

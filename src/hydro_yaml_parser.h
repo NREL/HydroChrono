@@ -7,7 +7,7 @@
  * @brief YAML parser for hydro.yaml files.
  *********************************************************************/
 
-#include "hydro_types.h"
+#include "hydro/io/hydro_config_types.h"
 #include <string>
 
 /**
