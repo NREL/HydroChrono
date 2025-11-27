@@ -4,14 +4,34 @@
  * @brief Implementation of TestHydro main class and helper classes
  * ComponentFunc and ForceFunc6d.
  *
- * OVERVIEW:
- * This file implements the core hydrodynamic force computation for multibody
- * marine systems. It connects Chrono physics bodies to hydrodynamic components
- * (hydrostatics, radiation damping, wave excitation) and applies the
- * resulting forces during simulation.
+ * ARCHITECTURE:
+ * TestHydro is a thin adapter over HydroSystem + ChronoHydroCoupler.
+ *
+ * Force computation flow:
+ *   1. Chrono calls CoordinateFuncForBody(body, dof) via ChForce callbacks.
+ *   2. CoordinateFuncForBody detects new timesteps and calls chrono_coupler_->Evaluate().
+ *   3. ChronoHydroCoupler extracts system state from Chrono bodies and invokes HydroSystem.
+ *   4. HydroSystem evaluates all force components and returns BodyForces.
+ *   5. Forces are flattened into the legacy total_force_ array for Chrono consumption.
+ *
+ * Sign convention: total = hydrostatics - radiation + waves
+ *   (RadiationComponent applies the negative sign internally since damping opposes motion.)
+ *
+ * COMPONENT CONSTRUCTION:
+ * Force components are built via factory methods (single source of truth):
+ *   - CreateHydrostaticsComponent()
+ *   - CreateRadiationComponent()
+ *   - CreateExcitationComponent()
+ *
+ * LEGACY API:
+ * The following methods are retained for backward compatibility but are NOT used
+ * by the main force path (CoordinateFuncForBody):
+ *   - ComputeForceHydrostatics()
+ *   - ComputeForceRadiationDampingConv()
+ *   - ComputeForceWaves()
  *
  * MAIN RESPONSIBILITIES:
- * - TestHydro: Orchestrates all hydrodynamic force components for multiple bodies
+ * - TestHydro: Façade over HydroSystem; provides Chrono force callbacks
  * - ForceFunc6d: Wraps Chrono ChForce/ChTorque callbacks for each body
  * - ComponentFunc: Provides per-DOF force values to Chrono's force system
  *
@@ -26,24 +46,11 @@
  * - Bodies are 1-indexed in ForceFunc6d interface (legacy)
  * - 6 DOF per body (surge, sway, heave, roll, pitch, yaw)
  * - Forces computed once per time step, cached via prev_time check
- * - RadiationComponent is the single source of truth for radiation history/forces
- *
- * KNOWN LIMITATIONS:
- * - Monolithic design: all force components mixed in one class
- * - Tight coupling to Chrono types (hard to test without Chrono)
- * - Body indexing inconsistency (1-indexed in some places, 0-indexed in others)
- * - No per-body enable/disable of radiation or excitation (system-wide only)
  *
  * DEBUG INSTRUMENTATION:
  * To enable debug output, compile with -DHYDROCHRONO_DEBUG.
- * This will print force components and timing info.
- * Baseline outputs to record:
- * - Total force vector per time step (total_force_)
- * - Individual components (hydrostatic, radiation, waves)
- * - RIRF kernel access patterns
  *********************************************************************/
 
-// TODO minimize include statements, move all to header file hydro_forces.h?
 #include "hydroc/hydro_forces.h"
 #include <hydroc/chloadaddedmass.h>
 #include <hydroc/h5fileinfo.h>
@@ -547,59 +554,6 @@ void TestHydro::EnsureHydroSystemAndCoupler() {
         hydro_system_shared, bodies_);
 }
 
-hydrochrono::hydro::BodyForces TestHydro::EvaluateHydroSystem(double time) {
-    EnsureHydroSystemAndCoupler();
-    return chrono_coupler_->Evaluate(time);
-}
-
-void TestHydro::CompareWithHydroSystem(double time, int total_dofs) {
-    // DEPRECATED: This method is no longer called from CoordinateFuncForBody().
-    // The main force path now routes through HydroSystem, so there's nothing to compare.
-    // This method is kept for potential external use but will likely be removed in a future cleanup.
-
-    // Evaluate forces via the persistent HydroSystem path
-    hydrochrono::hydro::BodyForces new_forces = EvaluateHydroSystem(time);
-
-    // Flatten new_forces into legacy ordering: [body0_dof0, ..., body0_dof5, body1_dof0, ...]
-    std::vector<double> new_total(total_dofs, 0.0);
-    for (int body_idx = 0; body_idx < num_bodies_; ++body_idx) {
-        const int offset = kDofPerBody * body_idx;
-        for (int dof = 0; dof < kDofPerBody; ++dof) {
-            new_total[offset + dof] = new_forces[body_idx][dof];
-        }
-    }
-
-    // Comparison tolerances
-    const double abs_tol = 1e-6;  // Absolute tolerance (N or N·m)
-    const double rel_tol = 1e-4;  // Relative tolerance (0.01%)
-
-    // Compare entry-by-entry
-    int mismatch_count = 0;
-    for (int idx = 0; idx < total_dofs; ++idx) {
-        const double legacy_val = total_force_[idx];
-        const double new_val = new_total[idx];
-        const double diff = std::abs(legacy_val - new_val);
-        const double max_abs = std::max(std::abs(legacy_val), std::abs(new_val));
-        const double rel_diff = (max_abs > abs_tol) ? diff / max_abs : 0.0;
-
-        if (diff > abs_tol && rel_diff > rel_tol) {
-            const int body_idx = idx / kDofPerBody;
-            const int dof = idx % kDofPerBody;
-            std::cout << "[COMPARE] Mismatch at t=" << time
-                      << " body=" << body_idx << " dof=" << dof
-                      << ": legacy=" << legacy_val
-                      << " new=" << new_val
-                      << " diff=" << diff
-                      << " rel=" << rel_diff << std::endl;
-            ++mismatch_count;
-        }
-    }
-
-    if (mismatch_count == 0) {
-        // Optionally log success at intervals (every 100 steps or so)
-        // For now, silent when all forces match
-    }
-}
 
 // Legacy radiation convolution computation.
 // RadiationComponent is the single source of truth for radiation history and forces.
@@ -775,9 +729,6 @@ double TestHydro::CoordinateFuncForBody(int b, int dof_index) {
             total_force_[offset + dof] = body_forces[body_idx][dof];
         }
     }
-
-    // Note: compare_mode_ is no longer used here because the main path IS HydroSystem now.
-    // The legacy per-component path is preserved for external callers but not used by this method.
 
 #ifdef HYDROCHRONO_DEBUG
     std::cout << "[HYDRO_DEBUG] CoordinateFuncForBody: body=" << b << ", dof=" << dof_index 

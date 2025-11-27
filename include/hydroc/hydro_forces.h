@@ -7,15 +7,28 @@
  * @brief Header file of TestHydro main class and helper classes
  * ComponentFunc and ForceFunc6d.
  *
- * OVERVIEW:
- * This header defines the public interface for hydrodynamic force computation
- * in multibody marine systems. It provides Chrono-compatible force callbacks
- * that integrate hydrostatics, radiation damping, and wave excitation.
+ * ARCHITECTURE:
+ * TestHydro is a thin adapter over HydroSystem + ChronoHydroCoupler.
+ * Force computation is handled internally by HydroSystem, which owns:
+ *   - HydrostaticsComponent (restoring forces + buoyancy)
+ *   - RadiationComponent (RIRF convolution, owns velocity history)
+ *   - ExcitationComponent (wave forcing)
+ *
+ * The sign convention is: total = hydrostatics - radiation + waves.
+ * (RadiationComponent applies the negative sign internally since damping
+ * opposes motion.)
  *
  * MAIN RESPONSIBILITIES:
- * - TestHydro: Main orchestrator class for all hydrodynamic force components
+ * - TestHydro: Façade over HydroSystem; provides Chrono force callbacks
  * - ForceFunc6d: Wraps 6-DOF force/torque callbacks for Chrono bodies
  * - ComponentFunc: Per-DOF force function for Chrono's ChForce system
+ *
+ * COMPONENT CONSTRUCTION:
+ * Force components are constructed via factory methods:
+ *   - CreateHydrostaticsComponent()
+ *   - CreateRadiationComponent()
+ *   - CreateExcitationComponent()
+ * These are the single source of truth for component configuration.
  *
  * INTERACTIONS:
  * - Used by setup_hydro_from_yaml to create and configure TestHydro instances
@@ -27,20 +40,8 @@
  * - Bodies are 1-indexed in CoordinateFuncForBody (legacy, from ForceFunc6d)
  * - All bodies share same H5 file (multibody data in single file)
  * - 6 DOF per body (surge, sway, heave, roll, pitch, yaw)
- * - Forces computed once per time step and cached
- *
- * KNOWN LIMITATIONS:
- * - Monolithic design: all physics components mixed in TestHydro
- * - Tight coupling to Chrono types (hard to test in isolation)
- * - Body indexing inconsistency (1-indexed vs 0-indexed)
- * - No per-body enable/disable of force components
- *
- * FUTURE REFACTORING:
- * This class will be replaced by HydroSystem + ChronoHydroCoupler.
- * TestHydro will become a thin legacy adapter for API stability.
+ * - Forces computed once per time step and cached via prev_time check
  *********************************************************************/
-
-// TODO: clean up include statements
 
 // Include hydro_types.h FIRST to ensure BodyForces and GeneralizedForce are available
 // before any other includes that might conflict (e.g., hydro_config_types.h)
@@ -252,29 +253,35 @@ class TestHydro {
     void AddWaves(std::shared_ptr<WaveBase> waves);
 
     /**
-     * @brief Computes the Hydrostatic stiffness force plus buoyancy force for a 6N dimensional system.
+     * @brief Legacy API: Computes hydrostatic forces for a 6N dimensional system.
+     *
+     * NOTE: Retained for backward compatibility. The main force path now uses HydroSystem
+     * (via CoordinateFuncForBody). This method is not called during normal simulation.
      *
      * @return 6N dimensional force for 6 DOF and N bodies in system.
      */
     std::vector<double> ComputeForceHydrostatics();
 
     /**
-     * @brief Computes the Radiation Damping force with convolution history for a 6N dimensional system.
+     * @brief Legacy API: Computes radiation damping forces for a 6N dimensional system.
      *
-     * The discretization uses the time series of the the RIRF relative to the current step.
-     * Linear interpolation is done on the velocity history if time_sim-time_rirf is between two values of the time
-     * history. Trapezoidal integration is used to compute the force.
+     * NOTE: Retained for backward compatibility. The main force path now uses HydroSystem
+     * (via CoordinateFuncForBody). This method is not called during normal simulation.
      *
-     * Time history is automatically added in this function (so it should only be called once per time step), and
-     * history that is older than the maximum RIRF time value is automatically removed.
+     * Returns positive damping magnitudes (legacy convention); the main path applies
+     * the correct sign internally via RadiationComponent.
      *
      * @return 6N dimensional force for 6 DOF and N bodies in system.
      */
     std::vector<double> ComputeForceRadiationDampingConv();
 
     /**
-     * @brief Computes the 6N dimensional force from any waves applied to the system.
-     * @return 6N dimensional force for 6 DOF and N bodies in system (already Eigen type).
+     * @brief Legacy API: Computes wave excitation forces for a 6N dimensional system.
+     *
+     * NOTE: Retained for backward compatibility. The main force path now uses HydroSystem
+     * (via CoordinateFuncForBody). This method is not called during normal simulation.
+     *
+     * @return 6N dimensional force for 6 DOF and N bodies in system.
      */
     Eigen::VectorXd ComputeForceWaves();
     // Expose the wave object (read-only) so callers can query inputs if needed
@@ -352,8 +359,8 @@ class TestHydro {
     // Hydrodynamics profiling accessors
     HydroProfileStats GetProfileStats() const { return profile_stats_; }
 
-    // Compare mode: when enabled, compares legacy force path vs HydroSystem path
-    // and logs any discrepancies. Default is off.
+    // Compare mode: legacy debugging feature, retained for API compatibility.
+    // No longer affects behavior since the main path now uses HydroSystem exclusively.
     void SetCompareMode(bool enable) { compare_mode_ = enable; }
     bool GetCompareMode() const { return compare_mode_; }
 
@@ -416,7 +423,7 @@ class TestHydro {
     std::unique_ptr<hydrochrono::hydro::HydroSystem> hydro_system_;
     std::unique_ptr<hydrochrono::hydro::ChronoHydroCoupler> chrono_coupler_;
 
-    // Compare mode flag: when true, compares legacy vs HydroSystem forces
+    // Legacy compare mode flag: retained for API compatibility; no longer used.
     bool compare_mode_ = false;
 
     // Convolution kernel preprocessing (optional)
@@ -451,15 +458,9 @@ class TestHydro {
     // Note: Each instance owns its own velocity history (they are independent).
     std::unique_ptr<hydrochrono::hydro::RadiationComponent> CreateRadiationComponent() const;
 
-    // Internal helpers for HydroSystem + ChronoHydroCoupler path
-    // Constructs hydro_system_ and chrono_coupler_ once; subsequent calls are no-ops.
+    // Internal helper: constructs hydro_system_ and chrono_coupler_ once.
+    // Subsequent calls are no-ops. Called automatically by CoordinateFuncForBody().
     void EnsureHydroSystemAndCoupler();
-    // Evaluate forces via HydroSystem (used by comparison harness)
-    hydrochrono::hydro::BodyForces EvaluateHydroSystem(double time);
-
-    // Comparison harness: compares legacy forces vs HydroSystem forces and logs discrepancies.
-    // Only called when compare_mode_ is true.
-    void CompareWithHydroSystem(double time, int total_dofs);
 };
 
 #endif
