@@ -56,6 +56,12 @@ public:
                   const std::string& diagnostics_output_dir);
 
     /**
+     * @brief Get the component type.
+     * @return HydroComponentType::Radiation
+     */
+    HydroComponentType Type() const override { return HydroComponentType::Radiation; }
+
+    /**
      * @brief Compute radiation damping force contribution.
      * 
      * Records velocities from state, performs RIRF convolution,

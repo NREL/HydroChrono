@@ -30,6 +30,12 @@ public:
     ExcitationComponent(std::shared_ptr<WaveBase> waves, int num_bodies);
 
     /**
+     * @brief Get the component type.
+     * @return HydroComponentType::Excitation
+     */
+    HydroComponentType Type() const override { return HydroComponentType::Excitation; }
+
+    /**
      * @brief Compute wave excitation force contribution.
      * 
      * Calls wave->GetForceAtTime(time) to get flat 6N force vector,

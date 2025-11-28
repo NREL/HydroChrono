@@ -552,6 +552,11 @@ void TestHydro::EnsureHydroSystemAndCoupler() {
     // Construct ChronoHydroCoupler
     chrono_coupler_ = std::make_unique<hydrochrono::hydro::ChronoHydroCoupler>(
         hydro_system_shared, bodies_);
+
+    // Apply deferred profiling setting (may have been set before coupler was created)
+    if (profiling_enabled_) {
+        chrono_coupler_->SetProfilingEnabled(true);
+    }
 }
 
 
@@ -721,6 +726,15 @@ double TestHydro::CoordinateFuncForBody(int b, int dof_index) {
     // Result: total = hydrostatics - radiation + waves
     hydrochrono::hydro::BodyForces body_forces = chrono_coupler_->Evaluate(prev_time);
 
+    // Copy profiling stats from HydroSystem to TestHydro's profile_stats_
+    auto hydro_stats = chrono_coupler_->GetProfileStats();
+    profile_stats_.hydrostatics_seconds = hydro_stats.hydrostatics_seconds;
+    profile_stats_.hydrostatics_calls   = hydro_stats.hydrostatics_calls;
+    profile_stats_.radiation_seconds    = hydro_stats.radiation_seconds;
+    profile_stats_.radiation_calls      = hydro_stats.radiation_calls;
+    profile_stats_.waves_seconds        = hydro_stats.excitation_seconds;  // excitation == waves
+    profile_stats_.waves_calls          = hydro_stats.excitation_calls;
+
     // Flatten BodyForces into total_force_ (legacy flat 6N format)
     std::fill(total_force_.begin(), total_force_.end(), 0.0);
     for (int body_idx = 0; body_idx < num_bodies_; ++body_idx) {
@@ -740,4 +754,11 @@ double TestHydro::CoordinateFuncForBody(int b, int dof_index) {
     }
 
     return total_force_[body_num_offset + dof_index];
+}
+
+void TestHydro::SetProfilingEnabled(bool enabled) {
+    profiling_enabled_ = enabled;
+    if (chrono_coupler_) {
+        chrono_coupler_->SetProfilingEnabled(enabled);
+    }
 }

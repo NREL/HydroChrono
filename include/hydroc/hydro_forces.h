@@ -359,6 +359,16 @@ class TestHydro {
     // Hydrodynamics profiling accessors
     HydroProfileStats GetProfileStats() const { return profile_stats_; }
 
+    /**
+     * @brief Enable or disable profiling in HydroSystem.
+     * 
+     * When enabled, HydroSystem measures timing for each force component.
+     * Disabled by default to avoid overhead in normal runs.
+     * 
+     * @param enabled True to enable profiling, false to disable
+     */
+    void SetProfilingEnabled(bool enabled);
+
     // Compare mode: legacy debugging feature, retained for API compatibility.
     // No longer affects behavior since the main path now uses HydroSystem exclusively.
     void SetCompareMode(bool enable) { compare_mode_ = enable; }
@@ -425,6 +435,9 @@ class TestHydro {
 
     // Legacy compare mode flag: retained for API compatibility; no longer used.
     bool compare_mode_ = false;
+
+    // Profiling enable flag: stored here because chrono_coupler_ is created lazily.
+    bool profiling_enabled_ = false;
 
     // Convolution kernel preprocessing (optional)
     RadiationConvolutionMode convolution_mode_ = RadiationConvolutionMode::Baseline;

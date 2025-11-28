@@ -279,7 +279,6 @@ int RunHydroChronoFromYAML(int argc, char* argv[]) {
 #ifdef _WIN32
         // Enable UTF-8 console output on Windows
         SetConsoleOutputCP(CP_UTF8);
-        std::ios_base::sync_with_stdio(false);
 #endif
 
         // ---------------------------------------------------------------------
@@ -327,8 +326,17 @@ int RunHydroChronoFromYAML(int argc, char* argv[]) {
             }
         }
 
-        // Input directory should already be validated by main()
+        // Validate input directory
+        if (input_directory.empty()) {
+            hydroc::cli::LogError("ERROR: No input directory provided to runner");
+            return 1;
+        }
+        
         std::filesystem::path input_dir(input_directory);
+        if (!std::filesystem::exists(input_dir)) {
+            hydroc::cli::LogError(std::string("ERROR: Input directory does not exist: ") + input_directory);
+            return 1;
+        }
 
         // Setup logging
         std::string log_file_path;
@@ -353,8 +361,7 @@ int RunHydroChronoFromYAML(int argc, char* argv[]) {
         log_cfg.log_file_path = log_file_path;
         log_cfg.enable_cli_output = !quiet_mode;
         log_cfg.enable_file_output = !log_file_path.empty();
-        log_cfg.enable_debug_logging = debug_mode; // gate dev logs
-        // Console threshold: Debug if --debug, else Info. File threshold: always Debug to capture details.
+        log_cfg.enable_debug_logging = debug_mode;
         log_cfg.console_level = debug_mode ? hydroc::LogLevel::Debug
                                            : hydroc::LogLevel::Info;
         log_cfg.file_level = hydroc::LogLevel::Debug;
@@ -464,6 +471,11 @@ int RunHydroChronoFromYAML(int argc, char* argv[]) {
                             test_hydro->SetDiagnosticsOutputDirectory(out_dir.string());
                         }
                     } catch (...) {}
+
+                    // Enable profiling in HydroSystem only when --profile is passed
+                    if (test_hydro && profile_mode) {
+                        test_hydro->SetProfilingEnabled(true);
+                    }
                     
                     // Display wave information to CLI with enhanced formatting
                     hydroc::cli::ShowWaveModel(hydro_data.waves.type, 
@@ -1006,12 +1018,12 @@ int RunHydroChronoFromYAML(int argc, char* argv[]) {
 
         return 0;
     } catch (const std::exception& e) {
-        hydroc::cli::LogError(std::string("Exception: ") + e.what());
-        hydroc::Shutdown();
+        hydroc::cli::LogError(std::string("ERROR: Exception in RunHydroChronoFromYAML: ") + e.what());
+        try { hydroc::Shutdown(); } catch (...) {}
         return 1;
     } catch (...) {
-        hydroc::cli::LogError("Unknown exception occurred.");
-        hydroc::Shutdown();
+        hydroc::cli::LogError("ERROR: Unknown exception in RunHydroChronoFromYAML");
+        try { hydroc::Shutdown(); } catch (...) {}
         return 1;
     }
 }

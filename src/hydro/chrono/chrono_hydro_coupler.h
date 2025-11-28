@@ -42,7 +42,7 @@ public:
      * @param time Current simulation time
      * @return BodyForces Total forces (one GeneralizedForce per body, 6 DOF each)
      */
-    BodyForces Evaluate(double time) const;
+    BodyForces Evaluate(double time);
 
     /**
      * @brief Apply forces to Chrono bodies.
@@ -52,6 +52,26 @@ public:
      * @param forces Forces to apply
      */
     void ApplyForcesToChrono(const BodyForces& forces);
+
+    /**
+     * @brief Get profiling statistics from HydroSystem.
+     * 
+     * Returns cumulative timing and call counts for each component type.
+     * 
+     * @return HydroSystemProfileStats Profiling statistics
+     */
+    HydroSystemProfileStats GetProfileStats() const { 
+        return hydro_system_->GetProfileStats(); 
+    }
+
+    /**
+     * @brief Enable or disable profiling in HydroSystem.
+     * 
+     * @param enabled True to enable profiling, false to disable
+     */
+    void SetProfilingEnabled(bool enabled) {
+        hydro_system_->SetProfilingEnabled(enabled);
+    }
 
 private:
     std::shared_ptr<HydroSystem> hydro_system_;

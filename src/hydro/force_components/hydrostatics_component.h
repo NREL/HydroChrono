@@ -40,6 +40,12 @@ public:
                      const Eigen::Vector3d& gravitational_acceleration);
 
     /**
+     * @brief Get the component type.
+     * @return HydroComponentType::Hydrostatics
+     */
+    HydroComponentType Type() const override { return HydroComponentType::Hydrostatics; }
+
+    /**
      * @brief Compute hydrostatic force contribution.
      * 
      * Adds hydrostatic restoring forces and buoyancy forces to inout_forces.

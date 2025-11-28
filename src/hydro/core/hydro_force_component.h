@@ -11,6 +11,17 @@
 namespace hydrochrono::hydro {
 
 /**
+ * @brief Identifies the type of a hydrodynamic force component.
+ * 
+ * Used for profiling to categorize execution time by component type.
+ */
+enum class HydroComponentType {
+    Hydrostatics,   ///< Hydrostatic restoring forces and buoyancy
+    Radiation,      ///< Radiation damping (RIRF convolution)
+    Excitation      ///< Wave excitation forces
+};
+
+/**
  * @brief Interface for computing hydrodynamic forces.
  * 
  * All force components (hydrostatics, radiation, excitation) implement this
@@ -23,6 +34,15 @@ namespace hydrochrono::hydro {
 class IHydroForceComponent {
 public:
     virtual ~IHydroForceComponent() = default;
+
+    /**
+     * @brief Get the type of this component.
+     * 
+     * Used for profiling to categorize execution time by component type.
+     * 
+     * @return Component type (Hydrostatics, Radiation, or Excitation)
+     */
+    virtual HydroComponentType Type() const = 0;
 
     /**
      * @brief Compute force contribution and add to inout_forces.

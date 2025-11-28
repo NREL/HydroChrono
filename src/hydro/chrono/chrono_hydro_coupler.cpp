@@ -18,7 +18,7 @@ ChronoHydroCoupler::ChronoHydroCoupler(
     assert(!bodies_.empty());
 }
 
-BodyForces ChronoHydroCoupler::Evaluate(double time) const {
+BodyForces ChronoHydroCoupler::Evaluate(double time) {
     // Build SystemState from Chrono bodies
     SystemState system_state;
     BuildSystemStateFromChronoBodies(bodies_, system_state);
