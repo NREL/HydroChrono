@@ -195,8 +195,6 @@ LoggerBackend& LoggerBackend::operator=(LoggerBackend&& other) noexcept {
 
 void LoggerBackend::Log(LogLevel level, const std::string& message, 
                        const LogContext& context, LogColor color) {
-    std::lock_guard<std::mutex> lock(log_mutex_);
-    
     // Update statistics
     stats_.total_messages++;
     if (static_cast<size_t>(level) < kNumLogLevels) {

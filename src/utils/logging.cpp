@@ -547,12 +547,27 @@ namespace {
 // Main Logging Interface Implementation
 //-----------------------------------------------------------------------------
 
+// Internal helper for cleanup (no locking to avoid deadlock with stream capture).
+static void ShutdownUnlocked() {
+    // Restore original stream buffers
+    if (g_orig_cout) {
+        std::cout.rdbuf(g_orig_cout);
+    }
+    if (g_orig_cerr) {
+        std::cerr.rdbuf(g_orig_cerr);
+    }
+    g_cout_capture.reset();
+    g_cerr_capture.reset();
+
+    g_cli_logger.reset();
+    g_backend.reset();
+    g_initialized = false;
+}
+
 bool Initialize(const LoggingConfig& config) {
-    std::lock_guard<std::mutex> lock(g_logging_mutex);
-    
     // Shutdown existing logging if any
     if (g_initialized) {
-        Shutdown();
+        ShutdownUnlocked();
     }
     
     g_backend = std::make_shared<LoggerBackend>(config);
@@ -572,36 +587,25 @@ bool Initialize(const LoggingConfig& config) {
     std::cout.rdbuf(g_cout_capture.get());
     std::cerr.rdbuf(g_cerr_capture.get());
     // Ensure restoration happens even if user code forgets to call Shutdown.
-    std::atexit([](){ Shutdown(); });
+    // Note: Only register once to avoid multiple atexit handlers
+    static bool atexit_registered = false;
+    if (!atexit_registered) {
+        std::atexit([](){ Shutdown(); });
+        atexit_registered = true;
+    }
     g_initialized = true;
     return true;
 }
 
 void Shutdown() {
-    std::lock_guard<std::mutex> lock(g_logging_mutex);
-    
-    // Restore original stream buffers
-    if (g_orig_cout) {
-        std::cout.rdbuf(g_orig_cout);
-    }
-    if (g_orig_cerr) {
-        std::cerr.rdbuf(g_orig_cerr);
-    }
-    g_cout_capture.reset();
-    g_cerr_capture.reset();
-
-    g_cli_logger.reset();
-    g_backend.reset();
-    g_initialized = false;
+    ShutdownUnlocked();
 }
 
 static std::shared_ptr<CLILogger> GetCLILogger() {
-    std::lock_guard<std::mutex> lock(g_logging_mutex);
     return g_cli_logger;
 }
 
 bool IsInitialized() noexcept {
-    std::lock_guard<std::mutex> lock(g_logging_mutex);
     return g_initialized && g_backend != nullptr;
 }
 
@@ -788,7 +792,6 @@ void LogError(const std::string& message) {
 }
 
 bool IsDebugEnabled() noexcept {
-    std::lock_guard<std::mutex> lock(g_logging_mutex);
     if (!g_initialized || !g_backend) return false;
     const auto& cfg = g_backend->GetConfig();
     // Enable if explicitly requested or if either sink is set to Debug threshold
