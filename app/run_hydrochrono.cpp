@@ -75,15 +75,15 @@ struct CLIArgs {
     std::string sim_file;
     bool nogui = false;
     bool log = false;
-    bool nobanner = false;              // NEW: Disable banner display
-    bool quiet = false;                 // NEW: Quiet mode (minimal output)
-    bool debug = false;                 // NEW: Enable detailed simulation diagnostics
-    bool trace = false;                 // NEW: Enable step-by-step simulation tracing
-    std::string output_h5;              // NEW: Export HDF5 results path
-    bool h5_verbose = false;            // NEW: HDF5 verbose diagnostics
-    std::string h5_tag;                 // NEW: Optional tag appended to filename
-    bool fail_fast = false;             // NEW: Stop on first failure during sweep
-    bool profile = false;               // NEW: Enable runtime profiling summary
+    bool nobanner = false;              // Disable banner display
+    bool quiet = false;                 // Quiet mode (minimal output)
+    bool debug = false;                 // Enable detailed simulation diagnostics
+    bool trace = false;                 // Enable step-by-step simulation tracing
+    std::string output_h5;              // Export HDF5 results path
+    bool h5_verbose = false;            // HDF5 verbose diagnostics
+    std::string h5_tag;                 // Optional tag appended to filename
+    bool fail_fast = false;             // Stop on first failure during sweep
+    bool profile = false;               // Enable runtime profiling summary
 };
 
 static CLIArgs ParseArguments(int argc, char* argv[]) {
@@ -166,7 +166,6 @@ int main(int argc, char* argv[]) {
 #ifdef _WIN32
     // Enable UTF-8 console output on Windows
     SetConsoleOutputCP(CP_UTF8);
-    std::ios_base::sync_with_stdio(false);
 #endif
 
     // Check for hidden options first (before any other processing)
@@ -174,40 +173,42 @@ int main(int argc, char* argv[]) {
         return 0;
     }
     
+    // -------------------------------------------------------------------------
+    // Initialize logging early so all CLI output uses the nice formatting
+    // -------------------------------------------------------------------------
+    hydroc::LoggingConfig cfg;
+    cfg.enable_cli_output = true;
+    cfg.enable_file_output = false;
+    cfg.console_level = hydroc::LogLevel::Info;
+    cfg.file_level = hydroc::LogLevel::Info;
+    hydroc::Initialize(cfg);
+
     // Check for help/version/info flags first (before requiring input directory)
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
         if (arg == "--help" || arg == "-h") {
-            hydroc::LoggingConfig cfg;
-            cfg.enable_cli_output = true;
-            cfg.enable_file_output = false;
-            cfg.console_level = hydroc::LogLevel::Info;
-            cfg.file_level = hydroc::LogLevel::Info;
-            hydroc::Initialize(cfg);
             PrintHelp(argv[0]);
             hydroc::Shutdown();
             return 0;
         } else if (arg == "--version" || arg == "-v") {
-            hydroc::LoggingConfig cfg;
-            cfg.enable_cli_output = true;
-            cfg.enable_file_output = false;
-            cfg.console_level = hydroc::LogLevel::Info;
-            cfg.file_level = hydroc::LogLevel::Info;
-            hydroc::Initialize(cfg);
             PrintVersion();
             hydroc::Shutdown();
             return 0;
         } else if (arg == "--info" || arg == "-i") {
-            hydroc::LoggingConfig cfg;
-            cfg.enable_cli_output = true;
-            cfg.enable_file_output = false;
-            cfg.console_level = hydroc::LogLevel::Info;
-            cfg.file_level = hydroc::LogLevel::Info;
-            hydroc::Initialize(cfg);
             PrintInfo();
             hydroc::Shutdown();
             return 0;
         }
+    }
+
+    // Handle "no arguments" case
+    if (argc == 1) {
+        hydroc::cli::LogError("ERROR: Input directory or setup file is required");
+        hydroc::cli::ShowEmptyLine();
+        hydroc::cli::LogInfo(std::string("Usage: ") + argv[0] + " [options] <input_directory_or_setup_file>");
+        hydroc::cli::LogInfo("Use --help for more information.");
+        hydroc::Shutdown();
+        return 1;
     }
     
     // Parse command line arguments
@@ -219,6 +220,7 @@ int main(int argc, char* argv[]) {
         hydroc::cli::ShowEmptyLine();
         hydroc::cli::LogInfo(std::string("Usage: ") + argv[0] + " [options] <input_directory_or_setup_file>");
         hydroc::cli::LogInfo("Use --help for more information.");
+        hydroc::Shutdown();
         return 1;
     }
     
@@ -226,78 +228,53 @@ int main(int argc, char* argv[]) {
     std::filesystem::path input_path(args.input_directory);
     if (std::filesystem::exists(input_path)) {
         if (std::filesystem::is_regular_file(input_path)) {
-            // Check if it's a setup file
             if (input_path.extension() == ".yaml") {
                 const std::string filename = input_path.filename().string();
                 const std::string suffix = ".setup.yaml";
                 if (filename.length() >= suffix.length() && 
                     filename.compare(filename.length() - suffix.length(), suffix.length(), suffix) == 0) {
-                    // Convert setup file path to directory path
                     args.input_directory = input_path.parent_path().string();
                     hydroc::cli::LogInfo(std::string("Loaded setup file: ") + input_path.string());
                 } else {
                     hydroc::cli::LogError("ERROR: File provided is not a valid .setup.yaml file");
                     hydroc::cli::LogInfo(std::string("  Path: ") + args.input_directory);
                     hydroc::cli::LogInfo("  Expected: Directory or any file ending in '.setup.yaml'");
+                    hydroc::Shutdown();
                     return 1;
                 }
             }
         } else if (!std::filesystem::is_directory(input_path)) {
             hydroc::cli::LogError("ERROR: Path is neither a directory nor a regular file");
             hydroc::cli::LogInfo(std::string("  Path: ") + args.input_directory);
+            hydroc::Shutdown();
             return 1;
         }
     } else {
         hydroc::cli::LogError("ERROR: Input path does not exist");
         hydroc::cli::LogInfo(std::string("  Path: ") + args.input_directory);
+        hydroc::Shutdown();
         return 1;
     }
     
-    // Note: Banner will be rendered by the YAML runner
+    // Shutdown logging - the runner will reinitialize it
+    hydroc::Shutdown();
     
     // Prepare arguments for the YAML runner
     std::vector<std::string> runner_args;
-    runner_args.push_back(argv[0]);  // program name
-    
-    // Add input directory
+    runner_args.push_back(argv[0]);
     runner_args.push_back(args.input_directory);
     
-    // Add optional flags
-    if (args.nogui) {
-        runner_args.push_back("--nogui");
-    }
-    
-    // Add logging flag if requested
-    if (args.log) {
-        runner_args.push_back("--log");
-    }
-    
-    // Add new CLI options
-    if (args.nobanner) {
-        runner_args.push_back("--nobanner");
-    }
-    
-    if (args.quiet) {
-        runner_args.push_back("--quiet");
-    }
-    
-    if (args.debug) {
-        runner_args.push_back("--debug");
-    }
-    
-    if (args.trace) {
-        runner_args.push_back("--trace");
-    }
-    
-    if (args.profile) {
-        runner_args.push_back("--profile");
-    }
-    
+    if (args.nogui) runner_args.push_back("--nogui");
+    if (args.log) runner_args.push_back("--log");
+    if (args.nobanner) runner_args.push_back("--nobanner");
+    if (args.quiet) runner_args.push_back("--quiet");
+    if (args.debug) runner_args.push_back("--debug");
+    if (args.trace) runner_args.push_back("--trace");
+    if (args.profile) runner_args.push_back("--profile");
     if (!args.model_file.empty()) {
         runner_args.push_back("--model_file");
         runner_args.push_back(args.model_file);
     }
-    
     if (!args.sim_file.empty()) {
         runner_args.push_back("--sim_file");
         runner_args.push_back(args.sim_file);
@@ -306,9 +283,7 @@ int main(int argc, char* argv[]) {
         runner_args.push_back("--output-h5");
         runner_args.push_back(args.output_h5);
     }
-    if (args.fail_fast) {
-        runner_args.push_back("--fail-fast");
-    }
+    if (args.fail_fast) runner_args.push_back("--fail-fast");
     
     // Convert to argc/argv format for the runner
     std::vector<char*> runner_argv;
