@@ -344,8 +344,6 @@ set(HYDROCHRONO_SOURCES
     src/hydro/config/config_loader.cpp
     src/hydro/config/setup_from_yaml.cpp
     src/hydro/config/yaml_discovery.cpp
-    # Coupling module (consolidated under src/hydro/coupling/)
-    src/hydro/coupling/added_mass.cpp
     # Core facade and utilities
     src/hydro/hydro_forces.cpp
     src/hydro/utils/helper.cpp
@@ -360,6 +358,7 @@ set(HYDROCHRONO_SOURCES
     # Chrono coupling layer (bridges Chrono physics with Chrono-free core)
     src/hydro/chrono/chrono_state_utils.cpp
     src/hydro/chrono/chrono_hydro_coupler.cpp
+    src/hydro/chrono/added_mass.cpp
     src/hydro/force_components/hydrostatics_component.cpp
     src/hydro/force_components/radiation_component.cpp
     src/hydro/force_components/excitation_component.cpp

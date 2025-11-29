@@ -1,8 +1,11 @@
 /*********************************************************************
  * @file  added_mass.cpp
+ * @brief Implementation of ChLoadAddedMass: Chrono load for added mass.
  *
- * @brief Implementation of ChLoadAddedMass class.
+ * ROLE: Chrono coupling layer. Provides a ChLoadCustomMultiple subclass
+ * that applies infinite-frequency added mass from HDF5 data to bodies.
  *********************************************************************/
+
 #include <hydroc/coupling/added_mass.h>
 
 #include <utility>

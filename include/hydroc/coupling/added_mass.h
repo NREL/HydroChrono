@@ -1,7 +1,13 @@
 /*********************************************************************
  * @file  added_mass.h
+ * @brief ChLoadAddedMass: Chrono load for infinite-frequency added mass.
  *
- * @brief Header file for added mass ChLoad class.
+ * MAIN TYPES:
+ *   - ChLoadAddedMass: ChLoadCustomMultiple subclass that applies
+ *     added mass from HDF5 hydrodynamic data to Chrono bodies.
+ *
+ * ROLE: Chrono coupling layer. Used internally by HydroForces to attach
+ * added mass forces to the Chrono simulation system.
  *********************************************************************/
 
 #ifndef HYDROC_COUPLING_ADDED_MASS_H
