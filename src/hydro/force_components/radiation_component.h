@@ -8,6 +8,7 @@
 
 #include <hydroc/core/force_component.h>
 #include <hydroc/core/system_state.h>
+#include <hydroc/radiation/radiation_types.h>
 #include "../radiation/radiation_rirf_convolution.h"
 #include "../radiation/radiation_rirf_processing.h"
 #include <Eigen/Dense>
@@ -17,14 +18,6 @@
 class HydroData;
 
 namespace hydrochrono::hydro {
-
-/**
- * @brief Convolution mode for radiation damping.
- */
-enum class RadiationConvolutionMode {
-    Baseline,
-    TaperedDirect
-};
 
 /**
  * @brief Radiation damping force component (RIRF convolution).

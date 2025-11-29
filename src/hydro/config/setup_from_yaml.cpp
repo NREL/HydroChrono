@@ -39,6 +39,8 @@
 #include <hydroc/waves/regular_wave.h>
 #include <hydroc/waves/irregular_wave.h>
 #include <hydroc/logging.h>         // For Logger
+#include "../radiation/radiation_rirf_processing.h" // For TaperedDirectOptions (canonical type)
+#include "../force_components/radiation_component.h" // For RadiationConvolutionMode (canonical type)
 #include <filesystem>
 #include <iostream>
 #include <stdexcept>
@@ -201,9 +203,9 @@ std::unique_ptr<TestHydro> SetupHydroFromYAML(
     std::transform(mode.begin(), mode.end(), mode.begin(), ::tolower);
     hydroc::debug::LogDebug("Lowercase mode: '" + mode + "'");
     if (mode == "tapereddirect") {
-        test_hydro->SetRadiationConvolutionMode(TestHydro::RadiationConvolutionMode::TaperedDirect);
+        test_hydro->SetRadiationConvolutionMode(hydrochrono::hydro::RadiationConvolutionMode::TaperedDirect);
         hydroc::debug::LogDebug("Radiation convolution mode: TaperedDirect");
-        TestHydro::TaperedDirectOptions opts;
+        hydrochrono::hydro::TaperedDirectOptions opts;
         opts.smoothing = !hydro_data.td_smoothing.empty() ? hydro_data.td_smoothing : opts.smoothing;
         opts.window_length = std::max(3, hydro_data.td_window_length != 0 ? hydro_data.td_window_length : opts.window_length);
         if (opts.window_length % 2 == 0) opts.window_length += 1; // enforce odd
@@ -232,7 +234,7 @@ std::unique_ptr<TestHydro> SetupHydroFromYAML(
             hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "Conv Export CSV", (opts.export_plot_csv ? "true" : "false")));
         }
     } else {
-        test_hydro->SetRadiationConvolutionMode(TestHydro::RadiationConvolutionMode::Baseline);
+        test_hydro->SetRadiationConvolutionMode(hydrochrono::hydro::RadiationConvolutionMode::Baseline);
         hydroc::debug::LogDebug("Radiation convolution mode: Baseline");
         hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "Convolution Mode", "Baseline"));
     }

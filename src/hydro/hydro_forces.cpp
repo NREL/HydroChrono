@@ -248,7 +248,9 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
       num_bodies_(bodies_.size()),
       file_info_(H5FileInfo(h5_file_name, num_bodies_).ReadH5Data()),
       hydro_system_(nullptr),
-      chrono_coupler_(nullptr) {
+      chrono_coupler_(nullptr),
+      convolution_mode_(hydrochrono::hydro::RadiationConvolutionMode::Baseline),
+      tapered_opts_() {
     prev_time = -1;
 
     // Set up time vector
@@ -417,15 +419,7 @@ void TestHydro::EnsureProcessedRIRF() {
 
     const int steps = file_info_.GetRIRFDims(2);
     
-    // Convert TaperedDirectOptions to hydrochrono::hydro::TaperedDirectOptions
-    hydrochrono::hydro::TaperedDirectOptions opts;
-    opts.smoothing = tapered_opts_.smoothing;
-    opts.window_length = tapered_opts_.window_length;
-    opts.rirf_end_time = tapered_opts_.rirf_end_time;
-    opts.taper_start_percent = tapered_opts_.taper_start_percent;
-    opts.taper_end_percent = tapered_opts_.taper_end_percent;
-    opts.taper_final_amplitude = tapered_opts_.taper_final_amplitude;
-    opts.export_plot_csv = tapered_opts_.export_plot_csv;
+    // tapered_opts_ is now the canonical type (single source of truth) - no conversion needed
 
     // Create lambda to get RIRF values from file_info_
     auto get_rirf_val = [this](int body, int row_dof, int col, int step) -> double {
@@ -434,13 +428,27 @@ void TestHydro::EnsureProcessedRIRF() {
 
     // Process RIRF kernels using the dedicated module
     rirf_processed_ = hydrochrono::hydro::ProcessRirfKernels(
-        num_bodies_, steps, rirf_time_vector, get_rirf_val, opts, diagnostics_output_dir_);
+        num_bodies_, steps, rirf_time_vector, get_rirf_val, tapered_opts_, diagnostics_output_dir_);
 
     rirf_processed_ready_ = true;
 }
 
 void TestHydro::InvalidateRadiationComponent() {
     radiation_component_.reset();
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Radiation configuration setters
+// ─────────────────────────────────────────────────────────────────────────
+
+void TestHydro::SetRadiationConvolutionMode(hydrochrono::hydro::RadiationConvolutionMode mode) {
+    convolution_mode_ = mode;
+    InvalidateRadiationComponent();  // Invalidate component to recreate with new settings
+}
+
+void TestHydro::SetTaperedDirectOptions(const hydrochrono::hydro::TaperedDirectOptions& opts) {
+    tapered_opts_ = opts;
+    InvalidateRadiationComponent();  // Invalidate component to recreate with new settings
 }
 
 void TestHydro::EnsureRadiationComponent() {
@@ -493,27 +501,11 @@ std::unique_ptr<hydrochrono::hydro::RadiationComponent> TestHydro::CreateRadiati
 
     const int rirf_steps = file_info_.GetRIRFDims(2);
 
-    // Convert TestHydro::RadiationConvolutionMode to hydrochrono::hydro::RadiationConvolutionMode
-    hydrochrono::hydro::RadiationConvolutionMode component_mode;
-    if (convolution_mode_ == RadiationConvolutionMode::TaperedDirect) {
-        component_mode = hydrochrono::hydro::RadiationConvolutionMode::TaperedDirect;
-    } else {
-        component_mode = hydrochrono::hydro::RadiationConvolutionMode::Baseline;
-    }
-
-    // Convert TestHydro::TaperedDirectOptions to hydrochrono::hydro::TaperedDirectOptions
-    hydrochrono::hydro::TaperedDirectOptions component_opts;
-    component_opts.smoothing = tapered_opts_.smoothing;
-    component_opts.window_length = tapered_opts_.window_length;
-    component_opts.rirf_end_time = tapered_opts_.rirf_end_time;
-    component_opts.taper_start_percent = tapered_opts_.taper_start_percent;
-    component_opts.taper_end_percent = tapered_opts_.taper_end_percent;
-    component_opts.taper_final_amplitude = tapered_opts_.taper_final_amplitude;
-    component_opts.export_plot_csv = tapered_opts_.export_plot_csv;
-
+    // convolution_mode_ and tapered_opts_ are now the canonical types from
+    // hydrochrono::hydro namespace - no conversion needed (single source of truth)
     return std::make_unique<hydrochrono::hydro::RadiationComponent>(
         file_info_, num_bodies_, rirf_steps, rirf_time_vector, rirf_width_vector,
-        component_mode, component_opts, diagnostics_output_dir_);
+        convolution_mode_, tapered_opts_, diagnostics_output_dir_);
 }
 
 // ------------------------------------------------------------
@@ -627,7 +619,7 @@ double TestHydro::GetRIRFval(int row, int col, int st) {
     int col_dof    = col % kDofPerBody;
     int row_dof    = row % kDofPerBody;
 
-    if (convolution_mode_ == RadiationConvolutionMode::TaperedDirect) {
+    if (convolution_mode_ == hydrochrono::hydro::RadiationConvolutionMode::TaperedDirect) {
         EnsureProcessedRIRF();
         // processed tensor is scaled by rho already
         const auto& tensor = rirf_processed_[body_index];

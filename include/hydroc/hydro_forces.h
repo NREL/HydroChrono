@@ -84,6 +84,9 @@
 // Public hydroc includes (for SystemState)
 #include <hydroc/core/system_state.h>
 
+// Radiation types (canonical definitions - single source of truth)
+#include <hydroc/radiation/radiation_types.h>
+
 namespace hydrochrono::hydro {
 // Forward declarations
 class HydrostaticsComponent;
@@ -299,42 +302,26 @@ class TestHydro {
      */
     double GetRIRFval(int row, int col, int st);
 
-    // Convolution mode selection
-    enum class RadiationConvolutionMode {
-        Baseline,
-        TaperedDirect
-    };
+    // ─────────────────────────────────────────────────────────────────────────
+    // Radiation Convolution Configuration
+    // ─────────────────────────────────────────────────────────────────────────
+    // These types are defined in the radiation module (single source of truth):
+    //   - hydrochrono::hydro::RadiationConvolutionMode (enum)
+    //   - hydrochrono::hydro::TaperedDirectOptions (struct)
+    // See: src/hydro/force_components/radiation_component.h
+    //      src/hydro/radiation/radiation_rirf_processing.h
 
     /**
      * @brief Set the radiation convolution mode. Default is Baseline.
+     * @param mode RadiationConvolutionMode::Baseline or ::TaperedDirect
      */
-    void SetRadiationConvolutionMode(RadiationConvolutionMode mode) {
-        convolution_mode_ = mode;
-        InvalidateRadiationComponent();  // Invalidate component to recreate with new settings
-    }
-
-        struct TaperedDirectOptions {
-            // smoothing: "sg" (Savitzky–Golay) or "moving_average"
-            std::string smoothing = "sg";
-            int window_length = 5;                 // odd, >= 3
-            
-            // RIRF truncation
-            double rirf_end_time = -1.0;           // end RIRF at this time (seconds), -1.0 = use full length
-            
-            // Simple taper control - sensible defaults for improved stability
-            double taper_start_percent = 0.8;      // start taper at 80% (taper last 20%)
-            double taper_end_percent = 1.0;        // end taper at 100% of total time series  
-            double taper_final_amplitude = 0.0;    // final amplitude as fraction of original (0.0 = zero, 1.0 = no change)
-            bool export_plot_csv = false;          // dump before/after CSV summaries (false by default)
-        };
+    void SetRadiationConvolutionMode(hydrochrono::hydro::RadiationConvolutionMode mode);
 
     /**
      * @brief Set options for TaperedDirect preprocessing.
+     * @param opts TaperedDirectOptions struct with smoothing, tapering, and export settings
      */
-    void SetTaperedDirectOptions(const TaperedDirectOptions& opts) {
-        tapered_opts_ = opts;
-        InvalidateRadiationComponent();  // Invalidate component to recreate with new settings
-    }
+    void SetTaperedDirectOptions(const hydrochrono::hydro::TaperedDirectOptions& opts);
 
     /**
      * @brief Set the directory where diagnostics (e.g., CSVs) should be written.
@@ -441,10 +428,11 @@ class TestHydro {
     bool profiling_enabled_ = false;
 
     // Convolution kernel preprocessing (optional)
-    RadiationConvolutionMode convolution_mode_ = RadiationConvolutionMode::Baseline;
+    // Uses canonical types from radiation module (single source of truth)
+    hydrochrono::hydro::RadiationConvolutionMode convolution_mode_;
     bool rirf_processed_ready_ = false;
     std::vector<Eigen::Tensor<double, 3>> rirf_processed_; // per body [dof x col x step]
-    TaperedDirectOptions tapered_opts_;
+    hydrochrono::hydro::TaperedDirectOptions tapered_opts_;
     std::string diagnostics_output_dir_;
 
     void EnsureProcessedRIRF();
