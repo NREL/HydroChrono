@@ -29,6 +29,26 @@ RadiationRirfConvolution::RadiationRirfConvolution(
       total_dofs_(kDofPerBody * num_bodies_),
       rirf_time_vector_(rirf_time_vector),
       rirf_width_vector_(rirf_width_vector) {
+    // Validate configuration parameters.
+    if (num_bodies_ <= 0) {
+        throw std::invalid_argument(
+            "RadiationRirfConvolution: num_bodies must be > 0 (got " + 
+            std::to_string(num_bodies_) + ")");
+    }
+    if (rirf_steps_ <= 0) {
+        throw std::invalid_argument(
+            "RadiationRirfConvolution: rirf_steps must be > 0 (got " + 
+            std::to_string(rirf_steps_) + ")");
+    }
+    if (rirf_time_vector_.size() == 0) {
+        throw std::invalid_argument(
+            "RadiationRirfConvolution: rirf_time_vector is empty");
+    }
+    if (rirf_width_vector_.size() == 0) {
+        throw std::invalid_argument(
+            "RadiationRirfConvolution: rirf_width_vector is empty");
+    }
+
     velocity_history_.resize(num_bodies_);
 }
 

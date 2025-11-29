@@ -5,8 +5,8 @@
 
 #include <hydroc/core/hydro_system.h>
 
-#include <cassert>
 #include <chrono>
+#include <stdexcept>
 #include <Eigen/Dense>
 
 namespace hydrochrono::hydro {
@@ -17,7 +17,11 @@ HydroSystem::HydroSystem(int num_bodies,
       components_(std::move(components)),
       profile_stats_(),
       profiling_enabled_(false) {
-    assert(num_bodies_ > 0);
+    // Require at least one body; otherwise hydrodynamic forces are meaningless.
+    if (num_bodies_ <= 0) {
+        throw std::invalid_argument(
+            "HydroSystem: num_bodies must be > 0 (got " + std::to_string(num_bodies_) + ")");
+    }
 }
 
 BodyForces HydroSystem::Evaluate(const SystemState& state, double time) {

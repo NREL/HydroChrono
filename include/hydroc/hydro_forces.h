@@ -90,6 +90,12 @@ class ChronoHydroCoupler;
 class ForceFunc6d;
 class TestHydro;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Degrees of Freedom Constant
+// ─────────────────────────────────────────────────────────────────────────────
+/// Number of degrees of freedom per rigid body: surge, sway, heave, roll, pitch, yaw.
+constexpr int kDofPerBody = 6;
+
 /**
  * @brief Per-DOF force function for Chrono's ChForce system.
  *
@@ -193,9 +199,13 @@ class ForceFunc6d {
     void ApplyForceAndTorqueToBody();
 
     std::shared_ptr<chrono::ChBody> body_;          ///< Pointer to the body this force is applied to.
-    int b_num_;                                     ///< Body's index in the system. Currently 1-indexed.
-    ComponentFunc forces_[6];                       ///< Forces for each degree of freedom.
-    std::shared_ptr<ComponentFunc> force_ptrs_[6];  ///< Pointers to the forces.
+    
+    /// Body index in the system (1-indexed, parsed from Chrono body name "bodyN").
+    /// This matches Chrono's body naming convention where bodies are named body1, body2, etc.
+    int b_num_;
+    
+    ComponentFunc forces_[kDofPerBody];                       ///< Forces for each degree of freedom.
+    std::shared_ptr<ComponentFunc> force_ptrs_[kDofPerBody];  ///< Pointers to the forces.
     std::shared_ptr<chrono::ChForce> chrono_force_;  ///< Chrono force for the body.
     std::shared_ptr<chrono::ChForce> chrono_torque_; ///< Chrono torque for the body.
     TestHydro* all_hydro_forces_;                   ///< Pointer to TestHydro for calculations.
@@ -214,8 +224,65 @@ struct HydroProfileStats {
     int waves_calls             = 0;
 };
 
-// TODO: Rename TestHydro for clarity, perhaps to HydroForces?
-// TODO: Split TestHydro class from its helper classes for clearer code structure.
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+//  TestHydro — Primary Hydrodynamics Façade / Adapter
+//
+// ═══════════════════════════════════════════════════════════════════════════════
+/**
+ * @brief Primary hydrodynamics façade for HydroChrono applications.
+ *
+ * TestHydro is the main user-facing object for attaching hydrodynamic forces to
+ * Chrono bodies. Despite its name (a historical artifact), it is NOT a test-only
+ * class — it is the production hydrodynamics adapter used by all workflows.
+ *
+ * @note The name "TestHydro" is retained for backward compatibility. New code
+ *       may use the alias `HydroForces` for clarity (see below).
+ *
+ * ## What It Does
+ *
+ * TestHydro bridges three layers:
+ *   1. **Chrono bodies** — The physical bodies in the Chrono simulation.
+ *   2. **HydroSystem (core)** — Chrono-free hydrodynamic force computation.
+ *   3. **Chrono force callbacks** — ChForce functions that Chrono calls each timestep.
+ *
+ * ## Typical Usage
+ *
+ * @code{.cpp}
+ *   // Create Chrono bodies
+ *   auto body1 = chrono_types::make_shared<ChBody>();
+ *   body1->SetName("body1");
+ *   system.Add(body1);
+ *
+ *   // Attach hydrodynamic forces (with or without waves)
+ *   std::vector<std::shared_ptr<ChBody>> bodies = {body1};
+ *   TestHydro hydro(bodies, "path/to/hydro_data.h5");
+ *   hydro.AddWaves(std::make_shared<RegularWave>(...));
+ *
+ *   // Run simulation — Chrono automatically queries TestHydro for forces
+ * @endcode
+ *
+ * ## Used By
+ *
+ *   - **C++ tests and demos** — Directly instantiate TestHydro with bodies and H5 file.
+ *   - **YAML runner (hydrochrono.exe)** — SetupHydroFromYAML creates TestHydro internally.
+ *
+ * ## Architecture Notes
+ *
+ *   - Internally delegates to HydroSystem + ChronoHydroCoupler for force computation.
+ *   - Maintains velocity history for radiation damping convolution.
+ *   - Caches forces per timestep to avoid redundant computation.
+ *
+ * ## Body Indexing Convention
+ *
+ *   Chrono bodies must be named "body1", "body2", etc. The numeric suffix is parsed
+ *   to determine body order. Internally, body indices are **1-based** in the callback
+ *   interface (CoordinateFuncForBody) to match this naming convention.
+ *
+ * @see HydroForces (alias below)
+ * @see HydroSystem (Chrono-free hydrodynamic core)
+ * @see ChronoHydroCoupler (extracts state from Chrono bodies)
+ */
 class TestHydro {
   public:
     TestHydro() = delete;
@@ -328,13 +395,20 @@ class TestHydro {
     /**
      * @brief Calculates or retrieves the total force on a specific body in a particular degree of freedom.
      *
-     * If the total force for the body and DOF was computed for the current timestep, it's retrieved.
-     * Otherwise, the function calculates it. Note: Body index is 1-based here due to its origin from ForceFunc6d.
+     * This is the main entry point called by Chrono's ChForce callbacks during simulation.
+     * Forces are computed once per timestep and cached; subsequent calls within the same
+     * timestep return the cached value.
      *
-     * @param b Body index (1-based due to source from ForceFunc6d).
-     * @param i Degree of Freedom (DOF) index, ranging from [0,...5].
+     * @note **1-Based Body Indexing**: The body index `b` is 1-based (body1 → b=1, body2 → b=2, etc.)
+     *       to match Chrono's body naming convention. This is intentional and matches how
+     *       ForceFunc6d parses body names like "body1", "body2", etc.
      *
-     * @return Component of the force vector for body 'b' and DOF 'i'.
+     * @param b Body index (1-based: valid range is [1, num_bodies]).
+     * @param i Degree of Freedom (DOF) index (0-based: 0=surge, 1=sway, 2=heave, 3=roll, 4=pitch, 5=yaw).
+     *
+     * @return Force component for body 'b' in DOF 'i' (Newtons for forces, Newton-meters for torques).
+     *
+     * @throws std::out_of_range if b or i are out of valid range.
      */
     double CoordinateFuncForBody(int b, int i);
 
@@ -458,5 +532,22 @@ class TestHydro {
     // Subsequent calls are no-ops. Called automatically by CoordinateFuncForBody().
     void EnsureHydroSystemAndCoupler();
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Public Alias for Clarity
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * @brief Alias for TestHydro — the primary hydrodynamics façade.
+ *
+ * HydroForces is the recommended name for new code. The underlying class
+ * is TestHydro (historical name retained for backward compatibility).
+ *
+ * Usage:
+ * @code{.cpp}
+ *   HydroForces hydro(bodies, "hydro_data.h5");
+ *   hydro.AddWaves(my_waves);
+ * @endcode
+ */
+using HydroForces = TestHydro;
 
 #endif

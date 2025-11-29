@@ -8,7 +8,6 @@
 #include <hydroc/io/h5_reader.h>
 
 #include <Eigen/Dense>
-#include <cassert>
 #include <algorithm>
 #include <stdexcept>
 
@@ -33,7 +32,30 @@ RadiationComponent::RadiationComponent(
       rirf_time_vector_(rirf_time_vector),
       rirf_width_vector_(rirf_width_vector),
       rirf_processed_ready_(false) {
-    assert(num_bodies_ > 0);
+    // Require at least one body for radiation damping computation.
+    if (num_bodies_ <= 0) {
+        throw std::invalid_argument(
+            "RadiationComponent: num_bodies must be > 0 (got " + std::to_string(num_bodies_) + ")");
+    }
+
+    // Validate RIRF time series data from HDF5.
+    if (rirf_steps <= 0) {
+        throw std::invalid_argument(
+            "RadiationComponent: rirf_steps must be > 0 (got " + std::to_string(rirf_steps) +
+            "). Check that HDF5 file contains valid RIRF data.");
+    }
+
+    // Validate RIRF time and width vectors match the expected size.
+    if (static_cast<int>(rirf_time_vector_.size()) != rirf_steps) {
+        throw std::invalid_argument(
+            "RadiationComponent: rirf_time_vector size mismatch (expected " +
+            std::to_string(rirf_steps) + ", got " + std::to_string(rirf_time_vector_.size()) + ")");
+    }
+    if (static_cast<int>(rirf_width_vector_.size()) != rirf_steps) {
+        throw std::invalid_argument(
+            "RadiationComponent: rirf_width_vector size mismatch (expected " +
+            std::to_string(rirf_steps) + ", got " + std::to_string(rirf_width_vector_.size()) + ")");
+    }
 }
 
 void RadiationComponent::EnsureProcessedRIRF() {
@@ -78,13 +100,17 @@ double RadiationComponent::GetRIRFval(int row, int col, int st) {
 void RadiationComponent::Compute(const SystemState& state,
                              double time,
                              BodyForces& inout_forces) {
-    assert(static_cast<int>(state.bodies.size()) == num_bodies_);
-    assert(static_cast<int>(inout_forces.size()) == num_bodies_);
-
-    const int rirf_steps = file_info_.GetRIRFDims(2);
-    const int total_dofs = kDofPerBody * num_bodies_;
-
-    assert(total_dofs > 0 && rirf_steps > 0);
+    // Internal consistency check: state and forces must match expected body count.
+    if (static_cast<int>(state.bodies.size()) != num_bodies_) {
+        throw std::runtime_error(
+            "RadiationComponent::Compute: state.bodies.size() mismatch (expected " +
+            std::to_string(num_bodies_) + ", got " + std::to_string(state.bodies.size()) + ")");
+    }
+    if (static_cast<int>(inout_forces.size()) != num_bodies_) {
+        throw std::runtime_error(
+            "RadiationComponent::Compute: inout_forces.size() mismatch (expected " +
+            std::to_string(num_bodies_) + ", got " + std::to_string(inout_forces.size()) + ")");
+    }
 
     // If using TaperedDirect, ensure processed kernel is ready
     if (convolution_mode_ == RadiationConvolutionMode::TaperedDirect) {

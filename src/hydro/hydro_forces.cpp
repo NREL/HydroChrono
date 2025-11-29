@@ -172,7 +172,7 @@ double ComponentFunc::GetVal(double x) const {
 }
 
 ForceFunc6d::ForceFunc6d() : forces_{{this, 0}, {this, 1}, {this, 2}, {this, 3}, {this, 4}, {this, 5}} {
-    for (unsigned i = 0; i < 6; i++) {
+    for (unsigned i = 0; i < kDofPerBody; i++) {
         force_ptrs_[i] = std::shared_ptr<ComponentFunc>(forces_ + i, [](ComponentFunc*) {});
         // sets force_ptrs[i] to point to forces[i] but since forces is on the stack, it is faster and it is
         // automatically deallocated...shared pointers typically manage heap pointers, and will try deleting
@@ -190,9 +190,14 @@ ForceFunc6d::ForceFunc6d() : forces_{{this, 0}, {this, 1}, {this, 2}, {this, 3},
 
 ForceFunc6d::ForceFunc6d(std::shared_ptr<ChBody> object, TestHydro* user_all_forces) : ForceFunc6d() {
     body_             = object;
-    std::string temp  = body_->GetName();        // remove "body" from "bodyN", convert N to int, get body num
-    b_num_            = stoi(temp.erase(0, 4));  // 1 indexed TODO: fix b_num starting here to be 0 indexed
-    all_hydro_forces_ = user_all_forces;         // TODO switch to smart pointers? does this use = ?
+    
+    // Parse body index from Chrono body name (e.g., "body1" → 1, "body2" → 2).
+    // This establishes the 1-based indexing convention used throughout the force callback system.
+    // The body name must follow the pattern "bodyN" where N is a positive integer.
+    std::string temp  = body_->GetName();
+    b_num_            = stoi(temp.erase(0, 4));  // 1-indexed body number
+    
+    all_hydro_forces_ = user_all_forces;
     if (all_hydro_forces_ == NULL) {
         std::cout << "all hydro forces null " << std::endl;
     }
@@ -203,7 +208,7 @@ ForceFunc6d::ForceFunc6d(std::shared_ptr<ChBody> object, TestHydro* user_all_for
 
 ForceFunc6d::ForceFunc6d(const ForceFunc6d& old)
     : forces_{{this, 0}, {this, 1}, {this, 2}, {this, 3}, {this, 4}, {this, 5}} {
-    for (unsigned i = 0; i < 6; i++) {
+    for (unsigned i = 0; i < kDofPerBody; i++) {
         force_ptrs_[i] = std::shared_ptr<ComponentFunc>(forces_ + i, [](ComponentFunc*) {});
         // sets force_ptrs[i] to point to forces[i] but since forces is on the stack, it is faster and it is
         // automatically deallocated...shared pointers typically manage heap pointers, and will try deleting
@@ -221,13 +226,13 @@ ForceFunc6d::ForceFunc6d(const ForceFunc6d& old)
 }
 
 double ForceFunc6d::CoordinateFunc(int i) {
-    // b_num is 1 indexed?
     if (i >= kDofPerBody || i < 0) {
         std::cout << "wrong index force func 6d" << std::endl;
         return 0;
     }
-    return all_hydro_forces_->CoordinateFuncForBody(
-        b_num_, i);  // b_num is 1 indexed here!!!!! TODO: change all b_num to be 0 indexed everywhere
+    // b_num_ is 1-indexed (body1 → 1, body2 → 2, etc.) to match Chrono body naming convention.
+    // CoordinateFuncForBody expects this 1-based indexing.
+    return all_hydro_forces_->CoordinateFuncForBody(b_num_, i);
 }
 
 void ForceFunc6d::SetForce() {
@@ -704,13 +709,22 @@ Eigen::VectorXd TestHydro::ComputeForceWaves() {
 // Called by Chrono via ForceFunc6d/ComponentFunc callbacks.
 // Routes force computation through HydroSystem + ChronoHydroCoupler.
 // Forces are cached per timestep via prev_time check.
+//
+// INDEXING CONVENTION:
+//   - Body index `b` is 1-based (body1 → 1, body2 → 2, etc.)
+//   - DOF index `dof_index` is 0-based (0=surge, 1=sway, ..., 5=yaw)
+//   - Internal arrays use 0-based indexing; we convert b to 0-based below.
 
 double TestHydro::CoordinateFuncForBody(int b, int dof_index) {
+    // Validate inputs: b is 1-based [1, num_bodies], dof_index is 0-based [0, 5]
     if (dof_index < 0 || dof_index >= kDofPerBody || b < 1 || b > num_bodies_) {
-        throw std::out_of_range("Invalid index in CoordinateFuncForBody");
+        throw std::out_of_range("Invalid index in CoordinateFuncForBody: "
+            "b=" + std::to_string(b) + " (valid: 1-" + std::to_string(num_bodies_) + "), "
+            "dof=" + std::to_string(dof_index) + " (valid: 0-5)");
     }
 
-    // Adjusting for 1-indexed body number
+    // Convert 1-based body index to 0-based offset into the flat force array.
+    // Body 1 → offset 0, Body 2 → offset 6, etc.
     const int body_num_offset = kDofPerBody * (b - 1);
     const int total_dofs      = kDofPerBody * num_bodies_;
 

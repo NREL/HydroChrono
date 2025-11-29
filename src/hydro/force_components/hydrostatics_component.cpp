@@ -7,7 +7,7 @@
 #include <hydroc/io/h5_reader.h>
 
 #include <Eigen/Dense>
-#include <cassert>
+#include <stdexcept>
 
 namespace hydrochrono::hydro {
 
@@ -22,14 +22,46 @@ HydrostaticsComponent::HydrostaticsComponent(
       equilibrium_(equilibrium),
       cb_minus_cg_(cb_minus_cg),
       gravitational_acceleration_(gravitational_acceleration) {
-    assert(num_bodies_ > 0);
+    // Require at least one body for hydrostatic force computation.
+    if (num_bodies_ <= 0) {
+        throw std::invalid_argument(
+            "HydrostaticsComponent: num_bodies must be > 0 (got " + std::to_string(num_bodies_) + ")");
+    }
+
+    // Validate equilibrium array size: must have 6 DOF per body.
+    const int expected_equilibrium_size = kDofPerBody * num_bodies_;
+    if (static_cast<int>(equilibrium_.size()) != expected_equilibrium_size) {
+        throw std::invalid_argument(
+            "HydrostaticsComponent: equilibrium array size mismatch (expected " +
+            std::to_string(expected_equilibrium_size) + ", got " +
+            std::to_string(equilibrium_.size()) + ")");
+    }
+
+    // Validate cb_minus_cg array size: must have 3 components per body.
+    const int expected_cb_cg_size = kDofLinOrRot * num_bodies_;
+    if (static_cast<int>(cb_minus_cg_.size()) != expected_cb_cg_size) {
+        throw std::invalid_argument(
+            "HydrostaticsComponent: cb_minus_cg array size mismatch (expected " +
+            std::to_string(expected_cb_cg_size) + ", got " +
+            std::to_string(cb_minus_cg_.size()) + ")");
+    }
 }
 
 void HydrostaticsComponent::Compute(const SystemState& state,
                                 double time,
                                 BodyForces& inout_forces) {
-    assert(static_cast<int>(state.bodies.size()) == num_bodies_);
-    assert(static_cast<int>(inout_forces.size()) == num_bodies_);
+    // Internal consistency check: state and forces must match expected body count.
+    // This can fail if HydroSystem is misused (integration bug, not user config error).
+    if (static_cast<int>(state.bodies.size()) != num_bodies_) {
+        throw std::runtime_error(
+            "HydrostaticsComponent::Compute: state.bodies.size() mismatch (expected " +
+            std::to_string(num_bodies_) + ", got " + std::to_string(state.bodies.size()) + ")");
+    }
+    if (static_cast<int>(inout_forces.size()) != num_bodies_) {
+        throw std::runtime_error(
+            "HydrostaticsComponent::Compute: inout_forces.size() mismatch (expected " +
+            std::to_string(num_bodies_) + ", got " + std::to_string(inout_forces.size()) + ")");
+    }
 
     const double rho = file_info_.GetRhoVal();
     const double rho_times_g = rho * gravitational_acceleration_.norm();

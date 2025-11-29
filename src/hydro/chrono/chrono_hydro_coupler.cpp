@@ -6,7 +6,7 @@
 #include <hydroc/coupling/chrono_coupler.h>
 #include "chrono_state_utils.h"
 
-#include <cassert>
+#include <stdexcept>
 
 namespace hydrochrono::hydro {
 
@@ -15,8 +15,17 @@ ChronoHydroCoupler::ChronoHydroCoupler(
     std::vector<std::shared_ptr<chrono::ChBody>> bodies)
     : hydro_system_(hydro_system),
       bodies_(std::move(bodies)) {
-    assert(hydro_system_ != nullptr);
-    assert(!bodies_.empty());
+    // HydroSystem is required for force evaluation.
+    if (hydro_system_ == nullptr) {
+        throw std::invalid_argument(
+            "ChronoHydroCoupler: hydro_system pointer must not be null");
+    }
+
+    // At least one body is required for hydrodynamic coupling.
+    if (bodies_.empty()) {
+        throw std::invalid_argument(
+            "ChronoHydroCoupler: bodies vector must not be empty");
+    }
 }
 
 BodyForces ChronoHydroCoupler::Evaluate(double time) {
