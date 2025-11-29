@@ -59,7 +59,7 @@
 #include <hydroc/waves/irregular_wave.h>
 #include <hydroc/logging.h>
 #include <hydroc/core/system_state.h>
-#include "core/chrono_state_utils.h"
+#include "chrono/chrono_state_utils.h"
 #include "force_components/hydrostatics_component.h"
 #include "force_components/radiation_component.h"
 #include "force_components/excitation_component.h"
@@ -349,7 +349,7 @@ const hydrochrono::hydro::SystemState& TestHydro::GetCachedSystemState(double ti
     }
 
     // Fallback: build state now (should not happen in normal flow)
-    hydrochrono::hydro::BuildSystemStateFromChronoBodies(bodies_, cached_state_);
+    hydrochrono::hydro::chrono_coupling::BuildSystemStateFromChronoBodies(bodies_, cached_state_);
     cached_state_time_ = time;
     return cached_state_;
 }
@@ -714,7 +714,7 @@ double TestHydro::CoordinateFuncForBody(int b, int dof_index) {
     prev_time = bodies_[0]->GetChTime();
 
     // Build SystemState once for this timestep
-    hydrochrono::hydro::BuildSystemStateFromChronoBodies(bodies_, cached_state_);
+    hydrochrono::hydro::chrono_coupling::BuildSystemStateFromChronoBodies(bodies_, cached_state_);
     cached_state_time_ = prev_time;
 
     // Ensure HydroSystem + ChronoHydroCoupler are initialized

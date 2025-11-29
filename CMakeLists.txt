@@ -356,8 +356,9 @@ set(HYDROCHRONO_SOURCES
     src/hydro/waves/irregular_wave.cpp
     src/hydro/radiation/radiation_rirf_processing.cpp
     src/hydro/radiation/radiation_rirf_convolution.cpp
-    src/hydro/core/chrono_state_utils.cpp
     src/hydro/core/hydro_system.cpp
+    # Chrono coupling layer (bridges Chrono physics with Chrono-free core)
+    src/hydro/chrono/chrono_state_utils.cpp
     src/hydro/chrono/chrono_hydro_coupler.cpp
     src/hydro/force_components/hydrostatics_component.cpp
     src/hydro/force_components/radiation_component.cpp

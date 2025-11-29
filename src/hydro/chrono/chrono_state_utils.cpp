@@ -1,11 +1,13 @@
 /*********************************************************************
  * @file  chrono_state_utils.cpp
  * @brief Implementation of Chrono-SystemState conversion utilities.
+ *
+ * Part of the Chrono coupling layer (src/hydro/chrono/).
  *********************************************************************/
 
 #include "chrono_state_utils.h"
 
-namespace hydrochrono::hydro {
+namespace hydrochrono::hydro::chrono_coupling {
 
 void BuildSystemStateFromChronoBodies(
     const std::vector<std::shared_ptr<chrono::ChBody>>& bodies,
@@ -44,5 +46,5 @@ void BuildSystemStateFromChronoBodies(
     }
 }
 
-}  // namespace hydrochrono::hydro
+}  // namespace hydrochrono::hydro::chrono_coupling
 

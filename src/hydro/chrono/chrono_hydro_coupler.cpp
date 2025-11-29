@@ -4,7 +4,7 @@
  *********************************************************************/
 
 #include <hydroc/coupling/chrono_coupler.h>
-#include "../core/chrono_state_utils.h"
+#include "chrono_state_utils.h"
 
 #include <cassert>
 
@@ -22,7 +22,7 @@ ChronoHydroCoupler::ChronoHydroCoupler(
 BodyForces ChronoHydroCoupler::Evaluate(double time) {
     // Build SystemState from Chrono bodies
     SystemState system_state;
-    BuildSystemStateFromChronoBodies(bodies_, system_state);
+    chrono_coupling::BuildSystemStateFromChronoBodies(bodies_, system_state);
 
     // Evaluate forces via HydroSystem
     return hydro_system_->Evaluate(system_state, time);
