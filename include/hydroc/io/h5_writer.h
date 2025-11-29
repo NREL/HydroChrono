@@ -1,8 +1,5 @@
-#ifndef HYDROC_H5_WRITER_H
-#define HYDROC_H5_WRITER_H
-
-/**
- * @file h5_writer.h
+/*********************************************************************
+ * @file  h5_writer.h
  * @brief Lightweight RAII writer over the HDF5 C++ API (H5Cpp.h).
  *
  * Provides a compact, easy-to-use interface to write groups, attributes, and
@@ -13,7 +10,9 @@
  * @note Types: strings are written as variable-length UTF-8; numeric datasets use native double.
  * @note Errors: global HDF5 error printing is disabled; failures surface as HDF5 exceptions or std::runtime_error on open.
  * @note Thread-safety: not thread-safe; synchronize externally if shared across threads.
- */
+ *********************************************************************/
+#ifndef HYDROC_IO_H5_WRITER_H
+#define HYDROC_IO_H5_WRITER_H
 
 #include <H5Cpp.h>
 #include <string>
@@ -148,4 +147,5 @@ class H5Writer {
 
 } // namespace hydroc
 
-#endif // HYDROC_H5_WRITER_H
+#endif // HYDROC_IO_H5_WRITER_H
+

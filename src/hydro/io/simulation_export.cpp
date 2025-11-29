@@ -3,8 +3,8 @@
  * @brief Implementation of SimulationExporter (HDF5 export).
  */
 
-#include <hydroc/simulation_exporter.h>
-#include <hydroc/h5_writer.h>
+#include <hydroc/io/simulation_export.h>
+#include <hydroc/io/h5_writer.h>
 #include <hydroc/wave_types.h>
 #include <hydroc/version.h>
 #include <hydroc/logging.h>

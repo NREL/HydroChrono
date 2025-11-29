@@ -1,13 +1,14 @@
-#ifndef H5FILEINFO_H
-#define H5FILEINFO_H
 /*********************************************************************
- * @file  h5fileinfo.h
+ * @file  h5_reader.h
  *
- * @brief header file of HydroData main class and helper class \
- * H5FileInfo.
+ * @brief HDF5 reader for hydrodynamic data (HydroData and H5FileInfo).
+ *
+ * This header provides the public API for reading BEMIO-formatted HDF5
+ * hydrodynamic data files. HydroData holds the parsed coefficients and
+ * H5FileInfo handles file loading.
  *********************************************************************/
-// TODO: clean up include statements
-#pragma once
+#ifndef HYDROC_IO_H5_READER_H
+#define HYDROC_IO_H5_READER_H
 
 #include <limits>
 #include <optional>
@@ -29,9 +30,7 @@ class H5File;
 
 class H5FileInfo;
 
-// TODO separate these 2 classes into 2 files? (and corresponding .cpp)
-
-// contains "chunked" data from the h5 file, generated from H5FileInfor class
+// contains "chunked" data from the h5 file, generated from H5FileInfo class
 class HydroData {
   public:
     struct BodyInfo {
@@ -45,7 +44,6 @@ class HydroData {
         Eigen::MatrixXd lin_matrix;
         Eigen::MatrixXd inf_added_mass;
         Eigen::Tensor<double, 3> rirf_matrix;
-        // Eigen::Tensor<double, 3> radiation_damping_matrix;
     };
     struct SimulationParameters {
         std::string h5_file_name;
@@ -59,15 +57,11 @@ class HydroData {
         Eigen::Tensor<double, 3> excitation_phase_matrix;
     };
     struct IrregularWaveInfo {
-        // Eigen::Tensor<double,3> excitation_re_matrix;
-        // Eigen::Vector3i re_dims;
-        // Eigen::Tensor<double, 3> excitation_im_matrix;
-        // Eigen::Vector3i im_dims;
         Eigen::VectorXd excitation_irf_time;
-        Eigen::MatrixXd excitation_irf_matrix;  // TODO needs to be tensor?
+        Eigen::MatrixXd excitation_irf_matrix;
 
         // see std::optional documentation for how to use
-        std::optional<Eigen::MatrixXd> excitation_irf_resampled;  // TODO needs to be tensor?
+        std::optional<Eigen::MatrixXd> excitation_irf_resampled;
         std::optional<Eigen::MatrixXd> excitation_irf_time_resampled;
     };
 
@@ -160,8 +154,8 @@ class HydroData {
      */
     Eigen::VectorXd GetCBVector(int b) const { return body_data_[b].cb; }
 
-    double GetExcitationIRFVal(int b, int dof, int s) const;  // TODO if this isn't used get rid of it
-    Eigen::MatrixXd GetExcitationIRF(int b) const;            // TODO if this isn't used get rid of it
+    double GetExcitationIRFVal(int b, int dof, int s) const;
+    Eigen::MatrixXd GetExcitationIRF(int b) const;
 
     // things that are the same no matter the body, don't need body argument
     /**
@@ -225,11 +219,14 @@ class HydroData {
     std::vector<IrregularWaveInfo>& GetIrregularWaveInfos() { return irreg_wave_data_; }
 };
 
-// TODO change name to LoadH5File or ReadH5File or H5Init or something similar to give better description of
-// functionality used only to initialize everything in HydroData from the h5 file
+/**
+ * @brief HDF5 file reader for hydrodynamic data.
+ *
+ * Reads BEMIO-formatted HDF5 files and produces a HydroData object.
+ */
 class H5FileInfo {
   public:
-    bool printed = false;  // TODO remove this, dont use here
+    bool printed = false;
 
     /**
      * @brief prepares for h5 file reading, checks file exists.
@@ -257,7 +254,7 @@ class H5FileInfo {
      *
      * @return newly initialized HydroData object
      */
-    HydroData ReadH5Data();  // TODO: eventually pass user input struct here? instead of making it in function?
+    HydroData ReadH5Data();
 
   private:
     std::string h5_file_name_;
@@ -299,7 +296,7 @@ class H5FileInfo {
      * @param[in] data_name data name within file to extract value from
      * @param[out] var variable to be set from h5 info
      */
-    void Init3D(H5::H5File& file, std::string data_name, Eigen::Tensor<double, 3>& var /*, std::vector<int>& dims*/);
+    void Init3D(H5::H5File& file, std::string data_name, Eigen::Tensor<double, 3>& var);
 
     /**
      * @brief helper function for readH5Data() to remove the middle index of 3D data if that index is 1.
@@ -314,4 +311,4 @@ class H5FileInfo {
     Eigen::MatrixXd SqueezeMid(Eigen::Tensor<double, 3>& to_be_squeezed);
 };
 
-#endif
+#endif  // HYDROC_IO_H5_READER_H

@@ -10,7 +10,7 @@
  * @note Future: chunking/compression and additional data types can be added if needed.
  */
 
-#include <hydroc/h5_writer.h>
+#include <hydroc/io/h5_writer.h>
 
 #include <stdexcept>
 #include <sstream>

@@ -1,5 +1,5 @@
 /**
- * @file simulation_exporter.h
+ * @file simulation_export.h
  * @brief Public interface for exporting HydroChrono simulations to HDF5.
  *
  * Provides a thin, high-level API to record inputs, model description, and
@@ -10,8 +10,8 @@
  * @note Encoding & units: strings are UTF-8; time in seconds, distances in meters,
  *       angles in radians unless documented otherwise in attribute names.
  */
-#ifndef HYDROC_SIMULATION_EXPORTER_H
-#define HYDROC_SIMULATION_EXPORTER_H
+#ifndef HYDROC_IO_SIMULATION_EXPORT_H
+#define HYDROC_IO_SIMULATION_EXPORT_H
 
 #include <memory>
 #include <vector>
@@ -169,6 +169,5 @@ class SimulationExporter {
 
 } // namespace hydroc
 
-#endif // HYDROC_SIMULATION_EXPORTER_H
-
+#endif // HYDROC_IO_SIMULATION_EXPORT_H
 

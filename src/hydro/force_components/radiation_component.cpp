@@ -4,7 +4,7 @@
  *********************************************************************/
 
 #include "radiation_component.h"
-#include <hydroc/h5fileinfo.h>
+#include <hydroc/io/h5_reader.h>
 
 #include <Eigen/Dense>
 #include <cassert>

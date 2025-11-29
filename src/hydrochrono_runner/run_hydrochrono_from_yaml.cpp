@@ -4,7 +4,7 @@
 #include "../setup_hydro_from_yaml.h"
 #include "../hydro_yaml_parser.h"
 #include <hydroc/hydro_forces.h>
-#include <hydroc/simulation_exporter.h>
+#include <hydroc/io/simulation_export.h>
 #include <hydroc/wave_types.h>
 
 #include <chrono_parsers/yaml/ChParserMbsYAML.h>

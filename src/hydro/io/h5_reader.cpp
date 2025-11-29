@@ -6,7 +6,7 @@
  *********************************************************************/
 // TODO: this include statement list looks good
 #include <H5Cpp.h>
-#include <hydroc/h5fileinfo.h>
+#include <hydroc/io/h5_reader.h>
 #include <filesystem>  // std::filesystem::absolute
 #include <hydroc/logging.h>
 

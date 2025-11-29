@@ -9,7 +9,7 @@
 
 #include <chrono/core/ChMatrix.h>
 #include <chrono/physics/ChBody.h>
-#include <hydroc/h5fileinfo.h>
+#include <hydroc/io/h5_reader.h>
 #include <vector>
 
 #include <chrono/physics/ChLoad.h>

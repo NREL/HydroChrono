@@ -335,15 +335,19 @@ endfunction()
 
 # ── Main HydroChrono Library ──
 set(HYDROCHRONO_SOURCES
-    src/h5fileinfo.cpp
+    # IO module (consolidated under src/hydro/io/)
+    src/hydro/io/h5_reader.cpp
+    src/hydro/io/h5_writer.cpp
+    src/hydro/io/simulation_export.cpp
+    src/hydro/io/hydro_config_loader.cpp
+    # Core library sources
     src/chloadaddedmass.cpp
     src/hydro_forces.cpp
     src/helper.cpp
     src/wave_types.cpp
-    # src/simulation_logging.cpp  # removed in streamlined logging
     src/hydro_yaml_parser.cpp
     src/setup_hydro_from_yaml.cpp
-    src/hydro/io/hydro_config_loader.cpp
+    # Hydro modules
     src/hydro/waves/wave_base.cpp
     src/hydro/waves/wave_utilities.cpp
     src/hydro/waves/regular_wave.cpp
@@ -359,8 +363,6 @@ set(HYDROCHRONO_SOURCES
     # logging consolidated: coordinator + CLI (logging.cpp), backend (logger_backend.cpp)
     src/utils/logger_backend.cpp
     src/utils/logging.cpp
-    src/h5_writer.cpp
-    src/simulation_exporter.cpp
 )
 
 # Create the library target and configure it

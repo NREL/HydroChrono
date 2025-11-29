@@ -76,7 +76,7 @@
 #include <chrono/fea/ChMeshFileLoader.h>
 
 // Hydroc library includes
-#include <hydroc/h5fileinfo.h>
+#include <hydroc/io/h5_reader.h>
 #include <hydroc/wave_types.h>
 // Note: hydro_types.h is included at the top to avoid header guard conflicts
 

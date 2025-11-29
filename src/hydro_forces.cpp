@@ -53,7 +53,7 @@
 
 #include "hydroc/hydro_forces.h"
 #include <hydroc/chloadaddedmass.h>
-#include <hydroc/h5fileinfo.h>
+#include <hydroc/io/h5_reader.h>
 #include <hydroc/wave_types.h>
 #include <hydroc/logging.h>
 #include <hydroc/system_state.h>
