@@ -1,19 +1,23 @@
 /*********************************************************************
- * @file  chrono_hydro_coupler.h
+ * @file  chrono_coupler.h
  * @brief ChronoHydroCoupler: bridges Chrono bodies and HydroSystem.
  *********************************************************************/
 
-#ifndef HYDRO_CHRONO_CHRONO_HYDRO_COUPLER_H
-#define HYDRO_CHRONO_CHRONO_HYDRO_COUPLER_H
+#ifndef HYDROC_COUPLING_CHRONO_COUPLER_H
+#define HYDROC_COUPLING_CHRONO_COUPLER_H
 
-#include <hydroc/system_state.h>
-#include "../core/hydro_system.h"
-#include "../core/chrono_state_utils.h"
+#include <hydroc/core/system_state.h>
+#include <hydroc/core/hydro_system.h>
 #include <chrono/physics/ChBody.h>
 #include <vector>
 #include <memory>
 
 namespace hydrochrono::hydro {
+
+// Forward declaration for internal utilities
+void BuildSystemStateFromChronoBodies(
+    const std::vector<std::shared_ptr<chrono::ChBody>>& bodies,
+    SystemState& out_state);
 
 /**
  * @brief ChronoHydroCoupler: bridges Chrono bodies and HydroSystem.
@@ -80,5 +84,5 @@ private:
 
 }  // namespace hydrochrono::hydro
 
-#endif  // HYDRO_CHRONO_CHRONO_HYDRO_COUPLER_H
+#endif  // HYDROC_COUPLING_CHRONO_COUPLER_H
 

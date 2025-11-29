@@ -5,7 +5,9 @@
 
 #include <hydroc/io/simulation_export.h>
 #include <hydroc/io/h5_writer.h>
-#include <hydroc/wave_types.h>
+#include <hydroc/waves/wave_base.h>
+#include <hydroc/waves/regular_wave.h>
+#include <hydroc/waves/irregular_wave.h>
 #include <hydroc/version.h>
 #include <hydroc/logging.h>
 

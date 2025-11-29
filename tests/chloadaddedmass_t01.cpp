@@ -1,4 +1,4 @@
-#include <hydroc/chloadaddedmass.h>
+#include <hydroc/coupling/added_mass.h>
 #include <hydroc/io/h5_reader.h>
 #include <hydroc/helper.h>
 

@@ -6,8 +6,8 @@
 #ifndef HYDRO_FORCE_COMPONENTS_RADIATION_COMPONENT_H
 #define HYDRO_FORCE_COMPONENTS_RADIATION_COMPONENT_H
 
-#include "../core/hydro_force_component.h"
-#include <hydroc/system_state.h>
+#include <hydroc/core/force_component.h>
+#include <hydroc/core/system_state.h>
 #include "../radiation/radiation_rirf_convolution.h"
 #include "../radiation/radiation_rirf_processing.h"
 #include <Eigen/Dense>

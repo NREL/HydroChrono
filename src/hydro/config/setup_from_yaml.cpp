@@ -35,7 +35,9 @@
 #include "setup_from_yaml.h"
 #include "config_loader.h"
 #include <hydroc/hydro_forces.h> // For TestHydro
-#include <hydroc/wave_types.h>    // For WaveBase, RegularWave, IrregularWaves, NoWave
+#include <hydroc/waves/wave_base.h>
+#include <hydroc/waves/regular_wave.h>
+#include <hydroc/waves/irregular_wave.h>
 #include <hydroc/logging.h>         // For Logger
 #include <filesystem>
 #include <iostream>

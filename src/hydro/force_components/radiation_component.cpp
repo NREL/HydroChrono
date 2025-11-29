@@ -4,6 +4,7 @@
  *********************************************************************/
 
 #include "radiation_component.h"
+#include <hydroc/core/force_component.h>
 #include <hydroc/io/h5_reader.h>
 
 #include <Eigen/Dense>

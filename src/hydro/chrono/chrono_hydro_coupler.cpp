@@ -3,7 +3,8 @@
  * @brief Implementation of ChronoHydroCoupler.
  *********************************************************************/
 
-#include "chrono_hydro_coupler.h"
+#include <hydroc/coupling/chrono_coupler.h>
+#include "../core/chrono_state_utils.h"
 
 #include <cassert>
 

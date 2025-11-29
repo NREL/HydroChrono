@@ -3,15 +3,16 @@
  * @brief Regular wave model declarations.
  *********************************************************************/
 
-#ifndef HYDRO_WAVES_REGULAR_WAVE_H
-#define HYDRO_WAVES_REGULAR_WAVE_H
+#ifndef HYDROC_WAVES_REGULAR_WAVE_H
+#define HYDROC_WAVES_REGULAR_WAVE_H
 
-#include "wave_base.h"
-#include "wave_utilities.h"
-
+#include <hydroc/waves/wave_base.h>
 #include <hydroc/io/h5_reader.h>
 
 #include <vector>
+
+// Forward declaration for internal utilities (not exposed in public API)
+// Wave utilities are internal implementation details
 
 class RegularWave : public WaveBase {
   public:
@@ -46,5 +47,5 @@ class RegularWave : public WaveBase {
     double GetExcitationPhaseInterp(int b, int i, int j, double freq_index_des) const;
 };
 
-#endif  // HYDRO_WAVES_REGULAR_WAVE_H
+#endif  // HYDROC_WAVES_REGULAR_WAVE_H
 

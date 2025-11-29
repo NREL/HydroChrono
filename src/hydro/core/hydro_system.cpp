@@ -3,7 +3,7 @@
  * @brief Implementation of HydroSystem façade.
  *********************************************************************/
 
-#include "hydro_system.h"
+#include <hydroc/core/hydro_system.h>
 
 #include <cassert>
 #include <chrono>

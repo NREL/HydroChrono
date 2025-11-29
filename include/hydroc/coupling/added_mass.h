@@ -1,11 +1,11 @@
-#ifndef CHLOADADDEDMASS_H
-#define CHLOADADDEDMASS_H
 /*********************************************************************
- * @file  chloadaddedmass.h
+ * @file  added_mass.h
  *
- * @brief header file for added mass chload class.
+ * @brief Header file for added mass ChLoad class.
  *********************************************************************/
-#pragma once
+
+#ifndef HYDROC_COUPLING_ADDED_MASS_H
+#define HYDROC_COUPLING_ADDED_MASS_H
 
 #include <chrono/core/ChMatrix.h>
 #include <chrono/physics/ChBody.h>
@@ -16,7 +16,6 @@
 #include <chrono/physics/ChSystem.h>
 
 using namespace chrono;
-// using namespace chrono::fea;
 
 // =============================================================================
 class ChLoadAddedMass : public chrono::ChLoadCustomMultiple {
@@ -89,4 +88,5 @@ class ChLoadAddedMass : public chrono::ChLoadCustomMultiple {
     virtual bool IsStiff() override { return true; }  // this to force the use of the inertial M, R and K matrices
 };
 
-#endif
+#endif  // HYDROC_COUPLING_ADDED_MASS_H
+

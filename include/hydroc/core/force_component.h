@@ -1,12 +1,12 @@
 /*********************************************************************
- * @file  hydro_force_component.h
+ * @file  force_component.h
  * @brief Interface for hydrodynamic force components.
  *********************************************************************/
 
-#ifndef HYDRO_CORE_HYDRO_FORCE_COMPONENT_H
-#define HYDRO_CORE_HYDRO_FORCE_COMPONENT_H
+#ifndef HYDROC_CORE_FORCE_COMPONENT_H
+#define HYDROC_CORE_FORCE_COMPONENT_H
 
-#include <hydroc/system_state.h>
+#include <hydroc/core/system_state.h>
 
 namespace hydrochrono::hydro {
 
@@ -61,5 +61,5 @@ public:
 
 }  // namespace hydrochrono::hydro
 
-#endif  // HYDRO_CORE_HYDRO_FORCE_COMPONENT_H
+#endif  // HYDROC_CORE_FORCE_COMPONENT_H
 

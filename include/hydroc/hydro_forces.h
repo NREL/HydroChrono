@@ -45,7 +45,7 @@
 
 // Include hydro_types.h FIRST to ensure BodyForces and GeneralizedForce are available
 // before any other includes that might conflict (e.g., config/hydro_config.h)
-#include <hydroc/hydro_types.h>
+#include <hydroc/core/hydro_types.h>
 
 // Standard includes
 #include <cstdio>
@@ -77,11 +77,12 @@
 
 // Hydroc library includes
 #include <hydroc/io/h5_reader.h>
-#include <hydroc/wave_types.h>
-// Note: hydro_types.h is included at the top to avoid header guard conflicts
+#include <hydroc/waves/wave_base.h>
+#include <hydroc/waves/regular_wave.h>
+#include <hydroc/waves/irregular_wave.h>
 
 // Public hydroc includes (for SystemState)
-#include <hydroc/system_state.h>
+#include <hydroc/core/system_state.h>
 
 namespace hydrochrono::hydro {
 // Forward declarations

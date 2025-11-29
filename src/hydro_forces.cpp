@@ -52,17 +52,19 @@
  *********************************************************************/
 
 #include "hydroc/hydro_forces.h"
-#include <hydroc/chloadaddedmass.h>
+#include <hydroc/coupling/added_mass.h>
 #include <hydroc/io/h5_reader.h>
-#include <hydroc/wave_types.h>
+#include <hydroc/waves/wave_base.h>
+#include <hydroc/waves/regular_wave.h>
+#include <hydroc/waves/irregular_wave.h>
 #include <hydroc/logging.h>
-#include <hydroc/system_state.h>
+#include <hydroc/core/system_state.h>
 #include "hydro/core/chrono_state_utils.h"
 #include "hydro/force_components/hydrostatics_component.h"
 #include "hydro/force_components/radiation_component.h"
 #include "hydro/force_components/excitation_component.h"
-#include "hydro/core/hydro_system.h"
-#include "hydro/chrono/chrono_hydro_coupler.h"
+#include <hydroc/core/hydro_system.h>
+#include <hydroc/coupling/chrono_coupler.h>
 #include "hydro/radiation/radiation_rirf_processing.h"
 
 #include <chrono/physics/ChLoad.h>

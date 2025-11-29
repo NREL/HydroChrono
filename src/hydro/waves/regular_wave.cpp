@@ -3,7 +3,8 @@
  * @brief Regular wave model implementation.
  *********************************************************************/
 
-#include "regular_wave.h"
+#include <hydroc/waves/regular_wave.h>
+#include "wave_utilities.h"
 
 #include <cmath>
 

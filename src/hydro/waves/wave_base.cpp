@@ -3,7 +3,7 @@
  * @brief Base wave model implementations.
  *********************************************************************/
 
-#include "wave_base.h"
+#include <hydroc/waves/wave_base.h>
 
 NoWave::NoWave() : num_bodies_(1) {}
 

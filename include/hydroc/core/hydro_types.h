@@ -3,8 +3,8 @@
  * @brief Canonical type definitions for hydrodynamic force types.
  *********************************************************************/
 
-#ifndef HYDRO_TYPES_H
-#define HYDRO_TYPES_H
+#ifndef HYDROC_CORE_HYDRO_TYPES_H
+#define HYDROC_CORE_HYDRO_TYPES_H
 
 #include <Eigen/Dense>
 #include <vector>
@@ -28,5 +28,5 @@ using BodyForces = std::vector<GeneralizedForce>;
 
 }  // namespace hydrochrono::hydro
 
-#endif  // HYDRO_TYPES_H
+#endif  // HYDROC_CORE_HYDRO_TYPES_H
 

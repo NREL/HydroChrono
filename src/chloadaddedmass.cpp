@@ -3,7 +3,7 @@
  *
  * @brief header file for added mass chload class.
  *********************************************************************/
-#include <hydroc/chloadaddedmass.h>
+#include <hydroc/coupling/added_mass.h>
 
 #include <utility>
 

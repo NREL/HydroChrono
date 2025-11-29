@@ -6,9 +6,9 @@
 #ifndef HYDRO_FORCE_COMPONENTS_EXCITATION_COMPONENT_H
 #define HYDRO_FORCE_COMPONENTS_EXCITATION_COMPONENT_H
 
-#include "../core/hydro_force_component.h"
-#include <hydroc/system_state.h>
-#include "../waves/wave_base.h"
+#include <hydroc/core/force_component.h>
+#include <hydroc/core/system_state.h>
+#include <hydroc/waves/wave_base.h>
 #include <memory>
 
 namespace hydrochrono::hydro {

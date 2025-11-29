@@ -7,7 +7,8 @@
 #define _USE_MATH_DEFINES
 #endif
 
-#include "irregular_wave.h"
+#include <hydroc/waves/irregular_wave.h>
+#include "wave_utilities.h"
 
 #include <Eigen/Core>
 #include <cassert>

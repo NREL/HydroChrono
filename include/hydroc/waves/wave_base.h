@@ -3,8 +3,8 @@
  * @brief Base classes shared by all wave models.
  *********************************************************************/
 
-#ifndef HYDRO_WAVES_WAVE_BASE_H
-#define HYDRO_WAVES_WAVE_BASE_H
+#ifndef HYDROC_WAVES_WAVE_BASE_H
+#define HYDROC_WAVES_WAVE_BASE_H
 
 #include <Eigen/Dense>
 
@@ -47,5 +47,5 @@ class NoWave : public WaveBase {
     const WaveMode mode_ = WaveMode::noWaveCIC;
 };
 
-#endif  // HYDRO_WAVES_WAVE_BASE_H
+#endif  // HYDROC_WAVES_WAVE_BASE_H
 

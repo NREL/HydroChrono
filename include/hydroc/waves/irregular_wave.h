@@ -3,12 +3,10 @@
  * @brief Irregular wave model declarations.
  *********************************************************************/
 
-#ifndef HYDRO_WAVES_IRREGULAR_WAVE_H
-#define HYDRO_WAVES_IRREGULAR_WAVE_H
+#ifndef HYDROC_WAVES_IRREGULAR_WAVE_H
+#define HYDROC_WAVES_IRREGULAR_WAVE_H
 
-#include "wave_base.h"
-#include "wave_utilities.h"
-
+#include <hydroc/waves/wave_base.h>
 #include <hydroc/io/h5_reader.h>
 
 #include <string>
@@ -86,5 +84,5 @@ class IrregularWaves : public WaveBase {
     double ExcitationConvolution(int body, int dof, double time);
 };
 
-#endif  // HYDRO_WAVES_IRREGULAR_WAVE_H
+#endif  // HYDROC_WAVES_IRREGULAR_WAVE_H
 

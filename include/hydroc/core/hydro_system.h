@@ -3,11 +3,11 @@
  * @brief HydroSystem façade: orchestrates force components to compute total forces.
  *********************************************************************/
 
-#ifndef HYDRO_CORE_HYDRO_SYSTEM_H
-#define HYDRO_CORE_HYDRO_SYSTEM_H
+#ifndef HYDROC_CORE_HYDRO_SYSTEM_H
+#define HYDROC_CORE_HYDRO_SYSTEM_H
 
-#include <hydroc/system_state.h>
-#include "hydro_force_component.h"
+#include <hydroc/core/system_state.h>
+#include <hydroc/core/force_component.h>
 #include <vector>
 #include <memory>
 
@@ -112,5 +112,5 @@ private:
 
 }  // namespace hydrochrono::hydro
 
-#endif  // HYDRO_CORE_HYDRO_SYSTEM_H
+#endif  // HYDROC_CORE_HYDRO_SYSTEM_H
 

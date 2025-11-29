@@ -3,7 +3,7 @@
  * @brief CLI entrypoint for the HydroChrono YAML-based runner
  */
 
-#include <hydroc/hydrochrono_runner/run_hydrochrono_from_yaml.h>
+#include <hydroc/runner/run_from_yaml.h>
 #include <hydroc/version.h>
 #include "../src/utils/misc_options.h"
 #include <hydroc/logging.h>
