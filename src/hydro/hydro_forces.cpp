@@ -27,6 +27,7 @@
 
 // Chrono includes needed for implementation (not exposed in public header)
 #include <chrono/physics/ChLoad.h>
+#include <chrono/physics/ChLoadable.h>
 #include <chrono/physics/ChBodyEasy.h>
 #include <chrono/physics/ChLoadsBody.h>
 #include <chrono/physics/ChSystemNSC.h>
@@ -62,6 +63,7 @@ using chrono::ChBody;
 using chrono::ChBodyEasyMesh;
 using chrono::ChForce;
 using chrono::ChFunction;
+using chrono::ChLoadable;
 using chrono::ChLoadContainer;
 using chrono::ChSolver;
 using chrono::ChSystem;
@@ -106,7 +108,7 @@ std::vector<double> Linspace(double start, double end, int num_points) {
 
 // TODO reorder ComponentFunc implementation functions to match the header order of functions
 ComponentFunc::ComponentFunc() {
-    base_  = NULL;
+    base_  = nullptr;
     index_ = kDofPerBody;
 }
 
@@ -122,7 +124,7 @@ ComponentFunc::ComponentFunc(const ComponentFunc& old) {
 }
 
 double ComponentFunc::GetVal(double x) const {
-    if (base_ == NULL) {
+    if (base_ == nullptr) {
         std::cout << "base == Null!" << std::endl;
         return 0;
     }
@@ -156,7 +158,7 @@ ForceFunc6d::ForceFunc6d(std::shared_ptr<ChBody> object, HydroForces* user_all_f
     b_num_            = stoi(temp.erase(0, 4));  // 1-indexed body number
     
     all_hydro_forces_ = user_all_forces;
-    if (all_hydro_forces_ == NULL) {
+    if (all_hydro_forces_ == nullptr) {
         std::cout << "all hydro forces null " << std::endl;
     }
     SetForce();
@@ -194,7 +196,7 @@ double ForceFunc6d::CoordinateFunc(int i) {
 }
 
 void ForceFunc6d::SetForce() {
-    if (chrono_force_ == NULL || body_ == NULL) {
+    if (chrono_force_ == nullptr || body_ == nullptr) {
         std::cout << "set force null issue" << std::endl;
     }
     chrono_force_->SetF_x(force_ptrs_[0]);
@@ -203,7 +205,7 @@ void ForceFunc6d::SetForce() {
 }
 
 void ForceFunc6d::SetTorque() {
-    if (chrono_torque_ == NULL || body_ == NULL) {
+    if (chrono_torque_ == nullptr || body_ == nullptr) {
         std::cout << "set torque null issue" << std::endl;
     }
     chrono_torque_->SetF_x(force_ptrs_[3]);

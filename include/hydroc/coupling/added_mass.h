@@ -21,8 +21,6 @@
 #include <chrono/physics/ChLoad.h>
 #include <chrono/physics/ChSystem.h>
 
-using namespace chrono;
-
 // =============================================================================
 class ChLoadAddedMass : public chrono::ChLoadCustomMultiple {
   public:
@@ -39,8 +37,8 @@ class ChLoadAddedMass : public chrono::ChLoadCustomMultiple {
      * @param system pointer to system containing the bodies, used for getting system mass matrix size at any time.
      */
     ChLoadAddedMass(const std::vector<HydroData::BodyInfo>& body_info_struct,
-                    std::vector<std::shared_ptr<ChLoadable>>& bodies,
-                    ChSystem* system);
+                    std::vector<std::shared_ptr<chrono::ChLoadable>>& bodies,
+                    chrono::ChSystem* system);
 
     /**
      * @brief "Virtual" copy constructor (covariant return type). Required from chrono inheritance.
@@ -56,8 +54,8 @@ class ChLoadAddedMass : public chrono::ChLoadCustomMultiple {
      * Called automatically at each Update().
      * The M*a term is not added: to this end one could use LoadIntLoadResidual_Mv afterward.
      */
-    virtual void ComputeQ(ChState* state_x,      ///< state position to evaluate Q
-                          ChStateDelta* state_w  ///< state speed to evaluate Q
+    virtual void ComputeQ(chrono::ChState* state_x,      ///< state position to evaluate Q
+                          chrono::ChStateDelta* state_w  ///< state speed to evaluate Q
                           ) override {}
 
     /**
@@ -71,7 +69,7 @@ class ChLoadAddedMass : public chrono::ChLoadCustomMultiple {
      * @param state_x state position to evaluate jacobians
      * @param state_w state speed to evaluate jacobians
      */
-    virtual void ComputeJacobian(ChState* state_x, ChStateDelta* state_w) override;
+    virtual void ComputeJacobian(chrono::ChState* state_x, chrono::ChStateDelta* state_w) override;
 
     /**
      * @brief Computes LoadIntLoadResidual_Mv for vector w, const c, and vector R. Also carried over from chrono
@@ -84,12 +82,14 @@ class ChLoadAddedMass : public chrono::ChLoadCustomMultiple {
      * @param w the w vector
      * @param c a scaling factor
      */
-    virtual void LoadIntLoadResidual_Mv(ChVectorDynamic<>& R, const ChVectorDynamic<>& w, const double c) override;
+    virtual void LoadIntLoadResidual_Mv(chrono::ChVectorDynamic<>& R,
+                                        const chrono::ChVectorDynamic<>& w,
+                                        const double c) override;
 
   private:
-    ChSystem* system;
-    ChMatrixDynamic<double> infinite_added_mass;  ///< added mass at infinite frequency in global coordinates
-    ChMatrixDynamic<double>
+    chrono::ChSystem* system;
+    chrono::ChMatrixDynamic<double> infinite_added_mass;  ///< added mass at infinite frequency in global coordinates
+    chrono::ChMatrixDynamic<double>
         infinite_added_mass_system;  ///< added mass at infinite frequency in global coordinates (system matrix)
     virtual bool IsStiff() override { return true; }  // this to force the use of the inertial M, R and K matrices
 };

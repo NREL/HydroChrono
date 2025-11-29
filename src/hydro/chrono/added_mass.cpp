@@ -12,6 +12,8 @@
 
 #include "chrono/physics/ChBody.h"
 
+using namespace chrono;
+
 ChLoadAddedMass::ChLoadAddedMass(const std::vector<HydroData::BodyInfo>& user_h5_body_data,
                                  std::vector<std::shared_ptr<ChLoadable>>& bodies,
                                  ChSystem* system)
