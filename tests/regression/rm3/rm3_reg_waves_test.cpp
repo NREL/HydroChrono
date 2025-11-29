@@ -147,7 +147,7 @@ int main(int argc, char* argv[]) {
     my_hydro_inputs->regular_wave_amplitude_ = 1.0;
     my_hydro_inputs->regular_wave_omega_     = 2.10;
 
-    TestHydro hydro_forces(bodies, h5fname);
+    HydroForces hydro_forces(bodies, h5fname);
     hydro_forces.AddWaves(my_hydro_inputs);
 
     // for profiling

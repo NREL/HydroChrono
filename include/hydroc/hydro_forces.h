@@ -4,11 +4,11 @@
 /*********************************************************************
  * @file  hydro_forces.h
  *
- * @brief Header file of TestHydro main class and helper classes
+ * @brief Header file of HydroForces main class and helper classes
  * ComponentFunc and ForceFunc6d.
  *
  * ARCHITECTURE:
- * TestHydro is a thin adapter over HydroSystem + ChronoHydroCoupler.
+ * HydroForces is a thin adapter over HydroSystem + ChronoHydroCoupler.
  * Force computation is handled internally by HydroSystem, which owns:
  *   - HydrostaticsComponent (restoring forces + buoyancy)
  *   - RadiationComponent (RIRF convolution, owns velocity history)
@@ -19,7 +19,7 @@
  * opposes motion.)
  *
  * MAIN RESPONSIBILITIES:
- * - TestHydro: Façade over HydroSystem; provides Chrono force callbacks
+ * - HydroForces: Façade over HydroSystem; provides Chrono force callbacks
  * - ForceFunc6d: Wraps 6-DOF force/torque callbacks for Chrono bodies
  * - ComponentFunc: Per-DOF force function for Chrono's ChForce system
  *
@@ -31,7 +31,7 @@
  * These are the single source of truth for component configuration.
  *
  * INTERACTIONS:
- * - Used by setup_hydro_from_yaml to create and configure TestHydro instances
+ * - Used by setup_hydro_from_yaml to create and configure HydroForces instances
  * - Called by Chrono during simulation via ChForce callbacks
  * - Reads HDF5 data through H5FileInfo (not directly exposed here)
  * - Uses WaveBase hierarchy for wave excitation (passed in constructor)
@@ -88,7 +88,7 @@ class ChronoHydroCoupler;
 }
 
 class ForceFunc6d;
-class TestHydro;
+class HydroForces;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Degrees of Freedom Constant
@@ -159,9 +159,9 @@ class ForceFunc6d {
      * @brief Initializes hydro force info from H5FileInfo and the ChBody this force will be applied to.
      *
      * @param object The body in the system to which this 6-dimensional force is being applied.
-     * @param all_hydro_forces_user The TestHydro class where the total force on all bodies is calculated.
+     * @param all_hydro_forces_user The HydroForces class where the total force on all bodies is calculated.
      */
-    ForceFunc6d(std::shared_ptr<chrono::ChBody> object, TestHydro* all_hydro_forces_user);
+    ForceFunc6d(std::shared_ptr<chrono::ChBody> object, HydroForces* all_hydro_forces_user);
 
     /**
      * @brief Copy constructor that ensures the force is only added to a body once.
@@ -208,7 +208,7 @@ class ForceFunc6d {
     std::shared_ptr<ComponentFunc> force_ptrs_[kDofPerBody];  ///< Pointers to the forces.
     std::shared_ptr<chrono::ChForce> chrono_force_;  ///< Chrono force for the body.
     std::shared_ptr<chrono::ChForce> chrono_torque_; ///< Chrono torque for the body.
-    TestHydro* all_hydro_forces_;                   ///< Pointer to TestHydro for calculations.
+    HydroForces* all_hydro_forces_;                 ///< Pointer to HydroForces for calculations.
 };
 
 // Forward declaration of ChLoadAddedMass (defined in added_mass.h, included in .cpp)
@@ -226,22 +226,21 @@ struct HydroProfileStats {
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //
-//  TestHydro — Primary Hydrodynamics Façade / Adapter
+//  HydroForces — Primary Hydrodynamics Façade / Adapter
 //
 // ═══════════════════════════════════════════════════════════════════════════════
 /**
  * @brief Primary hydrodynamics façade for HydroChrono applications.
  *
- * TestHydro is the main user-facing object for attaching hydrodynamic forces to
- * Chrono bodies. Despite its name (a historical artifact), it is NOT a test-only
- * class — it is the production hydrodynamics adapter used by all workflows.
+ * HydroForces is the main user-facing object for attaching hydrodynamic forces to
+ * Chrono bodies. This is the production hydrodynamics adapter used by all workflows.
  *
- * @note The name "TestHydro" is retained for backward compatibility. New code
- *       may use the alias `HydroForces` for clarity (see below).
+ * @note The historical name "TestHydro" is retained as an alias for backward
+ *       compatibility. New code should use `HydroForces`.
  *
  * ## What It Does
  *
- * TestHydro bridges three layers:
+ * HydroForces bridges three layers:
  *   1. **Chrono bodies** — The physical bodies in the Chrono simulation.
  *   2. **HydroSystem (core)** — Chrono-free hydrodynamic force computation.
  *   3. **Chrono force callbacks** — ChForce functions that Chrono calls each timestep.
@@ -256,16 +255,16 @@ struct HydroProfileStats {
  *
  *   // Attach hydrodynamic forces (with or without waves)
  *   std::vector<std::shared_ptr<ChBody>> bodies = {body1};
- *   TestHydro hydro(bodies, "path/to/hydro_data.h5");
+ *   HydroForces hydro(bodies, "path/to/hydro_data.h5");
  *   hydro.AddWaves(std::make_shared<RegularWave>(...));
  *
- *   // Run simulation — Chrono automatically queries TestHydro for forces
+ *   // Run simulation — Chrono automatically queries HydroForces for forces
  * @endcode
  *
  * ## Used By
  *
- *   - **C++ tests and demos** — Directly instantiate TestHydro with bodies and H5 file.
- *   - **YAML runner (hydrochrono.exe)** — SetupHydroFromYAML creates TestHydro internally.
+ *   - **C++ tests and demos** — Directly instantiate HydroForces with bodies and H5 file.
+ *   - **YAML runner (hydrochrono.exe)** — SetupHydroFromYAML creates HydroForces internally.
  *
  * ## Architecture Notes
  *
@@ -279,16 +278,16 @@ struct HydroProfileStats {
  *   to determine body order. Internally, body indices are **1-based** in the callback
  *   interface (CoordinateFuncForBody) to match this naming convention.
  *
- * @see HydroForces (alias below)
+ * @see TestHydro (backwards-compatibility alias)
  * @see HydroSystem (Chrono-free hydrodynamic core)
  * @see ChronoHydroCoupler (extracts state from Chrono bodies)
  */
-class TestHydro {
+class HydroForces {
   public:
-    TestHydro() = delete;
+    HydroForces() = delete;
 
     /**
-     * @brief Main constructor for initializing the TestHydro class.
+     * @brief Main constructor for initializing the HydroForces class.
      *
      * Sets up vector of bodies, h5 file info, and hydro inputs. If no waves are given,
      * this constructor defaults to using NoWave.
@@ -297,16 +296,16 @@ class TestHydro {
      * @param h5_file_name Name of the h5 file where hydro data is stored.
      * @param waves WaveBase object. Defaults to NoWave if not provided.
      */
-    TestHydro(std::vector<std::shared_ptr<chrono::ChBody>> user_bodies,
-              std::string h5_file_name,
-              std::shared_ptr<WaveBase> waves = std::make_shared<NoWave>());
+    HydroForces(std::vector<std::shared_ptr<chrono::ChBody>> user_bodies,
+                std::string h5_file_name,
+                std::shared_ptr<WaveBase> waves = std::make_shared<NoWave>());
 
     // Destructor (defined in .cpp to allow unique_ptr to incomplete type)
-    ~TestHydro();
+    ~HydroForces();
 
     // Deleted copy constructor and assignment operator for safety.
-    TestHydro(const TestHydro& old) = delete;
-    TestHydro& operator=(const TestHydro& rhs) = delete;
+    HydroForces(const HydroForces& old) = delete;
+    HydroForces& operator=(const HydroForces& rhs) = delete;
 
     /**
      * @brief Adds waves class to force calculations depending on if regular or irregular waves.
@@ -518,7 +517,7 @@ class TestHydro {
     std::unique_ptr<hydrochrono::hydro::ExcitationComponent> CreateExcitationComponent() const;
 
     // Factory: creates HydrostaticsComponent with current equilibrium/stiffness data.
-    // Used by both the TestHydro constructor and EnsureHydroSystemAndCoupler()
+    // Used by both the HydroForces constructor and EnsureHydroSystemAndCoupler()
     // to ensure consistent construction.
     std::unique_ptr<hydrochrono::hydro::HydrostaticsComponent> CreateHydrostaticsComponent() const;
 
@@ -534,20 +533,18 @@ class TestHydro {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Public Alias for Clarity
+// Backwards-Compatibility Alias
 // ─────────────────────────────────────────────────────────────────────────────
 /**
- * @brief Alias for TestHydro — the primary hydrodynamics façade.
+ * @brief Backwards-compatibility alias for HydroForces.
  *
- * HydroForces is the recommended name for new code. The underlying class
- * is TestHydro (historical name retained for backward compatibility).
+ * TestHydro is the historical name for the main hydrodynamics façade.
+ * It is retained as an alias for backward compatibility with existing code.
  *
- * Usage:
- * @code{.cpp}
- *   HydroForces hydro(bodies, "hydro_data.h5");
- *   hydro.AddWaves(my_waves);
- * @endcode
+ * @note Prefer `HydroForces` for new code.
+ *
+ * @deprecated Use HydroForces instead.
  */
-using HydroForces = TestHydro;
+using TestHydro = HydroForces;
 
 #endif

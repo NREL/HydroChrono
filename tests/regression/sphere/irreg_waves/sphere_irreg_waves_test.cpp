@@ -136,7 +136,7 @@ int main(int argc, char* argv[]) {
         std::cerr << "Caught unknown exception.\n";
     }
 
-    TestHydro hydro_forces(bodies, h5fname);
+    HydroForces hydro_forces(bodies, h5fname);
     hydro_forces.AddWaves(my_hydro_inputs);
 
     // set up free surface from a mesh

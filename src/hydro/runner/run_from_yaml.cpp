@@ -427,7 +427,7 @@ int RunHydroChronoFromYAML(int argc, char* argv[]) {
                 // ---------------------------------------------------------------------
         // 5. Setup hydrodynamic forces and display wave info
         // ---------------------------------------------------------------------
-        std::unique_ptr<TestHydro> test_hydro;
+        std::unique_ptr<HydroForces> hydro_forces;
         YAMLHydroData hydro_data;
         // Prefer YAML-declared time_step for integration; fallback to system's step
         double loop_dt = system->GetStep();
@@ -458,25 +458,25 @@ int RunHydroChronoFromYAML(int argc, char* argv[]) {
                     hydroc::debug::LogDebug(std::string("Found ") + std::to_string(bodies.size()) + " Chrono body(ies)");
                     
                     // Setup hydrodynamic forces
-                    hydroc::debug::LogDebug("Initializing TestHydro...");
+                    hydroc::debug::LogDebug("Initializing HydroForces...");
                     // Provide simulation horizon from YAML end_time (important for irregular waves spectrum)
                     double sim_duration_hint = 0.0;
                     TryFindYamlDouble(sim_file, "end_time", sim_duration_hint);
-                    test_hydro = SetupHydroFromYAML(hydro_data, bodies, loop_dt, sim_duration_hint, 0.0);
+                    hydro_forces = SetupHydroFromYAML(hydro_data, bodies, loop_dt, sim_duration_hint, 0.0);
                     hydroc::debug::LogDebug("Hydrodynamic forces initialized successfully");
 
                     // Inform location for diagnostics CSVs: write to hydro file directory
                     try {
                         std::filesystem::path hydro_path = std::filesystem::path(input_directory) / setup_config.hydro_file;
                         std::filesystem::path out_dir = hydro_path.parent_path();
-                        if (test_hydro) {
-                            test_hydro->SetDiagnosticsOutputDirectory(out_dir.string());
+                        if (hydro_forces) {
+                            hydro_forces->SetDiagnosticsOutputDirectory(out_dir.string());
                         }
                     } catch (...) {}
 
                     // Enable profiling in HydroSystem only when --profile is passed
-                    if (test_hydro && profile_mode) {
-                        test_hydro->SetProfilingEnabled(true);
+                    if (hydro_forces && profile_mode) {
+                        hydro_forces->SetProfilingEnabled(true);
                     }
                     
                     // Display wave information to CLI with enhanced formatting
@@ -679,8 +679,8 @@ int RunHydroChronoFromYAML(int argc, char* argv[]) {
                 exporter->BeginResults(system.get(), /*expected_steps*/ 0);
 
                 // If irregular waves are configured, persist spectrum and eta(t) inputs to HDF5
-                if (test_hydro) {
-                    auto wave_ptr = test_hydro->GetWave();
+                if (hydro_forces) {
+                    auto wave_ptr = hydro_forces->GetWave();
                     if (wave_ptr && wave_ptr->GetWaveMode() == WaveMode::irregular) {
                         auto irreg = std::static_pointer_cast<IrregularWaves>(wave_ptr);
                         std::vector<double> f = irreg->GetFrequenciesHz();
@@ -986,8 +986,8 @@ int RunHydroChronoFromYAML(int argc, char* argv[]) {
             prof_lines.push_back(hydroc::cli::CreateAlignedLine("⚙️", "Dynamics Loop", hydroc::FormatNumber(prof_loop_seconds, 3) + " s (" + pct(prof_loop_seconds) + ")"));
             
             // Nested breakdown under Dynamics Loop
-            if (test_hydro) {
-                auto hp = test_hydro->GetProfileStats();
+            if (hydro_forces) {
+                auto hp = hydro_forces->GetProfileStats();
                 double hydro_total = hp.hydrostatics_seconds + hp.radiation_seconds + hp.waves_seconds;
                 double chrono_solver = std::max(0.0, prof_loop_seconds - hydro_total);
                 
