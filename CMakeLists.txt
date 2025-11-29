@@ -344,10 +344,11 @@ set(HYDROCHRONO_SOURCES
     src/hydro/config/config_loader.cpp
     src/hydro/config/setup_from_yaml.cpp
     src/hydro/config/yaml_discovery.cpp
-    # Core library sources
-    src/chloadaddedmass.cpp
-    src/hydro_forces.cpp
-    src/helper.cpp
+    # Coupling module (consolidated under src/hydro/coupling/)
+    src/hydro/coupling/added_mass.cpp
+    # Core facade and utilities
+    src/hydro/hydro_forces.cpp
+    src/hydro/utils/helper.cpp
     # Hydro modules
     src/hydro/waves/wave_base.cpp
     src/hydro/waves/wave_utilities.cpp
@@ -470,7 +471,7 @@ message(STATUS "HYDROCHRONO_ENABLE_YAML_RUNNER: ${HYDROCHRONO_ENABLE_YAML_RUNNER
 if(HYDROCHRONO_ENABLE_YAML_RUNNER)
     add_executable(run_hydrochrono
         app/run_hydrochrono.cpp
-        src/hydrochrono_runner/run_hydrochrono_from_yaml.cpp
+        src/hydro/runner/run_from_yaml.cpp
         src/utils/misc_options.cpp
     )
 

@@ -1,3 +1,8 @@
+/*********************************************************************
+ * @file  helper.cpp
+ *
+ * @brief Implementation of helper utilities.
+ *********************************************************************/
 #include <hydroc/helper.h>
 
 #include <cstdlib>
@@ -47,3 +52,4 @@ int hydroc::SetInitialEnvironment(int argc, char* argv[]) noexcept {
 std::string hydroc::getDataDir() noexcept {
     return DATADIR.lexically_normal().generic_string();
 }
+

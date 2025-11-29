@@ -59,13 +59,13 @@
 #include <hydroc/waves/irregular_wave.h>
 #include <hydroc/logging.h>
 #include <hydroc/core/system_state.h>
-#include "hydro/core/chrono_state_utils.h"
-#include "hydro/force_components/hydrostatics_component.h"
-#include "hydro/force_components/radiation_component.h"
-#include "hydro/force_components/excitation_component.h"
+#include "core/chrono_state_utils.h"
+#include "force_components/hydrostatics_component.h"
+#include "force_components/radiation_component.h"
+#include "force_components/excitation_component.h"
 #include <hydroc/core/hydro_system.h>
 #include <hydroc/coupling/chrono_coupler.h>
-#include "hydro/radiation/radiation_rirf_processing.h"
+#include "radiation/radiation_rirf_processing.h"
 
 #include <chrono/physics/ChLoad.h>
 #include <unsupported/Eigen/Splines>

@@ -1,7 +1,7 @@
 /*********************************************************************
- * @file  chloadaddedmass.h
+ * @file  added_mass.cpp
  *
- * @brief header file for added mass chload class.
+ * @brief Implementation of ChLoadAddedMass class.
  *********************************************************************/
 #include <hydroc/coupling/added_mass.h>
 
@@ -69,3 +69,4 @@ void ChLoadAddedMass::LoadIntLoadResidual_Mv(ChVectorDynamic<>& R, const ChVecto
     // since R is a vector, we can probably just do R += C*M*a with no need to separate w into a_x and a_w above
     R += c * m_jacobians->M * w;
 }
+
