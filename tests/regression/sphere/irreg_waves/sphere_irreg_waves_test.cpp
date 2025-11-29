@@ -5,6 +5,11 @@
 
 #include <chrono/assets/ChColor.h>
 #include <chrono/core/ChRealtimeStep.h>
+#include <chrono/physics/ChSystemNSC.h>
+#include <chrono/physics/ChBodyEasy.h>
+#include <chrono/physics/ChLinkLock.h>
+#include <chrono/physics/ChLinkTSDA.h>
+#include <chrono/solver/ChSolver.h>
 
 #include <hydroc/gui/guihelper.h>
 #include <hydroc/helper.h>

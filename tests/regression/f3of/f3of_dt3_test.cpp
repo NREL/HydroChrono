@@ -3,7 +3,11 @@
 #include <hydroc/hydro_forces.h>
 
 #include <chrono/core/ChRealtimeStep.h>
+#include <chrono/physics/ChSystemSMC.h>
+#include <chrono/physics/ChBodyEasy.h>
+#include <chrono/physics/ChLinkLock.h>
 #include <chrono/physics/ChLinkMate.h>  // fixed body uses link
+#include <chrono/solver/ChSolver.h>
 
 #include <chrono>   // std::chrono::high_resolution_clock::now
 #include <iomanip>  // std::setprecision

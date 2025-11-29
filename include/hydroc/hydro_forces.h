@@ -58,22 +58,12 @@
 #include <Eigen/Dense>
 
 // Chrono library includes
-#include <chrono/solver/ChIterativeSolverLS.h>
-#include <chrono/solver/ChSolverPMINRES.h>
-#include <chrono/timestepper/ChTimestepper.h>
-#include <chrono/timestepper/ChTimestepperHHT.h>
-
+// Note: We include only the headers strictly necessary for the types used in this header.
+// Implementation-only Chrono headers are included in hydro_forces.cpp.
+// ChForce.h includes ChFunction internally, so we don't need a separate include.
 #include <chrono/physics/ChBody.h>
-#include <chrono/physics/ChBodyEasy.h>
 #include <chrono/physics/ChForce.h>
-#include <chrono/physics/ChLoad.h>
 #include <chrono/physics/ChLoadContainer.h>
-#include <chrono/physics/ChLoadsBody.h>
-#include <chrono/physics/ChSystemNSC.h>
-#include <chrono/physics/ChSystemSMC.h>
-
-// Chrono FEA includes
-#include <chrono/fea/ChMeshFileLoader.h>
 
 // Hydroc library includes
 #include <hydroc/io/h5_reader.h>
@@ -97,13 +87,16 @@ class ChronoHydroCoupler;
 // Types GeneralizedForce and BodyForces are defined in hydro_types.h (included above)
 }
 
-using namespace chrono;
-using namespace chrono::fea;
-
 class ForceFunc6d;
 class TestHydro;
 
-class ComponentFunc : public ChFunction {
+/**
+ * @brief Per-DOF force function for Chrono's ChForce system.
+ *
+ * Inherits from chrono::ChFunction to provide time-dependent force values.
+ * Each instance represents a single degree of freedom (surge, sway, heave, roll, pitch, yaw).
+ */
+class ComponentFunc : public chrono::ChFunction {
   public:
     /**
      * @brief Default constructor.
@@ -162,7 +155,7 @@ class ForceFunc6d {
      * @param object The body in the system to which this 6-dimensional force is being applied.
      * @param all_hydro_forces_user The TestHydro class where the total force on all bodies is calculated.
      */
-    ForceFunc6d(std::shared_ptr<ChBody> object, TestHydro* all_hydro_forces_user);
+    ForceFunc6d(std::shared_ptr<chrono::ChBody> object, TestHydro* all_hydro_forces_user);
 
     /**
      * @brief Copy constructor that ensures the force is only added to a body once.
@@ -199,15 +192,16 @@ class ForceFunc6d {
      */
     void ApplyForceAndTorqueToBody();
 
-    std::shared_ptr<ChBody> body_;                  ///< Pointer to the body this force is applied to.
+    std::shared_ptr<chrono::ChBody> body_;          ///< Pointer to the body this force is applied to.
     int b_num_;                                     ///< Body's index in the system. Currently 1-indexed.
     ComponentFunc forces_[6];                       ///< Forces for each degree of freedom.
     std::shared_ptr<ComponentFunc> force_ptrs_[6];  ///< Pointers to the forces.
-    std::shared_ptr<ChForce> chrono_force_;         ///< Chrono force for the body.
-    std::shared_ptr<ChForce> chrono_torque_;        ///< Chrono torque for the body.
+    std::shared_ptr<chrono::ChForce> chrono_force_;  ///< Chrono force for the body.
+    std::shared_ptr<chrono::ChForce> chrono_torque_; ///< Chrono torque for the body.
     TestHydro* all_hydro_forces_;                   ///< Pointer to TestHydro for calculations.
 };
 
+// Forward declaration of ChLoadAddedMass (defined in added_mass.h, included in .cpp)
 class ChLoadAddedMass;
 
 // Lightweight hydrodynamics profiling stats
@@ -236,7 +230,7 @@ class TestHydro {
      * @param h5_file_name Name of the h5 file where hydro data is stored.
      * @param waves WaveBase object. Defaults to NoWave if not provided.
      */
-    TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
+    TestHydro(std::vector<std::shared_ptr<chrono::ChBody>> user_bodies,
               std::string h5_file_name,
               std::shared_ptr<WaveBase> waves = std::make_shared<NoWave>());
 
@@ -364,7 +358,7 @@ class TestHydro {
 
   private:
     // Class properties related to the body and hydrodynamics
-    std::vector<std::shared_ptr<ChBody>> bodies_;
+    std::vector<std::shared_ptr<chrono::ChBody>> bodies_;
     int num_bodies_;
     HydroData file_info_;
     std::vector<ForceFunc6d> force_per_body_;
@@ -390,7 +384,7 @@ class TestHydro {
     double cached_state_time_ = std::numeric_limits<double>::quiet_NaN();
 
     // Added mass related properties
-    std::shared_ptr<ChLoadContainer> my_loadcontainer;
+    std::shared_ptr<chrono::ChLoadContainer> my_loadcontainer;
     std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia;
 
     /**

@@ -67,7 +67,18 @@
 #include <hydroc/coupling/chrono_coupler.h>
 #include "radiation/radiation_rirf_processing.h"
 
+// Chrono includes needed for implementation (not exposed in public header)
 #include <chrono/physics/ChLoad.h>
+#include <chrono/physics/ChBodyEasy.h>
+#include <chrono/physics/ChLoadsBody.h>
+#include <chrono/physics/ChSystemNSC.h>
+#include <chrono/physics/ChSystemSMC.h>
+#include <chrono/solver/ChIterativeSolverLS.h>
+#include <chrono/solver/ChSolverPMINRES.h>
+#include <chrono/timestepper/ChTimestepper.h>
+#include <chrono/timestepper/ChTimestepperHHT.h>
+#include <chrono/fea/ChMeshFileLoader.h>
+
 #include <unsupported/Eigen/Splines>
 
 #include <Eigen/Dense>
@@ -86,6 +97,17 @@
 #ifdef _OPENMP
 #include <omp.h>
 #endif
+
+// Local using declarations for Chrono types (implementation only - not leaked to users)
+// These provide convenience within this translation unit while keeping the public header clean.
+using chrono::ChBody;
+using chrono::ChBodyEasyMesh;
+using chrono::ChForce;
+using chrono::ChFunction;
+using chrono::ChLoadContainer;
+using chrono::ChSolver;
+using chrono::ChSystem;
+using chrono::ChVector3d;
 
 const int kDofPerBody  = 6;
 const int kDofLinOrRot = 3;
@@ -158,8 +180,8 @@ ForceFunc6d::ForceFunc6d() : forces_{{this, 0}, {this, 1}, {this, 2}, {this, 3},
         // default deletion logic to do nothing
         // Also! don't need to worry about deleting this later, because stack arrays are always deleted automatically
     }
-    chrono_force_  = chrono_types::make_shared<ChForce>();
-    chrono_torque_ = chrono_types::make_shared<ChForce>();
+    chrono_force_  = std::make_shared<ChForce>();
+    chrono_torque_ = std::make_shared<ChForce>();
     chrono_force_->SetAlign(ChForce::AlignmentFrame::WORLD_DIR);
     chrono_torque_->SetAlign(ChForce::AlignmentFrame::WORLD_DIR);
     chrono_force_->SetName("hydroforce");
@@ -297,7 +319,7 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
     }
 
     // Handle added mass info (applied via Chrono load system)
-    my_loadcontainer = chrono_types::make_shared<ChLoadContainer>();
+    my_loadcontainer = std::make_shared<ChLoadContainer>();
 
     std::vector<std::shared_ptr<ChLoadable>> loadables(bodies_.size());
     for (int i = 0; i < static_cast<int>(bodies_.size()); ++i) {
@@ -305,7 +327,7 @@ TestHydro::TestHydro(std::vector<std::shared_ptr<ChBody>> user_bodies,
     }
 
     my_loadbodyinertia =
-        chrono_types::make_shared<ChLoadAddedMass>(file_info_.GetBodyInfos(), loadables, bodies_[0]->GetSystem());
+        std::make_shared<ChLoadAddedMass>(file_info_.GetBodyInfos(), loadables, bodies_[0]->GetSystem());
 
     bodies_[0]->GetSystem()->Add(my_loadcontainer);
     my_loadcontainer->Add(my_loadbodyinertia);
