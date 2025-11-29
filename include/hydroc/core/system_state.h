@@ -1,6 +1,13 @@
 /*********************************************************************
  * @file  system_state.h
- * @brief Common structs for body and system hydrodynamic state.
+ * @brief Chrono-free state structs for hydrodynamic computation.
+ *
+ * MAIN TYPES:
+ *   - BodyState: Position, orientation, velocities for one body
+ *   - SystemState: Vector of BodyState for all bodies
+ *
+ * ROLE: Input to HydroSystem and force components. Decouples core
+ * hydrodynamics from Chrono's ChBody representation.
  *********************************************************************/
 
 #ifndef HYDROC_CORE_SYSTEM_STATE_H

@@ -1,20 +1,11 @@
 /*********************************************************************
  * @file  hydro_config.h
- *
- * @brief Public configuration types for HydroChrono YAML configuration.
- *
- * This header defines the data structures used to represent parsed
- * hydro.yaml configuration files. Users and library consumers should
- * include this header to work with hydrodynamic configuration data.
+ * @brief Public configuration types for parsed YAML hydro settings.
  *
  * MAIN TYPES:
- * - HydroBody: Configuration for a single hydrodynamic body
- * - WaveSettings: Configuration for wave conditions
- * - YAMLHydroData: Top-level container for all configuration
- *
- * USAGE:
- * Include <hydroc/config/hydro_config.h> to access these types.
- * Use hydrochrono::hydro::LoadHydroConfigFromYaml() to parse YAML files.
+ *   - HydroBody: Per-body hydrodynamic settings (H5 file, flags)
+ *   - WaveSettings: Wave type, height, period, spectrum
+ *   - YAMLHydroData: Top-level container for hydro.yaml data
  *********************************************************************/
 
 #ifndef HYDROC_CONFIG_HYDRO_CONFIG_H

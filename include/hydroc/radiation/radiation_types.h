@@ -1,6 +1,10 @@
 /*********************************************************************
  * @file  radiation_types.h
  * @brief Public types for radiation damping configuration.
+ *
+ * MAIN TYPES:
+ *   - RadiationConvolutionMode: Baseline vs TaperedDirect RIRF processing
+ *   - TaperedDirectOptions: Smoothing, tapering, and export settings
  *********************************************************************/
 
 #ifndef HYDROC_RADIATION_TYPES_H

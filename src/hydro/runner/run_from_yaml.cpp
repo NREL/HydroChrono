@@ -1,3 +1,14 @@
+/*********************************************************************
+ * @file  run_from_yaml.cpp
+ * @brief YAML-driven simulation runner for hydrochrono.exe.
+ *
+ * Implements RunHydroSimulation(): loads YAML config files (simulation,
+ * model, hydro), builds Chrono system, attaches HydroForces, runs the
+ * simulation loop, and exports results.
+ *
+ * This is the main entry point for the hydrochrono command-line tool.
+ *********************************************************************/
+
 #include <hydroc/version.h>
 #include "../config/yaml_discovery.h"
 #include <hydroc/logging.h>

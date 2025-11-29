@@ -1,6 +1,13 @@
 /*********************************************************************
  * @file  force_component.h
  * @brief Interface for hydrodynamic force components.
+ *
+ * MAIN TYPES:
+ *   - IHydroForceComponent: Abstract interface for force computation
+ *   - HydroComponentType: Enum for profiling (Hydrostatics/Radiation/Excitation)
+ *
+ * ROLE: All force components implement IHydroForceComponent. HydroSystem
+ * owns a collection of components and calls Compute() on each.
  *********************************************************************/
 
 #ifndef HYDROC_CORE_FORCE_COMPONENT_H

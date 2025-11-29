@@ -1,47 +1,21 @@
-#ifndef HYDRO_FORCES_H
-#define HYDRO_FORCES_H
-
 /*********************************************************************
  * @file  hydro_forces.h
+ * @brief HydroForces façade: attaches hydrodynamic forces to Chrono bodies.
  *
- * @brief Header file of HydroForces main class and helper classes
- * ComponentFunc and ForceFunc6d.
+ * MAIN TYPES:
+ *   - HydroForces: Primary hydrodynamics façade (adapter over HydroSystem)
+ *   - ForceFunc6d: Wraps 6-DOF force/torque callbacks per body
+ *   - ComponentFunc: Per-DOF force function for Chrono's ChForce system
  *
- * ARCHITECTURE:
- * HydroForces is a thin adapter over HydroSystem + ChronoHydroCoupler.
- * Force computation is handled internally by HydroSystem, which owns:
- *   - HydrostaticsComponent (restoring forces + buoyancy)
- *   - RadiationComponent (RIRF convolution, owns velocity history)
- *   - ExcitationComponent (wave forcing)
+ * ROLE: This is the main entry point for C++ usage. Internally delegates
+ * to HydroSystem (Chrono-free core) and ChronoHydroCoupler. Used by both
+ * C++ tests/demos and the YAML runner (hydrochrono.exe).
  *
- * The sign convention is: total = hydrostatics - radiation + waves.
- * (RadiationComponent applies the negative sign internally since damping
- * opposes motion.)
- *
- * MAIN RESPONSIBILITIES:
- * - HydroForces: Façade over HydroSystem; provides Chrono force callbacks
- * - ForceFunc6d: Wraps 6-DOF force/torque callbacks for Chrono bodies
- * - ComponentFunc: Per-DOF force function for Chrono's ChForce system
- *
- * COMPONENT CONSTRUCTION:
- * Force components are constructed via factory methods:
- *   - CreateHydrostaticsComponent()
- *   - CreateRadiationComponent()
- *   - CreateExcitationComponent()
- * These are the single source of truth for component configuration.
- *
- * INTERACTIONS:
- * - Used by setup_hydro_from_yaml to create and configure HydroForces instances
- * - Called by Chrono during simulation via ChForce callbacks
- * - Reads HDF5 data through H5FileInfo (not directly exposed here)
- * - Uses WaveBase hierarchy for wave excitation (passed in constructor)
- *
- * KEY ASSUMPTIONS:
- * - Bodies are 1-indexed in CoordinateFuncForBody (legacy, from ForceFunc6d)
- * - All bodies share same H5 file (multibody data in single file)
- * - 6 DOF per body (surge, sway, heave, roll, pitch, yaw)
- * - Forces computed once per time step and cached via prev_time check
+ * KEY ASSUMPTIONS: 6 DOF per body, bodies named "body1", "body2", etc.
  *********************************************************************/
+
+#ifndef HYDRO_FORCES_H
+#define HYDRO_FORCES_H
 
 // Include hydro_types.h FIRST to ensure BodyForces and GeneralizedForce are available
 // before any other includes that might conflict (e.g., config/hydro_config.h)

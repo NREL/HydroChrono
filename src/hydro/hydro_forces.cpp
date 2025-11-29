@@ -1,54 +1,12 @@
 /*********************************************************************
  * @file  hydro_forces.cpp
+ * @brief Implementation of HydroForces façade and Chrono force callbacks.
  *
- * @brief Implementation of HydroForces main class and helper classes
- * ComponentFunc and ForceFunc6d.
+ * Implements the main hydrodynamics façade (HydroForces), which delegates
+ * force computation to HydroSystem via ChronoHydroCoupler. Also implements
+ * ForceFunc6d and ComponentFunc for Chrono's callback system.
  *
- * ARCHITECTURE:
- * HydroForces is a thin adapter over HydroSystem + ChronoHydroCoupler.
- *
- * Force computation flow:
- *   1. Chrono calls CoordinateFuncForBody(body, dof) via ChForce callbacks.
- *   2. CoordinateFuncForBody detects new timesteps and calls chrono_coupler_->Evaluate().
- *   3. ChronoHydroCoupler extracts system state from Chrono bodies and invokes HydroSystem.
- *   4. HydroSystem evaluates all force components and returns BodyForces.
- *   5. Forces are flattened into the legacy total_force_ array for Chrono consumption.
- *
- * Sign convention: total = hydrostatics - radiation + waves
- *   (RadiationComponent applies the negative sign internally since damping opposes motion.)
- *
- * COMPONENT CONSTRUCTION:
- * Force components are built via factory methods (single source of truth):
- *   - CreateHydrostaticsComponent()
- *   - CreateRadiationComponent()
- *   - CreateExcitationComponent()
- *
- * LEGACY API:
- * The following methods are retained for backward compatibility but are NOT used
- * by the main force path (CoordinateFuncForBody):
- *   - ComputeForceHydrostatics()
- *   - ComputeForceRadiationDampingConv()
- *   - ComputeForceWaves()
- *
- * MAIN RESPONSIBILITIES:
- * - HydroForces: Façade over HydroSystem; provides Chrono force callbacks
- * - ForceFunc6d: Wraps Chrono ChForce/ChTorque callbacks for each body
- * - ComponentFunc: Provides per-DOF force values to Chrono's force system
- *
- * INTERACTIONS:
- * - Reads HDF5 hydrodynamic data via H5FileInfo (equilibrium, stiffness, RIRF kernels)
- * - Uses WaveBase hierarchy for wave excitation forces
- * - Applies forces to Chrono bodies through ChForce/ChLoadAddedMass
- * - RadiationComponent maintains velocity history for radiation convolution
- *
- * KEY ASSUMPTIONS:
- * - All bodies share the same H5 file (multibody data in single file)
- * - Bodies are 1-indexed in ForceFunc6d interface (legacy)
- * - 6 DOF per body (surge, sway, heave, roll, pitch, yaw)
- * - Forces computed once per time step, cached via prev_time check
- *
- * DEBUG INSTRUMENTATION:
- * To enable debug output, compile with -DHYDROCHRONO_DEBUG.
+ * Force flow: Chrono → ForceFunc6d → HydroForces → HydroSystem → components.
  *********************************************************************/
 
 #include "hydroc/hydro_forces.h"

@@ -1,6 +1,12 @@
 /*********************************************************************
  * @file  hydro_types.h
- * @brief Canonical type definitions for hydrodynamic force types.
+ * @brief Core type aliases for hydrodynamic forces.
+ *
+ * MAIN TYPES:
+ *   - GeneralizedForce: 6-DOF force vector for one body (Eigen::VectorXd)
+ *   - BodyForces: Vector of GeneralizedForce for all bodies
+ *
+ * ROLE: Canonical definitions used throughout the hydrodynamics core.
  *********************************************************************/
 
 #ifndef HYDROC_CORE_HYDRO_TYPES_H

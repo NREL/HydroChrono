@@ -1,6 +1,13 @@
 /*********************************************************************
  * @file  hydro_system.h
- * @brief HydroSystem façade: orchestrates force components to compute total forces.
+ * @brief HydroSystem: Chrono-free core that orchestrates force components.
+ *
+ * MAIN TYPES:
+ *   - HydroSystem: Owns force components, computes total BodyForces
+ *   - HydroSystemProfileStats: Timing/call counts per component type
+ *
+ * ROLE: This is the Chrono-free hydrodynamics core. HydroForces (façade)
+ * and ChronoHydroCoupler delegate force computation to HydroSystem.
  *********************************************************************/
 
 #ifndef HYDROC_CORE_HYDRO_SYSTEM_H

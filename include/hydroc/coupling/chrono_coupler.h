@@ -1,6 +1,12 @@
 /*********************************************************************
  * @file  chrono_coupler.h
  * @brief ChronoHydroCoupler: bridges Chrono bodies and HydroSystem.
+ *
+ * MAIN TYPES:
+ *   - ChronoHydroCoupler: Adapter between Chrono and HydroSystem
+ *
+ * ROLE: Extracts SystemState from Chrono bodies, invokes HydroSystem
+ * to compute forces. Used internally by HydroForces façade.
  *********************************************************************/
 
 #ifndef HYDROC_COUPLING_CHRONO_COUPLER_H

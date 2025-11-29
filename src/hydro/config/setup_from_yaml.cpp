@@ -1,35 +1,9 @@
 /*********************************************************************
  * @file  setup_from_yaml.cpp
+ * @brief Creates HydroForces from parsed YAML configuration.
  *
- * @brief Implementation of hydrodynamic setup from YAML data.
- *
- * OVERVIEW:
- * Implements the SetupHydroFromYAML function that connects YAML configuration
- * to Chrono bodies and creates a configured HydroForces instance. Handles body
- * matching, wave model creation, and convolution mode setup.
- *
- * MAIN RESPONSIBILITIES:
- * - Match bodies by name between YAML config and Chrono system
- * - Factory function for WaveBase implementations (RegularWave, IrregularWaves, NoWave)
- * - HydroForces initialization with matched bodies and H5 file path
- * - Configuration of radiation convolution options from YAML
- *
- * INTERACTIONS:
- * - Reads hydro_data (YAMLHydroData) from parser
- * - Accesses Chrono bodies from simulation system
- * - Creates WaveBase instances via factory pattern
- * - Configures HydroForces with convolution settings
- *
- * KEY ASSUMPTIONS:
- * - All bodies use same H5 file (takes first body's h5_file)
- * - Body names match exactly between YAML and Chrono
- * - Wave parameters are valid (height > 0 for regular waves, etc.)
- * - Simulation timestep/duration provided for irregular waves
- *
- * KNOWN LIMITATIONS:
- * - Single H5 file per system (no per-body files)
- * - Body matching fails silently if name not found (logs warning)
- * - No validation that matched body count matches H5 file structure
+ * Implements SetupHydroFromYAML(): matches YAML body configs to Chrono
+ * bodies, creates wave models, and returns a configured HydroForces.
  *********************************************************************/
 
 #include "setup_from_yaml.h"
