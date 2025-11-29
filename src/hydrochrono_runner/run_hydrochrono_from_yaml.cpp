@@ -1,8 +1,8 @@
 #include <hydroc/version.h>
-#include "../utils/setup_parser.h"
+#include "../hydro/config/yaml_discovery.h"
 #include <hydroc/logging.h>
-#include "../setup_hydro_from_yaml.h"
-#include "../hydro_yaml_parser.h"
+#include "../hydro/config/setup_from_yaml.h"
+#include "../hydro/config/yaml_parser.h"
 #include <hydroc/hydro_forces.h>
 #include <hydroc/io/simulation_export.h>
 #include <hydroc/wave_types.h>

@@ -1,5 +1,5 @@
 /*********************************************************************
- * @file  hydro_config_loader.h
+ * @file  config_loader.h
  *
  * @brief Simple helper to load hydrodynamics config from YAML.
  *
@@ -7,10 +7,10 @@
  * callers a stable, easy-to-read entry point.
  *********************************************************************/
 
-#ifndef HYDRO_IO_HYDRO_CONFIG_LOADER_H
-#define HYDRO_IO_HYDRO_CONFIG_LOADER_H
+#ifndef HYDRO_CONFIG_CONFIG_LOADER_H
+#define HYDRO_CONFIG_CONFIG_LOADER_H
 
-#include "hydro_config_types.h"
+#include <hydroc/config/hydro_config.h>
 #include <string>
 
 namespace hydrochrono {
@@ -31,5 +31,5 @@ YAMLHydroData LoadHydroConfigFromYaml(const std::string& yaml_path);
 }  // namespace hydro
 }  // namespace hydrochrono
 
-#endif  // HYDRO_IO_HYDRO_CONFIG_LOADER_H
+#endif  // HYDRO_CONFIG_CONFIG_LOADER_H
 

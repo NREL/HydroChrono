@@ -1,10 +1,10 @@
 /*********************************************************************
- * @file  hydro_yaml_parser.cpp
+ * @file  yaml_parser.cpp
  *
  * @brief Implementation of YAML parser for hydro.yaml files.
  *********************************************************************/
 
-#include "hydro_yaml_parser.h"
+#include "yaml_parser.h"
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -608,3 +608,4 @@ YAMLHydroData ReadHydroYAML(const std::string& hydro_file_path) {
     
     return data;
 }
+

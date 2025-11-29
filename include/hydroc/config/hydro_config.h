@@ -1,13 +1,24 @@
-// TODO: This file will move to src/hydrochrono_hydro/ in a future refactor.
-
-#ifndef HYDRO_CONFIG_TYPES_H
-#define HYDRO_CONFIG_TYPES_H
-
 /*********************************************************************
- * @file  hydro_config_types.h
+ * @file  hydro_config.h
  *
- * @brief Data structures for parsed hydro.yaml content.
+ * @brief Public configuration types for HydroChrono YAML configuration.
+ *
+ * This header defines the data structures used to represent parsed
+ * hydro.yaml configuration files. Users and library consumers should
+ * include this header to work with hydrodynamic configuration data.
+ *
+ * MAIN TYPES:
+ * - HydroBody: Configuration for a single hydrodynamic body
+ * - WaveSettings: Configuration for wave conditions
+ * - YAMLHydroData: Top-level container for all configuration
+ *
+ * USAGE:
+ * Include <hydroc/config/hydro_config.h> to access these types.
+ * Use hydrochrono::hydro::LoadHydroConfigFromYaml() to parse YAML files.
  *********************************************************************/
+
+#ifndef HYDROC_CONFIG_HYDRO_CONFIG_H
+#define HYDROC_CONFIG_HYDRO_CONFIG_H
 
 #include <string>
 #include <vector>
@@ -71,5 +82,5 @@ struct YAMLHydroData {
     bool td_export_plot_csv = false;          // dump before/after CSV summaries (false by default)
 };
 
-#endif  // HYDRO_CONFIG_TYPES_H
+#endif  // HYDROC_CONFIG_HYDRO_CONFIG_H
 

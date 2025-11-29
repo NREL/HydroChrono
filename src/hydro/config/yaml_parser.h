@@ -1,13 +1,16 @@
-#ifndef HYDRO_YAML_PARSER_H
-#define HYDRO_YAML_PARSER_H
-
 /*********************************************************************
- * @file  hydro_yaml_parser.h
+ * @file  yaml_parser.h
  *
  * @brief YAML parser for hydro.yaml files.
+ *
+ * This is an internal header. Library consumers should use the public
+ * LoadHydroConfigFromYaml() function from config_loader.h instead.
  *********************************************************************/
 
-#include "hydro/io/hydro_config_types.h"
+#ifndef HYDRO_CONFIG_YAML_PARSER_H
+#define HYDRO_CONFIG_YAML_PARSER_H
+
+#include <hydroc/config/hydro_config.h>
 #include <string>
 
 /**
@@ -25,5 +28,5 @@ enum class RadiationConvolutionModeParsed {
     TaperedDirect
 };
 
+#endif  // HYDRO_CONFIG_YAML_PARSER_H
 
-#endif  // HYDRO_YAML_PARSER_H

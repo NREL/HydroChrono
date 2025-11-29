@@ -1,4 +1,14 @@
-#pragma once
+/*********************************************************************
+ * @file  yaml_discovery.h
+ *
+ * @brief Discovery and parsing of model.setup.yaml files.
+ *
+ * This module handles finding and parsing setup files that point to
+ * other configuration files (model, simulation, hydro, output).
+ *********************************************************************/
+
+#ifndef HYDRO_CONFIG_YAML_DISCOVERY_H
+#define HYDRO_CONFIG_YAML_DISCOVERY_H
 
 #include <filesystem>
 #include <string>
@@ -29,4 +39,7 @@ SetupConfig ParseSetupFile(const std::filesystem::path& setup_path);
 /// @return Path to setup file if it exists, empty path otherwise
 std::filesystem::path FindSetupFile(const std::filesystem::path& directory);
 
-} // namespace hydroc 
+} // namespace hydroc
+
+#endif  // HYDRO_CONFIG_YAML_DISCOVERY_H
+

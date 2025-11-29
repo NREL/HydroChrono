@@ -4,7 +4,7 @@
  * @brief Unit tests for the hydro YAML parser.
  *********************************************************************/
 
-#include "../../src/hydro_yaml_parser.h"
+#include "../../src/hydro/config/yaml_parser.h"
 #include <iostream>
 #include <filesystem>
 #include <fstream>

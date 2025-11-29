@@ -4,7 +4,7 @@
 # Hydro YAML Parser Unit Test
 add_executable(test_hydro_yaml_parser
     test_hydro_yaml_parser.cpp
-    ../../src/hydro_yaml_parser.cpp
+    ../../src/hydro/config/yaml_parser.cpp
 )
 
 target_include_directories(test_hydro_yaml_parser 

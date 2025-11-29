@@ -44,7 +44,7 @@
  *********************************************************************/
 
 // Include hydro_types.h FIRST to ensure BodyForces and GeneralizedForce are available
-// before any other includes that might conflict (e.g., hydro_config_types.h)
+// before any other includes that might conflict (e.g., config/hydro_config.h)
 #include <hydroc/hydro_types.h>
 
 // Standard includes

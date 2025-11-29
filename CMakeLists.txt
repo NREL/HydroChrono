@@ -339,14 +339,16 @@ set(HYDROCHRONO_SOURCES
     src/hydro/io/h5_reader.cpp
     src/hydro/io/h5_writer.cpp
     src/hydro/io/simulation_export.cpp
-    src/hydro/io/hydro_config_loader.cpp
+    # Config/YAML module (consolidated under src/hydro/config/)
+    src/hydro/config/yaml_parser.cpp
+    src/hydro/config/config_loader.cpp
+    src/hydro/config/setup_from_yaml.cpp
+    src/hydro/config/yaml_discovery.cpp
     # Core library sources
     src/chloadaddedmass.cpp
     src/hydro_forces.cpp
     src/helper.cpp
     src/wave_types.cpp
-    src/hydro_yaml_parser.cpp
-    src/setup_hydro_from_yaml.cpp
     # Hydro modules
     src/hydro/waves/wave_base.cpp
     src/hydro/waves/wave_utilities.cpp
@@ -471,7 +473,6 @@ if(HYDROCHRONO_ENABLE_YAML_RUNNER)
         app/run_hydrochrono.cpp
         src/hydrochrono_runner/run_hydrochrono_from_yaml.cpp
         src/utils/misc_options.cpp
-        src/utils/setup_parser.cpp
     )
 
     target_link_libraries(run_hydrochrono

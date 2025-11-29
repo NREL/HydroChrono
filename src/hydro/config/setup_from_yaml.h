@@ -1,8 +1,5 @@
-#ifndef SETUP_HYDRO_FROM_YAML_H
-#define SETUP_HYDRO_FROM_YAML_H
-
 /*********************************************************************
- * @file  setup_hydro_from_yaml.h
+ * @file  setup_from_yaml.h
  *
  * @brief Setup hydrodynamic forces from parsed YAML data.
  *
@@ -18,7 +15,7 @@
  * - Configure radiation convolution options (Baseline/TaperedDirect)
  *
  * INTERACTIONS:
- * - Takes parsed YAMLHydroData from hydro_yaml_parser
+ * - Takes parsed YAMLHydroData from yaml_parser
  * - Takes Chrono bodies from the simulation system
  * - Returns configured TestHydro instance ready for simulation
  * - Uses wave_types.h for wave model creation
@@ -36,7 +33,10 @@
  * - Body matching is simple string equality (no fuzzy matching)
  *********************************************************************/
 
-#include "hydro/io/hydro_config_types.h"
+#ifndef HYDRO_CONFIG_SETUP_FROM_YAML_H
+#define HYDRO_CONFIG_SETUP_FROM_YAML_H
+
+#include <hydroc/config/hydro_config.h>
 #include <chrono/physics/ChBody.h>
 #include <memory>
 #include <vector>
@@ -88,4 +88,5 @@ std::unique_ptr<TestHydro> SetupHydroFromYAMLFile(
     double ramp_duration
 );
 
-#endif  // SETUP_HYDRO_FROM_YAML_H
+#endif  // HYDRO_CONFIG_SETUP_FROM_YAML_H
+

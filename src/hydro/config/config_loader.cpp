@@ -1,11 +1,11 @@
 /*********************************************************************
- * @file  hydro_config_loader.cpp
+ * @file  config_loader.cpp
  *
  * @brief Implementation of the simple hydrodynamics config loader.
  *********************************************************************/
 
-#include "hydro_config_loader.h"
-#include "../../hydro_yaml_parser.h"
+#include "config_loader.h"
+#include "yaml_parser.h"
 
 namespace hydrochrono {
 namespace hydro {

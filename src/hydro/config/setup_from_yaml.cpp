@@ -1,5 +1,5 @@
 /*********************************************************************
- * @file  setup_hydro_from_yaml.cpp
+ * @file  setup_from_yaml.cpp
  *
  * @brief Implementation of hydrodynamic setup from YAML data.
  *
@@ -32,8 +32,8 @@
  * - No validation that matched body count matches H5 file structure
  *********************************************************************/
 
-#include "setup_hydro_from_yaml.h"
-#include "hydro/io/hydro_config_loader.h"
+#include "setup_from_yaml.h"
+#include "config_loader.h"
 #include <hydroc/hydro_forces.h> // For TestHydro
 #include <hydroc/wave_types.h>    // For WaveBase, RegularWave, IrregularWaves, NoWave
 #include <hydroc/logging.h>         // For Logger
@@ -253,3 +253,4 @@ std::unique_ptr<TestHydro> SetupHydroFromYAMLFile(
     const YAMLHydroData hydro_data = hydrochrono::hydro::LoadHydroConfigFromYaml(hydro_yaml_path);
     return SetupHydroFromYAML(hydro_data, bodies, timestep, sim_duration, ramp_duration);
 }
+

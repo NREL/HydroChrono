@@ -1,4 +1,10 @@
-#include "setup_parser.h"
+/*********************************************************************
+ * @file  yaml_discovery.cpp
+ *
+ * @brief Implementation of setup file discovery and parsing.
+ *********************************************************************/
+
+#include "yaml_discovery.h"
 #include <hydroc/logging.h>
 #include <fstream>
 #include <sstream>
@@ -99,4 +105,5 @@ SetupConfig ParseSetupFile(const std::filesystem::path& setup_path) {
     return config;
 }
 
-} // namespace hydroc 
+} // namespace hydroc
+
