@@ -362,9 +362,9 @@ set(HYDROCHRONO_SOURCES
     src/hydro/force_components/hydrostatics_component.cpp
     src/hydro/force_components/radiation_component.cpp
     src/hydro/force_components/excitation_component.cpp
-    # logging consolidated: coordinator + CLI (logging.cpp), backend (logger_backend.cpp)
-    src/utils/logger_backend.cpp
-    src/utils/logging.cpp
+    # Logging module (consolidated under src/hydro/logging/)
+    src/hydro/logging/logger_backend.cpp
+    src/hydro/logging/logging.cpp
 )
 
 # Create the library target and configure it

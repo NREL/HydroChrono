@@ -4,11 +4,7 @@
  */
 
 #include "logger_backend.h"
-#if __has_include(<hydroc/logging.h>)
-#  include <hydroc/logging.h>
-#else
-#  include "../../include/hydroc/logging.h"
-#endif
+#include <hydroc/logging.h>
 #include <iostream>
 #include <sstream>
 
