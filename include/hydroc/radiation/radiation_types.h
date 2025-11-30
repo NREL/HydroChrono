@@ -73,14 +73,19 @@ struct TaperedDirectOptions {
  * 
  * These options control the fitting process that determines the number of
  * exponential modes and their parameters (H_m, α_m) from the RIRF data.
+ * 
+ * TUNING GUIDE:
+ *   - For faster fitting: reduce max_hankel_size (e.g., 100)
+ *   - For better accuracy: increase max_hankel_size (e.g., 500) and r2_threshold (e.g., 0.99)
+ *   - For faster simulations: increase max_order (more modes = better fit = lower residual)
  */
 struct StateSpaceOptions {
     /**
-     * @brief Maximum number of exponential modes to use per DOF pair.
+     * @brief Maximum number of state-space modes to use per DOF pair.
      * 
-     * Higher values improve fit quality but increase computation time.
+     * Higher values improve fit quality but increase per-step computation.
      * The fitter may use fewer modes if a good fit is achieved earlier.
-     * Typical values: 2-10. Default: 10.
+     * Typical values: 4-15. Default: 10.
      */
     int max_order = 10;
     
@@ -88,9 +93,35 @@ struct StateSpaceOptions {
      * @brief Minimum R² (coefficient of determination) threshold for fit acceptance.
      * 
      * The fitter adds modes until either R² >= r2_threshold or max_order is reached.
-     * Values closer to 1.0 require better fits. Default: 0.95.
+     * Values closer to 1.0 require better fits but may need more modes.
+     * Typical values: 0.90-0.99. Default: 0.95.
      */
     double r2_threshold = 0.95;
+    
+    /**
+     * @brief Maximum size of Hankel matrix for SVD decomposition.
+     * 
+     * CRITICAL PERFORMANCE PARAMETER: SVD is O(n³), so this directly controls
+     * fitting time. Larger values give better accuracy but slower fitting.
+     * 
+     * Guidelines:
+     *   - 100: Very fast fitting (~50ms), may reduce accuracy for complex kernels
+     *   - 200: Good balance (default), ~300ms fitting, suitable for most cases
+     *   - 500: High accuracy, ~2-5s fitting, for demanding applications
+     *   - 1000: Maximum accuracy, ~20-60s fitting, rarely needed
+     * 
+     * If RIRF has fewer samples than this value, all samples are used.
+     * Default: 200.
+     */
+    int max_hankel_size = 200;
+    
+    /**
+     * @brief Number of subsamples used for R² quality check during fitting.
+     * 
+     * Lower values speed up fitting; higher values give more accurate R² estimates.
+     * Typical values: 30-100. Default: 50.
+     */
+    int r2_num_samples = 50;
 };
 
 }  // namespace hydrochrono::hydro
