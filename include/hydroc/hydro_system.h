@@ -51,13 +51,18 @@
 // Radiation types (canonical definitions - single source of truth)
 #include <hydroc/radiation/radiation_types.h>
 
+// Force component interface (for radiation component)
+#include <hydroc/core/force_component.h>
+
 namespace hydrochrono::hydro {
 // Forward declarations
 class HydrostaticsComponent;
 class RadiationComponent;
+class RadiationStateSpaceComponent;
 class ExcitationComponent;
 class HydroForces;
 class ChronoHydroCoupler;
+class IHydroForceComponent;
 // Types GeneralizedForce and BodyForces are defined in hydro_types.h (included above)
 }
 
@@ -485,8 +490,8 @@ class HydroSystem {
     // Hydrostatics force component
     std::unique_ptr<hydrochrono::hydro::HydrostaticsComponent> hydrostatics_component_;
 
-    // Radiation damping force component
-    std::unique_ptr<hydrochrono::hydro::RadiationComponent> radiation_component_;
+    // Radiation damping force component (convolution or state-space based on radiation_method_)
+    std::unique_ptr<hydrochrono::hydro::IHydroForceComponent> radiation_component_;
 
     // Wave excitation force component
     std::unique_ptr<hydrochrono::hydro::ExcitationComponent> excitation_component_;
@@ -536,11 +541,12 @@ class HydroSystem {
     // to ensure consistent construction.
     std::unique_ptr<hydrochrono::hydro::HydrostaticsComponent> CreateHydrostaticsComponent() const;
 
-    // Factory: creates RadiationComponent with current BEM data and convolution settings.
+    // Factory: creates radiation force component based on radiation_method_.
+    // Returns RadiationComponent (convolution) or RadiationStateSpaceComponent (state-space).
     // Used by both EnsureRadiationComponent() and EnsureHydroForcesAndCoupler()
     // to ensure consistent construction.
-    // Note: Each instance owns its own velocity history (they are independent).
-    std::unique_ptr<hydrochrono::hydro::RadiationComponent> CreateRadiationComponent() const;
+    // Note: Each instance owns its own internal state (they are independent).
+    std::unique_ptr<hydrochrono::hydro::IHydroForceComponent> CreateRadiationComponent() const;
 
     // Internal helper: constructs hydro_forces_ and chrono_coupler_ once.
     // Subsequent calls are no-ops. Called automatically by CoordinateFuncForBody().

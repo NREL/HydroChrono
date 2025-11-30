@@ -70,6 +70,8 @@ struct YAMLHydroData {
     // ─────────────────────────────────────────────────────────────────────────
     int ss_max_order = 10;           // Maximum exponential modes per DOF pair
     double ss_r2_threshold = 0.95;   // R² fit quality threshold
+    int ss_max_hankel_size = 200;    // Max Hankel matrix size for SVD (key performance param)
+    int ss_r2_num_samples = 50;      // Number of samples for R² check during fitting
     
     // ─────────────────────────────────────────────────────────────────────────
     // Convolution settings (only used if radiation_method == "rirf_convolution")

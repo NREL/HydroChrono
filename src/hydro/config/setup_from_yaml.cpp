@@ -180,20 +180,22 @@ std::unique_ptr<HydroSystem> SetupHydroFromYAML(
     
     if (method == "state_space") {
         hydro_system->SetRadiationMethod(hydrochrono::hydro::RadiationMethod::kStateSpace);
-        hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "Radiation Method", "StateSpace (config stored, not yet active)"));
+        hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "Radiation Method", "StateSpace"));
         
         // Set state-space options
         hydrochrono::hydro::StateSpaceOptions ss_opts;
         ss_opts.max_order = hydro_data.ss_max_order;
         ss_opts.r2_threshold = hydro_data.ss_r2_threshold;
+        ss_opts.max_hankel_size = hydro_data.ss_max_hankel_size;
+        ss_opts.r2_num_samples = hydro_data.ss_r2_num_samples;
         hydro_system->SetStateSpaceOptions(ss_opts);
         
         if (hydroc::debug::IsDebugEnabled()) {
             hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "SS Max Order", std::to_string(ss_opts.max_order)));
             hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "SS R² Threshold", std::to_string(ss_opts.r2_threshold)));
+            hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "SS Max Hankel Size", std::to_string(ss_opts.max_hankel_size)));
+            hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "SS R² Samples", std::to_string(ss_opts.r2_num_samples)));
         }
-        
-        // Note: State-space method not yet implemented; runtime uses RIRF convolution.
     } else {
         // Default: rirf_convolution (or any unrecognized value)
         hydro_system->SetRadiationMethod(hydrochrono::hydro::RadiationMethod::kRirfConvolution);

@@ -302,12 +302,15 @@ set(HC_SOURCES
     src/hydro/waves/irregular_wave.cpp
     src/hydro/radiation/radiation_rirf_processing.cpp
     src/hydro/radiation/radiation_rirf_convolution.cpp
+    src/hydro/radiation/radiation_ss_model.cpp
+    src/hydro/radiation/radiation_ss_fitter.cpp
     src/hydro/core/hydro_forces.cpp
     # Chrono coupling layer (bridges Chrono physics with Chrono-free core)
     src/hydro/chrono/chrono_state_utils.cpp
     src/hydro/chrono/chrono_hydro_coupler.cpp
     src/hydro/force_components/hydrostatics_component.cpp
     src/hydro/force_components/radiation_component.cpp
+    src/hydro/force_components/radiation_ss_component.cpp
     src/hydro/force_components/excitation_component.cpp
     # Logging module (consolidated under src/hydro/logging/)
     src/hydro/logging/logger_backend.cpp
