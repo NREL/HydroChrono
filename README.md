@@ -2,11 +2,11 @@
 <p align="center">
   <img src="docs/assets/img/hydrochrono_banner.png" />
   <br/>
-  <a href="https://github.com/NREL/HydroChrono/releases"><img src="https://img.shields.io/badge/version-v0.3-blue.svg" /></a>
+  <a href="https://github.com/NREL/HydroChrono/releases"><img src="https://img.shields.io/badge/version-v0.4-blue.svg" /></a>
   <a href="#"><img src="https://img.shields.io/badge/status-Prototype-orange.svg" /></a>
 </p>
 
-> ⚠️ HydroChrono is under active development (`v0.3` prototype). This early release focuses on a YAML‑driven CLI and portable HDF5 outputs so you can try the code and share feedback. Expect rapid iteration over the coming year (inc. more advanced PTO, control, mooring & hydrodynamics) — please get in touch if you have any issues or feature requests.
+> ⚠️ HydroChrono is under active development (`v0.4` prototype). This early release focuses on a YAML‑driven CLI and portable HDF5 outputs so you can try the code and share feedback. Expect rapid iteration over the coming year (inc. more advanced PTO, control, mooring & hydrodynamics) — please get in touch if you have any issues or feature requests.
 
 
 HydroChrono (Hydrodynamics for Project Chrono) is a hydrodynamics simulation toolkit built on [Project Chrono](https://projectchrono.org/). It is designed for simulating wave energy converters (WECs) and other complex ocean systems, and is **100% free and open‑source** end‑to‑end — no proprietary dependencies required. This repo ships a prototype, YAML‑driven CLI app for running simulations and exporting portable results.

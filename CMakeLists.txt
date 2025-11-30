@@ -20,7 +20,7 @@ endif()
 # ═══════════════════════════════════════════════════════════════════════════════
 
 project(HydroChrono 
-    VERSION 0.3.2
+    VERSION 0.4.0
     DESCRIPTION "Hydrodynamics for Project Chrono."
     LANGUAGES CXX
 )
@@ -788,15 +788,15 @@ endif()
 
 
 
-# Optionally include Python runtime DLL if Chrono::Parsers depends on it
-find_package(Python3 QUIET COMPONENTS Interpreter)
-if(Python3_Interpreter_FOUND OR Python3_FOUND)
-    get_filename_component(_PY_DIR "${Python3_EXECUTABLE}" DIRECTORY)
-    if(DEFINED Python3_VERSION_MAJOR AND DEFINED Python3_VERSION_MINOR)
-        set(_PY_DLL_NAME "python${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}.dll")
-        set(_PY_DLL_PATH "${_PY_DIR}/${_PY_DLL_NAME}")
-        if(EXISTS "${_PY_DLL_PATH}")
-            install(FILES "${_PY_DLL_PATH}" DESTINATION bin COMPONENT runtime)
-        endif()
-    endif()
-endif()
+# NOTE: Do NOT include Python runtime DLL (python3XX.dll) in the package.
+# While Chrono::Parsers may link against Python, including the standalone DLL
+# causes STATUS_DLL_NOT_FOUND (0xC0000135) failures because python3XX.dll
+# has dependencies (python3.dll, _pth files, etc.) that aren't bundled.
+# The exe works without it because Python DLLs are found via PATH at runtime.
+# If Python embedding is truly required, the entire Python runtime would need
+# to be bundled, which is beyond the scope of this minimal package.
+#
+# find_package(Python3 QUIET COMPONENTS Interpreter)
+# if(Python3_Interpreter_FOUND OR Python3_FOUND)
+#     ... (removed - see note above)
+# endif()

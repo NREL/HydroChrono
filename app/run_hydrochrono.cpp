@@ -9,6 +9,7 @@
 #include <hydroc/logging.h>
 #include <string>
 #include <filesystem>
+#include <iostream>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -164,7 +165,6 @@ int main(int argc, char* argv[]) {
     // Configure UTF-8 console output on Windows (must be first!)
     // ---------------------------------------------------------------------
 #ifdef _WIN32
-    // Enable UTF-8 console output on Windows
     SetConsoleOutputCP(CP_UTF8);
 #endif
 
@@ -175,13 +175,22 @@ int main(int argc, char* argv[]) {
     
     // -------------------------------------------------------------------------
     // Initialize logging early so all CLI output uses the nice formatting
+    // Wrapped in try/catch to report initialization failures clearly
     // -------------------------------------------------------------------------
-    hydroc::LoggingConfig cfg;
-    cfg.enable_cli_output = true;
-    cfg.enable_file_output = false;
-    cfg.console_level = hydroc::LogLevel::Info;
-    cfg.file_level = hydroc::LogLevel::Info;
-    hydroc::Initialize(cfg);
+    try {
+        hydroc::LoggingConfig cfg;
+        cfg.enable_cli_output = true;
+        cfg.enable_file_output = false;
+        cfg.console_level = hydroc::LogLevel::Info;
+        cfg.file_level = hydroc::LogLevel::Info;
+        (void)hydroc::Initialize(cfg);  // Ignore return value; failures throw
+    } catch (const std::exception& e) {
+        std::cerr << "FATAL: Exception during logging initialization: " << e.what() << std::endl;
+        return 1;
+    } catch (...) {
+        std::cerr << "FATAL: Unknown exception during logging initialization" << std::endl;
+        return 1;
+    }
 
     // Check for help/version/info flags first (before requiring input directory)
     for (int i = 1; i < argc; i++) {
