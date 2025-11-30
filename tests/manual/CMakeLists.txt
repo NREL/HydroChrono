@@ -1,21 +1,28 @@
 # Manual/Diagnostic Tests for HydroChrono
 # =========================================
 #
-# These are NOT automated tests - they are diagnostic tools for visual
-# verification and debugging. They output data files that can be plotted
-# using the accompanying Python scripts.
+# These are visual verification tools for comparing convolution vs state-space
+# radiation damping. They output data files that can be plotted using the
+# accompanying Python script.
 #
-# Build: cmake --build build --target radiation_ss_visual_check
-# Run:   ./radiation_ss_visual_check
-# Plot:  python plot_radiation_ss.py
+# Usage:
+#   cmake --build build --config Release --target sphere_decay_ss_comparison
+#   cd build/bin/tests/manual && ./sphere_decay_ss_comparison
+#   python plot_model_comparison.py sphere --save
+#
+#   cmake --build build --config Release --target oswec_decay_ss_comparison  
+#   cd build/bin/tests/manual && ./oswec_decay_ss_comparison
+#   python plot_model_comparison.py oswec --save
 #
 # Output structure:
 #   build/bin/tests/manual/
-#     radiation_ss_visual_check.exe
-#     plot_radiation_ss.py
+#     sphere_decay_ss_comparison.exe
+#     oswec_decay_ss_comparison.exe
+#     plot_model_comparison.py
 #     output/
-#       radiation_ss_*.csv
-#       plot_*.png
+#       sphere_ss_verification.png
+#       oswec_ss_verification.png
+#       *_kernel_fit.csv, *_performance.csv, *_convolution.csv, *_state_space.csv
 
 # Output to tests/manual/ subdirectory
 set(MANUAL_TEST_OUTPUT_DIR ${HYDROCHRONO_TEST_OUTPUT_DIR}/manual)
@@ -28,28 +35,50 @@ if(CMAKE_CONFIGURATION_TYPES)
 endif()
 
 # =============================================================================
-# State-Space Radiation Model Visual Verification
+# Sphere Decay Comparison: Convolution vs State-Space
 # =============================================================================
-add_executable(radiation_ss_visual_check
-    radiation_ss_visual_check.cpp
-    ../../src/hydro/radiation/radiation_ss_model.cpp
+add_executable(sphere_decay_ss_comparison
+    sphere_decay_ss_comparison.cpp
 )
 
-target_include_directories(radiation_ss_visual_check 
+target_include_directories(sphere_decay_ss_comparison 
     PRIVATE 
-    ../../src
-    ../../include
+    ${CHRONO_INCLUDE_DIR}
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/include
 )
 
-target_link_libraries(radiation_ss_visual_check 
+target_link_libraries(sphere_decay_ss_comparison 
     PRIVATE 
+    HydroChrono
+    ${CHRONO_LIBS}
     Eigen3::Eigen
 )
 
-# Copy the Python plotting script to the build output directory
-configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/plot_radiation_ss.py
-    ${MANUAL_TEST_OUTPUT_DIR}/plot_radiation_ss.py
-    COPYONLY
+# =============================================================================
+# OSWEC Decay Comparison: Convolution vs State-Space (2-body system)
+# =============================================================================
+add_executable(oswec_decay_ss_comparison
+    oswec_decay_ss_comparison.cpp
 )
 
+target_include_directories(oswec_decay_ss_comparison 
+    PRIVATE 
+    ${CHRONO_INCLUDE_DIR}
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(oswec_decay_ss_comparison 
+    PRIVATE 
+    HydroChrono
+    ${CHRONO_LIBS}
+    Eigen3::Eigen
+)
+
+# Copy the unified plotting script to the build output directory
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/plot_model_comparison.py
+    ${MANUAL_TEST_OUTPUT_DIR}/plot_model_comparison.py
+    COPYONLY
+)

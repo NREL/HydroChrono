@@ -1,119 +1,130 @@
-# Manual/Diagnostic Tests
+# Manual Diagnostic Tests
 
-This directory contains diagnostic tools for **visual verification** of HydroChrono components. These are NOT automated tests - they generate data files that you can plot and inspect.
+This directory contains diagnostic tools for **visual verification** of the state-space radiation damping implementation in HydroChrono. These are NOT automated tests - they generate comparison figures showing convolution vs state-space methods.
+
+## Quick Start
+
+```bash
+# Build
+cmake --build build --config Release --target sphere_decay_ss_comparison
+
+# Run (generates CSV data files)
+cd build/bin/tests/manual
+./sphere_decay_ss_comparison
+
+# Plot (generates verification figure)
+python plot_model_comparison.py sphere --save
+```
+
+---
 
 ## Available Diagnostics
 
-### RadiationStateSpaceModel Verification
+### Sphere Decay Test
 
-**Executable:** `radiation_ss_visual_check`  
-**Python script:** `plot_radiation_ss.py`
-
-Verifies the state-space radiation model by comparing numerical results against analytical solutions.
-
-#### Scenarios covered:
-
-1. **Constant velocity response** - Single mode, constant velocity input
-   - Verifies exponential approach to steady state
-   - Checks force = H × z relationship
-
-2. **Step velocity response** - Velocity step change
-   - Shows the "memory" effect of radiation damping
-   - Tests transient response to input changes
-
-3. **Multiple modes** - Superposition of slow and fast modes
-   - Verifies that mode contributions add correctly
-   - Shows different time constants interacting
-
-4. **Time step sensitivity** - Same scenario with dt = 0.01, 0.1, 0.5, 1.0 s
-   - Demonstrates unconditional stability of the exact integrator
-   - Even very large time steps give reasonable results
-
-## Usage
-
-### 1. Build the diagnostic
+Single-body heave decay simulation comparing convolution and state-space radiation.
 
 ```bash
-cmake --build build --target radiation_ss_visual_check
+cmake --build build --config Release --target sphere_decay_ss_comparison
+./sphere_decay_ss_comparison
+python plot_model_comparison.py sphere --save
 ```
 
-### 2. Run it (generates CSV files)
+**Output**: `output/sphere_ss_verification.png`
+
+### OSWEC Decay Test
+
+Two-body pitch decay simulation (flap + base) with increased fitting parameters for complex coupled kernels.
 
 ```bash
-# From the manual tests directory (recommended):
-cd build/bin/tests/manual
-./radiation_ss_visual_check
-
-# This creates output/ subdirectory with CSV files:
-#   output/radiation_ss_constant_v.csv
-#   output/radiation_ss_step_v.csv
-#   ...
-
-# Or specify a custom output directory:
-./radiation_ss_visual_check my_output_dir
+cmake --build build --config Release --target oswec_decay_ss_comparison
+./oswec_decay_ss_comparison
+python plot_model_comparison.py oswec --save
 ```
 
-### 3. Plot the results
+**Output**: `output/oswec_ss_verification.png`
 
-```bash
-# From the manual tests directory:
-cd build/bin/tests/manual
-python plot_radiation_ss.py
-
-# This reads from output/ and displays plots
-
-# Save plots to PNG files:
-python plot_radiation_ss.py --save
-
-# Or specify a custom data directory:
-python plot_radiation_ss.py my_output_dir --save
-```
-
-## Directory Structure
-
-After running, you'll have:
-```
-build/bin/tests/
-├── unit/
-│   ├── test_radiation_ss_model.exe
-│   └── test_hydro_yaml_parser.exe
-├── manual/
-│   ├── radiation_ss_visual_check.exe
-│   ├── plot_radiation_ss.py
-│   └── output/
-│       ├── radiation_ss_constant_v.csv
-│       ├── radiation_ss_step_v.csv
-│       ├── radiation_ss_multi_mode.csv
-│       ├── radiation_ss_dt_sensitivity.csv
-│       ├── plot_constant_velocity.png  (if --save)
-│       ├── plot_step_velocity.png
-│       ├── plot_multi_mode.png
-│       └── plot_dt_sensitivity.png
-└── regression/
-    └── ...
-```
-
-## Requirements
-
-The plotting script requires:
-- Python 3.6+
-- matplotlib
-- pandas
-
-Install with:
-```bash
-pip install matplotlib pandas
-```
+---
 
 ## Output Files
 
+### Data Files (CSV)
+
 | File | Description |
 |------|-------------|
-| `radiation_ss_constant_v.csv` | Constant velocity response data |
-| `radiation_ss_step_v.csv` | Step velocity response data |
-| `radiation_ss_multi_mode.csv` | Multiple modes superposition data |
-| `radiation_ss_dt_sensitivity.csv` | Time step sensitivity data |
+| `{model}_kernel_fit.csv` | RIRF kernel vs state-space fit for key DOF |
+| `{model}_convolution.csv` | Time series from convolution method |
+| `{model}_state_space.csv` | Time series from state-space method |
+| `{model}_performance.csv` | Computation time scaling data |
 
-## Why Visual Checks?
+### Figures (PNG)
 
-Unit tests verify *numerical correctness* - the numbers match expected values within tolerance. But visual checks help to build intuition about how the model behaves, spot unexpected patterns and communicate results to others effectively.
+Each verification figure (`{model}_ss_verification.png`) contains:
+
+1. **Top row**: Kernel fit quality (RIRF vs SS fit for key DOF)
+2. **Middle row**: Time series comparison (convolution vs state-space)
+3. **Bottom row**: Performance scaling (total time, per-step cost, speedup)
+
+---
+
+## Directory Structure
+
+```
+tests/manual/
+├── sphere_decay_ss_comparison.cpp  # Sphere heave decay test
+├── oswec_decay_ss_comparison.cpp   # OSWEC pitch decay test
+├── plot_model_comparison.py        # Unified plotting script
+├── CMakeLists.txt
+└── README.md
+
+build/bin/tests/manual/
+├── sphere_decay_ss_comparison.exe
+├── oswec_decay_ss_comparison.exe
+├── plot_model_comparison.py
+└── output/
+    ├── sphere_ss_verification.png
+    ├── oswec_ss_verification.png
+    └── *.csv (data files)
+```
+
+---
+
+## What These Diagnostics Show
+
+### Kernel Fit Quality
+
+Shows how accurately the Hankel-SVD fitter approximates the RIRF kernel:
+- Blue line: Actual RIRF from BEM data
+- Red dashed: State-space reconstruction
+- Good fit: Lines overlap, R² close to 1.0
+
+### Time Series Comparison
+
+Verifies the state-space model produces forces equivalent to direct convolution:
+- Blue: Convolution-based simulation
+- Red dashed: State-space simulation
+- Key metric: Maximum position/angle difference
+
+### Performance Scaling
+
+Demonstrates the computational advantage of state-space:
+- **Convolution**: O(N) per step - time grows with simulation length
+- **State-space**: O(1) per step - constant time regardless of history
+- Speedup factor grows with simulation duration (typically 10-20× for long simulations)
+
+---
+
+## Requirements
+
+Python dependencies:
+```bash
+pip install matplotlib pandas numpy
+```
+
+---
+
+## Notes
+
+- The sphere test uses default fitting parameters (`max_order=10`, `max_hankel_size=200`)
+- The OSWEC test uses increased parameters (`max_order=15`, `max_hankel_size=500`) due to more complex coupled dynamics
+- Both tests use the `RadiationStateSpaceComponent` integrated with `HydroSystem`
