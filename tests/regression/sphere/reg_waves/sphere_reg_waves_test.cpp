@@ -3,6 +3,11 @@
 #include <hydroc/hydro_forces.h>
 
 #include <chrono/core/ChRealtimeStep.h>
+#include <chrono/physics/ChSystemNSC.h>
+#include <chrono/physics/ChBodyEasy.h>
+#include <chrono/physics/ChLinkLock.h>
+#include <chrono/physics/ChLinkTSDA.h>
+#include <chrono/solver/ChSolver.h>
 
 #include <chrono>  // std::chrono::high_resolution_clock::now
 #include <filesystem>
@@ -129,7 +134,7 @@ int main(int argc, char* argv[]) {
 
         std::vector<std::shared_ptr<ChBody>> bodies;
         bodies.push_back(sphereBody);
-        TestHydro hydro_forces(bodies, h5fname);
+        HydroForces hydro_forces(bodies, h5fname);
         hydro_forces.AddWaves(my_hydro_inputs);
         // for profiling
         auto start = std::chrono::high_resolution_clock::now();

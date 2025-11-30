@@ -1,5 +1,5 @@
-#include <hydroc/chloadaddedmass.h>
-#include <hydroc/h5fileinfo.h>
+#include <hydroc/coupling/added_mass.h>
+#include <hydroc/io/h5_reader.h>
 #include <hydroc/helper.h>
 
 #include <chrono/core/ChTypes.h>

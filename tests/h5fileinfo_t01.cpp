@@ -1,4 +1,4 @@
-#include <hydroc/h5fileinfo.h>
+#include <hydroc/io/h5_reader.h>
 #include <hydroc/helper.h>
 
 #include <cstdlib>

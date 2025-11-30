@@ -2,6 +2,11 @@
 #include <hydroc/hydro_forces.h>
 
 #include <chrono/core/ChRealtimeStep.h>
+#include <chrono/physics/ChSystemSMC.h>
+#include <chrono/physics/ChBodyEasy.h>
+#include <chrono/physics/ChLinkLock.h>
+#include <chrono/physics/ChLinkTSDA.h>
+#include <chrono/solver/ChSolver.h>
 
 #include <chrono>   // std::chrono::high_resolution_clock::now
 #include <iomanip>  // std::setprecision
@@ -152,7 +157,7 @@ int main(int argc, char* argv[]) {
     bodies.push_back(base);
     bodies.push_back(flapFore);
     bodies.push_back(flapAft);
-    TestHydro hydroforces(bodies, h5fname, default_dont_add_waves);
+    HydroForces hydroforces(bodies, h5fname, default_dont_add_waves);
 
     // for profiling
     auto start = std::chrono::high_resolution_clock::now();

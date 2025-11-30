@@ -3,6 +3,9 @@
 #include <hydroc/hydro_forces.h>
 
 #include <chrono/core/ChRealtimeStep.h>
+#include <chrono/physics/ChSystemNSC.h>
+#include <chrono/physics/ChBodyEasy.h>
+#include <chrono/solver/ChSolver.h>
 
 #include <chrono>      // std::chrono::high_resolution_clock::now
 #include <filesystem>  // c++17 only
@@ -94,7 +97,7 @@ int main(int argc, char* argv[]) {
     system.Add(sphereBody);
 
     // define wave parameters (not used in this demo)
-    // Todo define a way to use TestHydro without hydro_inputs/waves
+    // Todo define a way to use HydroForces without hydro_inputs/waves
     // HydroInputs my_hydro_inputs;
     // my_hydro_inputs.mode = WaveMode::noWaveCIC;
     // my_hydro_inputs.regular_wave_amplitude = 0.022;
@@ -106,7 +109,7 @@ int main(int argc, char* argv[]) {
     std::vector<std::shared_ptr<ChBody>> bodies;
     bodies.push_back(sphereBody);
 
-    TestHydro hydro_forces(bodies, h5fname);
+    HydroForces hydro_forces(bodies, h5fname);
     hydro_forces.AddWaves(default_dont_add_waves);
 
     // for profiling

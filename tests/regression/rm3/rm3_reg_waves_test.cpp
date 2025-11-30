@@ -4,6 +4,12 @@
 #include <hydroc/logging.h>
 
 #include <chrono/core/ChRealtimeStep.h>
+#include <chrono/physics/ChSystemNSC.h>
+#include <chrono/physics/ChBodyEasy.h>
+#include <chrono/physics/ChLinkLock.h>
+#include <chrono/physics/ChLinkTSDA.h>
+#include <chrono/solver/ChSolver.h>
+#include <chrono/timestepper/ChTimestepper.h>
 
 #include <chrono>   // std::chrono::high_resolution_clock::now
 #include <iomanip>  // std::setprecision
@@ -141,7 +147,7 @@ int main(int argc, char* argv[]) {
     my_hydro_inputs->regular_wave_amplitude_ = 1.0;
     my_hydro_inputs->regular_wave_omega_     = 2.10;
 
-    TestHydro hydro_forces(bodies, h5fname);
+    HydroForces hydro_forces(bodies, h5fname);
     hydro_forces.AddWaves(my_hydro_inputs);
 
     // for profiling

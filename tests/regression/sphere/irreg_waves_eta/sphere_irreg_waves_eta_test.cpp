@@ -7,6 +7,11 @@
 
 #include <chrono/assets/ChColor.h>
 #include <chrono/core/ChRealtimeStep.h>
+#include <chrono/physics/ChSystemNSC.h>
+#include <chrono/physics/ChBodyEasy.h>
+#include <chrono/physics/ChLinkLock.h>
+#include <chrono/physics/ChLinkTSDA.h>
+#include <chrono/solver/ChSolver.h>
 
 #include <hydroc/gui/guihelper.h>
 #include <hydroc/helper.h>
@@ -195,7 +200,7 @@ int main(int argc, char* argv[]) {
             std::cerr << "Caught unknown exception.\n";
         }
 
-        TestHydro hydro_forces(bodies, h5fname);
+        HydroForces hydro_forces(bodies, h5fname);
         hydro_forces.AddWaves(my_hydro_inputs);
 
         // set up free surface from a mesh
