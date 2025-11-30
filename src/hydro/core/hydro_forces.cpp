@@ -1,9 +1,16 @@
 /*********************************************************************
- * @file  hydro_system.cpp
- * @brief Implementation of HydroSystem façade.
+ * @file  hydro_forces.cpp
+ * @brief Implementation of HydroForces (Chrono-free force engine).
+ *
+ * HydroForces owns and orchestrates force components (hydrostatics,
+ * radiation, excitation) to compute total hydrodynamic forces. It
+ * operates on pure SystemState data with no Project Chrono dependencies,
+ * enabling unit testing and potential use with other physics engines.
+ *
+ * Called by ChronoHydroCoupler, which extracts state from Chrono bodies.
  *********************************************************************/
 
-#include <hydroc/core/hydro_system.h>
+#include <hydroc/core/hydro_forces.h>
 
 #include <chrono>
 #include <stdexcept>
@@ -11,7 +18,7 @@
 
 namespace hydrochrono::hydro {
 
-HydroSystem::HydroSystem(int num_bodies,
+HydroForces::HydroForces(int num_bodies,
                          std::vector<std::unique_ptr<IHydroForceComponent>> components)
     : num_bodies_(num_bodies),
       components_(std::move(components)),
@@ -20,11 +27,11 @@ HydroSystem::HydroSystem(int num_bodies,
     // Require at least one body; otherwise hydrodynamic forces are meaningless.
     if (num_bodies_ <= 0) {
         throw std::invalid_argument(
-            "HydroSystem: num_bodies must be > 0 (got " + std::to_string(num_bodies_) + ")");
+            "HydroForces: num_bodies must be > 0 (got " + std::to_string(num_bodies_) + ")");
     }
 }
 
-BodyForces HydroSystem::Evaluate(const SystemState& state, double time) {
+BodyForces HydroForces::Evaluate(const SystemState& state, double time) {
     // Initialize forces: one 6-DOF zero vector per body
     BodyForces forces(num_bodies_);
     for (int b = 0; b < num_bodies_; ++b) {

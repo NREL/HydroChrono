@@ -11,14 +11,14 @@
 namespace hydrochrono::hydro {
 
 ChronoHydroCoupler::ChronoHydroCoupler(
-    std::shared_ptr<HydroSystem> hydro_system,
+    std::shared_ptr<HydroForces> hydro_forces,
     std::vector<std::shared_ptr<chrono::ChBody>> bodies)
-    : hydro_system_(hydro_system),
+    : hydro_forces_(hydro_forces),
       bodies_(std::move(bodies)) {
-    // HydroSystem is required for force evaluation.
-    if (hydro_system_ == nullptr) {
+    // HydroForces is required for force evaluation.
+    if (hydro_forces_ == nullptr) {
         throw std::invalid_argument(
-            "ChronoHydroCoupler: hydro_system pointer must not be null");
+            "ChronoHydroCoupler: hydro_forces pointer must not be null");
     }
 
     // At least one body is required for hydrodynamic coupling.
@@ -33,8 +33,8 @@ BodyForces ChronoHydroCoupler::Evaluate(double time) {
     SystemState system_state;
     chrono_coupling::BuildSystemStateFromChronoBodies(bodies_, system_state);
 
-    // Evaluate forces via HydroSystem
-    return hydro_system_->Evaluate(system_state, time);
+    // Evaluate forces via HydroForces
+    return hydro_forces_->Evaluate(system_state, time);
 }
 
 void ChronoHydroCoupler::ApplyForcesToChrono(const BodyForces& forces) {
@@ -44,4 +44,3 @@ void ChronoHydroCoupler::ApplyForcesToChrono(const BodyForces& forces) {
 }
 
 }  // namespace hydrochrono::hydro
-

@@ -1,15 +1,15 @@
 /*********************************************************************
- * @file  hydro_forces.cpp
- * @brief Implementation of HydroForces façade and Chrono force callbacks.
+ * @file  hydro_system.cpp
+ * @brief Implementation of HydroSystem façade and Chrono force callbacks.
  *
- * Implements the main hydrodynamics façade (HydroForces), which delegates
- * force computation to HydroSystem via ChronoHydroCoupler. Also implements
+ * Implements the main hydrodynamics façade (HydroSystem), which delegates
+ * force computation to HydroForces via ChronoHydroCoupler. Also implements
  * ForceFunc6d and ComponentFunc for Chrono's callback system.
  *
- * Force flow: Chrono → ForceFunc6d → HydroForces → HydroSystem → components.
+ * Force flow: Chrono → ForceFunc6d → HydroSystem → HydroForces → components.
  *********************************************************************/
 
-#include "hydroc/hydro_forces.h"
+#include "hydroc/hydro_system.h"
 #include <hydroc/coupling/added_mass.h>
 #include <hydroc/io/h5_reader.h>
 #include <hydroc/waves/wave_base.h>
@@ -21,7 +21,7 @@
 #include "force_components/hydrostatics_component.h"
 #include "force_components/radiation_component.h"
 #include "force_components/excitation_component.h"
-#include <hydroc/core/hydro_system.h>
+#include <hydroc/core/hydro_forces.h>
 #include <hydroc/coupling/chrono_coupler.h>
 #include "radiation/radiation_rirf_processing.h"
 
@@ -69,7 +69,7 @@ using chrono::ChSolver;
 using chrono::ChSystem;
 using chrono::ChVector3d;
 
-// kDofPerBody is already defined in hydro_forces.h as constexpr
+// kDofPerBody is already defined in hydro_system.h as constexpr
 const int kDofLinOrRot = 3;
 
 // ------------------------------------------------------------
@@ -103,7 +103,7 @@ std::vector<double> Linspace(double start, double end, int num_points) {
 // ------------------------------------------------------------
 // SECTION: Chrono coupling (connects hydrodynamics to ChBody)
 // ------------------------------------------------------------
-// These classes bridge Chrono's force callback system to HydroForces.
+// These classes bridge Chrono's force callback system to HydroSystem.
 // TODO: Extract to separate module in future refactor.
 
 // TODO reorder ComponentFunc implementation functions to match the header order of functions
@@ -148,7 +148,7 @@ ForceFunc6d::ForceFunc6d() : forces_{{this, 0}, {this, 1}, {this, 2}, {this, 3},
     chrono_torque_->SetName("hydrotorque");
 }
 
-ForceFunc6d::ForceFunc6d(std::shared_ptr<ChBody> object, HydroForces* user_all_forces) : ForceFunc6d() {
+ForceFunc6d::ForceFunc6d(std::shared_ptr<ChBody> object, HydroSystem* user_all_forces) : ForceFunc6d() {
     body_             = object;
     
     // Parse body index from Chrono body name (e.g., "body1" → 1, "body2" → 2).
@@ -220,21 +220,21 @@ void ForceFunc6d::ApplyForceAndTorqueToBody() {
 }
 
 // ------------------------------------------------------------
-// SECTION: HydroForces class (main hydrodynamics façade)
+// SECTION: HydroSystem class (main hydrodynamics façade)
 // ------------------------------------------------------------
 // TODO: This class will be refactored into modular force components.
 // Current structure mixes all physics components together.
 
 // Explicit destructor definition (needed for unique_ptr to incomplete type)
-HydroForces::~HydroForces() = default;
+HydroSystem::~HydroSystem() = default;
 
-HydroForces::HydroForces(std::vector<std::shared_ptr<ChBody>> user_bodies,
+HydroSystem::HydroSystem(std::vector<std::shared_ptr<ChBody>> user_bodies,
                      std::string h5_file_name,
                      std::shared_ptr<WaveBase> waves)
     : bodies_(user_bodies),
       num_bodies_(bodies_.size()),
       file_info_(H5FileInfo(h5_file_name, num_bodies_).ReadH5Data()),
-      hydro_system_(nullptr),
+      hydro_forces_(nullptr),
       chrono_coupler_(nullptr),
       convolution_mode_(hydrochrono::hydro::RadiationConvolutionMode::Baseline),
       tapered_opts_() {
@@ -305,7 +305,7 @@ HydroForces::HydroForces(std::vector<std::shared_ptr<ChBody>> user_bodies,
     // The exporter is managed by the runner; here we only expose getters via the waves object.
 }
 
-void HydroForces::AddWaves(std::shared_ptr<WaveBase> waves) {
+void HydroSystem::AddWaves(std::shared_ptr<WaveBase> waves) {
     user_waves_ = waves;
 
     switch (user_waves_->GetWaveMode()) {
@@ -331,7 +331,7 @@ void HydroForces::AddWaves(std::shared_ptr<WaveBase> waves) {
 // CoordinateFuncForBody builds the state at the start of each timestep.
 // This helper provides a fallback if called out of order.
 
-const hydrochrono::hydro::SystemState& HydroForces::GetCachedSystemState(double time) {
+const hydrochrono::hydro::SystemState& HydroSystem::GetCachedSystemState(double time) {
     // Check if cached state is valid for this time
     if (cached_state_time_ == time) {
         return cached_state_;
@@ -347,9 +347,9 @@ const hydrochrono::hydro::SystemState& HydroForces::GetCachedSystemState(double 
 // SECTION: Hydrostatics (legacy path, delegates to HydrostaticsComponent)
 // ------------------------------------------------------------
 // NOTE: This method is kept for backward compatibility but is no longer called by
-// CoordinateFuncForBody(). The main force path now goes through HydroSystem.
+// CoordinateFuncForBody(). The main force path now goes through HydroForces.
 
-std::vector<double> HydroForces::ComputeForceHydrostatics() {
+std::vector<double> HydroSystem::ComputeForceHydrostatics() {
     auto __t0 = std::chrono::steady_clock::now();
     assert(num_bodies_ > 0);
 
@@ -399,7 +399,7 @@ std::vector<double> HydroForces::ComputeForceHydrostatics() {
 // Legacy helper functions removed - now in RadiationRirfConvolution class
 
 // Preprocess the radiation kernel K(t) per body for TaperedDirect mode.
-void HydroForces::EnsureProcessedRIRF() {
+void HydroSystem::EnsureProcessedRIRF() {
     if (rirf_processed_ready_) {
         return;
     }
@@ -420,7 +420,7 @@ void HydroForces::EnsureProcessedRIRF() {
     rirf_processed_ready_ = true;
 }
 
-void HydroForces::InvalidateRadiationComponent() {
+void HydroSystem::InvalidateRadiationComponent() {
     radiation_component_.reset();
 }
 
@@ -428,17 +428,17 @@ void HydroForces::InvalidateRadiationComponent() {
 // Radiation configuration setters
 // ─────────────────────────────────────────────────────────────────────────
 
-void HydroForces::SetRadiationConvolutionMode(hydrochrono::hydro::RadiationConvolutionMode mode) {
+void HydroSystem::SetRadiationConvolutionMode(hydrochrono::hydro::RadiationConvolutionMode mode) {
     convolution_mode_ = mode;
     InvalidateRadiationComponent();  // Invalidate component to recreate with new settings
 }
 
-void HydroForces::SetTaperedDirectOptions(const hydrochrono::hydro::TaperedDirectOptions& opts) {
+void HydroSystem::SetTaperedDirectOptions(const hydrochrono::hydro::TaperedDirectOptions& opts) {
     tapered_opts_ = opts;
     InvalidateRadiationComponent();  // Invalidate component to recreate with new settings
 }
 
-void HydroForces::EnsureRadiationComponent() {
+void HydroSystem::EnsureRadiationComponent() {
     if (radiation_component_) {
         return;  // Already created
     }
@@ -446,7 +446,7 @@ void HydroForces::EnsureRadiationComponent() {
     radiation_component_ = CreateRadiationComponent();
 }
 
-void HydroForces::EnsureExcitationComponent() {
+void HydroSystem::EnsureExcitationComponent() {
     if (excitation_component_) {
         return;  // Already created
     }
@@ -454,15 +454,15 @@ void HydroForces::EnsureExcitationComponent() {
     excitation_component_ = CreateExcitationComponent();
 }
 
-std::unique_ptr<hydrochrono::hydro::ExcitationComponent> HydroForces::CreateExcitationComponent() const {
+std::unique_ptr<hydrochrono::hydro::ExcitationComponent> HydroSystem::CreateExcitationComponent() const {
     // Single source of truth for ExcitationComponent construction.
-    // Both EnsureExcitationComponent() and EnsureHydroSystemAndCoupler() use this.
+    // Both EnsureExcitationComponent() and EnsureHydroForcesAndCoupler() use this.
     return std::make_unique<hydrochrono::hydro::ExcitationComponent>(user_waves_, num_bodies_);
 }
 
-std::unique_ptr<hydrochrono::hydro::HydrostaticsComponent> HydroForces::CreateHydrostaticsComponent() const {
+std::unique_ptr<hydrochrono::hydro::HydrostaticsComponent> HydroSystem::CreateHydrostaticsComponent() const {
     // Single source of truth for HydrostaticsComponent construction.
-    // Used by HydroForces constructor and EnsureHydroSystemAndCoupler().
+    // Used by HydroSystem constructor and EnsureHydroForcesAndCoupler().
     const auto gravitational_acceleration_ch = bodies_[0]->GetSystem()->GetGravitationalAcceleration();
     const Eigen::Vector3d gravitational_acceleration(
         gravitational_acceleration_ch.x(),
@@ -473,9 +473,9 @@ std::unique_ptr<hydrochrono::hydro::HydrostaticsComponent> HydroForces::CreateHy
         file_info_, num_bodies_, equilibrium_, cb_minus_cg_, gravitational_acceleration);
 }
 
-std::unique_ptr<hydrochrono::hydro::RadiationComponent> HydroForces::CreateRadiationComponent() const {
+std::unique_ptr<hydrochrono::hydro::RadiationComponent> HydroSystem::CreateRadiationComponent() const {
     // Single source of truth for RadiationComponent construction.
-    // Used by EnsureRadiationComponent() and EnsureHydroSystemAndCoupler().
+    // Used by EnsureRadiationComponent() and EnsureHydroForcesAndCoupler().
     // Each RadiationComponent instance owns its own velocity history.
     //
     // Configuration inputs:
@@ -496,19 +496,19 @@ std::unique_ptr<hydrochrono::hydro::RadiationComponent> HydroForces::CreateRadia
 }
 
 // ------------------------------------------------------------
-// Internal helpers for HydroSystem + ChronoHydroCoupler path
+// Internal helpers for HydroForces + ChronoHydroCoupler path
 // ------------------------------------------------------------
-// HydroSystem + ChronoHydroCoupler are persistent (constructed once).
-// The HydroSystem owns its own force components with independent state.
+// HydroForces + ChronoHydroCoupler are persistent (constructed once).
+// The HydroForces owns its own force components with independent state.
 // This path is used by the comparison harness and will eventually replace
 // the legacy per-component methods.
 
-void HydroForces::EnsureHydroSystemAndCoupler() {
-    if (hydro_system_ && chrono_coupler_) {
+void HydroSystem::EnsureHydroForcesAndCoupler() {
+    if (hydro_forces_ && chrono_coupler_) {
         return;  // Already constructed; do not recreate
     }
 
-    // Build force components for HydroSystem (independent from legacy components)
+    // Build force components for HydroForces (independent from legacy components)
     std::vector<std::unique_ptr<hydrochrono::hydro::IHydroForceComponent>> components;
 
     // Hydrostatics component (uses shared factory for consistent construction)
@@ -520,19 +520,19 @@ void HydroForces::EnsureHydroSystemAndCoupler() {
     // Excitation component (uses shared factory for consistent construction)
     components.push_back(CreateExcitationComponent());
 
-    // Construct HydroSystem (takes ownership of components)
-    hydro_system_ = std::make_unique<hydrochrono::hydro::HydroSystem>(
+    // Construct HydroForces (takes ownership of components)
+    hydro_forces_ = std::make_unique<hydrochrono::hydro::HydroForces>(
         num_bodies_, std::move(components));
 
     // Create shared_ptr alias for ChronoHydroCoupler (empty deleter - unique_ptr owns lifetime)
-    std::shared_ptr<hydrochrono::hydro::HydroSystem> hydro_system_shared(
-        hydro_system_.get(), [](hydrochrono::hydro::HydroSystem*) {
+    std::shared_ptr<hydrochrono::hydro::HydroForces> hydro_forces_shared(
+        hydro_forces_.get(), [](hydrochrono::hydro::HydroForces*) {
             // Empty deleter - unique_ptr owns the lifetime
         });
 
     // Construct ChronoHydroCoupler
     chrono_coupler_ = std::make_unique<hydrochrono::hydro::ChronoHydroCoupler>(
-        hydro_system_shared, bodies_);
+        hydro_forces_shared, bodies_);
 
     // Apply deferred profiling setting (may have been set before coupler was created)
     if (profiling_enabled_) {
@@ -544,8 +544,8 @@ void HydroForces::EnsureHydroSystemAndCoupler() {
 // Legacy radiation convolution computation.
 // RadiationComponent is the single source of truth for radiation history and forces.
 // NOTE: This method is kept for backward compatibility but is no longer called by
-// CoordinateFuncForBody(). The main force path now goes through HydroSystem.
-std::vector<double> HydroForces::ComputeForceRadiationDampingConv() {
+// CoordinateFuncForBody(). The main force path now goes through HydroForces.
+std::vector<double> HydroSystem::ComputeForceRadiationDampingConv() {
     auto __t0 = std::chrono::steady_clock::now();
     const int total_dofs = kDofPerBody * num_bodies_;
 
@@ -577,7 +577,7 @@ std::vector<double> HydroForces::ComputeForceRadiationDampingConv() {
 
     // Convert BodyForces to legacy flat 6N vector format.
     // Negate to return positive damping magnitude (legacy convention: CoordinateFuncForBody
-    // used to subtract this, but now HydroSystem handles the sign internally).
+    // used to subtract this, but now HydroForces handles the sign internally).
     force_radiation_damping_.assign(kDofPerBody * num_bodies_, 0.0);
     for (int b = 0; b < num_bodies_; ++b) {
         const int body_offset = kDofPerBody * b;
@@ -596,10 +596,10 @@ std::vector<double> HydroForces::ComputeForceRadiationDampingConv() {
     return force_radiation_damping_;
 }
 
-double HydroForces::GetRIRFval(int row, int col, int st) {
+double HydroSystem::GetRIRFval(int row, int col, int st) {
     if (row < 0 || row >= kDofPerBody * num_bodies_ || col < 0 || col >= kDofPerBody * num_bodies_ || st < 0 ||
         st >= file_info_.GetRIRFDims(2)) {
-        throw std::out_of_range("rirfval index out of range in HydroForces::GetRIRFval");
+        throw std::out_of_range("rirfval index out of range in HydroSystem::GetRIRFval");
     }
 
     int body_index = row / kDofPerBody;
@@ -620,9 +620,9 @@ double HydroForces::GetRIRFval(int row, int col, int st) {
 // SECTION: Wave excitation (legacy path, delegates to ExcitationComponent)
 // ------------------------------------------------------------
 // NOTE: This method is kept for backward compatibility but is no longer called by
-// CoordinateFuncForBody(). The main force path now goes through HydroSystem.
+// CoordinateFuncForBody(). The main force path now goes through HydroForces.
 
-Eigen::VectorXd HydroForces::ComputeForceWaves() {
+Eigen::VectorXd HydroSystem::ComputeForceWaves() {
     auto __t0 = std::chrono::steady_clock::now();
     // Ensure bodies_ is not empty
     if (bodies_.empty()) {
@@ -667,7 +667,7 @@ Eigen::VectorXd HydroForces::ComputeForceWaves() {
 // SECTION: Main force evaluation (Chrono callback entry point)
 // ------------------------------------------------------------
 // Called by Chrono via ForceFunc6d/ComponentFunc callbacks.
-// Routes force computation through HydroSystem + ChronoHydroCoupler.
+// Routes force computation through HydroForces + ChronoHydroCoupler.
 // Forces are cached per timestep via prev_time check.
 //
 // INDEXING CONVENTION:
@@ -675,7 +675,7 @@ Eigen::VectorXd HydroForces::ComputeForceWaves() {
 //   - DOF index `dof_index` is 0-based (0=surge, 1=sway, ..., 5=yaw)
 //   - Internal arrays use 0-based indexing; we convert b to 0-based below.
 
-double HydroForces::CoordinateFuncForBody(int b, int dof_index) {
+double HydroSystem::CoordinateFuncForBody(int b, int dof_index) {
     // Validate inputs: b is 1-based [1, num_bodies], dof_index is 0-based [0, 5]
     if (dof_index < 0 || dof_index >= kDofPerBody || b < 1 || b > num_bodies_) {
         throw std::out_of_range("Invalid index in CoordinateFuncForBody: "
@@ -705,18 +705,18 @@ double HydroForces::CoordinateFuncForBody(int b, int dof_index) {
     hydrochrono::hydro::chrono_coupling::BuildSystemStateFromChronoBodies(bodies_, cached_state_);
     cached_state_time_ = prev_time;
 
-    // Ensure HydroSystem + ChronoHydroCoupler are initialized
-    EnsureHydroSystemAndCoupler();
+    // Ensure HydroForces + ChronoHydroCoupler are initialized
+    EnsureHydroForcesAndCoupler();
 
-    // Compute total forces via HydroSystem.
-    // HydroSystem::Evaluate() combines all components:
+    // Compute total forces via HydroForces.
+    // HydroForces::Evaluate() combines all components:
     //   - Hydrostatics: added with + sign
     //   - Radiation: added with - sign (damping opposes motion, handled inside RadiationComponent)
     //   - Excitation: added with + sign
     // Result: total = hydrostatics - radiation + waves
     hydrochrono::hydro::BodyForces body_forces = chrono_coupler_->Evaluate(prev_time);
 
-    // Copy profiling stats from HydroSystem to HydroForces::profile_stats_
+    // Copy profiling stats from HydroForces to HydroSystem::profile_stats_
     auto hydro_stats = chrono_coupler_->GetProfileStats();
     profile_stats_.hydrostatics_seconds = hydro_stats.hydrostatics_seconds;
     profile_stats_.hydrostatics_calls   = hydro_stats.hydrostatics_calls;
@@ -746,9 +746,10 @@ double HydroForces::CoordinateFuncForBody(int b, int dof_index) {
     return total_force_[body_num_offset + dof_index];
 }
 
-void HydroForces::SetProfilingEnabled(bool enabled) {
+void HydroSystem::SetProfilingEnabled(bool enabled) {
     profiling_enabled_ = enabled;
     if (chrono_coupler_) {
         chrono_coupler_->SetProfilingEnabled(enabled);
     }
 }
+

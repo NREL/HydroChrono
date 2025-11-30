@@ -1,14 +1,14 @@
 /*********************************************************************
  * @file  setup_from_yaml.cpp
- * @brief Creates HydroForces from parsed YAML configuration.
+ * @brief Creates HydroSystem from parsed YAML configuration.
  *
  * Implements SetupHydroFromYAML(): matches YAML body configs to Chrono
- * bodies, creates wave models, and returns a configured HydroForces.
+ * bodies, creates wave models, and returns a configured HydroSystem.
  *********************************************************************/
 
 #include "setup_from_yaml.h"
 #include "config_loader.h"
-#include <hydroc/hydro_forces.h> // For HydroForces
+#include <hydroc/hydro_system.h> // For HydroSystem
 #include <hydroc/waves/wave_base.h>
 #include <hydroc/waves/regular_wave.h>
 #include <hydroc/waves/irregular_wave.h>
@@ -145,9 +145,9 @@ std::vector<std::shared_ptr<ChBody>> MatchBodiesByName(
 // ------------------------------------------------------------
 // SECTION: Main setup function
 // ------------------------------------------------------------
-// Orchestrates body matching, wave creation, and HydroForces initialization.
+// Orchestrates body matching, wave creation, and HydroSystem initialization.
 
-std::unique_ptr<HydroForces> SetupHydroFromYAML(
+std::unique_ptr<HydroSystem> SetupHydroFromYAML(
     const YAMLHydroData& hydro_data,
     const std::vector<std::shared_ptr<ChBody>>& bodies,
     double timestep,
@@ -166,10 +166,10 @@ std::unique_ptr<HydroForces> SetupHydroFromYAML(
     auto wave = CreateWaveFromSettings(hydro_data.waves, matched_bodies.size(), 
                                       timestep, sim_duration, ramp_duration);
     
-    // Create and initialize HydroForces (multibody: all matched bodies passed in)
-    auto hydro_forces = std::make_unique<HydroForces>(matched_bodies, h5_file_path, wave);
+    // Create and initialize HydroSystem (multibody: all matched bodies passed in)
+    auto hydro_system = std::make_unique<HydroSystem>(matched_bodies, h5_file_path, wave);
     
-    hydroc::debug::LogDebug(std::string("Initialized HydroForces with ") + std::to_string(matched_bodies.size()) + " bodies");
+    hydroc::debug::LogDebug(std::string("Initialized HydroSystem with ") + std::to_string(matched_bodies.size()) + " bodies");
 
     // System-wide convolution settings (applies to all bodies)
     std::string mode = hydro_data.radiation_convolution_mode;
@@ -177,7 +177,7 @@ std::unique_ptr<HydroForces> SetupHydroFromYAML(
     std::transform(mode.begin(), mode.end(), mode.begin(), ::tolower);
     hydroc::debug::LogDebug("Lowercase mode: '" + mode + "'");
     if (mode == "tapereddirect") {
-        hydro_forces->SetRadiationConvolutionMode(hydrochrono::hydro::RadiationConvolutionMode::TaperedDirect);
+        hydro_system->SetRadiationConvolutionMode(hydrochrono::hydro::RadiationConvolutionMode::TaperedDirect);
         hydroc::debug::LogDebug("Radiation convolution mode: TaperedDirect");
         hydrochrono::hydro::TaperedDirectOptions opts;
         opts.smoothing = !hydro_data.td_smoothing.empty() ? hydro_data.td_smoothing : opts.smoothing;
@@ -192,7 +192,7 @@ std::unique_ptr<HydroForces> SetupHydroFromYAML(
         opts.taper_end_percent = hydro_data.td_taper_end_percent;
         opts.taper_final_amplitude = hydro_data.td_taper_final_amplitude;
         opts.export_plot_csv = hydro_data.td_export_plot_csv;
-        hydro_forces->SetTaperedDirectOptions(opts);
+        hydro_system->SetTaperedDirectOptions(opts);
 
         // CLI inline bullets near main summary
         hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "Convolution Mode", "TaperedDirect"));
@@ -208,12 +208,12 @@ std::unique_ptr<HydroForces> SetupHydroFromYAML(
             hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "Conv Export CSV", (opts.export_plot_csv ? "true" : "false")));
         }
     } else {
-        hydro_forces->SetRadiationConvolutionMode(hydrochrono::hydro::RadiationConvolutionMode::Baseline);
+        hydro_system->SetRadiationConvolutionMode(hydrochrono::hydro::RadiationConvolutionMode::Baseline);
         hydroc::debug::LogDebug("Radiation convolution mode: Baseline");
         hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "Convolution Mode", "Baseline"));
     }
     
-    return hydro_forces;
+    return hydro_system;
 }
 
 // ------------------------------------------------------------
@@ -222,7 +222,7 @@ std::unique_ptr<HydroForces> SetupHydroFromYAML(
 // Keeps file parsing and setup logic together for callers that
 // only know the YAML path.
 
-std::unique_ptr<HydroForces> SetupHydroFromYAMLFile(
+std::unique_ptr<HydroSystem> SetupHydroFromYAMLFile(
     const std::string& hydro_yaml_path,
     const std::vector<std::shared_ptr<ChBody>>& bodies,
     double timestep,
@@ -231,4 +231,3 @@ std::unique_ptr<HydroForces> SetupHydroFromYAMLFile(
     const YAMLHydroData hydro_data = hydrochrono::hydro::LoadHydroConfigFromYaml(hydro_yaml_path);
     return SetupHydroFromYAML(hydro_data, bodies, timestep, sim_duration, ramp_duration);
 }
-

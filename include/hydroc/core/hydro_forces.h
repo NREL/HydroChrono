@@ -1,17 +1,17 @@
 /*********************************************************************
- * @file  hydro_system.h
- * @brief HydroSystem: Chrono-free core that orchestrates force components.
+ * @file  hydro_forces.h
+ * @brief HydroForces: Chrono-free core that orchestrates force components.
  *
  * MAIN TYPES:
- *   - HydroSystem: Owns force components, computes total BodyForces
- *   - HydroSystemProfileStats: Timing/call counts per component type
+ *   - HydroForces: Owns force components, computes total BodyForces
+ *   - HydroForcesProfileStats: Timing/call counts per component type
  *
- * ROLE: This is the Chrono-free hydrodynamics core. HydroForces (façade)
- * and ChronoHydroCoupler delegate force computation to HydroSystem.
+ * ROLE: This is the Chrono-free hydrodynamics core. HydroSystem (façade)
+ * and ChronoHydroCoupler delegate force computation to HydroForces.
  *********************************************************************/
 
-#ifndef HYDROC_CORE_HYDRO_SYSTEM_H
-#define HYDROC_CORE_HYDRO_SYSTEM_H
+#ifndef HYDROC_CORE_HYDRO_FORCES_H
+#define HYDROC_CORE_HYDRO_FORCES_H
 
 #include <hydroc/core/system_state.h>
 #include <hydroc/core/force_component.h>
@@ -21,11 +21,11 @@
 namespace hydrochrono::hydro {
 
 /**
- * @brief Profiling statistics for HydroSystem components.
+ * @brief Profiling statistics for HydroForces components.
  * 
  * Tracks cumulative execution time and call counts for each component type.
  */
-struct HydroSystemProfileStats {
+struct HydroForcesProfileStats {
     double hydrostatics_seconds = 0.0;
     double radiation_seconds    = 0.0;
     double excitation_seconds   = 0.0;
@@ -41,13 +41,13 @@ struct HydroSystemProfileStats {
 };
 
 /**
- * @brief HydroSystem: orchestrates force components to compute total forces.
+ * @brief HydroForces: orchestrates force components to compute total forces.
  * 
  * Owns a collection of force components (hydrostatics, radiation, excitation)
  * and evaluates their combined contributions given system state and time.
- * This is a Chrono-free façade for force computation.
+ * This is a Chrono-free engine for force computation.
  */
-class HydroSystem {
+class HydroForces {
 public:
     /**
      * @brief Constructor.
@@ -55,7 +55,7 @@ public:
      * @param num_bodies Number of bodies in the system
      * @param components Vector of force components (ownership transferred via move)
      */
-    HydroSystem(int num_bodies,
+    HydroForces(int num_bodies,
                 std::vector<std::unique_ptr<IHydroForceComponent>> components);
 
     /**
@@ -83,9 +83,9 @@ public:
      * 
      * Returns cumulative timing and call counts for each component type.
      * 
-     * @return HydroSystemProfileStats Profiling statistics
+     * @return HydroForcesProfileStats Profiling statistics
      */
-    HydroSystemProfileStats GetProfileStats() const { return profile_stats_; }
+    HydroForcesProfileStats GetProfileStats() const { return profile_stats_; }
 
     /**
      * @brief Reset profiling statistics.
@@ -113,11 +113,11 @@ public:
 private:
     int num_bodies_;
     std::vector<std::unique_ptr<IHydroForceComponent>> components_;
-    mutable HydroSystemProfileStats profile_stats_;
+    mutable HydroForcesProfileStats profile_stats_;
     bool profiling_enabled_ = false;  ///< Profiling disabled by default
 };
 
 }  // namespace hydrochrono::hydro
 
-#endif  // HYDROC_CORE_HYDRO_SYSTEM_H
+#endif  // HYDROC_CORE_HYDRO_FORCES_H
 
