@@ -3,28 +3,31 @@
  * @brief Unit tests for RadiationStateSpaceModel.
  *
  * These tests verify the mathematical correctness of the state-space
- * radiation model using simple analytical cases.
+ * radiation model for both exponential and oscillatory modes.
  *
- * TEST SCENARIO (Single DOF, Single Mode):
- *   - num_dofs = 1, num_modes = 1
- *   - Decay rate α > 0, gain H > 0
- *   - Constant velocity v(t) = v0
+ * TEST SCENARIOS:
+ *   1. Exponential mode with constant velocity
+ *   2. Oscillatory mode with constant velocity  
+ *   3. Multiple modes combined
+ *   4. FromFitResult factory method
+ *   5. ReconstructKernel verification
  *
- * EXPECTED BEHAVIOR:
- *   The ODE: ż = v0 - α z
- *   has analytical solution: z(t) = (v0/α) * (1 - exp(-α t))
+ * ANALYTICAL SOLUTIONS:
+ *   Exponential mode (z' = -α*z + b*v):
+ *     z(t) = (b*v/α) * (1 - exp(-α*t))
+ *     z_∞ = b*v/α
+ *     f_∞ = H * b * v / α
  *
- *   Therefore:
- *   - Steady-state (t → ∞): z_∞ = v0/α, f_rad_∞ = H * v0 / α
- *   - Transient: z(t) approaches z_∞ exponentially with time constant 1/α
+ *   Oscillatory mode (damped oscillation):
+ *     More complex, verified via kernel reconstruction
  *********************************************************************/
 
 #include "../../src/hydro/radiation/radiation_ss_model.h"
+#include "../../src/hydro/radiation/radiation_ss_fitter.h"
 
 #include <cmath>
 #include <iostream>
 #include <iomanip>
-#include <stdexcept>
 #include <string>
 
 // Simple test framework macros
@@ -54,221 +57,83 @@
 using namespace hydrochrono::hydro;
 
 // =============================================================================
-// Test: Constructor validation
+// Test: Exponential mode steady-state
 // =============================================================================
-bool TestConstructorValidation() {
-    std::cout << "  Testing constructor validation..." << std::endl;
+bool TestExponentialModeSteadyState() {
+    std::cout << "  Testing exponential mode steady-state..." << std::endl;
 
-    // Valid construction
-    {
-        RadiationStateSpaceModel model(6, 3);
-        TEST_ASSERT(model.num_dofs() == 6, "num_dofs should be 6");
-        TEST_ASSERT(model.num_modes() == 3, "num_modes should be 3");
-    }
+    // Parameters
+    const double alpha = 2.0;  // Decay rate
+    const double b = 1.0;      // Input gain
+    const double H = 10.0;     // Output gain
+    const double v = 1.0;      // Constant velocity
+    const double dt = 0.01;
+    const int num_steps = 1000;
 
-    // Invalid: zero DOFs
-    {
-        bool threw = false;
-        try {
-            RadiationStateSpaceModel model(0, 3);
-        } catch (const std::invalid_argument&) {
-            threw = true;
-        }
-        TEST_ASSERT(threw, "Should throw for num_dofs = 0");
-    }
+    // Expected steady-state: z_∞ = b*v/α, f_∞ = H*b*v/α
+    const double z_inf = b * v / alpha;
+    const double f_inf = H * z_inf;
 
-    // Invalid: negative modes
-    {
-        bool threw = false;
-        try {
-            RadiationStateSpaceModel model(6, -1);
-        } catch (const std::invalid_argument&) {
-            threw = true;
-        }
-        TEST_ASSERT(threw, "Should throw for num_modes < 0");
-    }
-
-    std::cout << "  PASSED" << std::endl;
-    return true;
-}
-
-// =============================================================================
-// Test: SetModeParameters validation
-// =============================================================================
-bool TestSetModeParametersValidation() {
-    std::cout << "  Testing SetModeParameters validation..." << std::endl;
-
-    RadiationStateSpaceModel model(2, 2);
-
-    // Valid parameters
-    {
-        Eigen::VectorXd h(2);
-        h << 1.0, 2.0;
-        model.SetModeParameters(0, 0.5, h);
-        model.SetModeParameters(1, 1.0, h);
-        TEST_ASSERT(model.alphas()(0) == 0.5, "alpha[0] should be 0.5");
-        TEST_ASSERT(model.alphas()(1) == 1.0, "alpha[1] should be 1.0");
-    }
-
-    // Invalid: mode index out of range
-    {
-        Eigen::VectorXd h(2);
-        h << 1.0, 2.0;
-        bool threw = false;
-        try {
-            model.SetModeParameters(2, 0.5, h);  // index 2 is out of range
-        } catch (const std::out_of_range&) {
-            threw = true;
-        }
-        TEST_ASSERT(threw, "Should throw for mode_index >= num_modes");
-    }
-
-    // Invalid: alpha <= 0
-    {
-        Eigen::VectorXd h(2);
-        h << 1.0, 2.0;
-        bool threw = false;
-        try {
-            model.SetModeParameters(0, 0.0, h);
-        } catch (const std::invalid_argument&) {
-            threw = true;
-        }
-        TEST_ASSERT(threw, "Should throw for alpha = 0");
-    }
-
-    // Invalid: h_column size mismatch
-    {
-        Eigen::VectorXd h(3);  // Wrong size
-        h << 1.0, 2.0, 3.0;
-        bool threw = false;
-        try {
-            model.SetModeParameters(0, 0.5, h);
-        } catch (const std::invalid_argument&) {
-            threw = true;
-        }
-        TEST_ASSERT(threw, "Should throw for h_column size mismatch");
-    }
-
-    std::cout << "  PASSED" << std::endl;
-    return true;
-}
-
-// =============================================================================
-// Test: Single DOF, single mode - steady state convergence
-// =============================================================================
-bool TestSingleDofSingleModeSteadyState() {
-    std::cout << "  Testing single DOF, single mode steady state..." << std::endl;
-
-    // Parameters:
-    //   α = 2.0   (decay rate, time constant τ = 0.5 s)
-    //   H = 10.0  (gain)
-    //   v0 = 1.0  (constant velocity)
-    //
-    // Expected steady-state:
-    //   z_∞ = v0 / α = 0.5
-    //   f_rad_∞ = H * z_∞ = H * v0 / α = 5.0
-
-    const double alpha = 2.0;
-    const double H_val = 10.0;
-    const double v0 = 1.0;
-    const double expected_z_ss = v0 / alpha;           // 0.5
-    const double expected_f_ss = H_val * v0 / alpha;   // 5.0
-
-    RadiationStateSpaceModel model(1, 1);
-
-    Eigen::VectorXd h(1);
-    h << H_val;
-    model.SetModeParameters(0, alpha, h);
+    // Create model
+    RadiationStateSpaceModel model;
+    model.AddExponentialMode(alpha, b, H);
     model.Reset();
 
-    // Simulate with constant velocity for long enough to reach steady state
-    // Time constant τ = 1/α = 0.5 s
-    // After 5τ = 2.5 s, we should be within 1% of steady state
-    const double dt = 0.01;
-    const double total_time = 5.0;  // 10 time constants
-    const int num_steps = static_cast<int>(total_time / dt);
-
-    Eigen::VectorXd v(1);
-    v << v0;
-
+    // Run to steady state
     for (int step = 0; step < num_steps; ++step) {
         model.Step(dt, v);
     }
 
-    // Check steady state
-    Eigen::VectorXd forces = model.GetForces();
-    
-    const double tolerance = 0.01;  // 1% tolerance
-    TEST_ASSERT_NEAR(forces(0), expected_f_ss, expected_f_ss * tolerance,
-                     "Radiation force should converge to steady state");
+    double force = model.GetForce();
+    const double tolerance = 0.01 * std::abs(f_inf);
 
-    // Also check internal state
-    TEST_ASSERT_NEAR(model.z()(0, 0), expected_z_ss, expected_z_ss * tolerance,
-                     "Internal state z should converge to v0/alpha");
+    TEST_ASSERT_NEAR(force, f_inf, tolerance, "Steady-state force");
 
-    std::cout << "    Steady-state force: " << forces(0) 
-              << " (expected: " << expected_f_ss << ")" << std::endl;
+    std::cout << "    Force: " << force << " (expected: " << f_inf << ")" << std::endl;
     std::cout << "  PASSED" << std::endl;
     return true;
 }
 
 // =============================================================================
-// Test: Single DOF, single mode - transient response
+// Test: Exponential mode transient
 // =============================================================================
-bool TestSingleDofSingleModeTransient() {
-    std::cout << "  Testing single DOF, single mode transient..." << std::endl;
+bool TestExponentialModeTransient() {
+    std::cout << "  Testing exponential mode transient..." << std::endl;
 
-    // Parameters (same as steady-state test)
     const double alpha = 2.0;
-    const double H_val = 10.0;
-    const double v0 = 1.0;
+    const double b = 1.0;
+    const double H = 10.0;
+    const double v = 1.0;
+    const double dt = 0.001;  // Small dt for accuracy
 
-    // Analytical solution for z(t) with z(0) = 0 and constant v = v0:
-    //   z(t) = (v0/α) * (1 - exp(-α t))
-    // Therefore:
-    //   f_rad(t) = H * z(t) = (H * v0 / α) * (1 - exp(-α t))
-
-    RadiationStateSpaceModel model(1, 1);
-
-    Eigen::VectorXd h(1);
-    h << H_val;
-    model.SetModeParameters(0, alpha, h);
+    RadiationStateSpaceModel model;
+    model.AddExponentialMode(alpha, b, H);
     model.Reset();
-
-    const double dt = 0.01;
-    Eigen::VectorXd v(1);
-    v << v0;
 
     // Test at specific times
-    const double test_times[] = {0.25, 0.5, 1.0, 2.0};
-    const int num_test_times = 4;
-
-    double current_time = 0.0;
-    int test_index = 0;
-
-    while (test_index < num_test_times) {
-        double target_time = test_times[test_index];
+    std::vector<double> test_times = {0.5, 1.0, 2.0, 3.0};
+    
+    for (double t_target : test_times) {
+        model.Reset();
+        int num_steps = static_cast<int>(t_target / dt);
         
-        // Step until we reach the target time
-        while (current_time < target_time - dt/2) {
+        for (int step = 0; step < num_steps; ++step) {
             model.Step(dt, v);
-            current_time += dt;
         }
 
-        // Compute expected value from analytical solution
-        double expected_f = (H_val * v0 / alpha) * (1.0 - std::exp(-alpha * current_time));
-        double actual_f = model.GetForces()(0);
+        // Expected: z(t) = (b*v/α) * (1 - exp(-α*t))
+        // f(t) = H * z(t) = H*b*v/α * (1 - exp(-α*t))
+        double z_exact = (b * v / alpha) * (1.0 - std::exp(-alpha * t_target));
+        double f_exact = H * z_exact;
+        double f_model = model.GetForce();
 
-        // Allow 2% tolerance for numerical integration
-        const double tolerance = 0.02;
-        TEST_ASSERT_NEAR(actual_f, expected_f, std::abs(expected_f) * tolerance + 1e-10,
-                         std::string("Transient at t=") + std::to_string(current_time));
+        // Allow 1% tolerance
+        double tolerance = 0.01 * std::abs(f_exact) + 1e-10;
+        TEST_ASSERT_NEAR(f_model, f_exact, tolerance, 
+            "Force at t=" + std::to_string(t_target));
 
-        std::cout << "    t=" << std::fixed << std::setprecision(2) << current_time 
-                  << "s: f_rad=" << std::setprecision(4) << actual_f 
-                  << " (expected: " << expected_f << ")" << std::endl;
-
-        ++test_index;
+        std::cout << "    t=" << t_target << ": f=" << f_model 
+                  << " (exact: " << f_exact << ")" << std::endl;
     }
 
     std::cout << "  PASSED" << std::endl;
@@ -276,103 +141,146 @@ bool TestSingleDofSingleModeTransient() {
 }
 
 // =============================================================================
-// Test: Multiple modes superposition
+// Test: Oscillatory mode kernel reconstruction
 // =============================================================================
-bool TestMultipleModes() {
-    std::cout << "  Testing multiple modes superposition..." << std::endl;
+bool TestOscillatoryModeKernel() {
+    std::cout << "  Testing oscillatory mode kernel reconstruction..." << std::endl;
 
-    // Two modes with different decay rates
-    // Mode 0: α₀ = 1.0, H₀ = 2.0
-    // Mode 1: α₁ = 4.0, H₁ = 3.0
-    // Constant velocity v0 = 1.0
-    //
-    // Steady-state contributions:
-    //   f₀_∞ = H₀ * v0 / α₀ = 2.0
-    //   f₁_∞ = H₁ * v0 / α₁ = 0.75
-    //   f_total_∞ = 2.75
+    const double alpha = 0.8;   // Decay rate
+    const double omega = 3.0;   // Oscillation frequency
+    const double b_c = 1.0;     // Input gain (cos)
+    const double b_s = 0.0;     // Input gain (sin)
+    const double H_c = 5.0;     // Output gain (cos)
+    const double H_s = 0.0;     // Output gain (sin)
+    const double dt = 0.02;
+    const int num_samples = 100;
 
-    const double alpha0 = 1.0, H0 = 2.0;
-    const double alpha1 = 4.0, H1 = 3.0;
-    const double v0 = 1.0;
-    const double expected_f_ss = H0 * v0 / alpha0 + H1 * v0 / alpha1;  // 2.75
+    RadiationStateSpaceModel model;
+    model.AddOscillatoryMode(alpha, omega, b_c, b_s, H_c, H_s);
 
-    RadiationStateSpaceModel model(1, 2);
+    // Reconstruct kernel
+    Eigen::VectorXd K = model.ReconstructKernel(dt, num_samples);
 
-    Eigen::VectorXd h0(1), h1(1);
-    h0 << H0;
-    h1 << H1;
-    model.SetModeParameters(0, alpha0, h0);
-    model.SetModeParameters(1, alpha1, h1);
-    model.Reset();
-
-    // Run to steady state
-    const double dt = 0.01;
-    const int num_steps = 1000;  // 10 seconds, plenty for both modes to settle
-
-    Eigen::VectorXd v(1);
-    v << v0;
-
-    for (int step = 0; step < num_steps; ++step) {
-        model.Step(dt, v);
+    // Expected kernel: K(t) = H_c * exp(-α*t) * cos(ω*t)
+    // (since b_c=1, b_s=0, H_s=0)
+    double max_error = 0.0;
+    for (int k = 0; k < num_samples; ++k) {
+        double t = k * dt;
+        double K_exact = H_c * std::exp(-alpha * t) * std::cos(omega * t);
+        double error = std::abs(K(k) - K_exact);
+        max_error = std::max(max_error, error);
     }
 
-    double actual_f = model.GetForces()(0);
-    const double tolerance = 0.01;
+    const double tolerance = 1e-10;
+    TEST_ASSERT(max_error < tolerance, 
+        "Kernel reconstruction error: " + std::to_string(max_error));
 
-    TEST_ASSERT_NEAR(actual_f, expected_f_ss, expected_f_ss * tolerance,
-                     "Total force should be sum of mode contributions");
-
-    std::cout << "    Total steady-state force: " << actual_f 
-              << " (expected: " << expected_f_ss << ")" << std::endl;
+    std::cout << "    Max kernel error: " << max_error << std::endl;
+    std::cout << "    K(0) = " << K(0) << " (expected: " << H_c << ")" << std::endl;
     std::cout << "  PASSED" << std::endl;
     return true;
 }
 
 // =============================================================================
-// Test: Multi-DOF system
+// Test: Oscillatory mode force response
 // =============================================================================
-bool TestMultiDof() {
-    std::cout << "  Testing multi-DOF system..." << std::endl;
+bool TestOscillatoryModeForce() {
+    std::cout << "  Testing oscillatory mode force response..." << std::endl;
 
-    // 2 DOFs, 1 mode
-    // α = 2.0
-    // H = [10.0, 20.0]  (different gains for each DOF)
-    // v = [1.0, 0.5]    (different velocities)
-    //
-    // Expected steady-state:
-    //   z₀_∞ = v₀ / α = 0.5
-    //   z₁_∞ = v₁ / α = 0.25
-    //   f₀_∞ = H₀ * z₀_∞ = 10.0 * 0.5 = 5.0
-    //   f₁_∞ = H₁ * z₁_∞ = 20.0 * 0.25 = 5.0
-
-    const double alpha = 2.0;
-
-    RadiationStateSpaceModel model(2, 1);
-
-    Eigen::VectorXd h(2);
-    h << 10.0, 20.0;
-    model.SetModeParameters(0, alpha, h);
-    model.Reset();
-
-    // Run to steady state
+    const double alpha = 0.8;
+    const double omega = 3.0;
+    const double H_c = 5.0;
+    const double H_s = 0.0;
     const double dt = 0.01;
     const int num_steps = 500;
 
-    Eigen::VectorXd v(2);
-    v << 1.0, 0.5;
+    RadiationStateSpaceModel model;
+    model.AddOscillatoryMode(alpha, omega, 1.0, 0.0, H_c, H_s);
+    model.Reset();
 
+    // Apply impulse (velocity = 1 for one step, then 0)
+    // This should show clear oscillatory decay in the force
+    model.Step(dt, 1.0);
+    
+    double prev_force = model.GetForce();
+    int sign_changes = 0;
+    double max_force = std::abs(prev_force);
+
+    for (int step = 1; step < num_steps; ++step) {
+        model.Step(dt, 0.0);  // No input after initial impulse
+        double force = model.GetForce();
+        
+        if (prev_force * force < 0) {
+            ++sign_changes;
+        }
+        prev_force = force;
+        max_force = std::max(max_force, std::abs(force));
+    }
+
+    // With omega=3, over 5 seconds we expect ~2.4 full oscillations = ~4-5 sign changes
+    TEST_ASSERT(sign_changes >= 3, "Force should oscillate (at least 3 sign changes)");
+    TEST_ASSERT(max_force > 0.01, "Force should have significant amplitude");
+
+    std::cout << "    Sign changes: " << sign_changes << std::endl;
+    std::cout << "    Max force: " << max_force << std::endl;
+    std::cout << "  PASSED" << std::endl;
+    return true;
+}
+
+// =============================================================================
+// Test: Multiple modes
+// =============================================================================
+bool TestMultipleModes() {
+    std::cout << "  Testing multiple modes..." << std::endl;
+
+    RadiationStateSpaceModel model;
+    
+    // Add two exponential modes
+    model.AddExponentialMode(1.0, 1.0, 2.0);  // α=1, b=1, H=2
+    model.AddExponentialMode(2.0, 1.0, 3.0);  // α=2, b=1, H=3
+    model.Reset();
+
+    const double v = 1.0;
+    const double dt = 0.01;
+    const int num_steps = 1000;
+
+    // Run to steady state
     for (int step = 0; step < num_steps; ++step) {
         model.Step(dt, v);
     }
 
-    Eigen::VectorXd forces = model.GetForces();
-    const double tolerance = 0.01;
+    // Expected steady-state force:
+    // f = H1*b1*v/α1 + H2*b2*v/α2 = 2*1*1/1 + 3*1*1/2 = 2 + 1.5 = 3.5
+    double f_expected = 2.0 + 1.5;
+    double f_model = model.GetForce();
 
-    TEST_ASSERT_NEAR(forces(0), 5.0, 5.0 * tolerance, "DOF 0 force");
-    TEST_ASSERT_NEAR(forces(1), 5.0, 5.0 * tolerance, "DOF 1 force");
+    const double tolerance = 0.01 * f_expected;
+    TEST_ASSERT_NEAR(f_model, f_expected, tolerance, "Multiple mode steady-state");
 
-    std::cout << "    Forces: [" << forces(0) << ", " << forces(1) << "]"
-              << " (expected: [5.0, 5.0])" << std::endl;
+    std::cout << "    Force: " << f_model << " (expected: " << f_expected << ")" << std::endl;
+    std::cout << "  PASSED" << std::endl;
+    return true;
+}
+
+// =============================================================================
+// Test: Mixed exponential and oscillatory modes
+// =============================================================================
+bool TestMixedModes() {
+    std::cout << "  Testing mixed exponential + oscillatory modes..." << std::endl;
+
+    RadiationStateSpaceModel model;
+    model.AddExponentialMode(1.0, 1.0, 5.0);        // Exp mode
+    model.AddOscillatoryMode(0.5, 2.0, 1.0, 0.0, 3.0, 0.0);  // Osc mode
+    model.Reset();
+
+    // Verify kernel at t=0
+    Eigen::VectorXd K = model.ReconstructKernel(0.01, 10);
+    
+    // At t=0: K(0) = H_exp*b_exp + H_c_osc*b_c_osc = 5*1 + 3*1 = 8
+    double K_0_expected = 5.0 + 3.0;
+    TEST_ASSERT_NEAR(K(0), K_0_expected, 1e-10, "Mixed mode K(0)");
+
+    std::cout << "    K(0) = " << K(0) << " (expected: " << K_0_expected << ")" << std::endl;
     std::cout << "  PASSED" << std::endl;
     return true;
 }
@@ -383,32 +291,114 @@ bool TestMultiDof() {
 bool TestReset() {
     std::cout << "  Testing reset functionality..." << std::endl;
 
-    RadiationStateSpaceModel model(1, 1);
-
-    Eigen::VectorXd h(1);
-    h << 10.0;
-    model.SetModeParameters(0, 2.0, h);
+    RadiationStateSpaceModel model;
+    model.AddExponentialMode(2.0, 1.0, 10.0);
 
     // Run some steps
-    Eigen::VectorXd v(1);
-    v << 1.0;
     for (int i = 0; i < 100; ++i) {
-        model.Step(0.01, v);
+        model.Step(0.01, 1.0);
     }
 
     // Force should be non-zero
-    double force_before_reset = model.GetForces()(0);
-    TEST_ASSERT(std::abs(force_before_reset) > 0.1, "Force should be non-zero before reset");
+    double force_before = model.GetForce();
+    TEST_ASSERT(std::abs(force_before) > 0.1, "Force should be non-zero before reset");
 
     // Reset
     model.Reset();
 
     // Force should be zero
-    double force_after_reset = model.GetForces()(0);
-    TEST_ASSERT_NEAR(force_after_reset, 0.0, 1e-10, "Force should be zero after reset");
+    double force_after = model.GetForce();
+    TEST_ASSERT_NEAR(force_after, 0.0, 1e-10, "Force should be zero after reset");
 
-    std::cout << "    Force before reset: " << force_before_reset << std::endl;
-    std::cout << "    Force after reset: " << force_after_reset << std::endl;
+    std::cout << "    Force before reset: " << force_before << std::endl;
+    std::cout << "    Force after reset: " << force_after << std::endl;
+    std::cout << "  PASSED" << std::endl;
+    return true;
+}
+
+// =============================================================================
+// Test: FromFitResult factory
+// =============================================================================
+bool TestFromFitResult() {
+    std::cout << "  Testing FromFitResult factory..." << std::endl;
+
+    // Create a simple 2x2 state-space system with oscillatory eigenvalues
+    StateSpaceFitResult result;
+    result.order = 2;
+    result.A.resize(2, 2);
+    result.B.resize(2);
+    result.C.resize(1, 2);
+
+    // A matrix with eigenvalues -0.5 ± 2j (oscillatory decay)
+    double alpha = 0.5;
+    double omega = 2.0;
+    result.A << -alpha, -omega,
+                 omega, -alpha;
+    result.B << 1.0, 0.0;
+    result.C << 1.0, 0.0;
+    result.D = 0.0;
+    result.r2 = 1.0;
+
+    // Create model from fit result
+    RadiationStateSpaceModel model = RadiationStateSpaceModel::FromFitResult(result);
+
+    TEST_ASSERT(model.num_osc_modes() == 1, "Should have 1 oscillatory mode");
+    TEST_ASSERT(model.num_exp_modes() == 0, "Should have 0 exponential modes");
+    TEST_ASSERT(model.total_states() == 2, "Should have 2 total states");
+
+    // Check that kernel reconstruction works
+    Eigen::VectorXd K = model.ReconstructKernel(0.01, 100);
+    TEST_ASSERT(K(0) > 0, "K(0) should be positive");
+    
+    std::cout << "    Osc modes: " << model.num_osc_modes() << std::endl;
+    std::cout << "    Exp modes: " << model.num_exp_modes() << std::endl;
+    std::cout << "    K(0) = " << K(0) << std::endl;
+    std::cout << "  PASSED" << std::endl;
+    return true;
+}
+
+// =============================================================================
+// Test: Invalid parameters throw
+// =============================================================================
+bool TestInvalidParameters() {
+    std::cout << "  Testing invalid parameter validation..." << std::endl;
+
+    RadiationStateSpaceModel model;
+
+    // Test: alpha <= 0 should throw
+    {
+        bool threw = false;
+        try {
+            model.AddExponentialMode(0.0, 1.0, 1.0);
+        } catch (const std::invalid_argument&) {
+            threw = true;
+        }
+        TEST_ASSERT(threw, "Should throw for alpha = 0");
+    }
+
+    // Test: omega <= 0 should throw
+    {
+        bool threw = false;
+        try {
+            model.AddOscillatoryMode(1.0, 0.0, 1.0, 0.0, 1.0, 0.0);
+        } catch (const std::invalid_argument&) {
+            threw = true;
+        }
+        TEST_ASSERT(threw, "Should throw for omega = 0");
+    }
+
+    // Test: dt <= 0 should throw
+    {
+        bool threw = false;
+        model.AddExponentialMode(1.0, 1.0, 1.0);
+        try {
+            model.Step(0.0, 1.0);
+        } catch (const std::invalid_argument&) {
+            threw = true;
+        }
+        TEST_ASSERT(threw, "Should throw for dt = 0");
+    }
+
     std::cout << "  PASSED" << std::endl;
     return true;
 }
@@ -433,13 +423,15 @@ int main() {
         }
     };
 
-    run_test("ConstructorValidation", TestConstructorValidation);
-    run_test("SetModeParametersValidation", TestSetModeParametersValidation);
-    run_test("SingleDofSingleModeSteadyState", TestSingleDofSingleModeSteadyState);
-    run_test("SingleDofSingleModeTransient", TestSingleDofSingleModeTransient);
+    run_test("ExponentialModeSteadyState", TestExponentialModeSteadyState);
+    run_test("ExponentialModeTransient", TestExponentialModeTransient);
+    run_test("OscillatoryModeKernel", TestOscillatoryModeKernel);
+    run_test("OscillatoryModeForce", TestOscillatoryModeForce);
     run_test("MultipleModes", TestMultipleModes);
-    run_test("MultiDof", TestMultiDof);
+    run_test("MixedModes", TestMixedModes);
     run_test("Reset", TestReset);
+    run_test("FromFitResult", TestFromFitResult);
+    run_test("InvalidParameters", TestInvalidParameters);
 
     std::cout << "\n========================================" << std::endl;
     std::cout << "Results: " << passed << " passed, " << failed << " failed" << std::endl;
@@ -447,4 +439,3 @@ int main() {
 
     return (failed > 0) ? 1 : 0;
 }
-

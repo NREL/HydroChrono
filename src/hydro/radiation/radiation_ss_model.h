@@ -1,81 +1,146 @@
 /*********************************************************************
  * @file  radiation_ss_model.h
- * @brief State-space model for radiation damping (exponential kernel approximation).
+ * @brief State-space model for radiation damping with full mode support.
  *
- * This class implements the mathematical core of state-space radiation:
- *   - Approximates the radiation impulse response as a sum of exponentials
- *   - Integrates internal states using an exact exponential scheme
- *   - Returns radiation forces given velocity inputs
+ * This class implements a state-space approximation of the radiation
+ * impulse response function (RIRF) supporting both:
+ *   - Pure exponential modes: K(t) = H * exp(-α * t)
+ *   - Oscillatory modes: K(t) = exp(-α*t) * (H_c*cos(ω*t) + H_s*sin(ω*t))
+ *
+ * This enables O(1) per-timestep computation for any kernel, including those
+ * with damped oscillations (complex conjugate poles), which are typical for
+ * hydrodynamic radiation problems.
  *
  * THEORY:
- *   The radiation kernel K(τ) is approximated as:
- *       K(τ) ≈ Σₘ Hₘ exp(−αₘ τ)
+ *   Pure exponential mode (real eigenvalue λ = -α):
+ *       ż(t) = -α z(t) + v(t)
+ *       f_contribution = H * z
  *
- *   This leads to ODEs for internal states zₘ:
- *       żₘ(t) = v(t) − αₘ zₘ(t)
+ *   Oscillatory mode (complex conjugate pair λ = -α ± jω):
+ *       d/dt [z_c]   = [-α  -ω] [z_c]   + [b_c] * v(t)
+ *       d/dt [z_s]     [ ω  -α] [z_s]     [b_s]
+ *       f_contribution = H_c * z_c + H_s * z_s
  *
- *   And radiation forces:
- *       f_rad(t) = Σₘ Hₘ ⊙ zₘ(t)
- *
- *   where ⊙ denotes element-wise multiplication.
+ * Both use exact exponential integration for unconditional stability.
  *
  * USAGE:
- *   1. Construct with number of DOFs and modes
- *   2. Set parameters for each mode via SetModeParameters()
- *   3. Call Reset() to zero states
- *   4. In simulation loop: Step(dt, v), then GetForces()
+ *   // From fit result (automatic mode extraction)
+ *   auto model = RadiationStateSpaceModel::FromFitResult(result);
+ *   model.Reset();
+ *   model.Step(dt, v);
+ *   double f = model.GetForce();
  *
- * NOTE: This class is Chrono-free and operates on pure Eigen vectors.
+ *   // Or manually construct modes
+ *   RadiationStateSpaceModel model;
+ *   model.AddOscillatoryMode(0.8, 3.0, 1.0, 0.0, 5.0, 0.0);
+ *   model.Reset();
+ *
+ * NOTE: This class is Chrono-free and operates on pure Eigen/scalars.
+ *       For multi-DOF systems, use one model per (i,j) DOF pair.
  *********************************************************************/
 
 #ifndef HYDRO_RADIATION_SS_MODEL_H
 #define HYDRO_RADIATION_SS_MODEL_H
 
 #include <Eigen/Dense>
+#include <vector>
 
 namespace hydrochrono::hydro {
 
+// Forward declaration
+struct StateSpaceFitResult;
+
 /**
- * @brief State-space model for radiation damping.
+ * @brief A single pure exponential mode (real eigenvalue).
  *
- * Models radiation forces using a sum of exponential decay modes.
- * Each mode m has:
- *   - A decay rate αₘ > 0
- *   - A gain vector Hₘ of size num_dofs
- *   - An internal state vector zₘ of size num_dofs
+ * ODE: z' = -α*z + b*v
+ * Force contribution: H * z
+ * Impulse response: K(t) = H * b * exp(-α*t)
+ */
+struct ExponentialMode {
+    double alpha;   ///< Decay rate > 0
+    double b;       ///< Input gain (how velocity affects state)
+    double H;       ///< Output gain (how state affects force)
+    double z;       ///< Internal state
+    
+    ExponentialMode() : alpha(1.0), b(1.0), H(1.0), z(0.0) {}
+    ExponentialMode(double a, double b_, double h) : alpha(a), b(b_), H(h), z(0.0) {}
+};
+
+/**
+ * @brief An oscillatory mode (complex conjugate eigenvalue pair).
  *
- * The model uses an exact exponential integrator for unconditional stability.
+ * ODE: d/dt [z_c] = [-α  -ω] [z_c] + [b_c] * v
+ *      d/dt [z_s]   [ ω  -α] [z_s]   [b_s]
+ * Force contribution: H_c * z_c + H_s * z_s
+ * Impulse response: K(t) = exp(-α*t) * (H_c*cos(ω*t) + H_s*sin(ω*t))
+ */
+struct OscillatoryMode {
+    double alpha;   ///< Decay rate > 0
+    double omega;   ///< Oscillation frequency > 0
+    double b_c;     ///< Input gain for cosine component
+    double b_s;     ///< Input gain for sine component
+    double H_c;     ///< Output gain for cosine component
+    double H_s;     ///< Output gain for sine component
+    double z_c;     ///< Internal state (cosine component)
+    double z_s;     ///< Internal state (sine component)
+    
+    OscillatoryMode() : alpha(1.0), omega(1.0), b_c(1.0), b_s(0.0), 
+                        H_c(1.0), H_s(0.0), z_c(0.0), z_s(0.0) {}
+};
+
+/**
+ * @brief State-space model for radiation damping (SISO).
+ *
+ * Supports both pure exponential and oscillatory modes for O(1) per-timestep.
+ * Use FromFitResult() to construct from a StateSpaceFitResult.
+ *
+ * For multi-DOF systems (e.g., 6-DOF body), create one RadiationStateSpaceModel
+ * per (input_dof, output_dof) pair, then sum the forces.
  */
 class RadiationStateSpaceModel {
 public:
     /**
-     * @brief Construct a state-space model.
-     *
-     * @param num_dofs Number of degrees of freedom (e.g., 6 for single body, 12 for two bodies)
-     * @param num_modes Number of exponential modes in the approximation
-     *
-     * @throws std::invalid_argument if num_dofs <= 0 or num_modes <= 0
+     * @brief Default constructor (empty model).
      */
-    RadiationStateSpaceModel(int num_dofs, int num_modes);
+    RadiationStateSpaceModel() = default;
 
     /**
-     * @brief Set parameters for a single mode.
+     * @brief Create model from a state-space fit result.
      *
-     * Must be called for each mode (0 to num_modes-1) before stepping.
+     * Automatically extracts real and complex eigenvalues from the A matrix
+     * and creates the appropriate mode types.
      *
-     * @param mode_index Index of the mode (0-based)
-     * @param alpha Decay rate (must be > 0 for stability)
-     * @param h_column Gain vector mapping this mode's state to forces (size num_dofs)
-     *
-     * @throws std::out_of_range if mode_index is invalid
-     * @throws std::invalid_argument if alpha <= 0 or h_column size mismatches
+     * @param result Fit result containing A, B, C matrices
+     * @return Model with decomposed modes
      */
-    void SetModeParameters(int mode_index, double alpha, const Eigen::VectorXd& h_column);
+    static RadiationStateSpaceModel FromFitResult(const StateSpaceFitResult& result);
+
+    /**
+     * @brief Add a pure exponential mode.
+     *
+     * @param alpha Decay rate > 0
+     * @param b Input gain
+     * @param H Output gain
+     */
+    void AddExponentialMode(double alpha, double b, double H);
+
+    /**
+     * @brief Add an oscillatory mode.
+     *
+     * @param alpha Decay rate > 0
+     * @param omega Oscillation frequency > 0
+     * @param b_c Input gain for cos component
+     * @param b_s Input gain for sin component
+     * @param H_c Output gain for cos component
+     * @param H_s Output gain for sin component
+     */
+    void AddOscillatoryMode(double alpha, double omega, 
+                            double b_c, double b_s,
+                            double H_c, double H_s);
 
     /**
      * @brief Reset all internal states to zero.
-     *
-     * Call this at the start of a simulation or to reinitialize.
      */
     void Reset();
 
@@ -83,44 +148,48 @@ public:
      * @brief Advance the model by one time step.
      *
      * Uses exact exponential integration:
-     *   zₘ(t+dt) = exp(−αₘ dt) zₘ(t) + [1 − exp(−αₘ dt)] / αₘ · v
+     * - Exponential modes: z(t+dt) = exp(-α*dt)*z(t) + (1-exp(-α*dt))/α * v
+     * - Oscillatory modes: uses rotation matrix with decay
      *
-     * This scheme is unconditionally stable for any dt > 0 and αₘ > 0.
+     * Both are unconditionally stable for any dt > 0.
      *
-     * @param dt Time step (seconds, must be > 0)
-     * @param v Velocity vector for all DOFs (size num_dofs)
-     *
-     * @throws std::invalid_argument if dt <= 0 or v size mismatches
+     * @param dt Time step (seconds, > 0)
+     * @param v Velocity input (scalar)
      */
-    void Step(double dt, const Eigen::VectorXd& v);
+    void Step(double dt, double v);
 
     /**
-     * @brief Get the current radiation force vector.
+     * @brief Get the current radiation force.
      *
-     * Computes: f_rad = Σₘ Hₘ ⊙ zₘ
-     * where ⊙ is element-wise multiplication.
-     *
-     * @return Radiation force vector (size num_dofs)
+     * @return Sum of all mode contributions: Σ(H*z) for exp, Σ(H_c*z_c + H_s*z_s) for osc
      */
-    Eigen::VectorXd GetForces() const;
+    double GetForce() const;
 
-    // Accessors for testing and diagnostics
-    int num_dofs() const { return num_dofs_; }
-    int num_modes() const { return num_modes_; }
-    const Eigen::VectorXd& alphas() const { return alphas_; }
-    const Eigen::MatrixXd& H() const { return H_; }
-    const Eigen::MatrixXd& z() const { return z_; }
+    /**
+     * @brief Reconstruct the impulse response kernel.
+     *
+     * Useful for verification: K_reconstructed should match K_original if fit is good.
+     *
+     * @param dt Time step
+     * @param num_samples Number of samples to generate
+     * @return Reconstructed kernel K[0], K[1], ..., K[num_samples-1]
+     */
+    Eigen::VectorXd ReconstructKernel(double dt, int num_samples) const;
+
+    // Accessors for diagnostics
+    int num_exp_modes() const { return static_cast<int>(exp_modes_.size()); }
+    int num_osc_modes() const { return static_cast<int>(osc_modes_.size()); }
+    int total_modes() const { return num_exp_modes() + num_osc_modes(); }
+    int total_states() const { return num_exp_modes() + 2 * num_osc_modes(); }
+
+    const std::vector<ExponentialMode>& exp_modes() const { return exp_modes_; }
+    const std::vector<OscillatoryMode>& osc_modes() const { return osc_modes_; }
 
 private:
-    int num_dofs_;          ///< Number of degrees of freedom
-    int num_modes_;         ///< Number of exponential modes
-
-    Eigen::VectorXd alphas_;  ///< Decay rates [num_modes]
-    Eigen::MatrixXd H_;       ///< Gain matrix [num_dofs × num_modes]
-    Eigen::MatrixXd z_;       ///< Internal states [num_dofs × num_modes]
+    std::vector<ExponentialMode> exp_modes_;   ///< Pure exponential modes
+    std::vector<OscillatoryMode> osc_modes_;   ///< Oscillatory modes
 };
 
 }  // namespace hydrochrono::hydro
 
 #endif  // HYDRO_RADIATION_SS_MODEL_H
-
