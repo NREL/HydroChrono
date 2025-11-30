@@ -58,7 +58,22 @@ struct WaveSettings {
 struct YAMLHydroData {
     std::vector<HydroBody> bodies;
     WaveSettings waves;
-    // Optional system-wide convolution settings
+    
+    // ─────────────────────────────────────────────────────────────────────────
+    // Radiation method selection (system-wide)
+    // ─────────────────────────────────────────────────────────────────────────
+    // Top-level selection: "rirf_convolution" (default) or "state_space"
+    std::string radiation_method = "rirf_convolution";
+    
+    // ─────────────────────────────────────────────────────────────────────────
+    // State-space options (only used if radiation_method == "state_space")
+    // ─────────────────────────────────────────────────────────────────────────
+    int ss_max_order = 10;           // Maximum exponential modes per DOF pair
+    double ss_r2_threshold = 0.95;   // R² fit quality threshold
+    
+    // ─────────────────────────────────────────────────────────────────────────
+    // Convolution settings (only used if radiation_method == "rirf_convolution")
+    // ─────────────────────────────────────────────────────────────────────────
     std::string radiation_convolution_mode = "Baseline"; // Baseline | TaperedDirect
     std::string td_smoothing = "sg";
     int td_window_length = 5;

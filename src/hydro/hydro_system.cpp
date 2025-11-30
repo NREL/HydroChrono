@@ -421,6 +421,18 @@ void HydroSystem::InvalidateRadiationComponent() {
 // Radiation configuration setters
 // ─────────────────────────────────────────────────────────────────────────
 
+void HydroSystem::SetRadiationMethod(hydrochrono::hydro::RadiationMethod method) {
+    radiation_method_ = method;
+    // Note: State-space method is not yet implemented.
+    // Currently stored for future use; runtime always uses RIRF convolution.
+}
+
+void HydroSystem::SetStateSpaceOptions(const hydrochrono::hydro::StateSpaceOptions& opts) {
+    state_space_opts_ = opts;
+    // Note: State-space options are stored for future use.
+    // Currently has no effect; runtime always uses RIRF convolution.
+}
+
 void HydroSystem::SetRadiationConvolutionMode(hydrochrono::hydro::RadiationConvolutionMode mode) {
     convolution_mode_ = mode;
     InvalidateRadiationComponent();  // Invalidate component to recreate with new settings

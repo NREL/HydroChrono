@@ -337,22 +337,55 @@ class HydroSystem {
     double GetRIRFval(int row, int col, int st);
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Radiation Convolution Configuration
+    // Radiation Configuration
     // ─────────────────────────────────────────────────────────────────────────
     // These types are defined in the radiation module (single source of truth):
-    //   - hydrochrono::hydro::RadiationConvolutionMode (enum)
+    //   - hydrochrono::hydro::RadiationMethod (enum: kRirfConvolution, kStateSpace)
+    //   - hydrochrono::hydro::RadiationConvolutionMode (enum: Baseline, TaperedDirect)
     //   - hydrochrono::hydro::TaperedDirectOptions (struct)
-    // See: src/hydro/force_components/radiation_component.h
-    //      src/hydro/radiation/radiation_rirf_processing.h
+    //   - hydrochrono::hydro::StateSpaceOptions (struct)
+    // See: include/hydroc/radiation/radiation_types.h
+
+    /**
+     * @brief Set the radiation damping calculation method.
+     * 
+     * Selects the overall approach:
+     *   - kRirfConvolution: Direct RIRF convolution (default)
+     *   - kStateSpace: State-space exponential approximation
+     * 
+     * @note State-space method not yet implemented. This value is stored but
+     *       currently has no effect; runtime always uses RIRF convolution.
+     * 
+     * @param method RadiationMethod::kRirfConvolution or ::kStateSpace
+     */
+    void SetRadiationMethod(hydrochrono::hydro::RadiationMethod method);
+
+    /**
+     * @brief Set options for state-space radiation approximation.
+     * 
+     * Only applies when RadiationMethod == kStateSpace.
+     * 
+     * @note State-space method not yet implemented. Options stored for future use.
+     * 
+     * @param opts StateSpaceOptions struct with max_order and r2_threshold
+     */
+    void SetStateSpaceOptions(const hydrochrono::hydro::StateSpaceOptions& opts);
 
     /**
      * @brief Set the radiation convolution mode. Default is Baseline.
+     * 
+     * Only applies when RadiationMethod == kRirfConvolution.
+     * 
      * @param mode RadiationConvolutionMode::Baseline or ::TaperedDirect
      */
     void SetRadiationConvolutionMode(hydrochrono::hydro::RadiationConvolutionMode mode);
 
     /**
      * @brief Set options for TaperedDirect preprocessing.
+     * 
+     * Only applies when RadiationMethod == kRirfConvolution and
+     * RadiationConvolutionMode == TaperedDirect.
+     * 
      * @param opts TaperedDirectOptions struct with smoothing, tapering, and export settings
      */
     void SetTaperedDirectOptions(const hydrochrono::hydro::TaperedDirectOptions& opts);
@@ -468,8 +501,16 @@ class HydroSystem {
     // Profiling enable flag: stored here because chrono_coupler_ is created lazily.
     bool profiling_enabled_ = false;
 
-    // Convolution kernel preprocessing (optional)
-    // Uses canonical types from radiation module (single source of truth)
+    // ─────────────────────────────────────────────────────────────────────────
+    // Radiation configuration (uses canonical types from radiation module)
+    // ─────────────────────────────────────────────────────────────────────────
+    
+    // Top-level method selection (state-space not yet implemented)
+    hydrochrono::hydro::RadiationMethod radiation_method_ = 
+        hydrochrono::hydro::RadiationMethod::kRirfConvolution;
+    hydrochrono::hydro::StateSpaceOptions state_space_opts_;
+    
+    // Convolution kernel preprocessing (only applies when method == kRirfConvolution)
     hydrochrono::hydro::RadiationConvolutionMode convolution_mode_;
     bool rirf_processed_ready_ = false;
     std::vector<Eigen::Tensor<double, 3>> rirf_processed_; // per body [dof x col x step]
