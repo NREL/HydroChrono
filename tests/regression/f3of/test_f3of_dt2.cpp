@@ -1,5 +1,5 @@
 #include <hydroc/helper.h>
-#include <hydroc/hydro_forces.h>
+#include <hydroc/hydro_system.h>
 
 #include <chrono/core/ChRealtimeStep.h>
 #include <chrono/physics/ChBodyEasy.h>

@@ -1,5 +1,5 @@
 #include <hydroc/helper.h>
-#include <hydroc/hydro_forces.h>
+#include <hydroc/hydro_system.h>
 
 #ifdef HYDROCHRONO_HAVE_IRRLICHT
     #include "chrono_irrlicht/ChIrrMeshTools.h"

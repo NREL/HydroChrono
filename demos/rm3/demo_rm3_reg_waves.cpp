@@ -1,6 +1,6 @@
 #include <hydroc/gui/guihelper.h>
 #include <hydroc/helper.h>
-#include <hydroc/hydro_forces.h>
+#include <hydroc/hydro_system.h>
 #include <hydroc/logging.h>
 
 #include <chrono/core/ChRealtimeStep.h>

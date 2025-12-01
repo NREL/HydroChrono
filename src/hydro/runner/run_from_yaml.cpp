@@ -15,7 +15,7 @@
 #include <hydroc/logging.h>
 #include "../config/setup_from_yaml.h"
 #include "../config/yaml_parser.h"
-#include <hydroc/hydro_forces.h>
+#include <hydroc/hydro_system.h>
 #include <hydroc/io/simulation_export.h>
 #include <hydroc/waves/wave_base.h>
 #include <hydroc/waves/regular_wave.h>
