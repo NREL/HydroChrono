@@ -69,7 +69,8 @@ void GUIImplVSG::Init(UI& ui, chrono::ChSystem* system, const char* title) {
 }
 
 void GUIImplVSG::SetCamera(double x, double y, double z, double dirx, double diry, double dirz) {
-    pVis->AddCamera({x, y, z}, {dirx, diry, dirz});
+    pVis->SetCameraPosition({x, y, z});
+    pVis->SetCameraTarget({dirx, diry, dirz});
 }
 
 bool GUIImplVSG::IsRunning(double timestep) {
