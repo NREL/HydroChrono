@@ -11,10 +11,10 @@ function(build_regression_test TEST_GROUP TEST_NAME MULTIPLE)
    set(FIXTURE_FILE ${TEST_NAME}_regression_file)
    if(MULTIPLE)
      set(FILE_REF ${CMAKE_SOURCE_DIR}/data/reference_data/${TEST_GROUP}/hc_ref_${TEST_NAME}_1.txt)
-     set(FILE_RST ${HYDROCHRONO_TEST_OUTPUT_DIR}/${TEST_GROUP}/results_${TEST_NAME}_1.txt)
+     set(FILE_RST results/tests/${TEST_GROUP}/results_${TEST_NAME}_1.txt)
    else()
      set(FILE_REF ${CMAKE_SOURCE_DIR}/data/reference_data/${TEST_GROUP}/hc_ref_${TEST_NAME}.txt)
-     set(FILE_RST ${HYDROCHRONO_TEST_OUTPUT_DIR}/${TEST_GROUP}/results_${TEST_NAME}.txt)
+     set(FILE_RST results/tests/${TEST_GROUP}/results_${TEST_NAME}.txt)
    endif()
 
    add_executable(${TEST_EXE} ${TEST_SRC})
@@ -34,30 +34,30 @@ function(build_regression_test TEST_GROUP TEST_NAME MULTIPLE)
 
    add_test(
        NAME ${TEST_EXE}
-       COMMAND ${PROJECT_BINARY_DIR}/bin/${TEST_EXE} --nogui)
+       WORKING_DIRECTORY "$<TARGET_FILE_DIR:${TEST_EXE}>"
+       COMMAND ${PROJECT_BINARY_DIR}/bin/${TEST_EXE})
 
    set_tests_properties(
        ${TEST_EXE}
        PROPERTIES 
-       LABELS "regression;${TARGET_GROUP};core"
+       LABELS "regression;${TEST_GROUP};execute"
        FIXTURES_SETUP ${FIXTURE_FILE}
-       #WORKING_DIRECTORY ${TEST_REGRESSION_OUTPUT_DIR}/${TEST_GROUP}
-       ENVIRONMENT "${TEST_ENVIRONMENT}"
+       #ENVIRONMENT "${TEST_ENVIRONMENT}"
    )
 
    # Reference comparison test - use the new centralized reference data location
 
    add_test(
        NAME ${TEST_REF}
-       COMMAND ${Python3_EXECUTABLE} ${COMPARE_SCRIPT} ${FILE_REF} ${FILE_RST}
+       WORKING_DIRECTORY "$<TARGET_FILE_DIR:${TEST_EXE}>"
+       COMMAND ${Python3_EXECUTABLE} ${COMPARE_SCRIPT} ${FILE_REF} $<TARGET_FILE_DIR:${TEST_EXE}>/${FILE_RST}
    )
    
    set_tests_properties(
        ${TEST_REF}
        PROPERTIES 
-       LABELS "regression;${TARGET_GROUP};reference;core"
+       LABELS "regression;${TEST_GROUP};reference"
        FIXTURES_REQUIRED ${FIXTURE_FILE}
-       #WORKING_DIRECTORY ${TEST_REGRESSION_OUTPUT_DIR}/${TEST_GROUP}
        ENVIRONMENT "PATH=${Python3_ROOT_DIR};$ENV{PATH};HYDROCHRONO_BUILD_DIR=${CMAKE_BINARY_DIR}"
    )
 
