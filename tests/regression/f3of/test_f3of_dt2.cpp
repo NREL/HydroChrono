@@ -13,9 +13,15 @@ using namespace chrono;
 int main(int argc, char* argv[]) {
     std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
-    if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
+    // Parse CLI arguments and initialize environment
+    bool profilingOn     = true;
+    bool saveDataOn      = true;
+    bool visualizationOn = false;
+    std::string data_dir;
+    if (!hydroc::GetCLIArguments(argc, argv, "F3OF DT2 regression test", saveDataOn, profilingOn, visualizationOn,
+                                 data_dir))
         return 1;
-    }
+    if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
 
     // Get model file names
     std::filesystem::path DATADIR(hydroc::getDataDir());
@@ -35,18 +41,12 @@ int main(int argc, char* argv[]) {
     double simulationDuration = 300.0;
 
     // some io/viz options
-    bool profilingOn = true;
-    bool saveDataOn  = true;
     std::vector<double> time_vector;
     std::vector<double> base_surge;
     std::vector<double> base_pitch;
     std::vector<double> fore_pitch;
     std::vector<double> aft_pitch;
     
-    // Output file names
-    std::string filename = "CHRONO_F3OF_DT2_PITCH.txt";
-    std::string filename_duration = "CHRONO_F3OF_DT2_PITCH_DURATION.txt";
-
     // set up body from a mesh
     std::cout << "Attempting to open mesh file: " << body1_meshfame << std::endl;
     std::shared_ptr<ChBody> base = chrono_types::make_shared<ChBodyEasyMesh>(  //
@@ -158,6 +158,24 @@ int main(int argc, char* argv[]) {
 
     TestHydro hydroforces(bodies, h5fname, default_dont_add_waves);
 
+    // create output directory
+    bool saveDbgOn      = false;
+    std::string out_dir = hydroc::getTestOutDir() + "/" + RESULTS_DIR_NAME;
+    if (profilingOn || saveDataOn || saveDbgOn) {
+        std::filesystem::create_directory(std::filesystem::path(out_dir));
+        if (saveDbgOn) {
+            std::string dbg_dir = out_dir + "/dbg";
+            std::filesystem::create_directory(std::filesystem::path(dbg_dir));
+            system.EnableSolverMatrixWrite(true, dbg_dir);
+        }
+    }
+
+    std::cout << "Start simulation" << std::endl;
+    std::cout << "  Integrator: " << system.GetTimestepper()->GetTypeAsString() << std::endl;
+    std::cout << "  Solver:     " << system.GetSolver()->GetTypeAsString() << std::endl;
+    std::cout << "  Step size:  " << timestep << std::endl;
+    std::cout << "  Duration:   " << simulationDuration << std::endl;
+
     // for profiling
     auto start = std::chrono::high_resolution_clock::now();
 
@@ -176,12 +194,6 @@ int main(int argc, char* argv[]) {
     // for profiling
     auto end          = std::chrono::high_resolution_clock::now();
     unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-
-    std::string out_dir = hydroc::getTestOutDir();
-    if (profilingOn || saveDataOn) {
-        out_dir = out_dir + "/" + RESULTS_DIR_NAME;
-        std::filesystem::create_directory(std::filesystem::path(out_dir));
-    }
 
     if (profilingOn) {
         std::ofstream profilingFile(out_dir + "/" + RESULTS_FILE_NAME + "_duration.txt");

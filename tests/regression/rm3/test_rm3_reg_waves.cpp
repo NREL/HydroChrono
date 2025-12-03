@@ -12,29 +12,21 @@
 // Use the namespaces of Chrono
 using namespace chrono;
 
-// usage: ./<demos>.exe [DATADIR] [--nogui] [--debug]
-//
-// If no argument is given user can set HYDROCHRONO_DATA_DIR
-// environment variable to give the data_directory.
-//
 int main(int argc, char* argv[]) {
     std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
     // Initialize logging with command line arguments
     // Optional: initialize logging here if test needs debug logs
 
-    if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
+    // Parse CLI arguments and initialize environment
+    bool profilingOn     = true;
+    bool saveDataOn      = true;
+    bool visualizationOn = false;
+    std::string data_dir;
+    if (!hydroc::GetCLIArguments(argc, argv, "RM3 regular waves regression test", saveDataOn, profilingOn,
+                                 visualizationOn, data_dir))
         return 1;
-    }
-
-    // Check for --nogui and --debug flags in any order
-    bool visualizationOn = true;
-    for (int i = 1; i < argc; i++) {
-        if (std::string("--nogui").compare(argv[i]) == 0) {
-            visualizationOn = false;
-            break;
-        }
-    }
+    if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
 
     // Get model file names - use HydroChrono data directory
     std::filesystem::path DATADIR(hydroc::getDataDir());
@@ -79,8 +71,6 @@ int main(int argc, char* argv[]) {
     double simulationDuration = 40.0;
 
     // some io/viz options
-    bool profilingOn = true;
-    bool saveDataOn  = true;
     std::vector<double> time_vector;
     std::vector<double> float_heave_position;
     std::vector<double> float_drift_position;

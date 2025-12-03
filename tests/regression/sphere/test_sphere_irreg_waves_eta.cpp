@@ -15,29 +15,21 @@
 // Use the namespaces of Chrono
 using namespace chrono;
 
-// usage: ./<test>.exe [DATADIR] [--nogui]
-//
-// If no argument is given user can set HYDROCHRONO_DATA_DIR
-// environment variable to give the data_directory.
-//
 int main(int argc, char* argv[]) {
     std::cout << "=== SPHERE IRREGULAR WAVES ETA TEST STARTING ===" << std::endl;
     std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
     try {
-        std::cout << "DEBUG: Chrono data path set successfully" << std::endl;
-
-        if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
-            std::cerr << "ERROR: Failed to set initial environment" << std::endl;
-            return 1;
-        }
-        std::cout << "DEBUG: Initial environment set successfully" << std::endl;
-
-        // Check if --nogui option is set as 2nd argument
+        // Parse CLI arguments and initialize environment
+        bool profilingOn     = true;
+        bool saveDataOn      = true;
         bool visualizationOn = false;
-        if (argc > 2 && std::string("--nogui").compare(argv[2]) == 0) {
-            visualizationOn = false;
-        }
+        std::string data_dir;
+        if (!hydroc::GetCLIArguments(argc, argv, "Sphere irregular waves eta regression test", saveDataOn, profilingOn,
+                                     visualizationOn, data_dir))
+            return 1;
+        if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
+
         std::cout << "DEBUG: Visualization mode: " << (visualizationOn ? "ON" : "OFF") << std::endl;
 
         std::filesystem::path DATADIR(hydroc::getDataDir());
@@ -124,8 +116,6 @@ int main(int argc, char* argv[]) {
         ground->EnableCollision(false);
 
         // some io/viz options
-        bool profilingOn = true;
-        bool saveDataOn  = true;
         std::vector<double> time_vector;
         std::vector<double> heave_position;
         //

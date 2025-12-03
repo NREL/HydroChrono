@@ -13,11 +13,6 @@
 // Use the namespaces of Chrono
 using namespace chrono;
 
-// usage: ./<demos>.exe [DATADIR] [--nogui]
-//
-// If no argument is given user can set HYDROCHRONO_DATA_DIR
-// environment variable to give the data_directory.
-//
 int main(int argc, char* argv[]) {
     std::vector<double> task10_wave_amps_0005 = {0.044, 0.078, 0.095, 0.123, 0.177, 0.24, 0.314, 0.397, 0.491, 0.594};
     std::vector<double> task10_wave_amps_002  = {0.177, 0.314, 0.380, 0.491, 0.706, 0.961, 1.256, 1.589, 1.962, 2.374};
@@ -34,15 +29,14 @@ int main(int argc, char* argv[]) {
     for (int reg_wave_num = 1; reg_wave_num <= reg_wave_num_max; ++reg_wave_num) {
         std::cout << reg_wave_num << "  ";
 
-        if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
+        // Parse CLI arguments and initialize environment
+        bool profilingOn     = true;
+        bool saveDataOn      = true;
+        bool visualizationOn = true;
+        std::string data_dir;
+        if (!hydroc::GetCLIArguments(argc, argv, "Sphere regular waves demo", saveDataOn, profilingOn, visualizationOn, data_dir))
             return 1;
-        }
-
-        // Check if --nogui option is set as 2nd argument
-        bool visualizationOn = false;
-        if (argc > 2 && std::string("--nogui").compare(argv[2]) == 0) {
-            visualizationOn = false;
-        }
+        if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
 
         // Get model file names
         std::filesystem::path DATADIR(hydroc::getDataDir());
@@ -73,10 +67,6 @@ int main(int argc, char* argv[]) {
         ground->SetTag(-1);
         ground->SetFixed(true);
         ground->EnableCollision(false);
-
-        // some io/viz options
-        bool profilingOn = true;
-        bool saveDataOn  = true;
 
         // Output timeseries
         std::vector<double> time_vector;

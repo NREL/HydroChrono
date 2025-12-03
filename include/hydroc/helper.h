@@ -27,17 +27,33 @@ size_t get_lower_index(double value, const std::vector<double>& ticks);
  */
 namespace hydroc {
 
-/**@brief Set initial environment
- *
- * Use command line argument or env variables to set some static data at initialization.
- *
- * Set the main data directory ..
- *
+/**@brief Get program command line arguments
  * @param argc number of argument (same as for main function)
  * @param argv arguments of main function
- * @return 1 on error 0 else
+ * @param gui true if run-time visualization
+ * @param data_dir alternative HydroChrono data directory
+ * @return false on error and true otherwise
  */
-int SetInitialEnvironment(int argc, char* argv[]) noexcept;
+bool GetCLIArguments(int argc,
+                     char** argv,
+                     const std::string& description,
+                     bool& output,
+                     bool& profile,
+                     bool& gui,
+                     std::string& data_dir);
+
+/**@brief Set initial environment
+ *
+ * Set the main HydroChrono data directory and the Chrono data directory.
+ * The main HydroChrono data directory is set, in order, using:
+ * - the environment variable HYDROCHRONO_DATA_DIR (if defined)
+ * - the provided data_dir path (if non-empty)
+ * - the default data directory in the HydroChrono source tree
+ *
+ * @param data_dir alternative HydroChrono data directory
+ * @return false on error and true otherwise
+ */
+bool SetInitialEnvironment(const std::string& data_dir) noexcept;
 
 /**@brief Get base name of data directory
  *

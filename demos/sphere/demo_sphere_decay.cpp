@@ -12,23 +12,17 @@
 // Use the namespaces of Chrono
 using namespace chrono;
 
-// usage: ./sphere_deca.exe [DATADIR] [--nogui]
-//
-// If no argument is given user can set HYDROCHRONO_DATA_DIR
-// environment variable to give the data_directory.
-//
 int main(int argc, char* argv[]) {
     std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
-    if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
-        return 1;
-    }
-
-    // Check if --nogui option is set as 2nd argument
+    // Parse CLI arguments and initialize environment
+    bool profilingOn     = true;
+    bool saveDataOn      = true;
     bool visualizationOn = true;
-    if (argc > 2 && std::string("--nogui").compare(argv[2]) == 0) {
-        visualizationOn = false;
-    }
+    std::string data_dir;
+    if (!hydroc::GetCLIArguments(argc, argv, "Sphere decay demo", saveDataOn, profilingOn, visualizationOn, data_dir))
+        return 1;
+    if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
 
     // Get model file names
     std::filesystem::path DATADIR(hydroc::getDataDir());
@@ -53,9 +47,6 @@ int main(int argc, char* argv[]) {
     std::shared_ptr<hydroc::gui::UI> pui = hydroc::gui::CreateUI(visualizationOn);
 
     hydroc::gui::UI& ui = *pui.get();
-
-    bool profilingOn = true;
-    bool saveDataOn  = true;
 
     // Output timeseries
     std::vector<double> time_vector;
@@ -99,7 +90,7 @@ int main(int argc, char* argv[]) {
     TestHydro hydro_forces(bodies, h5fname);
     hydro_forces.AddWaves(default_dont_add_waves);
 
-    // for profilingvisualizationOn = false;
+    // for profiling
     auto start = std::chrono::high_resolution_clock::now();
 
     // main simulation loop

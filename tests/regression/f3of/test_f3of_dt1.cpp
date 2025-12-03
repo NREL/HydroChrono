@@ -13,9 +13,15 @@ using namespace chrono;
 int main(int argc, char* argv[]) {
     std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
-    if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
+    // Parse CLI arguments and initialize environment
+    bool profilingOn     = true;
+    bool saveDataOn      = true;
+    bool visualizationOn = false;
+    std::string data_dir;
+    if (!hydroc::GetCLIArguments(argc, argv, "F3OF DT1 regression test", saveDataOn, profilingOn, visualizationOn,
+                                 data_dir))
         return 1;
-    }
+    if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
 
     // Get model file names
     std::filesystem::path DATADIR(hydroc::getDataDir());
@@ -35,8 +41,6 @@ int main(int argc, char* argv[]) {
     double simulationDuration = 300.0;
 
     // some io/viz options
-    bool profilingOn = true;
-    bool saveDataOn  = true;
     std::vector<double> time_vector;
     std::vector<double> base_surge;
     std::vector<double> base_pitch;

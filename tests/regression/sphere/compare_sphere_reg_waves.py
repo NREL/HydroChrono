@@ -18,19 +18,23 @@ from compare_template import run_comparison, run_multi_column_comparison
 def main():
     """Main comparison function for sphere regular waves test."""
     
-    # Get the reference data directory
-    ref_dir = Path(__file__).parent.parent.parent / "reference_data" / "sphere" / "reg_waves"
+    if len(sys.argv) != 3:
+        print("Usage: python compare.py <reference_file> <test_file>")
+        sys.exit(1)
+
+    # Get the reference data directory from the reference file
+    ref_file = sys.argv[1]
+    ht = os.path.split(ref_file)
+    ref_dir = Path(ht[0])
     
-    # Get the results directory from the build directory
-    script_dir = Path(__file__).parent
-    # Repo layout: <root>/tests/regression/sphere/compare_sphere_reg_waves.py
-    # Go up 3 levels to reach project root.
-    project_root = script_dir.parent.parent.parent
-    build_dir = project_root / "build"
+    if not ref_dir.exists():
+        print(f"Error: Reference directory not found: {ref_dir}")
+        sys.exit(1)
     
-    # C++ regression tests write results under:
-    #   <build>/bin/Release/results/tests/sphere/
-    results_dir = build_dir / "bin" / "Release" / "results" / "tests" / "sphere"
+    # Get the results directory from the results file
+    results_file = sys.argv[2]
+    ht = os.path.split(results_file)
+    results_dir = Path(ht[0])
     
     if not results_dir.exists():
         print(f"Error: Results directory not found: {results_dir}")

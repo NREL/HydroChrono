@@ -2,10 +2,62 @@
 #include <hydroc/helper.h>
 
 #include <chrono/core/ChDataPath.h>
+#include <chrono_thirdparty/cxxopts/ChCLI.h>
 
 #include <cstdlib>
 #include <memory>
+#include <string>
 #include <vector>
+
+bool hydroc::GetCLIArguments(int argc,
+                             char** argv,
+                             const std::string& description,
+                             bool& output,
+                             bool& profile,
+                             bool& gui,
+                             std::string& data_dir) {
+    chrono::ChCLI cli(argv[0], description);
+
+    cli.AddOption<std::string>("", "data_dir", "HydrChrono data directory", "");
+    if (output)
+        cli.AddOption<bool>("", "no_output", "Disable generation of simulation output");
+    else
+        cli.AddOption<bool>("", "output", "Enable generation of simulation output");
+
+    if (profile)
+        cli.AddOption<bool>("", "no_profile", "Disable profiling of simulation time");
+    else
+        cli.AddOption<bool>("", "profile", "Enable profiling of simulation time");
+
+    if (gui)
+        cli.AddOption<bool>("", "no_gui", "Disable GUI");
+    else
+        cli.AddOption<bool>("", "gui", "Enable GUI");
+
+    if (!cli.Parse(argc, argv)) {
+        cli.Help();
+        return false;
+    }
+
+    data_dir = cli.Get("data_dir").as<std::string>();
+
+    if (output)
+        output = !cli.GetAsType<bool>("no_output");
+    else
+        output = cli.GetAsType<bool>("output");
+
+    if (profile)
+        profile = !cli.GetAsType<bool>("no_profile");
+    else
+        profile = cli.GetAsType<bool>("profile");
+
+    if (gui)
+        gui = !cli.GetAsType<bool>("no_gui");
+    else
+        gui = cli.GetAsType<bool>("gui");
+
+    return true;
+}
 
 size_t get_lower_index(double value, const std::vector<double>& ticks) {
     auto it = std::upper_bound(ticks.begin(), ticks.end(), value);
@@ -27,24 +79,19 @@ using std::filesystem::path;
 
 static path DATADIR{};
 
-int hydroc::SetInitialEnvironment(int argc, char* argv[]) noexcept {
+bool hydroc::SetInitialEnvironment(const std::string& data_dir) noexcept {
     const char* env_p = std::getenv("HYDROCHRONO_DATA_DIR");
 
     if (env_p) {
         // Highest priority: explicit environment override
         DATADIR = absolute(path(env_p));
-        hydroc::cli::LogInfo(std::string("HYDROCHRONO_DATA_DIR set, using '") + getDataDir() + "'");
+        hydroc::cli::LogInfo(std::string("Using data directory from HYDROCHRONO_DATA_DIR: '") + getDataDir() + "'");
+    } else if (!data_dir.empty()) {
+        DATADIR = absolute(path(data_dir));
+        hydroc::cli::LogInfo(std::string("Using provided data directory: '") + getDataDir() + "'");
     } else {
-        // If first positional argument looks like a path (does not start with '-'),
-        // treat it as the data directory. Otherwise, fall back to the compiled-in
-        // default HC_DATA_DIR (build/install data tree).
-        if (argc >= 2 && argv[1] && argv[1][0] != '-') {
-            DATADIR = absolute(path(argv[1]));
-            hydroc::cli::LogInfo(std::string("Using data directory from CLI: '") + getDataDir() + "'");
-        } else {
-            DATADIR = absolute(path(HC_DATA_DIR));
-            hydroc::cli::LogInfo(std::string("Using default data directory HC_DATA_DIR='") + getDataDir() + "'");
-        }
+        DATADIR = absolute(path(HC_DATA_DIR));
+        hydroc::cli::LogInfo(std::string("Using default data directory HC_DATA_DIR: '") + getDataDir() + "'");
     }
 
     // Set Chrono data directory
@@ -54,7 +101,7 @@ int hydroc::SetInitialEnvironment(int argc, char* argv[]) noexcept {
         chrono::SetChronoDataPath(CHRONO_DATA_DIR);
     }
 
-    return 0;
+    return true;
 }
 
 std::string hydroc::getDataDir() noexcept {

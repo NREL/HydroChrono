@@ -66,15 +66,15 @@ int main(int argc, char* argv[]) {
     for (int reg_wave_num = 1; reg_wave_num <= reg_wave_num_max; ++reg_wave_num) {
         std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
-        if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
-            return 1;
-        }
-
-        // Check if --nogui option is set as 2nd argument
+        // Parse CLI arguments and initialize environment
+        bool profilingOn     = true;
+        bool saveDataOn      = true;
         bool visualizationOn = false;
-        if (argc > 2 && std::string("--nogui").compare(argv[2]) == 0) {
-            visualizationOn = false;
-        }
+        std::string data_dir;
+        if (!hydroc::GetCLIArguments(argc, argv, "OSWEV regular waves regression test", saveDataOn, profilingOn,
+                                     visualizationOn, data_dir))
+            return 1;
+        if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
 
         // Get model file names - use HydroChrono data directory
         std::filesystem::path DATADIR(hydroc::getDataDir());
@@ -99,8 +99,6 @@ int main(int argc, char* argv[]) {
         hydroc::gui::UI& ui                  = *pui.get();
 
         // some io/viz options
-        bool profilingOn = true;
-        bool saveDataOn  = true;
         std::vector<double> time_vector;
         std::vector<double> flap_rot;
 

@@ -12,11 +12,6 @@
 // Use the namespaces of Chrono
 using namespace chrono;
 
-// usage: ./<test>.exe [DATADIR] [--nogui]
-//
-// If no argument is given user can set HYDROCHRONO_DATA_DIR
-// environment variable to give the data_directory.
-//
 int main(int argc, char* argv[]) {
     std::vector<double> task10_wave_amps_0005 = {0.044, 0.078, 0.095, 0.123, 0.177, 0.24, 0.314, 0.397, 0.491, 0.594};
     std::vector<double> task10_wave_amps_002  = {0.177, 0.314, 0.380, 0.491, 0.706, 0.961, 1.256, 1.589, 1.962, 2.374};
@@ -30,26 +25,25 @@ int main(int argc, char* argv[]) {
 
     std::cout << reg_wave_num_max;
 
+    std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
+    // Parse CLI arguments and initialize environment
+    bool profilingOn     = true;
+    bool saveDataOn      = true;
+    bool visualizationOn = false;
+    std::string data_dir;
+    if (!hydroc::GetCLIArguments(argc, argv, "Sphere regular waves regression test", saveDataOn, profilingOn,
+                                 visualizationOn, data_dir))
+        return 1;
+    if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
+
+    // Get model file names using regression test data structure
+    std::filesystem::path DATADIR(hydroc::getDataDir());
+
+    auto body1_meshfname =
+        (DATADIR / "demos" / "sphere" / "geometry" / "oes_task10_sphere.obj").lexically_normal().generic_string();
+    auto h5fname = (DATADIR / "demos" / "sphere" / "hydroData" / "sphere.h5").lexically_normal().generic_string();
+
     for (int reg_wave_num = 1; reg_wave_num <= reg_wave_num_max; ++reg_wave_num) {
-        std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
-
-        if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
-            return 1;
-        }
-
-        // Check if --nogui option is set as 2nd argument
-        bool visualizationOn = false;
-        if (argc > 2 && std::string("--nogui").compare(argv[2]) == 0) {
-            visualizationOn = false;
-        }
-
-        // Get model file names using regression test data structure
-        std::filesystem::path DATADIR(hydroc::getDataDir());
-
-        auto body1_meshfname =
-            (DATADIR / "demos" / "sphere" / "geometry" / "oes_task10_sphere.obj").lexically_normal().generic_string();
-        auto h5fname = (DATADIR / "demos" / "sphere" / "hydroData" / "sphere.h5").lexically_normal().generic_string();
-
         // system/solver settings
         ChSystemNSC system;
         system.SetGravitationalAcceleration(ChVector3d(0.0, 0.0, -9.81));
@@ -72,10 +66,6 @@ int main(int argc, char* argv[]) {
         ground->SetTag(-1);
         ground->SetFixed(true);
         ground->EnableCollision(false);
-
-        // some io/viz options
-        bool profilingOn = true;
-        bool saveDataOn  = true;
 
         // Output timeseries
         std::vector<double> time_vector;

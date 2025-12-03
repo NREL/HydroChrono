@@ -61,15 +61,15 @@ std::array<double, 3> add_vectors(std::array<double, 3> v1, std::array<double, 3
 int main(int argc, char* argv[]) {
     std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
-    if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
+    // Parse CLI arguments and initialize environment
+    bool profilingOn     = true;
+    bool saveDataOn      = true;
+    bool visualizationOn = false;
+    std::string data_dir;
+    if (!hydroc::GetCLIArguments(argc, argv, "OSWEC decay regression test", saveDataOn, profilingOn, visualizationOn,
+                                 data_dir))
         return 1;
-    }
-
-    // Check if --nogui option is set as 2nd argument
-    bool visualizationOn = true;
-    if (argc > 2 && std::string("--nogui").compare(argv[2]) == 0) {
-        visualizationOn = false;
-    }
+    if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
 
     // Get model file names - use HydroChrono data directory
     std::filesystem::path DATADIR(hydroc::getDataDir());
@@ -95,8 +95,6 @@ int main(int argc, char* argv[]) {
     hydroc::gui::UI& ui                  = *pui.get();
 
     // some io/viz options
-    bool profilingOn = true;
-    bool saveDataOn  = true;
     std::vector<double> time_vector;
     std::vector<double> flap_rot;
 
@@ -184,19 +182,40 @@ int main(int argc, char* argv[]) {
 
     auto default_dont_add_waves = std::make_shared<NoWave>(2);
 
-    //// attach hydrodynamic forces to body
+    // set up hydro forces
     std::vector<std::shared_ptr<ChBody>> bodies;
     bodies.push_back(flap_body);
     bodies.push_back(base_body);
     TestHydro blah(bodies, h5fname, default_dont_add_waves);
 
+    // create output directory
+    bool saveDbgOn      = false;
+    std::string out_dir = hydroc::getTestOutDir() + "/" + RESULTS_DIR_NAME;
+    if (profilingOn || saveDataOn || saveDbgOn) {
+        std::filesystem::create_directory(std::filesystem::path(out_dir));
+        if (saveDbgOn) {
+            std::string dbg_dir = out_dir + "/dbg";
+            std::filesystem::create_directory(std::filesystem::path(dbg_dir));
+            system.EnableSolverMatrixWrite(true, dbg_dir);
+        }
+    }
+
+    std::cout << "Start simulation"<< std::endl;
+    std::cout << "  Integrator: " << system.GetTimestepper()->GetTypeAsString() << std::endl;
+    std::cout << "  Solver:     " << system.GetSolver()->GetTypeAsString() << std::endl;
+    std::cout << "  Step size:  " << timestep << std::endl;
+    std::cout << "  Duration:   " << simulationDuration << std::endl;
+
+    // initialize UI
+    ui.Init(&system, "OSWEC - Decay Test");
+    ui.SetCamera(0, -50, -10, 0, 0, -10);
+    ui.simulationStarted = true;
+
     // for profiling
     auto start = std::chrono::high_resolution_clock::now();
 
     // main simulation loop
-    ui.Init(&system, "OSWEC - Decay Test");
-    ui.SetCamera(0, -50, -10, 0, 0, -10);
-
+    //int frames = 0;
     while (system.GetChTime() <= simulationDuration) {
         if (ui.IsRunning(timestep) == false) break;
 
@@ -207,17 +226,13 @@ int main(int argc, char* argv[]) {
             time_vector.push_back(system.GetChTime());
             flap_rot.push_back(flap_body->GetRot().GetCardanAnglesXYZ().y());
         }
+
+        //if (++frames >= 10) break;
     }
 
     // for profiling
     auto end          = std::chrono::high_resolution_clock::now();
     unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-
-    std::string out_dir = hydroc::getTestOutDir();
-    if (profilingOn || saveDataOn) {
-        out_dir = out_dir + "/" + RESULTS_DIR_NAME;
-        std::filesystem::create_directory(std::filesystem::path(out_dir));
-    }
 
     if (profilingOn) {
         std::ofstream profilingFile(out_dir + "/" + RESULTS_FILE_NAME + "_duration.txt");
