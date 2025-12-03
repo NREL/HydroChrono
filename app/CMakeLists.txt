@@ -2,9 +2,9 @@ message(STATUS "Add run_hydrochrono program")
 
 add_executable(run_hydrochrono
     run_hydrochrono.cpp
-    ../src/hydrochrono_runner/run_hydrochrono_from_yaml.cpp
+    ../include/hydroc/runner/run_from_yaml.h
+    ../src/hydro/runner/run_from_yaml.cpp
     ../src/utils/misc_options.cpp
-    ../src/utils/setup_parser.cpp
 )
 
 # Set C++ standard

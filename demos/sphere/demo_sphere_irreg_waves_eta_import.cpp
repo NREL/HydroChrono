@@ -5,6 +5,8 @@
 
 #include <chrono/assets/ChColor.h>
 #include <chrono/core/ChRealtimeStep.h>
+#include <chrono/physics/ChSystemNSC.h>
+#include <chrono/physics/ChBodyEasy.h>
 
 #include <hydroc/gui/guihelper.h>
 #include <hydroc/helper.h>

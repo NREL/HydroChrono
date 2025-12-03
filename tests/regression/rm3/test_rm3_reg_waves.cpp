@@ -4,6 +4,8 @@
 #include <hydroc/logging.h>
 
 #include <chrono/core/ChRealtimeStep.h>
+#include <chrono/physics/ChSystemNSC.h>
+#include <chrono/physics/ChBodyEasy.h>
 
 #include <chrono>   // std::chrono::high_resolution_clock::now
 #include <iomanip>  // std::setprecision
@@ -146,10 +148,8 @@ int main(int argc, char* argv[]) {
     my_hydro_inputs->regular_wave_omega_     = 2.10;
     std::cout << "Configured RegularWave inputs." << std::endl;
 
-    std::cout << "Constructing TestHydro..." << std::endl;
-    // Use default NoWave; TestHydro will size it correctly for the number of bodies.
-    TestHydro hydro_forces(bodies, h5fname);
-    std::cout << "TestHydro constructed, adding waves..." << std::endl;
+    HydroForces hydro_forces(bodies, h5fname);
+    hydro_forces.AddWaves(my_hydro_inputs);
 
     try {
         hydro_forces.AddWaves(my_hydro_inputs);

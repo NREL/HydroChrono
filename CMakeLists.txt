@@ -20,7 +20,7 @@ endif()
 # ===============================================================================
 
 project(HydroChrono 
-    VERSION 0.3.2
+    VERSION 0.4.0
     DESCRIPTION "Hydrodynamics for Project Chrono."
     LANGUAGES CXX
 )
@@ -319,29 +319,58 @@ list(APPEND HC_INCLUDES_BUILD ${PROJECT_BINARY_DIR})
 
 # -- Main HydroChrono Library --
 set(HC_SOURCES
-    src/h5fileinfo.cpp
-    src/chloadaddedmass.cpp
-    src/hydro_forces.cpp
-    src/helper.cpp
-    src/wave_types.cpp
-    # src/simulation_logging.cpp  # removed in streamlined logging
-    src/hydro_yaml_parser.cpp
-    src/setup_hydro_from_yaml.cpp
-    # logging consolidated: coordinator + CLI (logging.cpp), backend (logger_backend.cpp)
-    src/utils/logger_backend.cpp
-    src/utils/logging.cpp
-    src/h5_writer.cpp
-    src/simulation_exporter.cpp
+    # IO module (consolidated under src/hydro/io/)
+    src/hydro/io/h5_reader.cpp
+    src/hydro/io/h5_writer.cpp
+    src/hydro/io/simulation_export.cpp
+    # Config/YAML module (consolidated under src/hydro/config/)
+    src/hydro/config/yaml_parser.cpp
+    src/hydro/config/config_loader.cpp
+    src/hydro/config/setup_from_yaml.cpp
+    src/hydro/config/yaml_discovery.cpp
+    # Core facade and utilities
+    src/hydro/hydro_system.cpp
+    src/hydro/utils/helper.cpp
+    # Hydro modules
+    src/hydro/waves/wave_base.cpp
+    src/hydro/waves/wave_utilities.cpp
+    src/hydro/waves/regular_wave.cpp
+    src/hydro/waves/irregular_wave.cpp
+    src/hydro/radiation/radiation_rirf_processing.cpp
+    src/hydro/radiation/radiation_rirf_convolution.cpp
+    src/hydro/core/hydro_forces.cpp
+    # Chrono coupling layer (bridges Chrono physics with Chrono-free core)
+    src/hydro/chrono/chrono_state_utils.cpp
+    src/hydro/chrono/chrono_hydro_coupler.cpp
+    src/hydro/chrono/added_mass.cpp
+    src/hydro/force_components/hydrostatics_component.cpp
+    src/hydro/force_components/radiation_component.cpp
+    src/hydro/force_components/excitation_component.cpp
+    # Logging module (consolidated under src/hydro/logging/)
+    src/hydro/logging/logger_backend.cpp
+    src/hydro/logging/logging.cpp
 )
 
 set(HC_HEADERS
     ${PROJECT_BINARY_DIR}/hydroc/config.h
     ${PROJECT_BINARY_DIR}/hydroc/version.h
-    include/hydroc/h5_writer.h
-    include/hydroc/h5fileinfo.h
     include/hydroc/helper.h
     include/hydroc/hydro_forces.h
     include/hydroc/logging.h
+    include/hydroc/config/hydro_config.h
+    include/hydroc/core/force_component.h
+    include/hydroc/core/hydro_forces.h
+    include/hydroc/core/hydro_types.h
+    include/hydroc/core/system_state.h
+    include/hydroc/coupling/added_mass.h
+    include/hydroc/coupling/chrono_coupler.h
+    include/hydroc/io/h5_reader.h
+    include/hydroc/io/h5_writer.h
+    include/hydroc/io/simulation_export.h
+    include/hydroc/radiation/radiation_types.h
+    include/hydroc/waves/irregular_wave.h
+    include/hydroc/waves/regular_wave.h
+    include/hydroc/waves/wave_base.h
 )
 
 # Create the library target and configure it
