@@ -202,8 +202,6 @@ int main(int argc, char* argv[]) {
     }
 
     std::cout << "Start simulation"<< std::endl;
-    std::cout << "  Integrator: " << system.GetTimestepper()->GetTypeAsString() << std::endl;
-    std::cout << "  Solver:     " << system.GetSolver()->GetTypeAsString() << std::endl;
     std::cout << "  Step size:  " << timestep << std::endl;
     std::cout << "  Duration:   " << simulationDuration << std::endl;
 

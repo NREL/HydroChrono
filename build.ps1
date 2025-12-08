@@ -744,12 +744,25 @@ function Package-Artifacts {
         }
         $hdf5Bin = Join-Path $hdf5Root "bin"
         if (Test-Path $hdf5Bin) {
+            Write-Info "Copying HDF5 DLLs from: $hdf5Bin"
+            $hdf5Count = 0
             Get-ChildItem -Path $hdf5Bin -Filter "*.dll" -ErrorAction SilentlyContinue | ForEach-Object {
                 $dest = Join-Path $installBin $_.Name
-                if (-not (Test-Path $dest)) {
-                    Copy-Item -Path $_.FullName -Destination $dest -Force -ErrorAction SilentlyContinue
-                }
+                Copy-Item -Path $_.FullName -Destination $dest -Force -ErrorAction SilentlyContinue
+                $hdf5Count++
             }
+            Write-Info "Copied $hdf5Count HDF5 DLL(s)"
+        } else {
+            Write-Warning "HDF5 bin directory not found: $hdf5Bin"
+        }
+        
+        # Copy Irrlicht DLL
+        $irrlichtDll = Join-Path $Config.IrrlichtDir "bin\Win64-VisualStudio\Irrlicht.dll"
+        if (Test-Path $irrlichtDll) {
+            Copy-Item -Path $irrlichtDll -Destination $installBin -Force -ErrorAction SilentlyContinue
+            Write-Info "Copied Irrlicht.dll"
+        } else {
+            Write-Warning "Irrlicht.dll not found at: $irrlichtDll"
         }
         # Also copy DLLs from this project's build bin (Release/Debug) into install\bin
         $hcDllSource = Join-Path (Get-Location) "bin\$BuildType"

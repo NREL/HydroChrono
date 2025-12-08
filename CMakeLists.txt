@@ -162,8 +162,8 @@ endif()
 file(COPY ${CMAKE_SOURCE_DIR}/data/ DESTINATION ${HC_BUILD_DATA})
 message(STATUS "  copied to: ${HC_BUILD_DATA}/")
 
-# Install data directory
-install(DIRECTORY ${HC_BUILD_DATA} DESTINATION ${HC_INSTALL_DATA})
+# Install data directory (trailing slash copies contents, not the directory itself)
+install(DIRECTORY ${HC_BUILD_DATA}/ DESTINATION ${HC_INSTALL_DATA})
 message(STATUS "  installed to: ${CMAKE_INSTALL_PREFIX}/${HC_INSTALL_DATA}/")
 
 # -- Output Directory Structure --
@@ -663,13 +663,44 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
         endif()
     endforeach()
 
-    # HDF5 DLLs
+    # HDF5 DLLs - use glob to find all DLLs in HDF5 bin directory
+    if(DEFINED HDF5_ROOT OR DEFINED HDF5_DIR)
+        # Determine HDF5 root from various possible variables
+        if(DEFINED HDF5_ROOT)
+            set(_hdf5_root "${HDF5_ROOT}")
+        elseif(DEFINED HDF5_DIR)
+            # HDF5_DIR might point to share/cmake/hdf5 or similar
+            get_filename_component(_hdf5_root "${HDF5_DIR}" DIRECTORY)
+            get_filename_component(_hdf5_root "${_hdf5_root}" DIRECTORY)
+            get_filename_component(_hdf5_root "${_hdf5_root}" DIRECTORY)
+        endif()
+        
+        set(_hdf5_bin "${_hdf5_root}/bin")
+        if(EXISTS "${_hdf5_bin}")
+            file(GLOB _hdf5_dlls "${_hdf5_bin}/*.dll")
+            if(_hdf5_dlls)
+                message(STATUS "Installing HDF5 DLLs from: ${_hdf5_bin}")
+                install(FILES ${_hdf5_dlls} DESTINATION bin COMPONENT runtime)
+            endif()
+        endif()
+    endif()
+    
+    # Also try target-based approach as fallback
     foreach(tgt ${HDF5_TARGETS})
         get_target_property(tgt_DLL ${tgt} IMPORTED_LOCATION_RELEASE)
         if(EXISTS ${tgt_DLL})
             install(FILES ${tgt_DLL} DESTINATION bin COMPONENT runtime)
         endif()
     endforeach()
+    
+    # Irrlicht DLL
+    if(HYDROCHRONO_ENABLE_IRRLICHT AND DEFINED Irrlicht_ROOT)
+        set(_irr_dll "${Irrlicht_ROOT}/bin/Win64-VisualStudio/Irrlicht.dll")
+        if(EXISTS "${_irr_dll}")
+            message(STATUS "Installing Irrlicht.dll from: ${_irr_dll}")
+            install(FILES "${_irr_dll}" DESTINATION bin COMPONENT runtime)
+        endif()
+    endif()
     
     # Python DLLs, if Chrono::Parsers depends on it
     if(CHRONO_PARSERS_PYTHON)
@@ -691,6 +722,13 @@ endif()
 # Public, user-facing regression test suite only
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/tests/regression/run_hydrochrono
         DESTINATION tests COMPONENT python-tests
+        PATTERN "__pycache__" EXCLUDE
+        PATTERN "*.pyc" EXCLUDE)
+
+# Install test input data (YAML configs, hydro data, geometry) into tests/run_hydrochrono
+# The Python scripts expect test case folders (iea_sphere/, oswec/, rm3/, f3of/) to be siblings
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/data/demos/run_hydrochrono/
+        DESTINATION tests/run_hydrochrono COMPONENT python-tests
         PATTERN "__pycache__" EXCLUDE
         PATTERN "*.pyc" EXCLUDE)
 
