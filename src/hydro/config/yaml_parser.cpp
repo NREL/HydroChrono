@@ -362,6 +362,8 @@ YAMLHydroData ReadHydroYAML(const std::string& hydro_file_path) {
                         try { data.ss_max_hankel_size = std::stoi(value); } catch (...) {}
                     } else if (key == "r2_num_samples") {
                         try { data.ss_r2_num_samples = std::stoi(value); } catch (...) {}
+                    } else if (key == "output_kernel_fit") {
+                        data.output_kernel_fit = ParseBool(value, false);
                     }
                 } else if (in_convolution && indent == 4) {
                     // Top level keys under convolution

@@ -190,6 +190,12 @@ std::unique_ptr<HydroSystem> SetupHydroFromYAML(
         ss_opts.r2_num_samples = hydro_data.ss_r2_num_samples;
         hydro_system->SetStateSpaceOptions(ss_opts);
         
+        // Enable kernel fit diagnostics if requested
+        if (hydro_data.output_kernel_fit) {
+            hydro_system->SetOutputKernelFit(true);
+            hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "Kernel Fit Diagnostics", "Enabled"));
+        }
+        
         if (hydroc::debug::IsDebugEnabled()) {
             hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "SS Max Order", std::to_string(ss_opts.max_order)));
             hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "SS R² Threshold", std::to_string(ss_opts.r2_threshold)));

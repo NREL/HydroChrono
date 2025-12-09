@@ -495,7 +495,7 @@ std::unique_ptr<hydrochrono::hydro::IHydroForceComponent> HydroSystem::CreateRad
     if (radiation_method_ == hydrochrono::hydro::RadiationMethod::kStateSpace) {
         // State-space approximation: O(1) per timestep
         return std::make_unique<hydrochrono::hydro::RadiationStateSpaceComponent>(
-            file_info_, num_bodies_, state_space_opts_);
+            file_info_, num_bodies_, state_space_opts_, output_kernel_fit_);
     }
 
     // Default: RIRF convolution
@@ -759,5 +759,62 @@ void HydroSystem::SetProfilingEnabled(bool enabled) {
     if (chrono_coupler_) {
         chrono_coupler_->SetProfilingEnabled(enabled);
     }
+}
+
+bool HydroSystem::HasKernelFitDiagnostics() const {
+    // Check both the dedicated radiation_component_ and the one in hydro_forces_
+    if (radiation_method_ != hydrochrono::hydro::RadiationMethod::kStateSpace) {
+        return false;
+    }
+    
+    // Try radiation_component_ first
+    if (radiation_component_) {
+        auto* ss_comp = dynamic_cast<hydrochrono::hydro::RadiationStateSpaceComponent*>(
+            radiation_component_.get());
+        if (ss_comp && ss_comp->HasDiagnostics()) {
+            return true;
+        }
+    }
+    
+    // Check components owned by hydro_forces_
+    if (hydro_forces_) {
+        for (const auto& comp : hydro_forces_->GetComponents()) {
+            if (comp->Type() == hydrochrono::hydro::HydroComponentType::Radiation) {
+                auto* ss_comp = dynamic_cast<hydrochrono::hydro::RadiationStateSpaceComponent*>(
+                    comp.get());
+                if (ss_comp && ss_comp->HasDiagnostics()) {
+                    return true;
+                }
+            }
+        }
+    }
+    
+    return false;
+}
+
+std::vector<hydrochrono::hydro::KernelFitDiagnostics> HydroSystem::GetKernelFitDiagnostics() const {
+    // Try radiation_component_ first
+    if (radiation_component_) {
+        auto* ss_comp = dynamic_cast<hydrochrono::hydro::RadiationStateSpaceComponent*>(
+            radiation_component_.get());
+        if (ss_comp && ss_comp->HasDiagnostics()) {
+            return ss_comp->GetDiagnostics();
+        }
+    }
+    
+    // Check components owned by hydro_forces_
+    if (hydro_forces_) {
+        for (const auto& comp : hydro_forces_->GetComponents()) {
+            if (comp->Type() == hydrochrono::hydro::HydroComponentType::Radiation) {
+                auto* ss_comp = dynamic_cast<hydrochrono::hydro::RadiationStateSpaceComponent*>(
+                    comp.get());
+                if (ss_comp && ss_comp->HasDiagnostics()) {
+                    return ss_comp->GetDiagnostics();
+                }
+            }
+        }
+    }
+    
+    return {};
 }
 
