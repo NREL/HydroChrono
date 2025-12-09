@@ -1,4 +1,3 @@
-#include <hydroc/config.h>
 #include <hydroc/gui/guihelper.h>
 #include <hydroc/helper.h>
 #include <hydroc/hydro_forces.h>
@@ -26,27 +25,27 @@ int main(int argc, char* argv[]) {
                                       479668.979, 633979.761, 784083.286, 932117.647, 1077123.445};
     int reg_wave_num_max           = task10_wave_amps.size();
 
-    std::cout << "Num waves: " << reg_wave_num_max << std::endl;
+    std::cout << reg_wave_num_max;
+
+    std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
+    // Parse CLI arguments and initialize environment
+    bool profilingOn     = true;
+    bool saveDataOn      = true;
+    bool visualizationOn = false;
+    std::string data_dir;
+    if (!hydroc::GetCLIArguments(argc, argv, "Sphere regular waves regression test", saveDataOn, profilingOn,
+                                 visualizationOn, data_dir))
+        return 1;
+    if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
+
+    // Get model file names using regression test data structure
+    std::filesystem::path DATADIR(hydroc::getDataDir());
+
+    auto body1_meshfname =
+        (DATADIR / "demos" / "sphere" / "geometry" / "oes_task10_sphere.obj").lexically_normal().generic_string();
+    auto h5fname = (DATADIR / "demos" / "sphere" / "hydroData" / "sphere.h5").lexically_normal().generic_string();
 
     for (int reg_wave_num = 1; reg_wave_num <= reg_wave_num_max; ++reg_wave_num) {
-        std::cout << reg_wave_num << "  ";
-
-        // Parse CLI arguments and initialize environment
-        bool profilingOn     = true;
-        bool saveDataOn      = true;
-        bool visualizationOn = true;
-        std::string data_dir;
-        if (!hydroc::GetCLIArguments(argc, argv, "Sphere regular waves demo", saveDataOn, profilingOn, visualizationOn, data_dir))
-            return 1;
-        if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
-
-        // Get model file names
-        std::filesystem::path DATADIR(hydroc::getDataDir());
-
-        auto body1_meshfname =
-            (DATADIR / "demos" / "sphere" / "geometry" / "oes_task10_sphere.obj").lexically_normal().generic_string();
-        auto h5fname = (DATADIR / "demos" / "sphere" / "hydroData" / "sphere.h5").lexically_normal().generic_string();
-
         // system/solver settings
         ChSystemNSC system;
         system.SetGravitationalAcceleration(ChVector3d(0.0, 0.0, -9.81));
@@ -120,7 +119,7 @@ int main(int argc, char* argv[]) {
 
         std::vector<std::shared_ptr<ChBody>> bodies;
         bodies.push_back(sphereBody);
-        TestHydro hydro_forces(bodies, h5fname);
+        HydroForces hydro_forces(bodies, h5fname);
         hydro_forces.AddWaves(my_hydro_inputs);
         // for profiling
         auto start = std::chrono::high_resolution_clock::now();
@@ -145,36 +144,62 @@ int main(int argc, char* argv[]) {
         auto end          = std::chrono::high_resolution_clock::now();
         unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-        std::string out_dir = hydroc::getDemoOutDir();
+        std::string out_dir = hydroc::getTestOutDir();
         if (profilingOn || saveDataOn) {
             out_dir = out_dir + "/" + RESULTS_DIR_NAME;
             std::filesystem::create_directory(std::filesystem::path(out_dir));
         }
 
         if (profilingOn) {
-            std::ofstream outputFile(out_dir + "/reg_waves_" + std::to_string(reg_wave_num) + "_duration.txt");
-            outputFile << duration << "\n";
-            outputFile.close();
+            std::ofstream profilingFile(out_dir + "/" + RESULTS_FILE_NAME + "_" + std::to_string(reg_wave_num) +
+                                        "_duration.txt");
+            if (profilingFile.is_open()) {
+                profilingFile << duration << " ms\n";
+                profilingFile.close();
+            } else {
+                std::cout << "Error: Could not open profiling file for writing." << std::endl;
+            }
         }
 
         if (saveDataOn) {
-            std::ofstream outputFile(out_dir + "/reg_waves_" + std::to_string(reg_wave_num) + ".txt");
-            outputFile.precision(10);
-            outputFile.width(12);
-            outputFile << "Wave #: \t" << reg_wave_num << "\n";
-            outputFile << "Wave amplitude (m): \t" << my_hydro_inputs->regular_wave_amplitude_ << "\n";
-            outputFile << "Wave omega (rad/s): \t" << my_hydro_inputs->regular_wave_omega_ << "\n";
-            outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(12)
-                       << "Heave (m)"
-                       //<< std::right << std::setw(18) << "Heave Vel (m/s)"
-                       //<< std::right << std::setw(18) << "Heave Force (N)"
-                       << std::endl;
-            for (int i = 0; i < time_vector.size(); ++i)
-                outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
-                           << std::right << std::setw(12) << std::setprecision(4) << std::fixed << heave_position[i]
-                           << std::endl;
-            outputFile.close();
+            std::ofstream outputFile(out_dir + "/" + RESULTS_FILE_NAME + "_" + std::to_string(reg_wave_num) + ".txt");
+            if (outputFile.is_open()) {
+                outputFile.precision(10);
+                outputFile.width(12);
+                outputFile << "Wave #: \t" << reg_wave_num << "\n";
+                outputFile << "Wave amplitude (m): \t" << my_hydro_inputs->regular_wave_amplitude_ << "\n";
+                outputFile << "Wave omega (rad/s): \t" << my_hydro_inputs->regular_wave_omega_ << "\n";
+                outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(12)
+                           << "Heave (m)"
+                           //<< std::right << std::setw(18) << "Heave Vel (m/s)"
+                           //<< std::right << std::setw(18) << "Heave Force (N)"
+                           << "\n";
+                outputFile << std::left << std::setw(10) << "----------" << std::right << std::setw(12)
+                           << "----------"
+                           //<< std::right << std::setw(18) << "----------"
+                           //<< std::right << std::setw(18) << "----------"
+                           << "\n";
+
+                for (int i = 0; i < time_vector.size(); i++) {
+                    outputFile
+                        << std::left << std::setw(10) << std::fixed << std::setprecision(3) << time_vector[i]
+                        << std::right << std::setw(12) << std::fixed << std::setprecision(6)
+                        << heave_position[i]
+                        //<< std::right << std::setw(18) << std::fixed << std::setprecision(6) << heave_velocity[i]
+                        //<< std::right << std::setw(18) << std::fixed << std::setprecision(6) << heave_force[i]
+                        << "\n";
+                }
+                outputFile.close();
+            } else {
+                std::cout << "Error: Could not open output file for writing." << std::endl;
+                return 1;  // Return an error code
+            }
         }
+
+        // Clear vectors for next iteration
+        time_vector.clear();
+        heave_position.clear();
     }
+
     return 0;
-}
+} 

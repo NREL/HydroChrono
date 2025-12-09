@@ -3,7 +3,8 @@
 #include <hydroc/hydro_forces.h>
 
 #include <chrono/core/ChRealtimeStep.h>
-#include <chrono/physics/ChLinkMate.h>  // fixed body uses link
+#include <chrono/physics/ChSystemSMC.h>
+#include <chrono/physics/ChBodyEasy.h>
 
 #include <chrono>   // std::chrono::high_resolution_clock::now
 #include <iomanip>  // std::setprecision
@@ -20,25 +21,22 @@ using namespace chrono;
 int main(int argc, char* argv[]) {
     std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
-    SetChronoDataPath(CHRONO_DATA_DIR);
-
-    if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
-        return 1;
-    }
-
-    // Check if --nogui option is set as 2nd argument
+    // Parse CLI arguments and initialize environment
+    bool profilingOn     = true;
+    bool saveDataOn      = true;
     bool visualizationOn = true;
-    if (argc > 2 && std::string("--nogui").compare(argv[2]) == 0) {
-        visualizationOn = false;
-    }
+    std::string data_dir;
+    if (!hydroc::GetCLIArguments(argc, argv, "F3OF DT3 demo", saveDataOn, profilingOn, visualizationOn, data_dir))
+        return 1;
+    if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
 
     // Get model file names
     std::filesystem::path DATADIR(hydroc::getDataDir());
 
-    auto body1_meshfame = (DATADIR / "f3of" / "geometry" / "base.obj").lexically_normal().generic_string();
-    auto body2_meshfame = (DATADIR / "f3of" / "geometry" / "flap.obj").lexically_normal().generic_string();
-    auto body3_meshfame = (DATADIR / "f3of" / "geometry" / "flap.obj").lexically_normal().generic_string();
-    auto h5fname        = (DATADIR / "f3of" / "hydroData" / "f3of.h5").lexically_normal().generic_string();
+    auto body1_meshfame = (DATADIR / "demos" / "f3of" / "geometry" / "base.obj").lexically_normal().generic_string();
+    auto body2_meshfame = (DATADIR / "demos" / "f3of" / "geometry" / "flap.obj").lexically_normal().generic_string();
+    auto body3_meshfame = (DATADIR / "demos" / "f3of" / "geometry" / "flap.obj").lexically_normal().generic_string();
+    auto h5fname        = (DATADIR / "demos" / "f3of" / "hydroData" / "f3of.h5").lexically_normal().generic_string();
 
     // system/solver settings
     ChSystemSMC system;
@@ -54,8 +52,6 @@ int main(int argc, char* argv[]) {
     hydroc::gui::UI& ui                  = *pui.get();
 
     // some io/viz options
-    bool profilingOn = true;
-    bool saveDataOn  = true;
     std::vector<double> time_vector;
     std::vector<double> base_surge;
     std::vector<double> base_pitch;
@@ -190,40 +186,19 @@ int main(int argc, char* argv[]) {
     auto end          = std::chrono::high_resolution_clock::now();
     unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
+    std::string out_dir = hydroc::getDemoOutDir();
+    if (profilingOn || saveDataOn) {
+        out_dir = out_dir + "/" + RESULTS_DIR_NAME;
+        std::filesystem::create_directory(std::filesystem::path(out_dir));
+    }
+
     if (profilingOn) {
-        std::ofstream profilingFile;
-        profilingFile.open("./results/F3OF_DT3_duration.txt");
-        if (!profilingFile.is_open()) {
-            if (!std::filesystem::exists("./results")) {
-                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
-                          << std::endl;
-                std::filesystem::create_directory("./results");
-                profilingFile.open("./results/F3OF_DT3_duration.txt");
-                if (!profilingFile.is_open()) {
-                    // TODO instead of ending program, skip to next saveDataOn if statment
-                    std::cout << "Still cannot open file, ending program" << std::endl;
-                    return 0;
-                }
-            }
-        }
+        std::ofstream profilingFile(out_dir + "/DT3_duration.txt");
         profilingFile << duration << " ms\n";
         profilingFile.close();
     }
     if (saveDataOn) {
-        std::ofstream outputFile;
-        outputFile.open("./results/CHRONO_F3OF_DT3_PITCH.txt");
-        if (!outputFile.is_open()) {
-            if (!std::filesystem::exists("./results")) {
-                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
-                          << std::endl;
-                std::filesystem::create_directory("./results");
-                outputFile.open("./results/CHRONO_F3OF_DT3_PITCH.txt");
-                if (!outputFile.is_open()) {
-                    std::cout << "Still cannot open file, ending program" << std::endl;
-                    return 0;
-                }
-            }
-        }
+        std::ofstream outputFile(out_dir + "/DT3_pitch.txt");
         outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(16) << "Base Surge (m)"
                    << std::right << std::setw(16) << "Base Pitch (radians)" << std::right << std::setw(16)
                    << "Flap Fore Pitch (radians)" << std::right << std::setw(16) << "Flap Aft Pitch (radians)"

@@ -21,9 +21,10 @@ int main(int argc, char* argv[]) {
     // Parse CLI arguments and initialize environment
     bool profilingOn     = true;
     bool saveDataOn      = true;
-    bool visualizationOn = true;
+    bool visualizationOn = false;
     std::string data_dir;
-    if (!hydroc::GetCLIArguments(argc, argv, "Sphere irregular waves demo", saveDataOn, profilingOn, visualizationOn, data_dir))
+    if (!hydroc::GetCLIArguments(argc, argv, "Sphere irregular waves regression test", saveDataOn, profilingOn,
+                                 visualizationOn, data_dir))
         return 1;
     if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
 
@@ -33,7 +34,7 @@ int main(int argc, char* argv[]) {
         (DATADIR / "demos" / "sphere" / "geometry" / "oes_task10_sphere.obj").lexically_normal().generic_string();
     auto h5fname = (DATADIR / "demos" / "sphere" / "hydroData" / "sphere.h5").lexically_normal().generic_string();
 
-    //    // system/solver settings
+    // system/solver settings
     ChSystemNSC system;
     system.SetGravitationalAcceleration(ChVector3d(0.0, 0.0, -9.81));
     double timestep = 0.015;
@@ -58,7 +59,7 @@ int main(int argc, char* argv[]) {
     // some io/viz options
     std::vector<double> time_vector;
     std::vector<double> heave_position;
-    //
+
     // set up body from a mesh
     std::cout << "Attempting to open mesh file: " << body1_meshfame << std::endl;
     std::shared_ptr<ChBody> sphereBody = chrono_types::make_shared<ChBodyEasyMesh>(  //
@@ -123,7 +124,7 @@ int main(int argc, char* argv[]) {
         std::cerr << "Caught unknown exception.\n";
     }
 
-    TestHydro hydro_forces(bodies, h5fname);
+    HydroForces hydro_forces(bodies, h5fname);
     hydro_forces.AddWaves(my_hydro_inputs);
 
     // set up free surface from a mesh
@@ -176,33 +177,43 @@ int main(int argc, char* argv[]) {
     auto end          = std::chrono::high_resolution_clock::now();
     unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-    std::string out_dir = hydroc::getDemoOutDir();
+    std::string out_dir = hydroc::getTestOutDir();
     if (profilingOn || saveDataOn) {
         out_dir = out_dir + "/" + RESULTS_DIR_NAME;
         std::filesystem::create_directory(std::filesystem::path(out_dir));
     }
 
     if (profilingOn) {
-        std::ofstream profilingFile(out_dir + "/irreg_waves_duration.txt");
-        profilingFile << duration << "ms\n";
-        profilingFile.close();
+        std::ofstream profilingFile(out_dir + "/" + RESULTS_FILE_NAME + "_duration.txt");
+        if (profilingFile.is_open()) {
+            profilingFile << duration << " ms\n";
+            profilingFile.close();
+        } else {
+            std::cout << "Error: Could not open profiling file for writing." << std::endl;
+        }
     }
 
     if (saveDataOn) {
-        std::ofstream outputFile(out_dir + "/irreg_waves.txt");
-        outputFile.precision(10);
-        outputFile.width(12);
-        outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(12)
-                   << "Heave (m)"
-                   //<< std::right << std::setw(18) << "Heave Vel (m/s)"
-                   //<< std::right << std::setw(18) << "Heave Force (N)"
-                   << std::endl;
-        for (int i = 0; i < time_vector.size(); ++i)
-            outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
-                       << std::right << std::setw(12) << std::setprecision(4) << std::fixed << heave_position[i]
-                       << std::endl;
-        outputFile.close();
+        std::ofstream outputFile(out_dir + "/" + RESULTS_FILE_NAME + ".txt");
+        if (outputFile.is_open()) {
+            outputFile.precision(10);
+            outputFile.width(12);
+            outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(12) << "Heave (m)"
+                       << "\n";
+            outputFile << std::left << std::setw(10) << "----------" << std::right << std::setw(12) << "----------"
+                       << "\n";
+
+            for (int i = 0; i < time_vector.size(); i++) {
+                outputFile << std::left << std::setw(10) << std::fixed << std::setprecision(3) << time_vector[i]
+                           << std::right << std::setw(12) << std::fixed << std::setprecision(6) << heave_position[i]
+                           << "\n";
+            }
+            outputFile.close();
+        } else {
+            std::cout << "Error: Could not open output file for writing." << std::endl;
+            return 1;  // Return an error code
+        }
     }
 
     return 0;
-}
+} 

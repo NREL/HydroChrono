@@ -5,6 +5,8 @@
 
 #include <chrono/assets/ChColor.h>
 #include <chrono/core/ChRealtimeStep.h>
+#include <chrono/physics/ChSystemNSC.h>
+#include <chrono/physics/ChBodyEasy.h>
 
 #include <hydroc/gui/guihelper.h>
 #include <hydroc/helper.h>
@@ -13,31 +15,23 @@
 // Use the namespaces of Chrono
 using namespace chrono;
 
-// usage: ./<demos>.exe [DATADIR] [--nogui]
-//
-// If no argument is given user can set HYDROCHRONO_DATA_DIR
-// environment variable to give the data_directory.
-//
 int main(int argc, char* argv[]) {
     std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
-    SetChronoDataPath(CHRONO_DATA_DIR);
-
-    if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
-        return 1;
-    }
-
-    // Check if --nogui option is set as 2nd argument
+    // Parse CLI arguments and initialize environment
+    bool profilingOn     = true;
+    bool saveDataOn      = true;
     bool visualizationOn = true;
-    if (argc > 2 && std::string("--nogui").compare(argv[2]) == 0) {
-        visualizationOn = false;
-    }
+    std::string data_dir;
+    if (!hydroc::GetCLIArguments(argc, argv, "Sphere irregular waves eta demo", saveDataOn, profilingOn, visualizationOn, data_dir))
+        return 1;
+    if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
 
     std::filesystem::path DATADIR(hydroc::getDataDir());
 
     auto body1_meshfame =
-        (DATADIR / "sphere" / "geometry" / "oes_task10_sphere.obj").lexically_normal().generic_string();
-    auto h5fname = (DATADIR / "sphere" / "hydroData" / "sphere.h5").lexically_normal().generic_string();
+        (DATADIR / "demos" / "sphere" / "geometry" / "oes_task10_sphere.obj").lexically_normal().generic_string();
+    auto h5fname = (DATADIR / "demos" / "sphere" / "hydroData" / "sphere.h5").lexically_normal().generic_string();
 
     // system/solver settings
     ChSystemNSC system;
@@ -62,8 +56,6 @@ int main(int argc, char* argv[]) {
     ground->EnableCollision(false);
 
     // some io/viz options
-    bool profilingOn = true;
-    bool saveDataOn  = true;
     std::vector<double> time_vector;
     std::vector<double> heave_position;
 
@@ -118,7 +110,7 @@ int main(int argc, char* argv[]) {
     params.simulation_dt_       = timestep;
     params.simulation_duration_ = simulationDuration;
     params.ramp_duration_       = 0.0;
-    params.eta_file_path_       = (DATADIR / "sphere" / "eta" / "eta.txt").lexically_normal().generic_string();
+    params.eta_file_path_       = (DATADIR / "demos" / "sphere" / "eta" / "eta.txt").lexically_normal().generic_string();
     params.frequency_min_       = 0.001;
     params.frequency_max_       = 1.0;
     params.nfrequencies_        = 1000;
@@ -194,40 +186,20 @@ int main(int argc, char* argv[]) {
     auto end          = std::chrono::high_resolution_clock::now();
     unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
+    std::string out_dir = hydroc::getDemoOutDir();
+    if (profilingOn || saveDataOn) {
+        out_dir = out_dir + "/" + RESULTS_DIR_NAME;
+        std::filesystem::create_directory(std::filesystem::path(out_dir));
+    }
+
     if (profilingOn) {
-        std::string out_file = "results/sphere_irregular_waves_duration.txt";
-        std::ofstream profilingFile(out_file);
-        if (!profilingFile.is_open()) {
-            if (!std::filesystem::exists("./results")) {
-                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
-                          << std::endl;
-                std::filesystem::create_directories("./results");
-                profilingFile.open(out_file);
-                if (!profilingFile.is_open()) {
-                    std::cout << "Still cannot open file, ending program" << std::endl;
-                    return 0;
-                }
-            }
-        }
+        std::ofstream profilingFile(out_dir + "/irreg_waves_eta_duration.txt");
         profilingFile << duration << "ms\n";
         profilingFile.close();
     }
 
     if (saveDataOn) {
-        std::string out_file = "results/sphere_irreg_waves.txt";
-        std::ofstream outputFile(out_file);
-        if (!outputFile.is_open()) {
-            if (!std::filesystem::exists("./results")) {
-                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
-                          << std::endl;
-                std::filesystem::create_directories("./results");
-                outputFile.open(out_file);
-                if (!outputFile.is_open()) {
-                    std::cout << "Still cannot open file, ending program" << std::endl;
-                    return 0;
-                }
-            }
-        }
+        std::ofstream outputFile(out_dir + "/irreg_waves_eta.txt");
         outputFile.precision(10);
         outputFile.width(12);
         outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(12)

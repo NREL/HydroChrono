@@ -19,13 +19,14 @@ int main(int argc, char* argv[]) {
     // Parse CLI arguments and initialize environment
     bool profilingOn     = true;
     bool saveDataOn      = true;
-    bool visualizationOn = true;
+    bool visualizationOn = false;
     std::string data_dir;
-    if (!hydroc::GetCLIArguments(argc, argv, "RM3 decay demo", saveDataOn, profilingOn, visualizationOn, data_dir))
+    if (!hydroc::GetCLIArguments(argc, argv, "RM3 decay regression test", saveDataOn, profilingOn, visualizationOn,
+                                 data_dir))
         return 1;
     if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
 
-    // Get model file names
+    // Get model file names - use HydroChrono data directory
     std::filesystem::path DATADIR(hydroc::getDataDir());
 
     auto body1_meshfame = (DATADIR / "demos" / "rm3" / "geometry" / "float_cog.obj").lexically_normal().generic_string();
@@ -119,7 +120,7 @@ int main(int argc, char* argv[]) {
     bodies.push_back(float_body1);
     bodies.push_back(plate_body2);
 
-    TestHydro hydroForces(bodies, h5fname, default_dont_add_waves);
+    HydroForces hydroForces(bodies, h5fname, default_dont_add_waves);
 
     //// Debug printing added mass matrix and system mass matrix
     // ChSparseMatrix M;
@@ -150,28 +151,38 @@ int main(int argc, char* argv[]) {
     auto end          = std::chrono::high_resolution_clock::now();
     unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-    std::string out_dir = hydroc::getDemoOutDir();
+    std::string out_dir = hydroc::getTestOutDir();
     if (profilingOn || saveDataOn) {
         out_dir = out_dir + "/" + RESULTS_DIR_NAME;
         std::filesystem::create_directory(std::filesystem::path(out_dir));
     }
 
     if (profilingOn) {
-        std::ofstream profilingFile(out_dir + "/decay_duration.txt");
-        profilingFile << duration << "\n";
-        profilingFile.close();
+        std::ofstream profilingFile(out_dir + "/" + RESULTS_FILE_NAME + "_duration.txt");
+        if (profilingFile.is_open()) {
+            profilingFile << duration << " ms\n";
+            profilingFile.close();
+        } else {
+            std::cout << "Error: Could not open profiling file for writing." << std::endl;
+        }
     }
 
     if (saveDataOn) {
-        std::ofstream outputFile(out_dir + "/decay.txt");
-        outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(16) << "Float Heave (m)"
-                   << std::right << std::setw(16) << "Plate Heave (m)" << std::endl;
-        for (int i = 0; i < time_vector.size(); ++i)
-            outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
-                       << std::right << std::setw(16) << std::setprecision(8) << std::fixed << float_heave_position[i]
-                       << std::right << std::setw(16) << std::setprecision(8) << std::fixed << plate_heave_position[i]
-                       << std::endl;
-        outputFile.close();
+        std::ofstream outputFile(out_dir + "/" + RESULTS_FILE_NAME + ".txt");
+        if (outputFile.is_open()) {
+            outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(16) << "Float Heave (m)"
+                       << std::right << std::setw(16) << "Plate Heave (m)" << std::endl;
+            for (int i = 0; i < time_vector.size(); ++i)
+                outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
+                           << std::right << std::setw(16) << std::setprecision(8) << std::fixed
+                           << float_heave_position[i] << std::right << std::setw(16) << std::setprecision(8)
+                           << std::fixed << plate_heave_position[i] << std::endl;
+            outputFile.close();
+        } else {
+            std::cout << "Error: Could not open output file for writing." << std::endl;
+            return 1;  // Return an error code
+        }
     }
+
     return 0;
 }

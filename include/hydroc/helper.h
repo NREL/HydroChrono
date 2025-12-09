@@ -8,6 +8,7 @@
 #include <iostream>
 #include <hydroc/logging.h>
 #include <string>
+#include <filesystem>  // C++17
 
 #ifndef M_PI
     #define M_PI 3.14159265358979323846
@@ -26,24 +27,48 @@ size_t get_lower_index(double value, const std::vector<double>& ticks);
  */
 namespace hydroc {
 
-/**@brief Set initial environment
- *
- * Use command line argument or env variables to set s
- * ome static data at initialization.
- *
- * Set the main data directory ..
- *
+/**@brief Get program command line arguments
  * @param argc number of argument (same as for main function)
  * @param argv arguments of main function
- * @return 1 on error 0 else
+ * @param gui true if run-time visualization
+ * @param data_dir alternative HydroChrono data directory
+ * @return false on error and true otherwise
  */
-int SetInitialEnvironment(int argc, char* argv[]) noexcept;
+bool GetCLIArguments(int argc,
+                     char** argv,
+                     const std::string& description,
+                     bool& output,
+                     bool& profile,
+                     bool& gui,
+                     std::string& data_dir);
+
+/**@brief Set initial environment
+ *
+ * Set the main HydroChrono data directory and the Chrono data directory.
+ * The main HydroChrono data directory is set, in order, using:
+ * - the environment variable HYDROCHRONO_DATA_DIR (if defined)
+ * - the provided data_dir path (if non-empty)
+ * - the default data directory in the HydroChrono source tree
+ *
+ * @param data_dir alternative HydroChrono data directory
+ * @return false on error and true otherwise
+ */
+bool SetInitialEnvironment(const std::string& data_dir) noexcept;
 
 /**@brief Get base name of data directory
  *
  * @return the string containing the path in standard format
  */
 std::string getDataDir() noexcept;
+
+/**@brief C++ 17 filesystem helper to ensure a directory exists
+ *
+ */
+void ensure_directory_exists(const std::filesystem::path& path);
+
+std::string getDemoOutDir();
+std::string getTestOutDir();
+
 template <typename T>
 void WriteDataToFile(const std::vector<T>& data, const std::string& filename) {
     std::ofstream outFile(filename);

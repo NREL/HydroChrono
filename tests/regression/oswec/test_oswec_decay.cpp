@@ -65,13 +65,14 @@ int main(int argc, char* argv[]) {
     // Parse CLI arguments and initialize environment
     bool profilingOn     = true;
     bool saveDataOn      = true;
-    bool visualizationOn = true;
+    bool visualizationOn = false;
     std::string data_dir;
-    if (!hydroc::GetCLIArguments(argc, argv, "OSWEC decay demo", saveDataOn, profilingOn, visualizationOn, data_dir))
+    if (!hydroc::GetCLIArguments(argc, argv, "OSWEC decay regression test", saveDataOn, profilingOn, visualizationOn,
+                                 data_dir))
         return 1;
     if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
 
-    // Get model file names
+    // Get model file names - use HydroChrono data directory
     std::filesystem::path DATADIR(hydroc::getDataDir());
 
     auto body1_meshfame = (DATADIR / "demos" / "oswec" / "geometry" / "flap.obj").lexically_normal().generic_string();
@@ -182,19 +183,38 @@ int main(int argc, char* argv[]) {
 
     auto default_dont_add_waves = std::make_shared<NoWave>(2);
 
-    //// attach hydrodynamic forces to body
+    // set up hydro forces
     std::vector<std::shared_ptr<ChBody>> bodies;
     bodies.push_back(flap_body);
     bodies.push_back(base_body);
-    TestHydro blah(bodies, h5fname, default_dont_add_waves);
+    HydroForces blah(bodies, h5fname, default_dont_add_waves);
+
+    // create output directory
+    bool saveDbgOn      = false;
+    std::string out_dir = hydroc::getTestOutDir() + "/" + RESULTS_DIR_NAME;
+    if (profilingOn || saveDataOn || saveDbgOn) {
+        std::filesystem::create_directory(std::filesystem::path(out_dir));
+        if (saveDbgOn) {
+            std::string dbg_dir = out_dir + "/dbg";
+            std::filesystem::create_directory(std::filesystem::path(dbg_dir));
+            system.EnableSolverMatrixWrite(true, dbg_dir);
+        }
+    }
+
+    std::cout << "Start simulation"<< std::endl;
+    std::cout << "  Step size:  " << timestep << std::endl;
+    std::cout << "  Duration:   " << simulationDuration << std::endl;
+
+    // initialize UI
+    ui.Init(&system, "OSWEC - Decay Test");
+    ui.SetCamera(0, -50, -10, 0, 0, -10);
+    ui.simulationStarted = true;
 
     // for profiling
     auto start = std::chrono::high_resolution_clock::now();
 
     // main simulation loop
-    ui.Init(&system, "OSWEC - Decay Test");
-    ui.SetCamera(0, -50, -10, 0, 0, -10);
-
+    //int frames = 0;
     while (system.GetChTime() <= simulationDuration) {
         if (ui.IsRunning(timestep) == false) break;
 
@@ -205,35 +225,41 @@ int main(int argc, char* argv[]) {
             time_vector.push_back(system.GetChTime());
             flap_rot.push_back(flap_body->GetRot().GetCardanAnglesXYZ().y());
         }
+
+        //if (++frames >= 10) break;
     }
 
     // for profiling
     auto end          = std::chrono::high_resolution_clock::now();
     unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-    std::string out_dir = hydroc::getDemoOutDir();
-    if (profilingOn || saveDataOn) {
-        out_dir = out_dir + "/" + RESULTS_DIR_NAME;
-        std::filesystem::create_directory(std::filesystem::path(out_dir));
-    }
-
     if (profilingOn) {
-        std::ofstream profilingFile(out_dir + "/decay_duration.txt");
-        profilingFile << duration << "\n";
-        profilingFile.close();
+        std::ofstream profilingFile(out_dir + "/" + RESULTS_FILE_NAME + "_duration.txt");
+        if (profilingFile.is_open()) {
+            profilingFile << duration << " ms\n";
+            profilingFile.close();
+        } else {
+            std::cout << "Error: Could not open profiling file for writing." << std::endl;
+        }
     }
 
     if (saveDataOn) {
-        std::ofstream outputFile(out_dir + "/decay.txt");
-        outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(16)
-                   << "Flap Rotation y (radians)" << std::right << std::setw(16) << "Flap Rotation y (degrees)"
-                   << std::endl;
-        for (int i = 0; i < time_vector.size(); ++i)
-            outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
-                       << std::right << std::setw(16) << std::setprecision(4) << std::fixed << flap_rot[i] << std::right
-                       << std::setw(16) << std::setprecision(4) << std::fixed << flap_rot[i] * 360.0 / 6.28
+        std::ofstream outputFile(out_dir + "/" + RESULTS_FILE_NAME + ".txt");
+        if (outputFile.is_open()) {
+            outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(16)
+                       << "Flap Rotation y (radians)" << std::right << std::setw(16) << "Flap Rotation y (degrees)"
                        << std::endl;
-        outputFile.close();
+            for (int i = 0; i < time_vector.size(); ++i)
+                outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
+                           << std::right << std::setw(16) << std::setprecision(4) << std::fixed << flap_rot[i]
+                           << std::right << std::setw(16) << std::setprecision(4) << std::fixed
+                           << flap_rot[i] * 360.0 / 6.28 << std::endl;
+            outputFile.close();
+        } else {
+            std::cout << "Error: Could not open output file for writing." << std::endl;
+            return 1;  // Return an error code
+        }
     }
+
     return 0;
 }

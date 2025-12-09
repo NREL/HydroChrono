@@ -3,6 +3,8 @@
 #include <hydroc/hydro_forces.h>
 
 #include <chrono/core/ChRealtimeStep.h>
+#include <chrono/physics/ChSystemSMC.h>
+#include <chrono/physics/ChBodyEasy.h>
 
 #include <chrono>   // std::chrono::high_resolution_clock::now
 #include <iomanip>  // std::setprecision
@@ -11,31 +13,23 @@
 // Use the namespaces of Chrono
 using namespace chrono;
 
-// usage: ./sphere_deca.exe [DATADIR] [--nogui]
-//
-// If no argument is given user can set HYDROCHRONO_DATA_DIR
-// environment variable to give the data_directory.
-//
 int main(int argc, char* argv[]) {
     // auto start = std::chrono::high_resolution_clock::now();
     std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
-    SetChronoDataPath(CHRONO_DATA_DIR);
-
-    if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
-        return 1;
-    }
-
-    // Check if --nogui option is set as 2nd argument
+    // Parse CLI arguments and initialize environment
+    bool profilingOn     = true;
+    bool saveDataOn      = true;
     bool visualizationOn = true;
-    if (argc > 2 && std::string("--nogui").compare(argv[2]) == 0) {
-        visualizationOn = false;
-    }
+    std::string data_dir;
+    if (!hydroc::GetCLIArguments(argc, argv, "DeepC wind demo", saveDataOn, profilingOn, visualizationOn, data_dir))
+        return 1;
+    if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
 
     std::filesystem::path DATADIR(hydroc::getDataDir());
 
-    auto body1_meshfame = (DATADIR / "DeepCWind" / "geometry" / "deepcwind.obj").lexically_normal().generic_string();
-    auto h5fname        = (DATADIR / "DeepCWind" / "hydroData" / "deepcwind.h5").lexically_normal().generic_string();
+    auto body1_meshfame = (DATADIR / "demos" / "DeepCWind" / "geometry" / "deepcwind.obj").lexically_normal().generic_string();
+    auto h5fname        = (DATADIR / "demos" / "DeepCWind" / "hydroData" / "deepcwind.h5").lexically_normal().generic_string();
 
     // system/solver settings
     ChSystemSMC system;
@@ -52,8 +46,6 @@ int main(int argc, char* argv[]) {
     hydroc::gui::UI& ui                  = *pui.get();
 
     // some io/viz options
-    bool profilingOn = true;
-    bool saveDataOn  = true;
     std::vector<double> time_vector;
     std::vector<double> base_pitch;
     std::vector<double> base_surge;
@@ -128,41 +120,21 @@ int main(int argc, char* argv[]) {
     auto end          = std::chrono::high_resolution_clock::now();
     unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
+    std::string out_dir = hydroc::getDemoOutDir();
+    if (profilingOn || saveDataOn) {
+        out_dir = out_dir + "/" +  RESULTS_DIR_NAME;
+        std::filesystem::create_directory(std::filesystem::path(out_dir));
+    }
+
     if (profilingOn) {
-        std::ofstream profilingFile;
-        profilingFile.open("./results/DeepCWind_decay_duration.txt");
-        if (!profilingFile.is_open()) {
-            if (!std::filesystem::exists("./results")) {
-                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
-                          << std::endl;
-                std::filesystem::create_directory("./results");
-                profilingFile.open("./results/DeepCWind_decay_duration.txt");
-                if (!profilingFile.is_open()) {
-                    // TODO instead of ending program, skip to next saveDataOn if statment
-                    std::cout << "Still cannot open file, ending program" << std::endl;
-                    return 0;
-                }
-            }
-        }
+        std::ofstream profilingFile(out_dir + "/decay_duration.txt");
         profilingFile << duration << " ms\n";
         profilingFile.close();
     }
 
     if (saveDataOn) {
-        std::ofstream outputFile;
+        std::ofstream outputFile(out_dir + "/decay.txt");
         outputFile.open("./results/DeepCWind_decay.txt");
-        if (!outputFile.is_open()) {
-            if (!std::filesystem::exists("./results")) {
-                std::cout << "Path " << std::filesystem::absolute("./results") << " does not exist, creating it now..."
-                          << std::endl;
-                std::filesystem::create_directory("./results");
-                outputFile.open("./results/DeepCWind_decay.txt");
-                if (!outputFile.is_open()) {
-                    std::cout << "Still cannot open file, ending program" << std::endl;
-                    return 0;
-                }
-            }
-        }
         outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(16) << "Base Surge (m)"
                    << std::right << std::setw(16) << "Base Pitch (radians)" << std::endl;
         for (int i = 0; i < time_vector.size(); ++i)

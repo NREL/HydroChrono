@@ -59,7 +59,6 @@ std::array<double, 3> add_vectors(std::array<double, 3> v1, std::array<double, 3
     return {v1[0] + v2[0], v1[1] + v2[1], v1[2] + v2[2]};
 }
 
-
 int main(int argc, char* argv[]) {
 
     std::vector<double> periods = {4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0, 18.0, 18.5, 19.0, 19.25, 19.5, 20.0, 21.0, 22.0, 24.0};
@@ -69,16 +68,16 @@ int main(int argc, char* argv[]) {
         std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
         // Parse CLI arguments and initialize environment
-        bool visualizationOn = true;
         bool profilingOn     = true;
         bool saveDataOn      = true;
+        bool visualizationOn = false;
         std::string data_dir;
-        if (!hydroc::GetCLIArguments(argc, argv, "OSWEC regular waves demo", saveDataOn, profilingOn, visualizationOn,
-                                     data_dir))
+        if (!hydroc::GetCLIArguments(argc, argv, "OSWEV regular waves regression test", saveDataOn, profilingOn,
+                                     visualizationOn, data_dir))
             return 1;
         if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
 
-        // Get model file names
+        // Get model file names - use HydroChrono data directory
         std::filesystem::path DATADIR(hydroc::getDataDir());
 
         auto body1_meshfname = (DATADIR / "demos" / "oswec" / "geometry" / "flap.obj").lexically_normal().generic_string();
@@ -204,7 +203,7 @@ int main(int argc, char* argv[]) {
         /*std::vector<std::shared_ptr<ChBody>> bodies;
         bodies.push_back(flap_body);
         bodies.push_back(base_body);*/
-        TestHydro hydro_forces(bodies, h5fname);
+        HydroForces hydro_forces(bodies, h5fname);
         hydro_forces.AddWaves(my_hydro_inputs);
 
         // for profiling
@@ -230,44 +229,45 @@ int main(int argc, char* argv[]) {
         auto end          = std::chrono::high_resolution_clock::now();
         unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-        std::string out_dir = hydroc::getDemoOutDir();
+        std::string out_dir = hydroc::getTestOutDir();
         if (profilingOn || saveDataOn) {
             out_dir = out_dir + "/" + RESULTS_DIR_NAME;
             std::filesystem::create_directory(std::filesystem::path(out_dir));
         }
 
         if (profilingOn) {
-            std::ofstream profilingFile(out_dir + "/reg_waves_" + std::to_string(reg_wave_num) + "_duration.txt");
-            profilingFile << duration << "\n";
-            profilingFile.close();
+            std::ofstream profilingFile(out_dir + "/" + RESULTS_FILE_NAME + "_" + std::to_string(reg_wave_num) +
+                                        "_duration.txt");
+            if (profilingFile.is_open()) {
+                profilingFile << duration << " ms\n";
+                profilingFile.close();
+            } else {
+                std::cout << "Error: Could not open profiling file for writing." << std::endl;
+            }
         }
 
         if (saveDataOn) {
-            std::ofstream outputFile(out_dir + "/reg_waves_" + std::to_string(reg_wave_num) + ".txt");
-            //outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(16)
-            //           << "Flap Rotation y (radians)" << std::right << std::setw(16) << "Flap Rotation y (degrees)"
-            //           << std::endl;
-            //for (int i = 0; i < time_vector.size(); ++i)
-            //    outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
-            //               << std::right << std::setw(16) << std::setprecision(4) << std::fixed << flap_rot[i]
-            //               << std::right << std::setw(16) << std::setprecision(4) << std::fixed
-            //               << flap_rot[i] * 360.0 / 6.28 << std::endl;
-            //outputFile.close();
-
-            outputFile.precision(10);
-            outputFile.width(12);
-            outputFile << "Wave #: \t" << reg_wave_num << "\n";
-            outputFile << "Wave amplitude (m): \t" << my_hydro_inputs->regular_wave_amplitude_ << "\n";
-            outputFile << "Wave omega (rad/s): \t" << my_hydro_inputs->regular_wave_omega_ << "\n";
-            outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(12)
-                       << "Pitch (rads)"
-                       << std::endl;
-            for (int i = 0; i < time_vector.size(); ++i)
-                outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
-                           << std::right << std::setw(12) << std::setprecision(4) << std::fixed << flap_rot[i]
+            std::ofstream outputFile(out_dir + "/" + RESULTS_FILE_NAME + "_" + std::to_string(reg_wave_num) + ".txt");
+            if (outputFile.is_open()) {
+                outputFile.precision(10);
+                outputFile.width(12);
+                outputFile << "Wave #: \t" << reg_wave_num << "\n";
+                outputFile << "Wave amplitude (m): \t" << my_hydro_inputs->regular_wave_amplitude_ << "\n";
+                outputFile << "Wave omega (rad/s): \t" << my_hydro_inputs->regular_wave_omega_ << "\n";
+                outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(12) << "Pitch (rads)"
                            << std::endl;
-            outputFile.close();
+                for (int i = 0; i < time_vector.size(); ++i)
+                    outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
+                               << std::right << std::setw(12) << std::setprecision(4) << std::fixed << flap_rot[i]
+                               << std::endl;
+                outputFile.close();
+            } else {
+                std::cout << "Error: Could not open output file for writing." << std::endl;
+                return 1;  // Return an error code
+            }
         }
+
     }
+
     return 0;
 }

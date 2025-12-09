@@ -21,6 +21,11 @@ if (!(Test-Path $exe)) {
 $oldPath = $env:PATH
 $env:PATH = "$bin;$env:PATH"
 
+# Set data directory for the installed package
+# The executable has hardcoded build-time paths, so we override via environment
+$dataDir = Join-Path $installRoot "data"
+$env:HYDROCHRONO_DATA_DIR = $dataDir
+
 Push-Location $tests
 
 $reqs = @()
