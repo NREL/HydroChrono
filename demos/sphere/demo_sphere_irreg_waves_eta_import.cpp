@@ -5,8 +5,8 @@
 
 #include <chrono/assets/ChColor.h>
 #include <chrono/core/ChRealtimeStep.h>
-#include <chrono/physics/ChSystemNSC.h>
 #include <chrono/physics/ChBodyEasy.h>
+#include <chrono/physics/ChSystemNSC.h>
 
 #include <hydroc/gui/guihelper.h>
 #include <hydroc/helper.h>
@@ -21,9 +21,11 @@ int main(int argc, char* argv[]) {
     // Parse CLI arguments and initialize environment
     bool profilingOn     = true;
     bool saveDataOn      = true;
+    bool plotOn          = true;
     bool visualizationOn = true;
     std::string data_dir;
-    if (!hydroc::GetCLIArguments(argc, argv, "Sphere irregular waves eta demo", saveDataOn, profilingOn, visualizationOn, data_dir))
+    if (!hydroc::GetCLIArguments(argc, argv, "Sphere irregular waves eta demo", saveDataOn, profilingOn, plotOn,
+                                 visualizationOn, data_dir))
         return 1;
     if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
 
@@ -110,10 +112,10 @@ int main(int argc, char* argv[]) {
     params.simulation_dt_       = timestep;
     params.simulation_duration_ = simulationDuration;
     params.ramp_duration_       = 0.0;
-    params.eta_file_path_       = (DATADIR / "demos" / "sphere" / "eta" / "eta.txt").lexically_normal().generic_string();
-    params.frequency_min_       = 0.001;
-    params.frequency_max_       = 1.0;
-    params.nfrequencies_        = 1000;
+    params.eta_file_path_ = (DATADIR / "demos" / "sphere" / "eta" / "eta.txt").lexically_normal().generic_string();
+    params.frequency_min_ = 0.001;
+    params.frequency_max_ = 1.0;
+    params.nfrequencies_  = 1000;
 
     std::shared_ptr<IrregularWaves> my_hydro_inputs;  // declare outside the try-catch block
 

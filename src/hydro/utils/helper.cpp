@@ -20,11 +20,13 @@ bool hydroc::GetCLIArguments(int argc,
                              const std::string& description,
                              bool& output,
                              bool& profile,
+                             bool& plot,
                              bool& gui,
                              std::string& data_dir) {
     chrono::ChCLI cli(argv[0], description);
 
     cli.AddOption<std::string>("", "data_dir", "HydrChrono data directory", "");
+
     if (output)
         cli.AddOption<bool>("", "no_output", "Disable generation of simulation output");
     else
@@ -34,6 +36,11 @@ bool hydroc::GetCLIArguments(int argc,
         cli.AddOption<bool>("", "no_profile", "Disable profiling of simulation time");
     else
         cli.AddOption<bool>("", "profile", "Enable profiling of simulation time");
+
+    if (plot)
+        cli.AddOption<bool>("", "no_plot", "Disable final plotting");
+    else
+        cli.AddOption<bool>("", "plot", "Enable final plotting");
 
     if (gui)
         cli.AddOption<bool>("", "no_gui", "Disable GUI");
@@ -56,6 +63,11 @@ bool hydroc::GetCLIArguments(int argc,
         profile = !cli.GetAsType<bool>("no_profile");
     else
         profile = cli.GetAsType<bool>("profile");
+
+    if (plot)
+        plot = !cli.GetAsType<bool>("no_plot");
+    else
+        plot = cli.GetAsType<bool>("plot");
 
     if (gui)
         gui = !cli.GetAsType<bool>("no_gui");

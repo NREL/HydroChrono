@@ -3,8 +3,10 @@
 #include <hydroc/hydro_forces.h>
 
 #include <chrono/core/ChRealtimeStep.h>
-#include <chrono/physics/ChSystemNSC.h>
 #include <chrono/physics/ChBodyEasy.h>
+#include <chrono/physics/ChSystemNSC.h>
+
+#include "chrono_postprocess/ChGnuPlot.h"
 
 #include <chrono>   // std::chrono::high_resolution_clock::now
 #include <iomanip>  // std::setprecision
@@ -65,10 +67,11 @@ int main(int argc, char* argv[]) {
     // Parse CLI arguments and initialize environment
     bool profilingOn     = true;
     bool saveDataOn      = true;
-    bool visualizationOn = false;
+    bool plotOn          = true;
+    bool visualizationOn = true;
     std::string data_dir;
-    if (!hydroc::GetCLIArguments(argc, argv, "OSWEC decay regression test", saveDataOn, profilingOn, visualizationOn,
-                                 data_dir))
+    if (!hydroc::GetCLIArguments(argc, argv, "OSWEC decay regression test", saveDataOn, profilingOn, plotOn,
+                                 visualizationOn, data_dir))
         return 1;
     if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
 
@@ -201,7 +204,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    std::cout << "Start simulation"<< std::endl;
+    std::cout << "Start simulation" << std::endl;
     std::cout << "  Step size:  " << timestep << std::endl;
     std::cout << "  Duration:   " << simulationDuration << std::endl;
 
@@ -214,7 +217,7 @@ int main(int argc, char* argv[]) {
     auto start = std::chrono::high_resolution_clock::now();
 
     // main simulation loop
-    //int frames = 0;
+    // int frames = 0;
     while (system.GetChTime() <= simulationDuration) {
         if (ui.IsRunning(timestep) == false) break;
 
@@ -226,7 +229,7 @@ int main(int argc, char* argv[]) {
             flap_rot.push_back(flap_body->GetRot().GetCardanAnglesXYZ().y());
         }
 
-        //if (++frames >= 10) break;
+        // if (++frames >= 10) break;
     }
 
     // for profiling
@@ -259,6 +262,15 @@ int main(int argc, char* argv[]) {
             std::cout << "Error: Could not open output file for writing." << std::endl;
             return 1;  // Return an error code
         }
+    }
+
+    if (plotOn) {
+        postprocess::ChGnuPlot gplot(out_dir + "/owsec_decay.gpl");
+        gplot.SetGrid();
+        gplot.SetLabelX("time (s)");
+        gplot.SetLabelY("pitch (rad)");
+        gplot.SetTitle("OSWEC decay");
+        gplot.Plot(time_vector, flap_rot, "", " with lines lt rgb '#FF5500' lw 2");
     }
 
     return 0;

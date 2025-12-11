@@ -3,8 +3,10 @@
 #include <hydroc/hydro_forces.h>
 
 #include <chrono/core/ChRealtimeStep.h>
-#include <chrono/physics/ChSystemNSC.h>
 #include <chrono/physics/ChBodyEasy.h>
+#include <chrono/physics/ChSystemNSC.h>
+
+#include "chrono_postprocess/ChGnuPlot.h"
 
 #include <chrono>   // std::chrono::high_resolution_clock::now
 #include <iomanip>  // std::setprecision
@@ -19,18 +21,22 @@ int main(int argc, char* argv[]) {
     // Parse CLI arguments and initialize environment
     bool profilingOn     = true;
     bool saveDataOn      = true;
+    bool plotOn          = true;
     bool visualizationOn = true;
     std::string data_dir;
-    if (!hydroc::GetCLIArguments(argc, argv, "RM3 decay demo", saveDataOn, profilingOn, visualizationOn, data_dir))
+    if (!hydroc::GetCLIArguments(argc, argv, "RM3 decay demo", saveDataOn, profilingOn, plotOn, visualizationOn,
+                                 data_dir))
         return 1;
     if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
 
     // Get model file names
     std::filesystem::path DATADIR(hydroc::getDataDir());
 
-    auto body1_meshfame = (DATADIR / "demos" / "rm3" / "geometry" / "float_cog.obj").lexically_normal().generic_string();
-    auto body2_meshfame = (DATADIR / "demos" / "rm3" / "geometry" / "plate_cog.obj").lexically_normal().generic_string();
-    auto h5fname        = (DATADIR / "demos" / "rm3" / "hydroData" / "rm3.h5").lexically_normal().generic_string();
+    auto body1_meshfame =
+        (DATADIR / "demos" / "rm3" / "geometry" / "float_cog.obj").lexically_normal().generic_string();
+    auto body2_meshfame =
+        (DATADIR / "demos" / "rm3" / "geometry" / "plate_cog.obj").lexically_normal().generic_string();
+    auto h5fname = (DATADIR / "demos" / "rm3" / "hydroData" / "rm3.h5").lexically_normal().generic_string();
 
     // system/solver settings
     ChSystemNSC system;
@@ -173,5 +179,15 @@ int main(int argc, char* argv[]) {
                        << std::endl;
         outputFile.close();
     }
+
+    if (plotOn) {
+        postprocess::ChGnuPlot gplot(out_dir + "/rm3_decay.gpl");
+        gplot.SetGrid();
+        gplot.SetLabelX("time (s)");
+        gplot.SetLabelY("heave (m)");
+        gplot.SetTitle("RM3 decay");
+        gplot.Plot(time_vector, plate_heave_position, "", " with lines lt rgb '#FF5500' lw 2");
+    }
+
     return 0;
 }

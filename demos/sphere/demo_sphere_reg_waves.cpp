@@ -4,8 +4,8 @@
 #include <hydroc/hydro_forces.h>
 
 #include <chrono/core/ChRealtimeStep.h>
-#include <chrono/physics/ChSystemNSC.h>
 #include <chrono/physics/ChBodyEasy.h>
+#include <chrono/physics/ChSystemNSC.h>
 
 #include <chrono>  // std::chrono::high_resolution_clock::now
 #include <filesystem>
@@ -34,9 +34,11 @@ int main(int argc, char* argv[]) {
         // Parse CLI arguments and initialize environment
         bool profilingOn     = true;
         bool saveDataOn      = true;
+        bool plotOn          = true;
         bool visualizationOn = true;
         std::string data_dir;
-        if (!hydroc::GetCLIArguments(argc, argv, "Sphere regular waves demo", saveDataOn, profilingOn, visualizationOn, data_dir))
+        if (!hydroc::GetCLIArguments(argc, argv, "Sphere regular waves demo", saveDataOn, profilingOn, plotOn,
+                                     visualizationOn, data_dir))
             return 1;
         if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
 

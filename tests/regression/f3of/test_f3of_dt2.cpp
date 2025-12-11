@@ -2,8 +2,8 @@
 #include <hydroc/hydro_forces.h>
 
 #include <chrono/core/ChRealtimeStep.h>
-#include <chrono/physics/ChSystemSMC.h>
 #include <chrono/physics/ChBodyEasy.h>
+#include <chrono/physics/ChSystemSMC.h>
 
 #include <chrono>   // std::chrono::high_resolution_clock::now
 #include <iomanip>  // std::setprecision
@@ -18,10 +18,11 @@ int main(int argc, char* argv[]) {
     // Parse CLI arguments and initialize environment
     bool profilingOn     = true;
     bool saveDataOn      = true;
-    bool visualizationOn = false;
+    bool plotOn          = true;
+    bool visualizationOn = true;
     std::string data_dir;
-    if (!hydroc::GetCLIArguments(argc, argv, "F3OF DT2 regression test", saveDataOn, profilingOn, visualizationOn,
-                                 data_dir))
+    if (!hydroc::GetCLIArguments(argc, argv, "F3OF DT2 regression test", saveDataOn, profilingOn, plotOn,
+                                 visualizationOn, data_dir))
         return 1;
     if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
 
@@ -48,7 +49,7 @@ int main(int argc, char* argv[]) {
     std::vector<double> base_pitch;
     std::vector<double> fore_pitch;
     std::vector<double> aft_pitch;
-    
+
     // set up body from a mesh
     std::cout << "Attempting to open mesh file: " << body1_meshfame << std::endl;
     std::shared_ptr<ChBody> base = chrono_types::make_shared<ChBodyEasyMesh>(  //
@@ -225,4 +226,4 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Simulation completed in " << duration << " milliseconds." << std::endl;
     return 0;
-} 
+}

@@ -5,8 +5,8 @@
 
 #include <chrono/assets/ChColor.h>
 #include <chrono/core/ChRealtimeStep.h>
-#include <chrono/physics/ChSystemNSC.h>
 #include <chrono/physics/ChBodyEasy.h>
+#include <chrono/physics/ChSystemNSC.h>
 
 #include <hydroc/gui/guihelper.h>
 #include <hydroc/helper.h>
@@ -21,9 +21,10 @@ int main(int argc, char* argv[]) {
     // Parse CLI arguments and initialize environment
     bool profilingOn     = true;
     bool saveDataOn      = true;
-    bool visualizationOn = false;
+    bool plotOn          = true;
+    bool visualizationOn = true;
     std::string data_dir;
-    if (!hydroc::GetCLIArguments(argc, argv, "Sphere irregular waves regression test", saveDataOn, profilingOn,
+    if (!hydroc::GetCLIArguments(argc, argv, "Sphere irregular waves regression test", saveDataOn, profilingOn, plotOn,
                                  visualizationOn, data_dir))
         return 1;
     if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
@@ -157,9 +158,11 @@ int main(int argc, char* argv[]) {
 
     // for profiling
     auto start = std::chrono::high_resolution_clock::now();
+
     // main simulation loop
     ui.Init(&system, "Sphere - Irregular Waves Test");
     ui.SetCamera(8, -25, 15, 0, 0, 0);
+    ui.simulationStarted = true;
 
     while (system.GetChTime() <= simulationDuration) {
         if (ui.IsRunning(timestep) == false) break;
@@ -216,4 +219,4 @@ int main(int argc, char* argv[]) {
     }
 
     return 0;
-} 
+}

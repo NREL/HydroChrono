@@ -3,8 +3,8 @@
 #include <hydroc/hydro_forces.h>
 
 #include <chrono/core/ChRealtimeStep.h>
-#include <chrono/physics/ChSystemSMC.h>
 #include <chrono/physics/ChBodyEasy.h>
+#include <chrono/physics/ChSystemSMC.h>
 
 #include <chrono>   // std::chrono::high_resolution_clock::now
 #include <iomanip>  // std::setprecision
@@ -19,10 +19,11 @@ int main(int argc, char* argv[]) {
     // Parse CLI arguments and initialize environment
     bool profilingOn     = true;
     bool saveDataOn      = true;
-    bool visualizationOn = false;
+    bool plotOn          = true;
+    bool visualizationOn = true;
     std::string data_dir;
-    if (!hydroc::GetCLIArguments(argc, argv, "F3OF DT3 regression test", saveDataOn, profilingOn, visualizationOn,
-                                 data_dir))
+    if (!hydroc::GetCLIArguments(argc, argv, "F3OF DT3 regression test", saveDataOn, profilingOn, plotOn,
+                                 visualizationOn, data_dir))
         return 1;
     if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
 
@@ -169,6 +170,7 @@ int main(int argc, char* argv[]) {
     // main simulation loop
     ui.Init(&system, "F3OF - Decay Test 3, Base locked flap decay");
     ui.SetCamera(0, -50, -10, 0, 0, -10);
+    ui.simulationStarted = true;
 
     while (system.GetChTime() <= simulationDuration) {
         if (ui.IsRunning(timestep) == false) break;

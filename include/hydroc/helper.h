@@ -28,10 +28,13 @@ size_t get_lower_index(double value, const std::vector<double>& ticks);
 namespace hydroc {
 
 /**@brief Get program command line arguments
- * @param argc number of argument (same as for main function)
- * @param argv arguments of main function
- * @param gui true if run-time visualization
- * @param data_dir alternative HydroChrono data directory
+ * @param argc     - number of argument (same as for main function)
+ * @param argv     - arguments of main function
+ * @output         - true if generating output file(s)
+ * @profile        - true is saving timing information
+ * @plot           - true if generating final plot(s)
+ * @param gui      - true if using run-time visualization
+ * @param data_dir - alternative HydroChrono data directory
  * @return false on error and true otherwise
  */
 bool GetCLIArguments(int argc,
@@ -39,6 +42,7 @@ bool GetCLIArguments(int argc,
                      const std::string& description,
                      bool& output,
                      bool& profile,
+                     bool& plot,
                      bool& gui,
                      std::string& data_dir);
 

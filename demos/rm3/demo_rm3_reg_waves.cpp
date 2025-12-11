@@ -4,8 +4,8 @@
 #include <hydroc/logging.h>
 
 #include <chrono/core/ChRealtimeStep.h>
-#include <chrono/physics/ChSystemNSC.h>
 #include <chrono/physics/ChBodyEasy.h>
+#include <chrono/physics/ChSystemNSC.h>
 
 #include <chrono>   // std::chrono::high_resolution_clock::now
 #include <iomanip>  // std::setprecision
@@ -23,9 +23,11 @@ int main(int argc, char* argv[]) {
     // Parse CLI arguments and initialize environment
     bool profilingOn     = true;
     bool saveDataOn      = true;
+    bool plotOn          = true;
     bool visualizationOn = true;
     std::string data_dir;
-    if (!hydroc::GetCLIArguments(argc, argv, "RM3 regular waves demo", saveDataOn, profilingOn, visualizationOn, data_dir))
+    if (!hydroc::GetCLIArguments(argc, argv, "RM3 regular waves demo", saveDataOn, profilingOn, plotOn, visualizationOn,
+                                 data_dir))
         return 1;
     if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
 
@@ -37,9 +39,11 @@ int main(int argc, char* argv[]) {
         std::cout << "Using data directory from environment: " << DATADIR << std::endl;
     }
 
-    auto body1_meshfame = (DATADIR / "demos" / "rm3" / "geometry" / "float_cog.obj").lexically_normal().generic_string();
-    auto body2_meshfame = (DATADIR / "demos" / "rm3" / "geometry" / "plate_cog.obj").lexically_normal().generic_string();
-    auto h5fname        = (DATADIR / "demos" / "rm3" / "hydroData" / "rm3.h5").lexically_normal().generic_string();
+    auto body1_meshfame =
+        (DATADIR / "demos" / "rm3" / "geometry" / "float_cog.obj").lexically_normal().generic_string();
+    auto body2_meshfame =
+        (DATADIR / "demos" / "rm3" / "geometry" / "plate_cog.obj").lexically_normal().generic_string();
+    auto h5fname = (DATADIR / "demos" / "rm3" / "hydroData" / "rm3.h5").lexically_normal().generic_string();
 
     std::cout << "Looking for mesh files in:" << std::endl;
     std::cout << "  body1: " << body1_meshfame << std::endl;
@@ -131,7 +135,7 @@ int main(int argc, char* argv[]) {
     bodies.push_back(plate_body2);
 
     // define wave parameters
-    auto my_hydro_inputs = std::make_shared<RegularWave>(static_cast<unsigned int>(bodies.size()));
+    auto my_hydro_inputs                     = std::make_shared<RegularWave>(static_cast<unsigned int>(bodies.size()));
     my_hydro_inputs->regular_wave_amplitude_ = 1.0;
     my_hydro_inputs->regular_wave_omega_     = 2.10;
 
@@ -176,7 +180,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (saveDataOn) {
-        std::ofstream outputFile(out_dir + "/reg_waves.txt");        
+        std::ofstream outputFile(out_dir + "/reg_waves.txt");
         outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(16) << "Float Heave (m)"
                    << std::right << std::setw(16) << "Plate Heave (m)" << std::right << std::setw(16)
                    << "Float Drift (x) (m)" << std::endl;

@@ -3,8 +3,10 @@
 #include <hydroc/hydro_forces.h>
 
 #include <chrono/core/ChRealtimeStep.h>
-#include <chrono/physics/ChSystemNSC.h>
 #include <chrono/physics/ChBodyEasy.h>
+#include <chrono/physics/ChSystemNSC.h>
+
+#include "chrono_postprocess/ChGnuPlot.h"
 
 #include <chrono>   // std::chrono::high_resolution_clock::now
 #include <iomanip>  // std::setprecision
@@ -65,9 +67,11 @@ int main(int argc, char* argv[]) {
     // Parse CLI arguments and initialize environment
     bool profilingOn     = true;
     bool saveDataOn      = true;
+    bool plotOn          = true;
     bool visualizationOn = true;
     std::string data_dir;
-    if (!hydroc::GetCLIArguments(argc, argv, "OSWEC decay demo", saveDataOn, profilingOn, visualizationOn, data_dir))
+    if (!hydroc::GetCLIArguments(argc, argv, "OSWEC decay demo", saveDataOn, profilingOn, plotOn, visualizationOn,
+                                 data_dir))
         return 1;
     if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
 
@@ -235,5 +239,15 @@ int main(int argc, char* argv[]) {
                        << std::endl;
         outputFile.close();
     }
+
+    if (plotOn) {
+        postprocess::ChGnuPlot gplot(out_dir + "/owsec_decay.gpl");
+        gplot.SetGrid();
+        gplot.SetLabelX("time (s)");
+        gplot.SetLabelY("pitch (rad)");
+        gplot.SetTitle("OSWEC decay");
+        gplot.Plot(time_vector, flap_rot, "", " with lines lt rgb '#FF5500' lw 2");
+    }
+
     return 0;
 }

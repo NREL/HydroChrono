@@ -3,8 +3,10 @@
 #include <hydroc/hydro_forces.h>
 
 #include <chrono/core/ChRealtimeStep.h>
-#include <chrono/physics/ChSystemNSC.h>
 #include <chrono/physics/ChBodyEasy.h>
+#include <chrono/physics/ChSystemNSC.h>
+
+#include "chrono_postprocess/ChGnuPlot.h"
 
 #include <chrono>   // std::chrono::high_resolution_clock::now
 #include <iomanip>  // std::setprecision
@@ -19,19 +21,22 @@ int main(int argc, char* argv[]) {
     // Parse CLI arguments and initialize environment
     bool profilingOn     = true;
     bool saveDataOn      = true;
-    bool visualizationOn = false;
+    bool plotOn          = true;
+    bool visualizationOn = true;
     std::string data_dir;
-    if (!hydroc::GetCLIArguments(argc, argv, "RM3 decay regression test", saveDataOn, profilingOn, visualizationOn,
-                                 data_dir))
+    if (!hydroc::GetCLIArguments(argc, argv, "RM3 decay regression test", saveDataOn, profilingOn, plotOn,
+                                 visualizationOn, data_dir))
         return 1;
     if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
 
     // Get model file names - use HydroChrono data directory
     std::filesystem::path DATADIR(hydroc::getDataDir());
 
-    auto body1_meshfame = (DATADIR / "demos" / "rm3" / "geometry" / "float_cog.obj").lexically_normal().generic_string();
-    auto body2_meshfame = (DATADIR / "demos" / "rm3" / "geometry" / "plate_cog.obj").lexically_normal().generic_string();
-    auto h5fname        = (DATADIR / "demos" / "rm3" / "hydroData" / "rm3.h5").lexically_normal().generic_string();
+    auto body1_meshfame =
+        (DATADIR / "demos" / "rm3" / "geometry" / "float_cog.obj").lexically_normal().generic_string();
+    auto body2_meshfame =
+        (DATADIR / "demos" / "rm3" / "geometry" / "plate_cog.obj").lexically_normal().generic_string();
+    auto h5fname = (DATADIR / "demos" / "rm3" / "hydroData" / "rm3.h5").lexically_normal().generic_string();
 
     // system/solver settings
     ChSystemNSC system;
@@ -133,6 +138,7 @@ int main(int argc, char* argv[]) {
     // main simulation loop
     ui.Init(&system, "RM3 - Decay Test");
     ui.SetCamera(0, -50, -10, 0, 0, -10);
+    ui.simulationStarted = true;
 
     while (system.GetChTime() <= simulationDuration) {
         if (ui.IsRunning(timestep) == false) break;
@@ -182,6 +188,15 @@ int main(int argc, char* argv[]) {
             std::cout << "Error: Could not open output file for writing." << std::endl;
             return 1;  // Return an error code
         }
+    }
+
+    if (plotOn) {
+        postprocess::ChGnuPlot gplot(out_dir + "/rm3_decay.gpl");
+        gplot.SetGrid();
+        gplot.SetLabelX("time (s)");
+        gplot.SetLabelY("heave (m)");
+        gplot.SetTitle("RM3 decay");
+        gplot.Plot(time_vector, plate_heave_position, "", " with lines lt rgb '#FF5500' lw 2");
     }
 
     return 0;

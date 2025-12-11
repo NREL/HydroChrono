@@ -4,8 +4,8 @@
 #include <hydroc/logging.h>
 
 #include <chrono/core/ChRealtimeStep.h>
-#include <chrono/physics/ChSystemNSC.h>
 #include <chrono/physics/ChBodyEasy.h>
+#include <chrono/physics/ChSystemNSC.h>
 
 #include <chrono>   // std::chrono::high_resolution_clock::now
 #include <iomanip>  // std::setprecision
@@ -23,9 +23,10 @@ int main(int argc, char* argv[]) {
     // Parse CLI arguments and initialize environment
     bool profilingOn     = true;
     bool saveDataOn      = true;
-    bool visualizationOn = false;
+    bool plotOn          = true;
+    bool visualizationOn = true;
     std::string data_dir;
-    if (!hydroc::GetCLIArguments(argc, argv, "RM3 regular waves regression test", saveDataOn, profilingOn,
+    if (!hydroc::GetCLIArguments(argc, argv, "RM3 regular waves regression test", saveDataOn, profilingOn, plotOn,
                                  visualizationOn, data_dir))
         return 1;
     if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
@@ -143,7 +144,7 @@ int main(int argc, char* argv[]) {
     bodies.push_back(plate_body2);
 
     // define wave parameters
-    auto my_hydro_inputs = std::make_shared<RegularWave>(static_cast<unsigned int>(bodies.size()));
+    auto my_hydro_inputs                     = std::make_shared<RegularWave>(static_cast<unsigned int>(bodies.size()));
     my_hydro_inputs->regular_wave_amplitude_ = 1.0;
     my_hydro_inputs->regular_wave_omega_     = 2.10;
     std::cout << "Configured RegularWave inputs." << std::endl;

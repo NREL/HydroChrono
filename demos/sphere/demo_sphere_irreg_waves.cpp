@@ -5,8 +5,8 @@
 
 #include <chrono/assets/ChColor.h>
 #include <chrono/core/ChRealtimeStep.h>
-#include <chrono/physics/ChSystemNSC.h>
 #include <chrono/physics/ChBodyEasy.h>
+#include <chrono/physics/ChSystemNSC.h>
 
 #include <hydroc/gui/guihelper.h>
 #include <hydroc/helper.h>
@@ -21,9 +21,11 @@ int main(int argc, char* argv[]) {
     // Parse CLI arguments and initialize environment
     bool profilingOn     = true;
     bool saveDataOn      = true;
+    bool plotOn          = true;
     bool visualizationOn = true;
     std::string data_dir;
-    if (!hydroc::GetCLIArguments(argc, argv, "Sphere irregular waves demo", saveDataOn, profilingOn, visualizationOn, data_dir))
+    if (!hydroc::GetCLIArguments(argc, argv, "Sphere irregular waves demo", saveDataOn, profilingOn, plotOn,
+                                 visualizationOn, data_dir))
         return 1;
     if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
 

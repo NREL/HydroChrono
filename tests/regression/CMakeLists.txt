@@ -35,7 +35,7 @@ function(build_regression_test TEST_GROUP TEST_NAME MULTIPLE)
    add_test(
        NAME ${TEST_EXE}
        WORKING_DIRECTORY "$<TARGET_FILE_DIR:${TEST_EXE}>"
-       COMMAND ${PROJECT_BINARY_DIR}/bin/${TEST_EXE})
+       COMMAND ${PROJECT_BINARY_DIR}/bin/${TEST_EXE} --no_gui --no_plot)
 
    set_tests_properties(
        ${TEST_EXE}

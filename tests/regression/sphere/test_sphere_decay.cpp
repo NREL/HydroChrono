@@ -3,12 +3,14 @@
 #include <hydroc/hydro_forces.h>
 
 #include <chrono/core/ChRealtimeStep.h>
-#include <chrono/physics/ChSystemNSC.h>
 #include <chrono/physics/ChBodyEasy.h>
+#include <chrono/physics/ChSystemNSC.h>
 
-#include <chrono>      // std::chrono::high_resolution_clock::now
-#include <iomanip>     // std::setprecision
-#include <vector>      // std::vector<double>
+#include "chrono_postprocess/ChGnuPlot.h"
+
+#include <chrono>   // std::chrono::high_resolution_clock::now
+#include <iomanip>  // std::setprecision
+#include <vector>   // std::vector<double>
 
 // Use the namespaces of Chrono
 using namespace chrono;
@@ -19,10 +21,11 @@ int main(int argc, char* argv[]) {
     // Parse CLI arguments and initialize environment
     bool profilingOn     = true;
     bool saveDataOn      = true;
-    bool visualizationOn = false;
+    bool plotOn          = true;
+    bool visualizationOn = true;
     std::string data_dir;
-    if (!hydroc::GetCLIArguments(argc, argv, "Sphere decay regression test", saveDataOn, profilingOn, visualizationOn,
-                                 data_dir))
+    if (!hydroc::GetCLIArguments(argc, argv, "Sphere decay regression test", saveDataOn, profilingOn, plotOn,
+                                 visualizationOn, data_dir))
         return 1;
     if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
 
@@ -97,6 +100,8 @@ int main(int argc, char* argv[]) {
 
     // main simulation loop
     ui.Init(&system, "Sphere - Decay Test");
+    ui.simulationStarted = true;
+    ui.simulationStarted = true;
 
     while (system.GetChTime() <= simulationDuration) {
         if (ui.IsRunning(timestep) == false) break;
@@ -145,10 +150,18 @@ int main(int argc, char* argv[]) {
             outputFile.close();
         } else {
             std::cout << "Error: Could not open output file for writing." << std::endl;
-            return 1; // Return an error code
+            return 1;  // Return an error code
         }
     }
 
-    std::cout << "Simulation finished." << std::endl;
+    if (plotOn) {
+        postprocess::ChGnuPlot gplot(out_dir + "/sphere_decay.gpl");
+        gplot.SetGrid();
+        gplot.SetLabelX("time (s)");
+        gplot.SetLabelY("heave (m)");
+        gplot.SetTitle("Sphere decay");
+        gplot.Plot(time_vector, heave_position, "", " with lines lt rgb '#FF5500' lw 2");
+    }
+
     return 0;
 }

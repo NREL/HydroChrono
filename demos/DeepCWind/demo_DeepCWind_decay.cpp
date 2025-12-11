@@ -3,8 +3,10 @@
 #include <hydroc/hydro_forces.h>
 
 #include <chrono/core/ChRealtimeStep.h>
-#include <chrono/physics/ChSystemSMC.h>
 #include <chrono/physics/ChBodyEasy.h>
+#include <chrono/physics/ChSystemSMC.h>
+
+#include "chrono_postprocess/ChGnuPlot.h"
 
 #include <chrono>   // std::chrono::high_resolution_clock::now
 #include <iomanip>  // std::setprecision
@@ -20,16 +22,19 @@ int main(int argc, char* argv[]) {
     // Parse CLI arguments and initialize environment
     bool profilingOn     = true;
     bool saveDataOn      = true;
+    bool plotOn          = true;
     bool visualizationOn = true;
     std::string data_dir;
-    if (!hydroc::GetCLIArguments(argc, argv, "DeepC wind demo", saveDataOn, profilingOn, visualizationOn, data_dir))
+    if (!hydroc::GetCLIArguments(argc, argv, "DeepC wind demo", saveDataOn, profilingOn, plotOn, visualizationOn,
+                                 data_dir))
         return 1;
     if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
 
     std::filesystem::path DATADIR(hydroc::getDataDir());
 
-    auto body1_meshfame = (DATADIR / "demos" / "DeepCWind" / "geometry" / "deepcwind.obj").lexically_normal().generic_string();
-    auto h5fname        = (DATADIR / "demos" / "DeepCWind" / "hydroData" / "deepcwind.h5").lexically_normal().generic_string();
+    auto body1_meshfame =
+        (DATADIR / "demos" / "DeepCWind" / "geometry" / "deepcwind.obj").lexically_normal().generic_string();
+    auto h5fname = (DATADIR / "demos" / "DeepCWind" / "hydroData" / "deepcwind.h5").lexically_normal().generic_string();
 
     // system/solver settings
     ChSystemSMC system;
@@ -122,7 +127,7 @@ int main(int argc, char* argv[]) {
 
     std::string out_dir = hydroc::getDemoOutDir();
     if (profilingOn || saveDataOn) {
-        out_dir = out_dir + "/" +  RESULTS_DIR_NAME;
+        out_dir = out_dir + "/" + RESULTS_DIR_NAME;
         std::filesystem::create_directory(std::filesystem::path(out_dir));
     }
 
@@ -144,5 +149,19 @@ int main(int argc, char* argv[]) {
                        << std::endl;
         outputFile.close();
     }
+
+    if (plotOn) {
+        postprocess::ChGnuPlot gplot(out_dir + "/deepCWind_decay.gpl");
+        gplot.SetGrid();
+        gplot.SetLabelX("time (s)");
+        gplot.SetLabelY("surge");
+        gplot.SetLabelY2("pitch");
+        gplot.SetCommand("set ytics 0.05 nomirror");
+        gplot.SetCommand("set y2tics 0.05 nomirror");
+        gplot.SetTitle("DeepCWind decay");
+        gplot.Plot(time_vector, base_surge, "base surge", " with lines lt rgb '#FF5500' lw 2");
+        gplot.Plot(time_vector, base_pitch, "base pitch", " axes x1y2  with lines lt rgb '#0055FF' lw 2");
+    }
+
     return 0;
 }
