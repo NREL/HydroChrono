@@ -6,6 +6,7 @@
 #ifndef HYDRO_WAVES_WAVE_UTILITIES_H
 #define HYDRO_WAVES_WAVE_UTILITIES_H
 
+#include <cstddef>
 #include <Eigen/Dense>
 #include <array>
 #include <string>
