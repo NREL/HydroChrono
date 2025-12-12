@@ -342,7 +342,6 @@ set(HC_SOURCES
     # Chrono coupling layer (bridges Chrono physics with Chrono-free core)
     src/hydro/chrono/chrono_state_utils.cpp
     src/hydro/chrono/chrono_hydro_coupler.cpp
-    src/hydro/chrono/added_mass.cpp
     src/hydro/force_components/hydrostatics_component.cpp
     src/hydro/force_components/radiation_component.cpp
     src/hydro/force_components/excitation_component.cpp
@@ -354,6 +353,7 @@ set(HC_SOURCES
 set(HC_HEADERS
     ${PROJECT_BINARY_DIR}/hydroc/config.h
     ${PROJECT_BINARY_DIR}/hydroc/version.h
+    include/hydroc/hydro_system.h
     include/hydroc/helper.h
     include/hydroc/hydro_forces.h
     include/hydroc/logging.h
@@ -362,7 +362,6 @@ set(HC_HEADERS
     include/hydroc/core/hydro_forces.h
     include/hydroc/core/hydro_types.h
     include/hydroc/core/system_state.h
-    include/hydroc/coupling/added_mass.h
     include/hydroc/coupling/chrono_coupler.h
     include/hydroc/io/h5_reader.h
     include/hydroc/io/h5_writer.h

@@ -10,7 +10,6 @@
  *********************************************************************/
 
 #include "hydroc/hydro_system.h"
-#include <hydroc/coupling/added_mass.h>
 #include <hydroc/io/h5_reader.h>
 #include <hydroc/waves/wave_base.h>
 #include <hydroc/waves/regular_wave.h>
@@ -32,6 +31,7 @@
 #include <chrono/physics/ChLoadsBody.h>
 #include <chrono/physics/ChSystemNSC.h>
 #include <chrono/physics/ChSystemSMC.h>
+#include <chrono/physics/ChLoadHydrodynamics.h>
 #include <chrono/solver/ChIterativeSolverLS.h>
 #include <chrono/solver/ChSolverPMINRES.h>
 #include <chrono/timestepper/ChTimestepper.h>
@@ -60,14 +60,9 @@
 // Local using declarations for Chrono types (implementation only - not leaked to users)
 // These provide convenience within this translation unit while keeping the public header clean.
 using chrono::ChBody;
-using chrono::ChBodyEasyMesh;
 using chrono::ChForce;
-using chrono::ChFunction;
-using chrono::ChLoadable;
-using chrono::ChLoadContainer;
-using chrono::ChSolver;
-using chrono::ChSystem;
-using chrono::ChVector3d;
+using chrono::ChBodyAddedMassBlocks;
+using chrono::ChLoadHydrodynamics;
 
 // kDofPerBody is already defined in hydro_system.h as constexpr
 const int kDofLinOrRot = 3;
@@ -232,7 +227,7 @@ HydroSystem::HydroSystem(std::vector<std::shared_ptr<ChBody>> user_bodies,
                      std::string h5_file_name,
                      std::shared_ptr<WaveBase> waves)
     : bodies_(user_bodies),
-      num_bodies_(bodies_.size()),
+      num_bodies_((int)bodies_.size()),
       file_info_(H5FileInfo(h5_file_name, num_bodies_).ReadH5Data()),
       hydro_forces_(nullptr),
       chrono_coupler_(nullptr),
@@ -283,19 +278,17 @@ HydroSystem::HydroSystem(std::vector<std::shared_ptr<ChBody>> user_bodies,
         force_per_body_.emplace_back(bodies_[b], this);
     }
 
-    // Handle added mass info (applied via Chrono load system)
-    my_loadcontainer = std::make_shared<ChLoadContainer>();
-
-    std::vector<std::shared_ptr<ChLoadable>> loadables(bodies_.size());
-    for (int i = 0; i < static_cast<int>(bodies_.size()); ++i) {
-        loadables[i] = bodies_[i];
+    // Handle added mass info (applied via a Chrono ChLoadHydrodynamics)
+    const auto& body_info = file_info_.GetBodyInfos();
+    ChBodyAddedMassBlocks body_blocks;
+    for (size_t i = 0; i < num_bodies_; i++) {
+        body_blocks.insert(std::pair(bodies_[i], body_info[i].inf_added_mass));
     }
-
-    my_loadbodyinertia =
-        std::make_shared<ChLoadAddedMass>(file_info_.GetBodyInfos(), loadables, bodies_[0]->GetSystem());
-
-    bodies_[0]->GetSystem()->Add(my_loadcontainer);
-    my_loadcontainer->Add(my_loadbodyinertia);
+    if (num_bodies_ > 0) {
+        auto hydro_load = chrono_types::make_shared<ChLoadHydrodynamics>(body_blocks);
+        hydro_load->SetVerbose(false);
+        bodies_[0]->GetSystem()->Add(hydro_load);
+    }
 
     // Set up hydro inputs
     user_waves_ = waves;
@@ -547,9 +540,8 @@ void HydroSystem::EnsureHydroForcesAndCoupler() {
 // CoordinateFuncForBody(). The main force path now goes through HydroForces.
 std::vector<double> HydroSystem::ComputeForceRadiationDampingConv() {
     auto __t0 = std::chrono::steady_clock::now();
-    const int total_dofs = kDofPerBody * num_bodies_;
 
-    assert(total_dofs > 0);
+    assert(kDofPerBody * num_bodies_ > 0);
 
     // Ensure radiation component exists with current settings
     EnsureRadiationComponent();
@@ -603,7 +595,6 @@ double HydroSystem::GetRIRFval(int row, int col, int st) {
     }
 
     int body_index = row / kDofPerBody;
-    int col_dof    = col % kDofPerBody;
     int row_dof    = row % kDofPerBody;
 
     if (convolution_mode_ == hydrochrono::hydro::RadiationConvolutionMode::TaperedDirect) {
