@@ -629,7 +629,7 @@ function Get-BuildArguments {
         "-DHDF5_ROOT=`"$hdf5Dir`"",
         "-DHDF5_DIR=`"$hdf5Dir`"",
         "-DPython3_ROOT_DIR=`"$pythonRoot`"",
-        "-DEIGEN3_INCLUDE_DIR=`"$eigenDir`"",
+        "-DEigen3_DIR=`"$eigenDir`"",
         "-DIrrlicht_ROOT=`"$irrlicht`"",
         "-DIRRLICHT_DLL_PATH=`"$irrlichtDll`"",
         "-DHYDROCHRONO_ENABLE_IRRLICHT=`"$irrlichtFlag`"",
