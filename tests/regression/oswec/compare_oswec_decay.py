@@ -4,9 +4,6 @@ OSWEC Decay Regression Test Comparison
 
 This script compares the OSWEC decay test results with reference data and generates
 comparison plots using the standardized template.
-
-Usage:
-    python compare_decay.py <reference_file> <test_file>
 """
 
 import sys
@@ -19,21 +16,16 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../utilities'))
 from compare_template import run_multi_column_comparison
 
 def main():
-    if len(sys.argv) == 1 or (len(sys.argv) == 3 and sys.argv[1] == 'default'):
-        # Use default reference and result file locations
-        ref_file = os.path.join(os.path.dirname(__file__), "..", "reference_data", "oswec", "decay", "hc_ref_oswec_decay.txt")
-        
-        # Find the result file
-        build_dir = os.environ.get('HYDROCHRONO_BUILD_DIR', 'C:/code/HydroChrono/build')
-        test_file = os.path.join(build_dir, "bin", "tests", "regression", "oswec", "results", "CHRONO_OSWEC_DECAY.txt")
-    elif len(sys.argv) == 3:
-        ref_file = sys.argv[1]
-        test_file = sys.argv[2]
-    else:
-        print("Usage: python compare_decay.py <reference_file> <test_file>")
-        print("   or: python compare_decay.py default")
+    if len(sys.argv) != 3:
+        print("Usage: python compare.py <reference_file> <test_file>")
         sys.exit(1)
-    
+ 
+    # Get reference and results files
+    ref_file = sys.argv[1]
+    results_file = sys.argv[2]
+    print("Reference file: ", ref_file)
+    print("Results file:   ", results_file)
+
     # OSWEC Decay specific configuration
     test_name = "OSWEC Decay Test"
     executable_patterns = ["oswec_decay_test", "oswec_decay_test.exe"]
@@ -51,10 +43,10 @@ def main():
     try:
         # Load data for additional OSWEC-specific validations
         ref_data = np.loadtxt(ref_file, skiprows=1)
-        test_data = np.loadtxt(test_file, skiprows=1)
+        test_data = np.loadtxt(results_file, skiprows=1)
         
         # Show where the plots will be saved
-        test_file_path = Path(test_file)
+        test_file_path = Path(results_file)
         plots_dir = test_file_path.parent / "plots"
         plots_dir.mkdir(parents=True, exist_ok=True)
         print(f"Plots will be saved to: {plots_dir}")
@@ -102,7 +94,7 @@ def main():
                 create_comparison_plot(
                     ref_col_data, test_col_data, test_name, plots_dir,
                     ref_file_path=format_path(ref_file),
-                    test_file_path=format_path(test_file),
+                    test_file_path=format_path(results_file),
                     y_label=y_label,
                     executable_patterns=executable_patterns
                 )

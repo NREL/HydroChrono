@@ -20,31 +20,32 @@ def main():
     test_name = "F3OF DT3 Flap Pitch Decay"
     executable_patterns = ["f3of_dt3_test", "f3of_dt3_test.exe"]
 
-    # Find the result file
-    # C++ regression tests write under: <build>/bin/Release/results/tests/f3of/
-    build_dir = os.environ.get('HYDROCHRONO_BUILD_DIR', os.path.join(os.path.dirname(__file__), '..', '..', '..', 'build'))
-    hc_data_file = os.path.join(build_dir, "bin", "Release", "results", "tests", "f3of", "results_f3of_dt3.txt")
-
-    # Reference data lives under: <project_root>/data/reference_data/f3of/
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-    ref_data_file = os.path.join(project_root, "data", "reference_data", "f3of", "hc_ref_f3of_dt3_flap_pitch.txt")
-
-    # Check if files exist
-    if not os.path.exists(hc_data_file):
-        print(f"Error: Test data file not found: {hc_data_file}")
+    if len(sys.argv) != 3:
+        print("Usage: python compare.py <reference_file> <test_file>")
         sys.exit(1)
 
-    if not os.path.exists(ref_data_file):
-        print(f"Error: Reference data file not found: {ref_data_file}")
+    # Get reference and results files
+    ref_file = sys.argv[1]
+    results_file = sys.argv[2]
+    print("Reference file: ", ref_file)
+    print("Results file:   ", results_file)
+
+    # Check if files exist
+    if not os.path.exists(results_file):
+        print(f"Error: Test data file not found: {results_file}")
+        sys.exit(1)
+
+    if not os.path.exists(ref_file):
+        print(f"Error: Reference data file not found: {ref_file}")
         sys.exit(1)
 
     try:
         # Load data for validation
-        ref_data = np.loadtxt(ref_data_file, skiprows=1)
-        test_data = np.loadtxt(hc_data_file, skiprows=1)
+        ref_data = np.loadtxt(ref_file, skiprows=1)
+        test_data = np.loadtxt(results_file, skiprows=1)
 
         # Show where the plots will be saved
-        test_file_path = Path(hc_data_file)
+        test_file_path = Path(results_file)
         plots_dir = test_file_path.parent / "plots"
         plots_dir.mkdir(parents=True, exist_ok=True)
         print(f"Plots will be saved to: {plots_dir}")
@@ -73,7 +74,7 @@ def main():
 
         # Run the multi-column comparison using the template
         results = run_multi_column_comparison(
-            ref_data_file, hc_data_file, test_configs,
+            ref_file, results_file, test_configs,
             executable_patterns=executable_patterns
         )
 

@@ -6,6 +6,7 @@ This script compares the results of the sphere irregular waves test against refe
 """
 
 import sys
+import os
 from pathlib import Path
 
 # Add the utilities directory to the path to import the comparison template
@@ -14,42 +15,31 @@ from compare_template import run_comparison
 
 
 def main():
-    """Main comparison function for sphere irregular waves test.
+    """Main comparison function for sphere irregular waves test."""
 
-    When invoked from CTest, the reference and result file paths are passed as
-    command-line arguments:
-        compare_sphere_irreg_waves.py <ref_file> <result_file>
+    if len(sys.argv) != 3:
+        print("Usage: python compare.py <reference_file> <test_file>")
+        sys.exit(1)
 
-    If no arguments are provided (e.g., ad‑hoc runs), we fall back to a sane
-    default based on the source and build tree layout.
-    """
+    # Get reference and results files
+    ref_file = sys.argv[1]
+    results_file = sys.argv[2]
+    print("Reference file: ", ref_file)
+    print("Results file:   ", results_file)
 
-    # Prefer explicit paths from CTest if provided
-    if len(sys.argv) == 3:
-        ref_file = Path(sys.argv[1])
-        result_file = Path(sys.argv[2])
-    else:
-        # Fallback: infer from repo layout (useful for manual runs)
-        project_root = Path(__file__).resolve().parents[3]
-        ref_file = project_root / "data" / "reference_data" / "sphere" / "hc_ref_sphere_irreg_waves.txt"
-        result_file = (
-            project_root / "build" / "bin" / "Release" / "results" / "tests" / "sphere" /
-            "results_sphere_irreg_waves.txt"
-        )
-
-    if not result_file.exists():
-        print(f"Error: Result file not found: {result_file}")
+    if not os.path.exists(results_file):
+        print(f"Error: Result file not found: {results_file}")
         sys.exit(1)
 
     print("Comparing sphere irregular waves test...")
     print(f"  Reference: {ref_file}")
-    print(f"  Result:    {result_file}")
+    print(f"  Result:    {results_file}")
 
     # Run comparison using the template
     try:
         n1, n2, passed = run_comparison(
-            str(ref_file),
-            str(result_file),
+            ref_file,
+            results_file,
             test_name="Sphere Irregular Waves",
             y_label="Heave (m)",
             executable_patterns=["sphere_irreg_waves_test"],

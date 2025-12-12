@@ -19,19 +19,16 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../utilities'))
 from compare_template import run_multi_column_comparison
 
 def main():
-    if len(sys.argv) == 1 or (len(sys.argv) == 3 and sys.argv[1] == 'default'):
-        # Use default reference and result file locations
-        ref_file = os.path.join(os.path.dirname(__file__), "..", "reference_data", "f3of", "dt3", "hc_ref_f3of_dt3_flap_pitch.txt")
-        build_dir = os.environ.get('HYDROCHRONO_BUILD_DIR', os.path.join(os.path.dirname(__file__), '..', '..', '..', 'build'))
-        test_file = os.path.join(build_dir, "bin", "tests", "regression", "f3of", "results", "CHRONO_F3OF_DT3_FLAP_PITCH.txt")
-    elif len(sys.argv) == 3:
-        ref_file = sys.argv[1]
-        test_file = sys.argv[2]
-    else:
+    if len(sys.argv) != 3:
         print("Usage: python compare.py <reference_file> <test_file>")
-        print("   or: python compare.py default")
         sys.exit(1)
-    
+
+    # Get reference and results files
+    ref_file = sys.argv[1]
+    test_file = sys.argv[2]
+    print("Reference file: ", ref_file)
+    print("Results file:   ", test_file)
+
     # F3OF DT3 specific configuration
     test_name = "F3OF DT3 Decay Test"
     executable_patterns = ["f3of_dt3_test", "f3of_dt3_test.exe"]

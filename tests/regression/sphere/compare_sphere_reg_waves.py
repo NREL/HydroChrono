@@ -22,8 +22,13 @@ def main():
         print("Usage: python compare.py <reference_file> <test_file>")
         sys.exit(1)
 
-    # Get the reference data directory from the reference file
+    # Get reference and results files
     ref_file = sys.argv[1]
+    results_file = sys.argv[2]
+    print("Reference file: ", ref_file)
+    print("Results file:   ", results_file)
+
+    # Get the reference data directory from the reference file
     ht = os.path.split(ref_file)
     ref_dir = Path(ht[0])
     
@@ -32,7 +37,6 @@ def main():
         sys.exit(1)
     
     # Get the results directory from the results file
-    results_file = sys.argv[2]
     ht = os.path.split(results_file)
     results_dir = Path(ht[0])
     

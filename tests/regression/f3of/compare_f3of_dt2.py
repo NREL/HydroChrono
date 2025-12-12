@@ -20,34 +20,36 @@ def main():
     test_name = "F3OF DT2 Pitch Decay"
     executable_patterns = ["f3of_dt2_test", "f3of_dt2_test.exe"]
     
-    # Find the result file
-    # C++ regression tests write under: <build>/bin/Release/results/tests/f3of/
-    build_dir = os.environ.get('HYDROCHRONO_BUILD_DIR', os.path.join(os.path.dirname(__file__), '..', '..', '..', 'build'))
-    hc_data_file = os.path.join(build_dir, "bin", "Release", "results", "tests", "f3of", "results_f3of_dt2.txt")
-    # Reference data lives under: <project_root>/data/reference_data/f3of/
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-    ref_data_file = os.path.join(project_root, "data", "reference_data", "f3of", "hc_ref_f3of_dt2_pitch.txt")
-    
+    if len(sys.argv) != 3:
+        print("Usage: python compare.py <reference_file> <test_file>")
+        sys.exit(1)
+
+    # Get reference and results files
+    ref_file = sys.argv[1]
+    results_file = sys.argv[2]
+    print("Reference file: ", ref_file)
+    print("Results file:   ", results_file)
+
     # Check if files exist
-    if not os.path.exists(hc_data_file):
-        print(f"Error: Test data file not found: {hc_data_file}")
+    if not os.path.exists(results_file):
+        print(f"Error: Test data file not found: {results_file}")
         sys.exit(1)
     
-    if not os.path.exists(ref_data_file):
-        print(f"Error: Reference data file not found: {ref_data_file}")
+    if not os.path.exists(ref_file):
+        print(f"Error: Reference data file not found: {ref_file}")
         sys.exit(1)
     
     try:
         # Load data for validation
-        ref_data = np.loadtxt(ref_data_file, skiprows=1)
-        test_data = np.loadtxt(hc_data_file, skiprows=1)
+        ref_data = np.loadtxt(ref_file, skiprows=1)
+        test_data = np.loadtxt(results_file, skiprows=1)
         
         # Extract pitch column (column 2) for comparison
         ref_pitch_data = np.column_stack((ref_data[:, 0], ref_data[:, 2]))  # time, pitch
         test_pitch_data = np.column_stack((test_data[:, 0], test_data[:, 2]))  # time, pitch
         
         # Show where the plots will be saved
-        test_file_path = Path(hc_data_file)
+        test_file_path = Path(results_file)
         plots_dir = test_file_path.parent / "plots"
         plots_dir.mkdir(parents=True, exist_ok=True)
         print(f"Plots will be saved to: {plots_dir}")
@@ -68,8 +70,8 @@ def main():
         
         n1, n2 = create_comparison_plot(
             ref_pitch_data, test_pitch_data, test_name, plots_dir, 
-            ref_file_path=rel_to_root(ref_data_file), 
-            test_file_path=rel_to_root(hc_data_file),
+            ref_file_path=rel_to_root(ref_file), 
+            test_file_path=rel_to_root(results_file),
             executable_path=rel_to_root(str(executable_path)) if executable_path else None,
             y_label="Base Pitch (rad)",
             executable_patterns=executable_patterns

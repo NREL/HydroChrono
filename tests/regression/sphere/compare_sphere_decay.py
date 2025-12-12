@@ -2,12 +2,7 @@
 """
 HydroChrono Sphere Regression Test Comparison
 
-This script compares sphere test results against reference data using the
-standardized comparison template.
-
-Usage:
-    python compare.py <reference_file> <test_file>
-    python compare.py default <test_file>  # Uses default reference data
+This script compares sphere test results against reference data using the standardized comparison template.
 """
 
 import sys
@@ -19,21 +14,20 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../utilities'))
 from compare_template import run_comparison
 
 if __name__ == '__main__':
-    """
-    Compare sphere test results with reference data
-    """
+    """Main comparison function for sphere decay test."""
+
     if len(sys.argv) != 3:
         print("Usage: python compare.py <reference_file> <test_file>")
-        print("       python compare.py default <test_file>  # Uses default reference data")
         sys.exit(1)
 
-    # Use new reference data location - use correct relative path
-    default_ref = os.path.join(os.path.dirname(__file__), '../reference_data/sphere/decay/hc_ref_sphere_decay.txt')
-    fname_ref = sys.argv[1] if sys.argv[1] != 'default' else default_ref
-    fname_rst = sys.argv[2]
+    # Get reference and results files
+    ref_file = sys.argv[1]
+    results_file = sys.argv[2]
+    print("Reference file: ", ref_file)
+    print("Results file:   ", results_file)
 
     # Show where the plot will be saved
-    test_file_path = Path(fname_rst)
+    test_file_path = Path(results_file)
     plots_dir = test_file_path.parent / "plots"
     # Ensure the plots directory exists
     plots_dir.mkdir(parents=True, exist_ok=True)
@@ -50,7 +44,7 @@ if __name__ == '__main__':
     
     # Run the comparison using the template
     n1, n2, passed = run_comparison(
-        fname_ref, fname_rst, test_name, y_label, 
+        ref_file, results_file, test_name, y_label, 
         executable_patterns, pass_criteria
     )
     

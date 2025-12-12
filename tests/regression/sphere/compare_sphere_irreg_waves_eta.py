@@ -17,26 +17,25 @@ from compare_template import run_comparison
 def main():
     """Main comparison function for sphere irregular waves with ETA import test."""
     
-    # Get the reference data file (same as regular irregular waves)
-    ref_file = Path(__file__).parent.parent.parent / "reference_data" / "sphere" / "irreg_waves" / "ref_sphere_irreg_waves.txt"
-    
-    # Look for CHRONO-named result file in various locations
-    build_dir = Path(os.environ.get('HYDROCHRONO_BUILD_DIR', 'C:/code/HydroChrono/build'))
-    result_file = build_dir / "bin" / "tests" / "regression" / "sphere" / "results" / "CHRONO_SPHERE_IRREGULAR_WAVES.txt"
-    
-    if not result_file.exists():
-        print(f"Error: Result file not found: {result_file}")
+    if len(sys.argv) != 3:
+        print("Usage: python compare.py <reference_file> <test_file>")
         sys.exit(1)
+
+    # Get reference and results files
+    ref_file = sys.argv[1]
+    results_file = sys.argv[2]
+    print("Reference file: ", ref_file)
+    print("Results file:   ", results_file)
     
-    print(f"Comparing sphere irregular waves with ETA import test...")
-    print(f"  Reference: {ref_file}")
-    print(f"  Result:    {result_file}")
+    if not os.path.exists(results_file):
+        print(f"Error: Result file not found: {results_file}")
+        sys.exit(1)
     
     # Run comparison using the template
     try:
         n1, n2, passed = run_comparison(
-            str(ref_file),
-            str(result_file),
+            ref_file,
+            results_file,
             test_name="Sphere Irregular Waves with ETA Import",
             y_label="Heave (m)",
             executable_patterns=["sphere_irreg_waves_eta_test"],
