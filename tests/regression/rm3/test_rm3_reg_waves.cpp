@@ -162,24 +162,15 @@ int main(int argc, char* argv[]) {
     // for profiling
     auto start = std::chrono::high_resolution_clock::now();
 
-    std::cout << "Entering simulation loop..." << std::endl;
     // main simulation loop (headless, no GUI)
-    int step = 0;
     while (system.GetChTime() <= simulationDuration) {
-        if (step % 100 == 0) {
-            std::cout << "Step " << step << ", t = " << system.GetChTime() << std::endl;
-        }
-
         system.DoStepDynamics(timestep);
-        ++step;
-
         // append data to output vector
         time_vector.push_back(system.GetChTime());
         float_heave_position.push_back(float_body1->GetPos().z());
         float_drift_position.push_back(float_body1->GetPos().x());
         plate_heave_position.push_back(plate_body2->GetPos().z());
     }
-    std::cout << "Exited simulation loop at t = " << system.GetChTime() << std::endl;
 
     // for profiling
     auto end          = std::chrono::high_resolution_clock::now();

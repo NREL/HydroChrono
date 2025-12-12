@@ -6,6 +6,8 @@
 #include <chrono/physics/ChBodyEasy.h>
 #include <chrono/physics/ChSystemNSC.h>
 
+#include "chrono_postprocess/ChGnuPlot.h"
+
 #include <chrono>   // std::chrono::high_resolution_clock::now
 #include <iomanip>  // std::setprecision
 #include <vector>   // std::vector<double>
@@ -65,7 +67,7 @@ int main(int argc, char* argv[]) {
     int reg_wave_num_max        = periods.size();
 
     for (int reg_wave_num = 1; reg_wave_num <= reg_wave_num_max; ++reg_wave_num) {
-        std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
+        std::cout << "Wave number: " << reg_wave_num << " of " << reg_wave_num_max << std::endl;
 
         // Parse CLI arguments and initialize environment
         bool profilingOn     = true;
@@ -124,7 +126,7 @@ int main(int argc, char* argv[]) {
         //           << std::endl;
 
         // set up body from a mesh
-        std::cout << "Attempting to open mesh file: " << body1_meshfname << std::endl;
+        std::cout << "  Attempting to open mesh file: " << body1_meshfname << std::endl;
         std::shared_ptr<ChBody> flap_body = chrono_types::make_shared<ChBodyEasyMesh>(  //
             body1_meshfname,
             1000,   // density
@@ -150,7 +152,7 @@ int main(int argc, char* argv[]) {
         // notes: mass and inertia added to added mass and system mass correctly.
 
         // set up body from a mesh
-        std::cout << "Attempting to open mesh file: " << body2_meshfname << std::endl;
+        std::cout << "  Attempting to open mesh file: " << body2_meshfname << std::endl;
         std::shared_ptr<ChBody> base_body = chrono_types::make_shared<ChBodyEasyMesh>(  //
             body2_meshfname,
             1000,   // density
@@ -270,6 +272,17 @@ int main(int argc, char* argv[]) {
                 std::cout << "Error: Could not open output file for writing." << std::endl;
                 return 1;  // Return an error code
             }
+        }
+
+        if (plotOn) {
+            postprocess::ChGnuPlot gplot(out_dir + "/owsec_reg_waves_" + std::to_string(reg_wave_num) + ".gpl");
+            gplot.SetCanvasSize(1000, 600);
+            gplot.SetGrid();
+            gplot.SetLabelX("time (s)");
+            gplot.SetLabelY("pitch (rad)");
+            gplot.SetRangeX(0, simulationDuration);
+            gplot.SetTitle("OSWEC reg waves " + std::to_string(reg_wave_num));
+            gplot.Plot(time_vector, flap_rot, "", " with lines lt rgb '#FF5500' lw 2");
         }
     }
 

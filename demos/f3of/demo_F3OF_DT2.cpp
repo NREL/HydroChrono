@@ -6,6 +6,8 @@
 #include <chrono/physics/ChBodyEasy.h>
 #include <chrono/physics/ChSystemSMC.h>
 
+#include "chrono_postprocess/ChGnuPlot.h"
+
 #include <chrono>   // std::chrono::high_resolution_clock::now
 #include <iomanip>  // std::setprecision
 #include <vector>   // std::vector<double>
@@ -220,6 +222,19 @@ int main(int argc, char* argv[]) {
         outputFile.close();
     }
 
-    std::cout << "Simulation finished." << std::endl;
+    if (plotOn) {
+        postprocess::ChGnuPlot gplot(out_dir + "/f3of_dt2.gpl");
+        gplot.SetGrid();
+        gplot.SetLabelX("time (s)");
+        gplot.SetLabelY("surge");
+        gplot.SetLabelY2("pitch");
+        gplot.SetRangeX(0, simulationDuration);
+        gplot.SetTitle("F3OF DT3");
+        gplot.Plot(time_vector, base_surge, "base surge", " with lines lw 2");
+        gplot.Plot(time_vector, base_pitch, "base pitch", " axes x1y2  with lines lw 2");
+        gplot.Plot(time_vector, fore_pitch, "fore pitch", " axes x1y2  with lines lw 2");
+        gplot.Plot(time_vector, aft_pitch, "aft pitch", " axes x1y2  with lines lw 2");
+    }
+
     return 0;
 }

@@ -6,6 +6,8 @@
 #include <chrono/physics/ChBodyEasy.h>
 #include <chrono/physics/ChSystemNSC.h>
 
+#include "chrono_postprocess/ChGnuPlot.h"
+
 #include <chrono>   // std::chrono::high_resolution_clock::now
 #include <iomanip>  // std::setprecision
 #include <vector>   // std::vector<double>
@@ -269,6 +271,16 @@ int main(int argc, char* argv[]) {
                            << std::endl;
             outputFile.close();
         }
+
+        if (plotOn) {
+            postprocess::ChGnuPlot gplot(out_dir + "/owsec_reg_waves_" + std::to_string(reg_wave_num) + ".gpl");
+            gplot.SetGrid();
+            gplot.SetLabelX("time (s)");
+            gplot.SetLabelY("pitch (rad)");
+            gplot.SetTitle("OSWEC reg waves " + std::to_string(reg_wave_num));
+            gplot.Plot(time_vector, flap_rot, "", " with lines lt rgb '#FF5500' lw 2");
+        }
     }
+
     return 0;
 }
