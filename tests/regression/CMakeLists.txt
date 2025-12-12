@@ -84,7 +84,7 @@ build_regression_test(rm3     rm3_reg_waves           FALSE)
 # =================================
 
 # Create documentation directory next to other regression artefacts
-set(REGRESSION_DOCS_DIR ${TEST_REGRESSION_OUTPUT_DIR}/report)
+set(REGRESSION_DOCS_DIR ${CMAKE_BINARY_DIR}/bin/report)
 file(MAKE_DIRECTORY ${REGRESSION_DOCS_DIR})
 
 # Add a test that generates the regression report (markdown + PDF) after all tests complete
@@ -98,7 +98,6 @@ set_tests_properties(
     regression_report_generation
     PROPERTIES 
     LABELS "regression;report;documentation;core"
-#    WORKING_DIRECTORY ${TEST_REGRESSION_OUTPUT_DIR}
     ENVIRONMENT "PATH=${Python3_ROOT_DIR};$ENV{PATH};HYDROCHRONO_BUILD_DIR=${CMAKE_BINARY_DIR}"
     DEPENDS "sphere_decay_regression;sphere_reg_waves_regression;sphere_irreg_waves_regression;sphere_irreg_waves_eta_regression;f3of_dt1_regression;f3of_dt2_regression;f3of_dt3_regression;oswec_decay_regression;oswec_reg_waves_regression;rm3_decay_regression;rm3_reg_waves_regression"
 )
