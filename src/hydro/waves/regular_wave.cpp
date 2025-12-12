@@ -42,7 +42,11 @@ void RegularWave::AddH5Data(std::vector<HydroData::RegularWaveInfo>& reg_h5_data
 }
 
 Eigen::Vector3d RegularWave::GetVelocity(const Eigen::Vector3d& position, double time) {
-    return GetWaterVelocity(position,
+    auto position_stretched = position;
+    if (wave_stretching_) {
+        position_stretched = GetWheelerStretchedPosition(position, GetElevation(position, time), water_depth_, mwl_);
+    }
+    return GetWaterVelocity(position_stretched,
                             time,
                             regular_wave_omega_,
                             regular_wave_amplitude_,
@@ -53,7 +57,11 @@ Eigen::Vector3d RegularWave::GetVelocity(const Eigen::Vector3d& position, double
 }
 
 Eigen::Vector3d RegularWave::GetAcceleration(const Eigen::Vector3d& position, double time) {
-    return GetWaterAcceleration(position,
+    auto position_stretched = position;
+    if (wave_stretching_) {
+        position_stretched = GetWheelerStretchedPosition(position, GetElevation(position, time), water_depth_, mwl_);
+    }
+    return GetWaterAcceleration(position_stretched,
                                 time,
                                 regular_wave_omega_,
                                 regular_wave_amplitude_,
