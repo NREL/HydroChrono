@@ -18,6 +18,18 @@
 
 #include <hydroc/logging.h>
 
+bool is_in_deep_water(double wavenumber, double water_depth) {
+    return (wavenumber * water_depth > 89.4);
+}
+
+Eigen::Vector3d GetWheelerStretchedPosition(const Eigen::Vector3d& position, double eta, double water_depth, double mwl) {
+    // Position relative to mean water level
+    double z_pos = position.z() - mwl;
+    // Wheeler stretching
+    double z_stretched = water_depth * (z_pos - eta) / (water_depth + eta);
+    return Eigen::Vector3d(position.x(), position.y(), z_stretched + mwl);
+}
+
 double GetEta(const Eigen::Vector3d& position,
               double time,
               double omega,
@@ -76,7 +88,7 @@ Eigen::Vector3d GetWaterVelocity(const Eigen::Vector3d& position,
     double z_pos = position.z() - mwl;
 
     Eigen::Vector3d water_velocity(0.0, 0.0, 0.0);
-    if (2 * M_PI / wavenumber > water_depth || wavenumber * water_depth > 500.0) {
+    if (is_in_deep_water(wavenumber, water_depth)) {
         water_velocity[0] =
             omega * amplitude * std::exp(wavenumber * z_pos) * cos(wavenumber * x_pos - omega * time + phase);
         water_velocity[2] =
@@ -102,7 +114,7 @@ Eigen::Vector3d GetWaterAcceleration(const Eigen::Vector3d& position,
     double z_pos = position.z() - mwl;
 
     Eigen::Vector3d water_acceleration(0.0, 0.0, 0.0);
-    if (2 * M_PI / wavenumber > water_depth || wavenumber * water_depth > 500.0) {
+    if (is_in_deep_water(wavenumber, water_depth)) {
         water_acceleration[0] =
             omega * omega * amplitude * std::exp(wavenumber * z_pos) * sin(wavenumber * x_pos - omega * time + phase);
         water_acceleration[2] =

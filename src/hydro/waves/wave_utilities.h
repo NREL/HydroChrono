@@ -11,6 +11,13 @@
 #include <string>
 #include <vector>
 
+bool is_in_deep_water(double wavenumber, double water_depth);
+
+Eigen::Vector3d GetWheelerStretchedPosition(const Eigen::Vector3d& position,
+                                            double                eta,
+                                            double                water_depth,
+                                            double                mwl);
+
 double GetFreeSurfaceElevation(const Eigen::VectorXd& freqs_hz,
                                const Eigen::VectorXd& spectral_densities,
                                const Eigen::VectorXd& spectral_widths,
