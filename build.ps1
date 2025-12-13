@@ -1,953 +1,328 @@
 ﻿<#
     HydroChrono Build Script
-    ========================
     
-    This PowerShell script configures, builds, and verifies the HydroChrono project
-    using CMake and MSVC on Windows.
-    
-    Key Features:
-    - Configurable YAML runner toggle
-    - Multi-configuration CMake builds
-    - Dependency checks for CMake, Visual Studio, Chrono
-    - Clean ASCII output formatting
-    - External configuration file support
+    Configures and builds HydroChrono. Dependency paths (Eigen, HDF5, Irrlicht)
+    are automatically inherited from your Chrono build - just point to ChronoDir.
     
     Usage:
-        .\build.ps1 [OPTIONS]
-        
-    Examples:
-        .\build.ps1 -Help                    # Show help
-        .\build.ps1 -BuildType Release       # Build with options
-        .\build.ps1 -Verbose -Clean          # Verbose clean build
-        .\build.ps1 -Package                 # Build, install to build\install, create ZIP via CPack
-        
+        .\build.ps1                     # Default build
+        .\build.ps1 -Clean -Verbose     # Clean build with details
+        .\build.ps1 -Package            # Build and create ZIP
+    
     Configuration:
-        This script requires a build-config.json file with your local paths.
-        Copy build-config.example.json to build-config.json and customize it.
+        Create build-config.json with: { "ChronoDir": "C:/path/to/chrono/build/cmake" }
 #>
 
 param(
-    [Alias("y")][string]$YamlRunner = "ON",
-    [Alias("t")][string]$BuildType = "Release",
-    [Alias("c")][switch]$Clean,
-    [Alias("h")][switch]$Help,
-    [Alias("v")][switch]$Verbose,
-    [Alias("p")][switch]$Package,
-    [Alias("disabletests","nt")][switch]$NoTests,
-    [Alias("log")][string]$LogFile = "",
-    [Alias("config")][string]$ConfigPath = ".\build-config.json"
+    [ValidateSet("Release", "Debug", "RelWithDebInfo", "MinSizeRel")]
+    [string]$BuildType = "Release",
+    
+    [switch]$Clean,
+    [switch]$Verbose,
+    [switch]$Package,
+    [switch]$NoIrrlicht,    # Disable Irrlicht (auto-enabled if Chrono has it)
+    [switch]$NoVSG,         # Disable VSG (auto-enabled if Chrono has it)
+    [switch]$NoDemos,
+    [switch]$NoTests,
+    [switch]$Help,
+    
+    [string]$ConfigPath = ".\build-config.json"
 )
 
+# Note: We don't use $ErrorActionPreference = "Stop" because it causes
+# native command stderr output (like CMake warnings) to throw exceptions.
+$SCRIPT_VERSION = "3.0"
+
 # =============================================================================
-# Configuration Loading
+# Output Helpers
 # =============================================================================
 
-function Load-Configuration {
-    param([string]$ConfigPath)
+function Write-Step { param([string]$msg) Write-Host "`n>> $msg" -ForegroundColor Cyan }
+function Write-OK { param([string]$msg) Write-Host "   [OK] $msg" -ForegroundColor Green }
+function Write-Warn { param([string]$msg) Write-Host "   [WARN] $msg" -ForegroundColor Yellow }
+function Write-Fail { param([string]$msg) Write-Host "   [FAIL] $msg" -ForegroundColor Red }
+function Write-Detail { param([string]$msg) Write-Host "   $msg" -ForegroundColor Gray }
+
+# =============================================================================
+# Help
+# =============================================================================
+
+if ($Help) {
+    Write-Host "`nHydroChrono Build System v$SCRIPT_VERSION" -ForegroundColor Cyan
+    Write-Host "======================================" -ForegroundColor Cyan
+    Write-Host "`nBuilds HydroChrono. Dependencies are auto-detected from Chrono.`n"
     
-    # Non-sensitive default values only
-    $defaultConfig = @{
-        ScriptVersion = "2.2"
-        DefaultBuildType = "Release"
-        DefaultYamlRunner = "ON"
-        RuntimeLibrary = "MultiThreaded`$<`$<CONFIG:Debug>:Debug>DLL"
-    }
+    Write-Host "USAGE:" -ForegroundColor Yellow
+    Write-Host "  .\build.ps1 [options]`n"
     
-    # Required configuration keys (must be provided by user)
-    $requiredKeys = @(
-        "ChronoDir",
-        "Hdf5Dir", 
-        "EigenDir",
-        "IrrlichtDir",
-        "PythonRoot",
-        "VisualStudioPath",
-        "CMakeModulePath"
-    )
+    Write-Host "OPTIONS:" -ForegroundColor Yellow
+    Write-Host "  -BuildType <type>  Release|Debug|RelWithDebInfo|MinSizeRel (default: Release)"
+    Write-Host "  -Clean             Remove build directory before building"
+    Write-Host "  -Verbose           Show detailed build output"
+    Write-Host "  -Package           Create distributable ZIP after building"
+    Write-Host "  -NoIrrlicht        Disable Irrlicht (enabled by default if Chrono has it)"
+    Write-Host "  -NoVSG             Disable VSG (enabled by default if Chrono has it)"
+    Write-Host "  -NoDemos           Skip demo executables"
+    Write-Host "  -NoTests           Skip test targets"
+    Write-Host "  -ConfigPath <path> Custom config file (default: build-config.json)`n"
     
-    try {
-        if (-not (Test-Path $ConfigPath)) {
-            Write-Host "ERROR: Configuration file not found: $ConfigPath" -ForegroundColor Red
-            Write-Host ""
-            Write-Host "To set up your configuration:" -ForegroundColor Yellow
-            Write-Host "  1. Copy build-config.example.json to build-config.json" -ForegroundColor White
-            Write-Host "  2. Edit build-config.json with your local paths" -ForegroundColor White
-            Write-Host "  3. Run the script again" -ForegroundColor White
-            Write-Host ""
-            Write-Host "For help: .\build.ps1 -Help" -ForegroundColor Cyan
-            exit 1
-        }
-        
-        Write-Host "Loading configuration from: $ConfigPath" -ForegroundColor Blue
-        $configContent = Get-Content -Path $ConfigPath -Raw
-        $configObj = $configContent | ConvertFrom-Json
-        $config = @{}
-        $configObj.PSObject.Properties | ForEach-Object { $config[$_.Name] = $_.Value }
-        
-        # Check for missing required keys
-        $missingKeys = @()
-        foreach ($key in $requiredKeys) {
-            if (-not $config.ContainsKey($key) -or [string]::IsNullOrWhiteSpace($config[$key])) {
-                $missingKeys += $key
-            }
-        }
-        
-        if ($missingKeys.Count -gt 0) {
-            Write-Host "ERROR: Missing required configuration keys: $($missingKeys -join ', ')" -ForegroundColor Red
-            Write-Host ""
-            Write-Host "Please update your build-config.json with the missing values:" -ForegroundColor Yellow
-            foreach ($key in $missingKeys) {
-                Write-Host "  - $key`: <path-to-your-$key>" -ForegroundColor White
-            }
-            Write-Host ""
-            Write-Host "Use build-config.example.json as a starting point" -ForegroundColor Cyan
-            exit 1
-        }
-        
-        # Merge with non-sensitive defaults for any missing optional keys
-        foreach ($key in $defaultConfig.Keys) {
-            if (-not $config.ContainsKey($key)) {
-                $config[$key] = $defaultConfig[$key]
-                Write-Host "  INFO: Using default for optional key: $key" -ForegroundColor Blue
-            }
-        }
-        
-        return $config
-        
-    } catch {
-        Write-Host "ERROR: Failed to load configuration: $($_.Exception.Message)" -ForegroundColor Red
-        Write-Host ""
-        Write-Host "Please check your build-config.json file format" -ForegroundColor Yellow
-        Write-Host "Use build-config.example.json as a reference" -ForegroundColor Cyan
-        exit 1
-    }
-}
-
-# Load configuration
-$Config = Load-Configuration -ConfigPath $ConfigPath
-
-# Extract commonly used values for backward compatibility
-$CHRONO_DIR = $Config.ChronoDir
-$SCRIPT_VERSION = $Config.ScriptVersion
-
-# =============================================================================
-# Output Utilities
-# =============================================================================
-
-function Write-Header {
-    param([string]$Title)
+    Write-Host "EXAMPLES:" -ForegroundColor Yellow
+    Write-Host "  .\build.ps1                    # Standard build"
+    Write-Host "  .\build.ps1 -Clean -Verbose    # Clean build with details"
+    Write-Host "  .\build.ps1 -Package           # Build and create ZIP`n"
+    
+    Write-Host "CONFIG FILE:" -ForegroundColor Yellow
+    Write-Host '  { "ChronoDir": "C:/path/to/chrono/build/cmake" }' -ForegroundColor Gray
     Write-Host ""
-    Write-Host "=== $Title ===" -ForegroundColor Cyan
-    Write-Host ("=" * ($Title.Length + 7)) -ForegroundColor Cyan
-}
-
-function Write-Section {
-    param([string]$Title)
-    Write-Host ""
-    Write-Host "--> $Title" -ForegroundColor Blue
-    Write-Host ("-" * ($Title.Length + 4)) -ForegroundColor Blue
-}
-
-function Write-Subsection {
-    param([string]$Title)
-    Write-Host ""
-    Write-Host "  * $Title" -ForegroundColor Magenta
-}
-
-function Write-Info {
-    param([string]$Message)
-    Write-Host "    [INFO] $Message" -ForegroundColor Blue
-}
-
-function Write-Success {
-    param([string]$Message)
-    Write-Host "    [OK] $Message" -ForegroundColor Green
-}
-
-function Write-Warning {
-    param([string]$Message)
-    Write-Host "    [WARN] $Message" -ForegroundColor Yellow
-}
-
-function Write-Error {
-    param([string]$Message)
-    Write-Host "    [FAIL] $Message" -ForegroundColor Red
-}
-
-function Write-Progress {
-    param([string]$Message)
-    Write-Host "    [BUILD] $Message" -ForegroundColor Cyan
-}
-
-# =============================================================================
-# Configuration Validation
-# =============================================================================
-
-function Test-ConfigurationPaths {
-    Write-Section "Validating Configuration"
-    
-    $requiredPaths = @{
-        "Chrono" = $Config.ChronoDir
-        "HDF5" = $Config.Hdf5Dir
-        "Eigen" = $Config.EigenDir
-        "Irrlicht" = $Config.IrrlichtDir
-        "Python" = $Config.PythonRoot
-    }
-    
-    $validPaths = 0
-    $totalPaths = $requiredPaths.Count
-    
-    foreach ($pathName in $requiredPaths.Keys) {
-        $path = $requiredPaths[$pathName]
-        if (Test-Path $path) {
-            Write-Host "    [OK] $pathName`: Found at $path" -ForegroundColor Green
-            $validPaths++
-        } else {
-            Write-Host "    [WARN] $pathName`: Not found at $path" -ForegroundColor Yellow
-        }
-    }
-    
-    Write-Host ""
-    Write-Host "    [INFO] Configuration validation: $validPaths/$totalPaths paths found" -ForegroundColor Blue
-    
-    if ($validPaths -eq 0) {
-        Write-Host "    [WARN] No configuration paths found. Check build-config.json" -ForegroundColor Yellow
-        Write-Host "    [INFO] Use build-config.example.json as a starting point" -ForegroundColor Cyan
-    } elseif ($validPaths -lt $totalPaths) {
-        Write-Host "    [WARN] Some paths missing. Build may fail if dependencies not found" -ForegroundColor Yellow
-    } else {
-        Write-Host "    [OK] All configuration paths validated" -ForegroundColor Green
-    }
-    
-    return $validPaths
-}
-
-# =============================================================================
-# Help and Documentation
-# =============================================================================
-
-function Show-Help {
-    Write-Header "HydroChrono Build System v$SCRIPT_VERSION"
-    Write-Host ""
-    Write-Host "Modern, fast, reliable build system for HydroChrono" -ForegroundColor Green
-    Write-Host "[Multibody-Hydrodynamics simulation framework]" -ForegroundColor Cyan
-    Write-Host ""
-    Write-Host "Usage: .\build.ps1 [OPTIONS]" -ForegroundColor White
-    
-    Write-Section "Build Options"
-    Write-Host "  -YamlRunner ON|OFF     Enable/disable YAML-based CLI runner (default: OFF)" -ForegroundColor White
-    Write-Host "  -BuildType TYPE        Build type: Debug|Release|RelWithDebInfo|MinSizeRel (default: Release)" -ForegroundColor White
-    Write-Host "  -Clean                 Clean build (remove build directory before building)" -ForegroundColor White
-    Write-Host "  -Verbose               Enable verbose output" -ForegroundColor White
-    Write-Host "  -Package               Install to build\\install and create ZIP via CPack" -ForegroundColor White
-    Write-Host "  -NoTests               Disable CTest targets (tests are ON by default)" -ForegroundColor White
-    Write-Host "  -Help                  Show this help message" -ForegroundColor White
-    Write-Host "  -LogFile PATH          Write build log to specified file (alias: -log)" -ForegroundColor White
-    Write-Host "  -ConfigPath PATH       Use custom configuration file (alias: -config)" -ForegroundColor White
-    
-    Write-Section "Quick Examples"
-    Write-Host "  .\\build.ps1                           # Default build (Release, YamlRunner=OFF)" -ForegroundColor Gray
-    Write-Host "  .\\build.ps1 -YamlRunner OFF          # Build without YAML runner" -ForegroundColor Gray
-    Write-Host "  .\\build.ps1 -BuildType Debug         # Debug build" -ForegroundColor Gray
-    Write-Host "  .\\build.ps1 -Clean -BuildType Debug  # Clean debug build" -ForegroundColor Gray
-    Write-Host "  .\\build.ps1 -Verbose                 # Verbose build with detailed output" -ForegroundColor Gray
-    Write-Host "  .\\build.ps1 -Package                 # Build+install to build\\install and create ZIP" -ForegroundColor Gray
-    Write-Host "  .\\build.ps1 -ConfigPath custom.json  # Use custom config file" -ForegroundColor Gray
-    
-    Write-Section "Build Types Explained"
-    Write-Host "  Release        # Optimized build for production (default)" -ForegroundColor Gray
-    Write-Host "  Debug          # Debug build with symbols" -ForegroundColor Gray
-    Write-Host "  RelWithDebInfo # Release with debug info" -ForegroundColor Gray
-    Write-Host "  MinSizeRel     # Release optimized for size" -ForegroundColor Gray
-    
-    Write-Host ""
-    Write-Host "[LINK] For more information, visit the HydroChrono documentation" -ForegroundColor Blue
-    Write-Host "[OK] Build system ready" -ForegroundColor Cyan
-    
-    Write-Section "Configuration"
-    Write-Host "  Configuration file: build-config.json" -ForegroundColor White
-    Write-Host "  Copy build-config.example.json to build-config.json" -ForegroundColor White
-    Write-Host "  Customize paths and settings for your local environment" -ForegroundColor White
-    Write-Host "  Use -ConfigPath to specify a different config file" -ForegroundColor White
-    
-    Write-Section "Exit Codes"
-    Write-Host "  0  - Success" -ForegroundColor White
-    Write-Host "  1  - Parameter validation failed" -ForegroundColor White
-    Write-Host "  2  - Dependency check failed" -ForegroundColor White
-    Write-Host "  3  - CMake configuration failed" -ForegroundColor White
-    Write-Host "  4  - Build failed" -ForegroundColor White
-    Write-Host "  5  - Unexpected error" -ForegroundColor White
-    
     exit 0
 }
 
 # =============================================================================
-# Dependency Checking
+# Load Configuration
 # =============================================================================
 
-function Test-Dependencies {
-    Write-Section "Checking Dependencies"
-    
-    # Check CMake
-    try {
-        $cmakeVersion = (cmake --version 2>$null | Select-Object -First 1)
-        if ($cmakeVersion) {
-            Write-Success "CMake: $cmakeVersion"
-        } else {
-            Write-Error "CMake not found or not in PATH"
-            return $false
-        }
-    } catch {
-        Write-Error "CMake not found or not in PATH"
-        return $false
-    }
-    
-    # Check Visual Studio
-    $vsPath = $Config.VisualStudioPath
-    if (Test-Path $vsPath) {
-        Write-Success "Visual Studio 2022: Found"
-    } else {
-        Write-Warning "Visual Studio 2022 not found in expected location"
-    }
-    
-    # Check Chrono
-    if (Test-Path $Config.ChronoDir) {
-        Write-Success "Chrono: Found at $($Config.ChronoDir)"
-    } else {
-        Write-Error "Chrono not found at $($Config.ChronoDir)"
-        return $false
-    }
-    
-    Write-Host ""
-    Write-Host "    [OK] All dependencies verified" -ForegroundColor Green
-    return $true
+Write-Host "`nHydroChrono Build v$SCRIPT_VERSION" -ForegroundColor Cyan
+Write-Host "========================" -ForegroundColor Cyan
+
+Write-Step "Loading configuration"
+
+if (-not (Test-Path $ConfigPath)) {
+    Write-Fail "Config file not found: $ConfigPath"
+    Write-Host "`nCreate build-config.json:" -ForegroundColor Yellow
+    Write-Host '  { "ChronoDir": "C:/path/to/chrono/build/cmake" }' -ForegroundColor Gray
+    exit 1
 }
-
-# =============================================================================
-# Build Phases
-# =============================================================================
-
-function Clean-BuildDirectory {
-    Write-Section "Cleaning Build Directory"
-    
-    if (Test-Path ".\build") {
-        Write-Progress "Removing existing build directory..."
-        try {
-            Remove-Item -Recurse -Force .\build -ErrorAction Stop
-            Write-Success "Build directory cleaned successfully"
-        } catch {
-            Write-Error "Failed to clean build directory: $($_.Exception.Message)"
-            return $false
-        }
-    } else {
-        Write-Info "No existing build directory found"
-    }
-    
-    return $true
-}
-
-function Initialize-BuildDirectory {
-    Write-Section "Initializing Build Directory"
-    
-    if (-not (Test-Path ".\build")) {
-        Write-Progress "Creating build directory..."
-        try {
-            New-Item -ItemType Directory -Path build | Out-Null
-            Write-Success "Build directory created"
-        } catch {
-            Write-Error "Failed to create build directory: $($_.Exception.Message)"
-            return $false
-        }
-    } else {
-        Write-Info "Build directory already exists"
-    }
-    
-    Set-Location -Path build
-    return $true
-}
-
-function Configure-CMake {
-    Write-Section "Configuring CMake"
-    
-    $env:CMAKE_MODULE_PATH = ($Config.CMakeModulePath -replace '\\','/')
-    
-    Write-Subsection "Build Configuration"
-    Write-Info "Runtime library: MultiThreaded DLL (for Chrono compatibility)"
-    Write-Info "Build type: $BuildType"
-    Write-Info "YAML runner: $YamlRunner"
-    
-    # Display key paths for reproducibility
-    Write-Info "Chrono DIR:   $($Config.ChronoDir)"
-    Write-Info "HDF5 DIR:     $($Config.Hdf5Dir)"
-    Write-Info "Eigen DIR:    $($Config.EigenDir)"
-    Write-Info "Irrlicht DIR: $($Config.IrrlichtDir)"
-    Write-Info "Python ROOT:  $($Config.PythonRoot)"
-    
-    $cmakeArgs = Get-BuildArguments -YamlRunner $YamlRunner -BuildType $BuildType -NoTests $NoTests
-    
-    Write-Subsection "Running CMake Configure"
-    Write-Progress "Setting up project configuration..."
-    
-    if ($Verbose) {
-        $cmakeResult = cmake $cmakeArgs
-    } else {
-        $cmakeResult = cmake $cmakeArgs 2>&1
-    }
-    
-    if ($LASTEXITCODE -eq 0) {
-        Write-Success "CMake configuration completed successfully"
-        return $true
-    } else {
-        Write-Error "CMake configuration failed"
-        if ($Verbose) {
-            Write-Host ""
-            Write-Host "    [DEBUG] CMake output:" -ForegroundColor Yellow
-            Write-Host $cmakeResult -ForegroundColor Red
-        }
-        return $false
-    }
-}
-
-function Build-Project {
-    Write-Section "Building HydroChrono"
-    
-    Write-Subsection "Build Information"
-    Write-Info "Build type: $BuildType"
-    Write-Info "Using: cmake --build . --config $BuildType"
-    
-    Write-Subsection "Compilation Progress"
-    $buildStart = Get-Date
-    
-    # Run cmake build and capture exit code properly
-    if ($Verbose) {
-        cmake --build . --config $BuildType
-        $exitCode = $LASTEXITCODE
-    } else {
-        # Capture output but preserve exit code
-        $buildResult = cmake --build . --config $BuildType 2>&1
-        $exitCode = $LASTEXITCODE
-    }
-    
-    $buildEnd = Get-Date
-    $buildDuration = $buildEnd - $buildStart
-    
-    if ($exitCode -eq 0) {
-        Write-Success "Build completed successfully"
-        Write-Info "Build time: $($buildDuration.TotalSeconds.ToString('F1')) seconds"
-        return $true
-    } else {
-        Write-Error "Build failed"
-        if ($Verbose -or $buildResult) {
-            Write-Host ""
-            Write-Host "    [DEBUG] Build output:" -ForegroundColor Yellow
-            if ($buildResult) { Write-Host $buildResult -ForegroundColor Red }
-        }
-        return $false
-    }
-}
-
-function Copy-ChronoDLLs {
-    Write-Section "Copying Runtime Dependencies"
-    
-    try {
-        $chronoDllSource = Split-Path -Path $Config.ChronoDir -Parent | Split-Path -Parent | Join-Path -ChildPath "build\bin\$BuildType"
-        $hydrochronoBinDest = Join-Path (Get-Location) "bin\$BuildType"
-        
-        if (-not (Test-Path $chronoDllSource)) {
-            Write-Warning "Chrono DLL source directory not found: $chronoDllSource"
-            Write-Info "Skipping DLL copy"
-            return $true
-        }
-        
-        Write-Progress "Copying Chrono DLLs..."
-        
-        if (-not (Test-Path $hydrochronoBinDest)) {
-            New-Item -ItemType Directory -Path $hydrochronoBinDest -Force | Out-Null
-            Write-Info "Created destination directory: $hydrochronoBinDest"
-        }
-        
-        $dllFiles = Get-ChronoDllList -BuildType $BuildType
-        
-        if ($dllFiles.Count -eq 0) {
-            Write-Warning "No DLL files found in: $chronoDllSource"
-            return $true
-        }
-        
-        $copiedCount = 0
-        foreach ($dll in $dllFiles) {
-            $destPath = Join-Path $hydrochronoBinDest $dll.Name
-            Copy-Item -Path $dll.FullName -Destination $destPath -Force -ErrorAction SilentlyContinue
-            $exists = $false
-            try { $exists = Test-Path $destPath -ErrorAction SilentlyContinue } catch { $exists = $true }
-            if ($exists) {
-                $copiedCount++
-                if ($Verbose) {
-                    Write-Info "Copied: $($dll.Name)"
-                }
-            }
-        }
-        
-        if ($copiedCount -gt 0) {
-            Write-Success "Successfully copied $copiedCount DLL file(s)"
-            Write-Info "Destination: $hydrochronoBinDest"
-        } else {
-            Write-Warning "Failed to copy any DLL files"
-        }
-        
-        return $true
-    } catch {
-        Write-Warning "Error during DLL copy: $($_.Exception.Message)"
-        Write-Info "Continuing without DLL copy"
-        return $true
-    }
-}
-
-function Copy-HDF5DLLs {
-    Write-Section "Copying HDF5 Runtime DLLs"
-    try {
-        $hdf5Root = $Config.Hdf5Dir
-        # If a share/cmake path was provided, climb to root (two parents)
-        if ($hdf5Root -match "share\\cmake" -or $hdf5Root -match "share/cmake") {
-            $hdf5Root = Split-Path -Parent (Split-Path -Parent $hdf5Root)
-        }
-        $hdf5Bin = Join-Path $hdf5Root "bin"
-        if (-not (Test-Path $hdf5Bin)) {
-            Write-Info "HDF5 bin directory not found: $hdf5Bin (skipping)"
-            return $true
-        }
-        $destBin = Join-Path (Get-Location) "bin\$BuildType"
-        if (-not (Test-Path $destBin)) {
-            New-Item -ItemType Directory -Path $destBin -Force | Out-Null
-        }
-        $dlls = Get-ChildItem -Path $hdf5Bin -Filter "*.dll" -ErrorAction SilentlyContinue
-        $count = 0
-        foreach ($dll in $dlls) {
-            $destPath = Join-Path $destBin $dll.Name
-            Copy-Item -Path $dll.FullName -Destination $destPath -Force -ErrorAction SilentlyContinue
-            if (Test-Path $destPath) { $count++ }
-        }
-        if ($count -gt 0) { Write-Success "Copied $count HDF5 DLL(s) to $destBin" } else { Write-Info "No HDF5 DLLs copied" }
-        return $true
-    } catch {
-        Write-Warning "Error during HDF5 DLL copy: $($_.Exception.Message)"
-        return $true
-    }
-}
-
-function Copy-IrrlichtDLL {
-    Write-Section "Copying Irrlicht Runtime DLL"
-    try {
-        $irrlichtRoot = $Config.IrrlichtDir
-        if (-not $irrlichtRoot -or -not (Test-Path $irrlichtRoot -ErrorAction SilentlyContinue)) {
-            Write-Info "Irrlicht directory not configured (skipping)"
-            return $true
-        }
-        $irrlichtDll = Join-Path $irrlichtRoot "bin\Win64-VisualStudio\Irrlicht.dll"
-        if (-not (Test-Path $irrlichtDll -ErrorAction SilentlyContinue)) {
-            Write-Warning "Irrlicht.dll not found at: $irrlichtDll (skipping)"
-            return $true
-        }
-        $destBin = Join-Path (Get-Location) "bin\$BuildType"
-        if (-not (Test-Path $destBin -ErrorAction SilentlyContinue)) {
-            New-Item -ItemType Directory -Path $destBin -Force | Out-Null
-        }
-        $destPath = Join-Path $destBin "Irrlicht.dll"
-        Copy-Item -Path $irrlichtDll -Destination $destPath -Force -ErrorAction SilentlyContinue
-        # Allow brief delay for file system to catch up before checking
-        Start-Sleep -Milliseconds 100
-        $exists = $false
-        try { $exists = Test-Path $destPath -ErrorAction SilentlyContinue } catch { $exists = $true }
-        if ($exists) {
-            Write-Success "Copied Irrlicht.dll to $destBin"
-        } else {
-            Write-Warning "Failed to copy Irrlicht.dll"
-        }
-        return $true
-    } catch {
-        Write-Warning "Error during Irrlicht DLL copy: $($_.Exception.Message)"
-        return $true
-    }
-}
-
-function Show-BuildSummary {
-    Write-Section "Build Summary"
-    
-    $binPath = Join-Path (Get-Location) "bin\$BuildType"
-    
-    if (Test-Path $binPath) {
-        Write-Success "Binaries are located in: $binPath"
-        
-        # Check for key executables
-        $keyExecutables = @("run_hydrochrono.exe")
-        foreach ($exe in $keyExecutables) {
-            $exePath = Join-Path $binPath $exe
-            if (Test-Path $exePath) {
-                Write-Success "$exe built successfully"
-            } else {
-                Write-Warning "$exe not found"
-            }
-        }
-        
-        # Show file sizes
-        if ($Verbose) {
-            Write-Info ""
-            Write-Info "Executable sizes:"
-            Get-ChildItem -Path $binPath -Filter "*.exe" | ForEach-Object {
-                $sizeKB = [math]::Round($_.Length / 1KB, 1)
-                Write-Info "  $($_.Name): $sizeKB KB"
-            }
-        }
-    } else {
-        Write-Error "Binary directory not found: $binPath"
-    }
-}
-
-function Show-SuccessSummary {
-    param([string]$BuildType)
-    
-    Write-Header "Build Complete"
-    
-    Write-Host ""
-    Write-Host "[OK] HydroChrono build completed successfully" -ForegroundColor Green
-    Write-Host "[BUILD] Simulation framework ready for use" -ForegroundColor Cyan
-    
-    # Build artifacts summary
-    $binPath = Join-Path (Get-Location) "bin\$BuildType"
-    Write-Host ""
-    Write-Host "Build Artifacts:" -ForegroundColor Cyan
-    Write-Host "  Executables: $binPath\run_hydrochrono.exe" -ForegroundColor White
-    Write-Host "  Libraries:   (copied Chrono DLLs to bin\$BuildType)" -ForegroundColor White
-    Write-Host "  Log files:   build/CMakeFiles/..." -ForegroundColor White
-    
-    Write-Host ""
-    Write-Host "[OK] HydroChrono ready for simulation" -ForegroundColor Magenta
-
-    # Suggested next steps
-    Write-Host "" 
-    Write-Host "Next steps:" -ForegroundColor Cyan
-    Write-Host "  Run regression tests:" -ForegroundColor White
-    Write-Host "    ctest -C $BuildType -L regression" -ForegroundColor Gray
-    Write-Host "  Or run Python-based YAML tests for run_hydrochrono.exe:" -ForegroundColor White
-    Write-Host "    python .\\tests\\regression\\run_hydrochrono\\run_tests.py --all" -ForegroundColor Gray
-}
-
-# =============================================================================
-# Helper Functions
-# =============================================================================
-
-function Get-BuildArguments {
-    param([string]$YamlRunner, [string]$BuildType)
-    
-    $chronoDir  = ($Config.ChronoDir  -replace '\\','/')
-    $hdf5Dir    = ($Config.Hdf5Dir    -replace '\\','/')
-    $pythonRoot = ($Config.PythonRoot -replace '\\','/')
-    $eigenDir   = ($Config.EigenDir   -replace '\\','/')
-    $irrlicht   = ($Config.IrrlichtDir -replace '\\','/')
-    $irrlichtIncludeWin = Join-Path $Config.IrrlichtDir "include"
-    $irrlichtInclude = ($irrlichtIncludeWin -replace '\\','/')
-    $irrlichtFlag = if ($Config.IrrlichtDir -and (Test-Path $Config.IrrlichtDir)) { "ON" } else { "OFF" }
-
-    # Deterministic prefix path so our roots win over ambient environment
-    $prefixParts = @()
-    foreach ($p in @($Config.ChronoDir, $Config.Hdf5Dir, $Config.EigenDir, $Config.IrrlichtDir, $Config.PythonRoot)) {
-        if ($p) {
-            $isValid = $false
-            try { $null = [System.IO.Path]::GetFullPath($p); $isValid = $true } catch { $isValid = $false }
-            if ($isValid) {
-                try {
-                    if (Test-Path -LiteralPath $p) { $prefixParts += ($p -replace '\\','/') }
-                } catch { }
-            }
-        }
-    }
-    $prefixPath = ($prefixParts -join ';')
-    $testsFlag = if ($NoTests) { "OFF" } else { "ON" }
-    
-    return @(
-        "..",
-        "-G","Visual Studio 17 2022",
-        "-A","x64",
-        "-DChrono_DIR=`"$chronoDir`"",
-        "-DHDF5_ROOT=`"$hdf5Dir`"",
-        "-DHDF5_DIR=`"$hdf5Dir`"",
-        "-DPython3_ROOT_DIR=`"$pythonRoot`"",
-        "-DEigen3_DIR=`"$eigenDir`"",
-        "-DIrrlicht_ROOT=`"$irrlicht`"",
-        "-DIrrlicht_INCLUDE_DIR=`"$irrlichtInclude`"",
-        "-DHYDROCHRONO_ENABLE_IRRLICHT=`"$irrlichtFlag`"",
-        "-DCMAKE_PREFIX_PATH=`"$prefixPath`"",
-        "-DCMAKE_FIND_PACKAGE_PREFER_CONFIG=ON",
-        "-DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF",
-        "-DCMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH=OFF",
-        "-DCHRONO_DATA_DIR=`"$($Config.ChronoDir -replace '/cmake$','' -replace '\\cmake$','')/../bin/data/`"",
-        "-DHYDROCHRONO_ENABLE_YAML_RUNNER=`"$YamlRunner`"",
-        "-DHYDROCHRONO_ENABLE_TESTS=`"$testsFlag`"",
-        "-DCMAKE_BUILD_TYPE=`"$BuildType`"",
-        "-DCMAKE_MSVC_RUNTIME_LIBRARY=`"$($Config.RuntimeLibrary)`""
-    )
-}
-
-function Validate-Parameters {
-    param([string]$YamlRunner, [string]$BuildType)
-    
-    if ($YamlRunner -ne "ON" -and $YamlRunner -ne "OFF") {
-        Write-Error "YamlRunner must be 'ON' or 'OFF'. Got: $YamlRunner"
-        return $false
-    }
-    
-    $VALID_BUILD_TYPES = @("Debug", "Release", "RelWithDebInfo", "MinSizeRel")
-    if ($VALID_BUILD_TYPES -notcontains $BuildType) {
-        Write-Error "BuildType must be one of: $($VALID_BUILD_TYPES -join ', '). Got: $BuildType"
-        return $false
-    }
-    
-    return $true
-}
-
-function Get-ChronoDllList {
-    param([string]$BuildType)
-    
-    $chronoRoot = Split-Path -Path $Config.ChronoDir -Parent | Split-Path -Parent
-    $chronoDllSource = Join-Path $chronoRoot "build\bin\$BuildType"
-    
-    if (-not (Test-Path $chronoDllSource)) {
-        return @()
-    }
-    
-    return Get-ChildItem -Path $chronoDllSource -Filter "*.dll" -ErrorAction SilentlyContinue
-}
-
-function Show-ErrorHelp {
-    Write-Section "Troubleshooting Guide"
-    Write-Host "[WRENCH] Common build issues and solutions:" -ForegroundColor Yellow
-    
-    Write-Host ""
-    Write-Host "[WARN] Runtime library mismatch:" -ForegroundColor Yellow
-    Write-Host "   - Ensure Chrono and HydroChrono use the same runtime library" -ForegroundColor White
-    Write-Host "   - Try rebuilding Chrono with the same settings" -ForegroundColor White
-    
-    Write-Host ""
-    Write-Host "[WARN] Missing dependencies:" -ForegroundColor Yellow
-    Write-Host "   - Check that HDF5, Eigen3, and Irrlicht are properly installed" -ForegroundColor White
-    Write-Host "   - Verify all paths in the build script are correct" -ForegroundColor White
-    
-    Write-Host ""
-    Write-Host "[WARN] Visual Studio issues:" -ForegroundColor Yellow
-    Write-Host "   - Ensure Visual Studio 2022 is installed with C++ tools" -ForegroundColor White
-    Write-Host "   - Try running from a Developer Command Prompt" -ForegroundColor White
-    
-    Write-Host ""
-    Write-Host "[INFO] Try these commands:" -ForegroundColor Blue
-    Write-Host "   .\build.ps1 -Clean                    # Clean rebuild" -ForegroundColor White
-    Write-Host "   .\build.ps1 -Verbose                  # Detailed output" -ForegroundColor White
-    Write-Host "   .\build.ps1 -BuildType Debug         # Debug build" -ForegroundColor White
-    
-    Write-Host ""
-    Write-Host "[LINK] For additional support, check the documentation or open an issue" -ForegroundColor Blue
-}
-
-function Package-Artifacts {
-    Write-Section "Packaging Installables"
-    $installPrefix = Join-Path (Get-Location) "install"
-    if (-not (Test-Path $installPrefix)) {
-        New-Item -ItemType Directory -Path $installPrefix | Out-Null
-    }
-    Write-Info "Install prefix: $installPrefix"
-    
-    Write-Subsection "Installing to prefix"
-    if ($Verbose) {
-        cmake --install . --config $BuildType --prefix "$installPrefix"
-    } else {
-        cmake --install . --config $BuildType --prefix "$installPrefix" 2>&1 | Out-Null
-    }
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "cmake --install failed"
-        exit 4
-    }
-
-    # Sync additional Chrono DLLs into install\bin (e.g., yaml-cpp.dll)
-    try {
-        $chronoRoot = Split-Path -Path $Config.ChronoDir -Parent | Split-Path -Parent
-        $chronoDllSource = Join-Path $chronoRoot "build\bin\$BuildType"
-        $installBin = Join-Path $installPrefix "bin"
-        if (Test-Path $chronoDllSource) {
-            Write-Subsection "Copying additional DLLs to install\\bin"
-            Get-ChildItem -Path $chronoDllSource -Filter "*.dll" -ErrorAction SilentlyContinue | ForEach-Object {
-                $dest = Join-Path $installBin $_.Name
-                if (-not (Test-Path $dest)) {
-                    Copy-Item -Path $_.FullName -Destination $dest -Force -ErrorAction SilentlyContinue
-                }
-            }
-        }
-        # Copy HDF5 runtime DLLs into install\bin
-        $hdf5Root = $Config.Hdf5Dir
-        if ($hdf5Root -match "share\\cmake" -or $hdf5Root -match "share/cmake") {
-            $hdf5Root = Split-Path -Parent (Split-Path -Parent $hdf5Root)
-        }
-        $hdf5Bin = Join-Path $hdf5Root "bin"
-        if (Test-Path $hdf5Bin) {
-            Write-Info "Copying HDF5 DLLs from: $hdf5Bin"
-            $hdf5Count = 0
-            Get-ChildItem -Path $hdf5Bin -Filter "*.dll" -ErrorAction SilentlyContinue | ForEach-Object {
-                $dest = Join-Path $installBin $_.Name
-                Copy-Item -Path $_.FullName -Destination $dest -Force -ErrorAction SilentlyContinue
-                $hdf5Count++
-            }
-            Write-Info "Copied $hdf5Count HDF5 DLL(s)"
-        } else {
-            Write-Warning "HDF5 bin directory not found: $hdf5Bin"
-        }
-        
-        # Copy Irrlicht DLL
-        $irrlichtDll = Join-Path $Config.IrrlichtDir "bin\Win64-VisualStudio\Irrlicht.dll"
-        if (Test-Path $irrlichtDll) {
-            Copy-Item -Path $irrlichtDll -Destination $installBin -Force -ErrorAction SilentlyContinue
-            Write-Info "Copied Irrlicht.dll"
-        } else {
-            Write-Warning "Irrlicht.dll not found at: $irrlichtDll"
-        }
-        # Also copy DLLs from this project's build bin (Release/Debug) into install\bin
-        $hcDllSource = Join-Path (Get-Location) "bin\$BuildType"
-        if (Test-Path $hcDllSource) {
-            Get-ChildItem -Path $hcDllSource -Filter "*.dll" -ErrorAction SilentlyContinue | ForEach-Object {
-                $dest = Join-Path $installBin $_.Name
-                if (-not (Test-Path $dest)) {
-                    Copy-Item -Path $_.FullName -Destination $dest -Force -ErrorAction SilentlyContinue
-                }
-            }
-        }
-        # Explicit fallback for yaml-cpp.dll
-        $yamlDest = Join-Path $installBin "yaml-cpp.dll"
-        if (-not (Test-Path $yamlDest)) {
-            $yamlCandidates = @(
-                (Join-Path $hcDllSource "yaml-cpp.dll"),
-                (Join-Path $chronoDllSource "yaml-cpp.dll")
-            )
-            foreach ($c in $yamlCandidates) {
-                if ($c -and (Test-Path $c)) {
-                    Copy-Item -Path $c -Destination $yamlDest -Force -ErrorAction SilentlyContinue
-                    break
-                }
-            }
-        }
-        # Copy Chrono visual assets (skybox, colormaps)
-        $chronoData = Join-Path $chronoRoot "build\bin\data"
-        $destDataChrono = Join-Path $installPrefix "data\chrono"
-        if (Test-Path $chronoData) {
-            New-Item -ItemType Directory -Force -Path $destDataChrono | Out-Null
-            foreach ($dir in @("skybox","colormaps")) {
-                $src = Join-Path $chronoData $dir
-                if (Test-Path $src) {
-                    Copy-Item -Recurse -Force -Path $src -Destination $destDataChrono -ErrorAction SilentlyContinue
-                }
-            }
-        }
-    } catch {}
-
-    Write-Subsection "Creating ZIP via CPack"
-    $cpackConfig = Resolve-Path (Join-Path (Get-Location) "CPackConfig.cmake")
-    if ($Verbose) {
-        cpack -C $BuildType --config "$cpackConfig"
-    } else {
-        cpack -C $BuildType --config "$cpackConfig" 2>&1 | Out-Null
-    }
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "CPack failed"
-        exit 4
-    }
-    Write-Success "Packaging completed"
-}
-
-# =============================================================================
-# Main Execution
-# =============================================================================
 
 try {
-    # Start logging if requested
-    if ($LogFile -ne "") {
-        Start-Transcript -Path $LogFile -Append
-        Write-Host "[FILE] Build log: $LogFile" -ForegroundColor Blue
+    $config = Get-Content -Path $ConfigPath -Raw | ConvertFrom-Json
+    $ChronoDir = $config.ChronoDir
+    $PythonRoot = $config.PythonRoot
+} catch {
+    Write-Fail "Failed to parse config: $($_.Exception.Message)"
+    exit 1
+}
+
+if (-not $ChronoDir) {
+    Write-Fail "ChronoDir not set in config file"
+    exit 1
+}
+
+if (-not (Test-Path $ChronoDir)) {
+    Write-Fail "Chrono not found: $ChronoDir"
+    exit 1
+}
+
+Write-OK "Chrono: $ChronoDir"
+
+# =============================================================================
+# Check Chrono Configuration & Auto-Detect Features
+# =============================================================================
+
+Write-Step "Detecting Chrono features"
+
+$chronoConfig = Join-Path $ChronoDir "chrono-config.cmake"
+if (-not (Test-Path $chronoConfig)) {
+    Write-Fail "chrono-config.cmake not found"
+    exit 1
+}
+
+$chronoContent = Get-Content $chronoConfig -Raw
+
+# Auto-detect available modules
+$hasIrrlicht = $chronoContent -match 'Chrono_IRRLICHT_AVAILABLE\s+ON'
+$hasVSG = $chronoContent -match 'Chrono_VSG_AVAILABLE\s+ON'
+$hasHDF5 = $chronoContent -match 'CHRONO_HDF5_AVAILABLE\s+TRUE'
+
+# Enable features by default if Chrono has them (unless user disabled)
+$useIrrlicht = $hasIrrlicht -and (-not $NoIrrlicht)
+$useVSG = $hasVSG -and (-not $NoVSG)
+
+Write-Detail "Irrlicht: $(if($hasIrrlicht){if($useIrrlicht){'ON'}else{'OFF (disabled)'}}else{'not available'})"
+Write-Detail "VSG: $(if($hasVSG){if($useVSG){'ON'}else{'OFF (disabled)'}}else{'not available'})"
+Write-Detail "HDF5: $(if($hasHDF5){'available'}else{'not available'})"
+
+if (-not $hasHDF5) {
+    Write-Warn "Chrono built without HDF5 - build may fail"
+}
+
+# =============================================================================
+# Check CMake
+# =============================================================================
+
+Write-Step "Checking tools"
+
+try {
+    $cmakeVer = (cmake --version | Select-Object -First 1) -replace 'cmake version ',''
+    Write-OK "CMake $cmakeVer"
+} catch {
+    Write-Fail "CMake not found"
+    exit 1
+}
+
+# =============================================================================
+# Clean
+# =============================================================================
+
+if ($Clean -and (Test-Path ".\build")) {
+    Write-Step "Cleaning"
+    Remove-Item -Recurse -Force .\build
+    Write-OK "Build directory removed"
+}
+
+# =============================================================================
+# Configure
+# =============================================================================
+
+Write-Step "Configuring"
+
+if (-not (Test-Path ".\build")) {
+    New-Item -ItemType Directory -Path build | Out-Null
+}
+
+$cmakeArgs = @(
+    "-S", ".",
+    "-B", "build",
+    "-G", "Visual Studio 17 2022",
+    "-A", "x64",
+    "-DChrono_DIR=`"$($ChronoDir -replace '\\','/')`"",
+    "-DHYDROCHRONO_ENABLE_YAML_RUNNER=ON",
+    "-DHYDROCHRONO_ENABLE_TESTS=$(if($NoTests){'OFF'}else{'ON'})",
+    "-DHYDROCHRONO_ENABLE_DEMOS=$(if($NoDemos){'OFF'}else{'ON'})",
+    "-DHYDROCHRONO_ENABLE_IRRLICHT=$(if($useIrrlicht){'ON'}else{'OFF'})",
+    "-DHYDROCHRONO_ENABLE_VSG=$(if($useVSG){'ON'}else{'OFF'})",
+    "-DCMAKE_BUILD_TYPE=$BuildType"
+)
+
+# Add Python if specified
+if ($PythonRoot -and (Test-Path $PythonRoot)) {
+    $cmakeArgs += "-DPython3_ROOT_DIR=`"$($PythonRoot -replace '\\','/')`""
+}
+
+# Get Irrlicht path from Chrono if needed
+if ($useIrrlicht) {
+    if ($chronoContent -match 'Irrlicht_INCLUDE_DIR\s+"([^"]+)"') {
+        $cmakeArgs += "-DIrrlicht_INCLUDE_DIR=`"$($Matches[1])`""
     }
-    
-    if ($Help) {
-        Show-Help
+    if ($chronoContent -match 'set\(Irrlicht_LIBRARY\s+"([^"]+)"') {
+        $irrlichtRoot = Split-Path (Split-Path (Split-Path $Matches[1])) 
+        $cmakeArgs += "-DIrrlicht_ROOT=`"$($irrlichtRoot -replace '\\','/')`""
     }
-    
-    Write-Header "HydroChrono Build System v$SCRIPT_VERSION"
-    Write-Host "[BUILD] Initializing hydrodynamics simulation framework" -ForegroundColor Cyan
-    
-    # Validate parameters
-    if (-not (Validate-Parameters -YamlRunner $YamlRunner -BuildType $BuildType)) {
-        Write-Host "Use -Help for usage information" -ForegroundColor Yellow
-        exit 1
-    }
-    
-    # Validate configuration paths
-    Test-ConfigurationPaths | Out-Null
-    
-    # Show configuration
-    Write-Section "Build Configuration"
-    Write-Info "YAML Runner: $YamlRunner"
-    Write-Info "Build Type:  $BuildType"
-    Write-Info "Clean Build: $Clean"
-    Write-Info "Verbose:     $Verbose"
-    Write-Info "Tests:       $([bool](-not $NoTests))"
-    
-    # Check dependencies
-    if (-not (Test-Dependencies)) {
-        Write-Error "Dependency check failed"
-        exit 2
-    }
-    
-    # Clean if requested
-    if ($Clean) {
-        if (-not (Clean-BuildDirectory)) {
-            Write-Error "Failed to clean build directory"
-            exit 1
+}
+
+Write-Detail "Build: $BuildType | Tests: $(if($NoTests){'OFF'}else{'ON'}) | Demos: $(if($NoDemos){'OFF'}else{'ON'})"
+
+if ($Verbose) {
+    cmake @cmakeArgs
+} else {
+    $null = cmake @cmakeArgs 2>&1
+}
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Fail "CMake failed"
+    Write-Host "   Run with -Verbose for details" -ForegroundColor Yellow
+    exit 1
+}
+
+Write-OK "Configuration complete"
+
+# =============================================================================
+# Build
+# =============================================================================
+
+Write-Step "Building"
+
+$t0 = Get-Date
+
+if ($Verbose) {
+    cmake --build build --config $BuildType
+} else {
+    $null = cmake --build build --config $BuildType 2>&1
+}
+
+$buildSecs = [math]::Round(((Get-Date) - $t0).TotalSeconds, 1)
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Fail "Build failed"
+    Write-Host "   Run with -Verbose for details" -ForegroundColor Yellow
+    exit 1
+}
+
+Write-OK "Built in $buildSecs seconds"
+
+# =============================================================================
+# Copy Third-Party DLLs (Irrlicht - not handled by Chrono's DLL copy command)
+# =============================================================================
+
+$binPath = ".\build\bin\$BuildType"
+
+if ($useIrrlicht) {
+    # Get Irrlicht DLL path from Chrono config
+    if ($chronoContent -match 'Irrlicht_DLL\s+"([^"]+)"') {
+        $irrlichtDll = $Matches[1]
+        if (Test-Path $irrlichtDll) {
+            $destDll = Join-Path $binPath "Irrlicht.dll"
+            if (-not (Test-Path $destDll)) {
+                Copy-Item $irrlichtDll $destDll -Force
+                Write-OK "Copied Irrlicht.dll"
+            }
         }
     }
+}
+
+# =============================================================================
+# Verify
+# =============================================================================
+$exe = Join-Path $binPath "run_hydrochrono.exe"
+
+if (Test-Path $exe) {
+    $size = [math]::Round((Get-Item $exe).Length / 1MB, 1)
+    Write-OK "run_hydrochrono.exe ($size MB)"
+}
+
+# =============================================================================
+# Package
+# =============================================================================
+
+if ($Package) {
+    Write-Step "Packaging"
     
-    # Initialize build directory
-    if (-not (Initialize-BuildDirectory)) {
-        Write-Error "Failed to initialize build directory"
+    $prefix = ".\build\install"
+    
+    if ($Verbose) {
+        cmake --install build --config $BuildType --prefix $prefix
+    } else {
+        $null = cmake --install build --config $BuildType --prefix $prefix 2>&1
+    }
+    
+    if ($LASTEXITCODE -ne 0) {
+        Write-Fail "Install failed"
         exit 1
     }
     
-    # Configure CMake
-    if (-not (Configure-CMake)) {
-        Write-Error "CMake configuration failed"
-        Show-ErrorHelp
-        exit 3
+    Push-Location build
+    if ($Verbose) { cpack -C $BuildType } else { $null = cpack -C $BuildType 2>&1 }
+    $packResult = $LASTEXITCODE
+    Pop-Location
+    
+    if ($packResult -ne 0) {
+        Write-Fail "CPack failed"
+        exit 1
     }
     
-    # Build project
-    if (-not (Build-Project)) {
-        Write-Error "Build failed"
-        Show-ErrorHelp
-        exit 4
+    $pkg = Get-ChildItem ".\build\HydroChrono-*.zip" -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($pkg) {
+        Write-OK "$($pkg.Name) ($([math]::Round($pkg.Length/1MB, 1)) MB)"
     }
-    
-    # Copy dependencies
-    Copy-ChronoDLLs | Out-Null
-    Copy-HDF5DLLs | Out-Null
-    Copy-IrrlichtDLL | Out-Null
-    
-    # Show summary
-    Show-BuildSummary
-    
-    # Show success summary
-    Show-SuccessSummary -BuildType $BuildType
-    
-    if ($Package) {
-        Package-Artifacts
-    }
-    
-} catch {
-    Write-Error "Unexpected error: $($_.Exception.Message)"
-    Show-ErrorHelp
-    exit 5
-} finally {
-    # Stop logging if it was started
-    if ($LogFile -ne "") {
-        Stop-Transcript
-    }
-} 
+}
+
+# =============================================================================
+# Done
+# =============================================================================
+
+Write-Host "`n========================================" -ForegroundColor Green
+Write-Host "BUILD SUCCESSFUL" -ForegroundColor Green
+Write-Host "========================================`n" -ForegroundColor Green
+
+Write-Host "Output: $binPath" -ForegroundColor Cyan
+Write-Host "Tests:  ctest -C $BuildType -L regression --test-dir build" -ForegroundColor Gray
+Write-Host ""
