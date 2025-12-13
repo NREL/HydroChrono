@@ -41,7 +41,7 @@ std::array<double, 3> rotate_vector_3d(std::array<double, 3> vector,
                                        std::array<double, 3> axis,
                                        double angle_in_degrees) {
     // Convert the angle from degrees to radians
-    double angle_in_radians = angle_in_degrees * M_PI / 180.0;
+    double angle_in_radians = angle_in_degrees * CH_DEG_TO_RAD;
 
     // Normalize the axis vector
     axis = normalize(axis);
@@ -64,7 +64,7 @@ std::array<double, 3> add_vectors(std::array<double, 3> v1, std::array<double, 3
 int main(int argc, char* argv[]) {
     std::vector<double> periods = {4.0,  6.0,  8.0,   10.0, 12.0, 14.0, 16.0, 18.0,
                                    18.5, 19.0, 19.25, 19.5, 20.0, 21.0, 22.0, 24.0};
-    int reg_wave_num_max        = periods.size();
+    int reg_wave_num_max        = (int)periods.size();
 
     for (int reg_wave_num = 1; reg_wave_num <= reg_wave_num_max; ++reg_wave_num) {
         std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
@@ -111,9 +111,8 @@ int main(int argc, char* argv[]) {
         std::array<double, 3> origin_to_hinge = {0, 0, -8.9};
         std::array<double, 3> hinge_to_cg     = {0, 0, 5};
         std::array<double, 3> axis            = {0, 1, 0};
-        double angle_in_degrees               = 0.0;
 
-        // std::array<double, 3> rotated_hinge_to_cg = rotate_vector_3d(hinge_to_cg, axis, angle_in_degrees);
+        // std::array<double, 3> rotated_hinge_to_cg = rotate_vector_3d(hinge_to_cg, axis, 0);
 
         // std::array<double, 3> new_cg = add_vectors(origin_to_hinge, rotated_hinge_to_cg);
 
@@ -142,10 +141,9 @@ int main(int argc, char* argv[]) {
         // define the float's initial conditions
         system.Add(flap_body);
         flap_body->SetName("body1");
-        auto ang_rad = CH_PI / 18.0;
         // flap_body->SetPos(ChVector3d(new_cg[0], new_cg[1], new_cg[2]));
         flap_body->SetPos(ChVector3d(0.0, 0.0, -3.9));
-        // flap_body->SetRot(QuatFromAngleY(ang_rad));
+        // flap_body->SetRot(QuatFromAngleY(CH_PI / 18.0));
         flap_body->SetMass(127000.0);
         flap_body->SetInertiaXX(ChVector3d(1.85e6, 1.85e6, 1.85e6));
         // notes: mass and inertia added to added mass and system mass correctly.

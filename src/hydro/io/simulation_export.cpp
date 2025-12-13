@@ -957,9 +957,9 @@ void SimulationExporter::Finalize() {
         }
     }
     // Final succinct info line in Quiet mode
-    int bodies = static_cast<int>(impl_->bodies.size());
-    int dampers = static_cast<int>(impl_->tsdas.size() + impl_->rsdas.size());
-    int samples = static_cast<int>(impl_->time.size());
+    ////int bodies = static_cast<int>(impl_->bodies.size());
+    ////int dampers = static_cast<int>(impl_->tsdas.size() + impl_->rsdas.size());
+    ////int samples = static_cast<int>(impl_->time.size());
     // meta/run runtime details (if provided via options)
     {
         auto g_run = impl_->writer.RequireGroup("/meta/run");

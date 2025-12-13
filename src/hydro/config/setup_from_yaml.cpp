@@ -8,17 +8,17 @@
 
 #include "setup_from_yaml.h"
 #include "config_loader.h"
-#include <hydroc/hydro_system.h> // For HydroSystem
+#include <hydroc/hydro_system.h>
 #include <hydroc/waves/wave_base.h>
 #include <hydroc/waves/regular_wave.h>
 #include <hydroc/waves/irregular_wave.h>
-#include <hydroc/logging.h>         // For Logger
+#include <hydroc/logging.h>
 #include "../radiation/radiation_rirf_processing.h" // For TaperedDirectOptions (canonical type)
 #include "../force_components/radiation_component.h" // For RadiationConvolutionMode (canonical type)
 #include <filesystem>
 #include <iostream>
 #include <stdexcept>
-#include <cmath> // For M_PI
+#include <cmath>
 #include <unordered_map>
 
 #ifndef M_PI
@@ -49,14 +49,15 @@ std::shared_ptr<WaveBase> CreateWaveFromSettings(const WaveSettings& wave_settin
 
     if (type == "regular") {
         auto regular_wave = std::make_shared<RegularWave>(num_bodies);
-        
+
         // Set wave parameters
-        regular_wave->regular_wave_amplitude_ = wave_settings.height / 2.0;  // Convert height to amplitude
-        regular_wave->regular_wave_omega_ = 2.0 * M_PI / wave_settings.period;  // Convert period to angular frequency
-        regular_wave->regular_wave_phase_ = wave_settings.phase;
-        
-        hydroc::debug::LogDebug(std::string("Attached wave model: RegularWave, H=") + std::to_string(wave_settings.height) + 
-                            "m, T=" + std::to_string(wave_settings.period) + "s");
+        regular_wave->regular_wave_amplitude_ = wave_settings.height / 2;       // Convert height to amplitude
+        regular_wave->regular_wave_omega_     = CH_2PI / wave_settings.period;  // Convert period to angular frequency
+        regular_wave->regular_wave_phase_     = wave_settings.phase;
+
+        hydroc::debug::LogDebug(std::string("Attached wave model: RegularWave, H=") +
+                                std::to_string(wave_settings.height) + "m, T=" + std::to_string(wave_settings.period) +
+                                "s");
         
         return regular_wave;
         
@@ -163,7 +164,7 @@ std::unique_ptr<HydroSystem> SetupHydroFromYAML(
     }
     
     // Create wave object from settings (system-wide, not per-body)
-    auto wave = CreateWaveFromSettings(hydro_data.waves, matched_bodies.size(), 
+    auto wave = CreateWaveFromSettings(hydro_data.waves, (unsigned int) matched_bodies.size(), 
                                       timestep, sim_duration, ramp_duration);
     
     // Create and initialize HydroSystem (multibody: all matched bodies passed in)

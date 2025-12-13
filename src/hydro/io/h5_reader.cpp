@@ -331,7 +331,7 @@ Eigen::VectorXd HydroData::GetRIRFTimeVector() const {
     // check if all time vectors are the same within tolerance
     auto& rirf_time_vector = body_data_[0].rirf_time_vector;
     for (size_t ii = 1; ii < body_data_.size(); ii++) {
-        for (size_t jj = 0; jj < body_data_[ii].rirf_time_vector.size(); jj++) {
+        for (Eigen::Index jj = 0; jj < body_data_[ii].rirf_time_vector.size(); jj++) {
             if (abs(body_data_[ii].rirf_time_vector[jj] - rirf_time_vector[jj]) > tol) {
                 throw std::runtime_error(
                     "RIRF time vectors have to be exactly the same for all bodies. Difference found in body " +

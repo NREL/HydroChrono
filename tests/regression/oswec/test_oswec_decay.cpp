@@ -41,7 +41,7 @@ std::array<double, 3> rotate_vector_3d(std::array<double, 3> vector,
                                        std::array<double, 3> axis,
                                        double angle_in_degrees) {
     // Convert the angle from degrees to radians
-    double angle_in_radians = angle_in_degrees * M_PI / 180.0;
+    double angle_in_radians = angle_in_degrees * CH_DEG_TO_RAD;
 
     // Normalize the axis vector
     axis = normalize(axis);

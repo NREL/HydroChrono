@@ -24,7 +24,7 @@ int main(int argc, char* argv[]) {
                                       0.897597901, 0.785398163, 0.698131701, 0.628318531, 0.571198664};
     double task10_damping_coeffs[] = {398736.034, 118149.758, 90080.857,  161048.558, 322292.419,
                                       479668.979, 633979.761, 784083.286, 932117.647, 1077123.445};
-    int reg_wave_num_max           = task10_wave_amps.size();
+    int reg_wave_num_max           = (int)task10_wave_amps.size();
 
     std::cout << "Num waves: " << reg_wave_num_max << std::endl;
 

@@ -152,11 +152,11 @@ double IrregularWaves::GetElevation(const Eigen::Vector3d& position, double time
 Eigen::VectorXd IrregularWaves::GetForceAtTime(double t) {
     unsigned int total_dofs = params_.num_bodies_ * 6;
     Eigen::VectorXd f(total_dofs);
-    for (int i = 0; i < total_dofs; i++) {
+    for (unsigned int i = 0; i < total_dofs; i++) {
         f[i] = 0.0;
     }
 
-    for (int body = 0; body < params_.num_bodies_; body++) {
+    for (unsigned int body = 0; body < params_.num_bodies_; body++) {
         for (int dof = 0; dof < 6; ++dof) {
             double f_dof          = ExcitationConvolution(body, dof, t);
             unsigned int b_offset = body * 6;
@@ -281,7 +281,7 @@ void IrregularWaves::CreateFreeSurfaceElevation() {
 void IrregularWaves::ResampleIRF(double dt) {
     for (unsigned int b = 0; b < params_.num_bodies_; b++) {
         auto& time_array  = ex_irf_time_sampled_[b];
-        auto& width_array = ex_irf_width_sampled_[b];
+        ////auto& width_array = ex_irf_width_sampled_[b];
         auto& val_array   = ex_irf_sampled_[b];
 
         auto time_array_old = time_array;
@@ -331,12 +331,11 @@ double IrregularWaves::ExcitationConvolution(int body, int dof, double time) {
     } else if (t_tau >= tmax) {
         idx = static_cast<int>(free_surface_time_sampled_.size()) - 2;
     } else {
-        idx = get_lower_index(t_tau, free_surface_time_sampled_);
+        idx = (int)get_lower_index(t_tau, free_surface_time_sampled_);
     }
 
-    for (size_t j = 0; j < irf_time_array.size(); ++j) {
-        double tau   = irf_time_array[j];
-        double t_tau = time - tau;
+    for (Eigen::Index j = 0; j < irf_time_array.size(); ++j) {
+        t_tau = time - irf_time_array[j];
         if (tmin <= t_tau && t_tau <= tmax) {
             while (free_surface_time_sampled_[idx] > t_tau) {
                 idx -= 1;
@@ -357,8 +356,9 @@ double IrregularWaves::ExcitationConvolution(int body, int dof, double time) {
                 auto w2   = 1.0 - w1;
                 eta_val   = w1 * eta1 + w2 * eta2;
             } else {
-                throw std::runtime_error("Excitation convolution: wrong tau value " + std::to_string(tau) +
-                                         " not between " + std::to_string(t1) + " and " + std::to_string(t2) + ".");
+                throw std::runtime_error("Excitation convolution: wrong tau value " +
+                                         std::to_string(irf_time_array[j]) + " not between " + std::to_string(t1) +
+                                         " and " + std::to_string(t2) + ".");
             }
 
             f_ex += irf_val_mat(dof, j) * eta_val * irf_width_array[j];

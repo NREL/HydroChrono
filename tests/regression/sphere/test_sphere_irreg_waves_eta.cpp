@@ -167,7 +167,7 @@ int main(int argc, char* argv[]) {
 
         // MODIFIED SECTION: Use ETA file instead of regular wave parameters
         IrregularWaveParams wave_inputs;
-        wave_inputs.num_bodies_          = bodies.size();
+        wave_inputs.num_bodies_          = (unsigned int)bodies.size();
         wave_inputs.simulation_dt_       = timestep;
         wave_inputs.simulation_duration_ = simulationDuration;
         wave_inputs.ramp_duration_       = 0.0;  // Changed from 60.0
@@ -216,7 +216,7 @@ int main(int argc, char* argv[]) {
         // Create a visualization material
         auto fse_texture = chrono_types::make_shared<ChVisualMaterial>();
         fse_texture->SetDiffuseColor(ChColor(0.026f, 0.084f, 0.168f));
-        fse_texture->SetOpacity(0.1);
+        fse_texture->SetOpacity(0.1f);
         fse_mesh->GetVisualShape(0)->SetMaterial(0, fse_texture);
 
         // for profiling
