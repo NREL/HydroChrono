@@ -228,7 +228,7 @@ int main(int argc, char* argv[]) {
         outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(16)
                    << "Flap Rotation y (radians)" << std::right << std::setw(16) << "Flap Rotation y (degrees)"
                    << std::endl;
-        for (int i = 0; i < time_vector.size(); ++i)
+        for (size_t i = 0; i < time_vector.size(); ++i)
             outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
                        << std::right << std::setw(16) << std::setprecision(4) << std::fixed << flap_rot[i] << std::right
                        << std::setw(16) << std::setprecision(4) << std::fixed << flap_rot[i] * 360.0 / 6.28

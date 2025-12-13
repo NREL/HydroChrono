@@ -232,7 +232,7 @@ HydroSystem::HydroSystem(std::vector<std::shared_ptr<ChBody>> user_bodies,
                      std::string h5_file_name,
                      std::shared_ptr<WaveBase> waves)
     : bodies_(user_bodies),
-      num_bodies_(bodies_.size()),
+      num_bodies_(static_cast<int>(bodies_.size())),
       file_info_(H5FileInfo(h5_file_name, num_bodies_).ReadH5Data()),
       hydro_forces_(nullptr),
       chrono_coupler_(nullptr),
@@ -244,7 +244,7 @@ HydroSystem::HydroSystem(std::vector<std::shared_ptr<ChBody>> user_bodies,
     rirf_time_vector = file_info_.GetRIRFTimeVector();
     // width array
     rirf_width_vector.resize(rirf_time_vector.size());
-    for (int ii = 0; ii < rirf_width_vector.size(); ii++) {
+    for (Eigen::Index ii = 0; ii < rirf_width_vector.size(); ii++) {
         rirf_width_vector[ii] = 0.0;
         if (ii < rirf_time_vector.size() - 1) {
             rirf_width_vector[ii] += 0.5 * abs(rirf_time_vector[ii + 1] - rirf_time_vector[ii]);
@@ -547,9 +547,8 @@ void HydroSystem::EnsureHydroForcesAndCoupler() {
 // CoordinateFuncForBody(). The main force path now goes through HydroForces.
 std::vector<double> HydroSystem::ComputeForceRadiationDampingConv() {
     auto __t0 = std::chrono::steady_clock::now();
-    const int total_dofs = kDofPerBody * num_bodies_;
 
-    assert(total_dofs > 0);
+    assert(kDofPerBody * num_bodies_ > 0);
 
     // Ensure radiation component exists with current settings
     EnsureRadiationComponent();
@@ -603,7 +602,6 @@ double HydroSystem::GetRIRFval(int row, int col, int st) {
     }
 
     int body_index = row / kDofPerBody;
-    int col_dof    = col % kDofPerBody;
     int row_dof    = row % kDofPerBody;
 
     if (convolution_mode_ == hydrochrono::hydro::RadiationConvolutionMode::TaperedDirect) {

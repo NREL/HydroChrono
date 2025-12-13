@@ -65,7 +65,7 @@ std::vector<double> IrregularWaves::GetFreeSurfaceTime() const {
 
 std::vector<double> IrregularWaves::GetFrequenciesHz() const {
     std::vector<double> out(spectrum_frequencies_.size());
-    for (int i = 0; i < spectrum_frequencies_.size(); ++i) {
+    for (Eigen::Index i = 0; i < spectrum_frequencies_.size(); ++i) {
         out[i] = spectrum_frequencies_[i];
     }
     return out;
@@ -148,11 +148,11 @@ double IrregularWaves::GetElevation(const Eigen::Vector3d& position, double time
 Eigen::VectorXd IrregularWaves::GetForceAtTime(double t) {
     unsigned int total_dofs = params_.num_bodies_ * 6;
     Eigen::VectorXd f(total_dofs);
-    for (int i = 0; i < total_dofs; i++) {
+    for (unsigned int i = 0; i < total_dofs; i++) {
         f[i] = 0.0;
     }
 
-    for (int body = 0; body < params_.num_bodies_; body++) {
+    for (unsigned int body = 0; body < params_.num_bodies_; body++) {
         for (int dof = 0; dof < 6; ++dof) {
             double f_dof          = ExcitationConvolution(body, dof, t);
             unsigned int b_offset = body * 6;
@@ -226,7 +226,7 @@ void IrregularWaves::CreateSpectrum() {
 void IrregularWaves::CreateFreeSurfaceElevation() {
     double t_irf_min = 0.0;
     double t_irf_max = 0.0;
-    for (auto ii = 0; ii < ex_irf_time_sampled_.size(); ii++) {
+    for (size_t ii = 0; ii < ex_irf_time_sampled_.size(); ii++) {
         if (ex_irf_time_sampled_[ii][0] < t_irf_min) {
             t_irf_min = ex_irf_time_sampled_[ii][0];
         }
@@ -246,7 +246,7 @@ void IrregularWaves::CreateFreeSurfaceElevation() {
 
     free_surface_time_sampled_.resize(time_array.size());
     Eigen::VectorXd::Map(&free_surface_time_sampled_[0], time_array.size()) = time_array;
-    for (int ii = 0; ii < free_surface_time_sampled_.size(); ii++) {
+    for (size_t ii = 0; ii < free_surface_time_sampled_.size(); ii++) {
         free_surface_time_sampled_[ii] += -t_irf_max;
     }
 
@@ -276,9 +276,9 @@ void IrregularWaves::CreateFreeSurfaceElevation() {
 
 void IrregularWaves::ResampleIRF(double dt) {
     for (unsigned int b = 0; b < params_.num_bodies_; b++) {
-        auto& time_array  = ex_irf_time_sampled_[b];
-        auto& width_array = ex_irf_width_sampled_[b];
-        auto& val_array   = ex_irf_sampled_[b];
+        auto& time_array = ex_irf_time_sampled_[b];
+        // Note: width_array is recalculated by CalculateWidthIRF() below
+        auto& val_array  = ex_irf_sampled_[b];
 
         auto time_array_old = time_array;
 
@@ -320,17 +320,17 @@ double IrregularWaves::ExcitationConvolution(int body, int dof, double time) {
 
     auto tmin = free_surface_time_sampled_.front();
     auto tmax = free_surface_time_sampled_.back();
-    double t_tau = time - irf_time_array[0];
-    int idx      = 0;
-    if (t_tau <= tmin) {
+    double t_tau_init = time - irf_time_array[0];
+    int idx           = 0;
+    if (t_tau_init <= tmin) {
         idx = 0;
-    } else if (t_tau >= tmax) {
+    } else if (t_tau_init >= tmax) {
         idx = static_cast<int>(free_surface_time_sampled_.size()) - 2;
     } else {
-        idx = get_lower_index(t_tau, free_surface_time_sampled_);
+        idx = static_cast<int>(get_lower_index(t_tau_init, free_surface_time_sampled_));
     }
 
-    for (size_t j = 0; j < irf_time_array.size(); ++j) {
+    for (Eigen::Index j = 0; j < irf_time_array.size(); ++j) {
         double tau   = irf_time_array[j];
         double t_tau = time - tau;
         if (tmin <= t_tau && t_tau <= tmax) {

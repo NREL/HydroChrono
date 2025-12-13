@@ -166,7 +166,7 @@ int main(int argc, char* argv[]) {
         std::ofstream outputFile(out_dir + "/decay.txt");
         outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(16) << "Float Heave (m)"
                    << std::right << std::setw(16) << "Plate Heave (m)" << std::endl;
-        for (int i = 0; i < time_vector.size(); ++i)
+        for (size_t i = 0; i < time_vector.size(); ++i)
             outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
                        << std::right << std::setw(16) << std::setprecision(8) << std::fixed << float_heave_position[i]
                        << std::right << std::setw(16) << std::setprecision(8) << std::fixed << plate_heave_position[i]

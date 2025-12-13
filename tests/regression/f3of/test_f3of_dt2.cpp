@@ -211,7 +211,7 @@ int main(int argc, char* argv[]) {
             outputFile
                 << "Time (s)    Base Surge (m)Base Pitch (radians)Flap Fore Pitch (radians)Flap Aft Pitch (radians)"
                 << std::endl;
-            for (int i = 0; i < time_vector.size(); i++) {
+            for (size_t i = 0; i < time_vector.size(); i++) {
                 outputFile << std::fixed << std::setprecision(4) << time_vector[i] << "                "
                            << base_surge[i] << "         " << base_pitch[i] << "         " << fore_pitch[i]
                            << "          " << aft_pitch[i] << std::endl;

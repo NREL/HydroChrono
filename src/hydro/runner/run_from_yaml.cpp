@@ -381,7 +381,9 @@ int RunHydroChronoFromYAML(int argc, char* argv[]) {
         log_cfg.console_level = debug_mode ? hydroc::LogLevel::Debug
                                            : hydroc::LogLevel::Info;
         log_cfg.file_level = hydroc::LogLevel::Debug;
-        hydroc::Initialize(log_cfg);
+        if (!hydroc::Initialize(log_cfg)) {
+            std::cerr << "Warning: Failed to initialize logging system\n";
+        }
         hydroc::cli::ShowBanner();
 
         // ---------------------------------------------------------------------

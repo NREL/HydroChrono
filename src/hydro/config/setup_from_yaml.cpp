@@ -163,7 +163,8 @@ std::unique_ptr<HydroSystem> SetupHydroFromYAML(
     }
     
     // Create wave object from settings (system-wide, not per-body)
-    auto wave = CreateWaveFromSettings(hydro_data.waves, matched_bodies.size(), 
+    auto wave = CreateWaveFromSettings(hydro_data.waves, 
+                                      static_cast<unsigned int>(matched_bodies.size()), 
                                       timestep, sim_duration, ramp_duration);
     
     // Create and initialize HydroSystem (multibody: all matched bodies passed in)
