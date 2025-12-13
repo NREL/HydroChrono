@@ -430,7 +430,7 @@ target_compile_definitions(HydroChrono
         "HYDROCHRONO_VERSION=\"${PROJECT_VERSION}\""
         "HYDROCHRONO_BUILD_TYPE=\"$<IF:$<CONFIG:Debug>,Debug,$<IF:$<CONFIG:Release>,Release,$<IF:$<CONFIG:RelWithDebInfo>,RelWithDebInfo,$<IF:$<CONFIG:MinSizeRel>,MinSizeRel,Unknown>>>>\""
     PRIVATE 
-        $<$<BOOL:${HYDROCHRONO_ENABLE_LOGGING}>:"HYDROCHRONO_ENABLE_LOGGING=1">
+        $<$<BOOL:${HYDROCHRONO_ENABLE_LOGGING}>:HYDROCHRONO_ENABLE_LOGGING="1">
 )
 
 # ===============================================================================
