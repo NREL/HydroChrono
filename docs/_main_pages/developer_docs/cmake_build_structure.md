@@ -47,11 +47,11 @@ Banner comments separate sections so it’s easy to navigate and reason about ch
 
 ## 3) User Options (feature toggles)
 
-- `HYDROCHRONO_ENABLE_TESTS`
-- `HYDROCHRONO_ENABLE_IRRLICHT`
-- `HYDROCHRONO_ENABLE_DEMOS`
-- `HYDROCHRONO_ENABLE_YAML_RUNNER`
-- `HYDROCHRONO_ENABLE_LOGGING`, `HYDROCHRONO_ENABLE_USER_DOC`, `HYDROCHRONO_ENABLE_PROG_DOC`
+- `HYDROCHRONO_ENABLE_TESTS` - Enable test targets
+- `HYDROCHRONO_ENABLE_IRRLICHT` - Enable Irrlicht visualization
+- `HYDROCHRONO_ENABLE_VSG` - Enable VSG visualization
+- `HYDROCHRONO_ENABLE_DEMOS` - Enable demo executables
+- `HYDROCHRONO_ENABLE_YAML_RUNNER` - Enable YAML-based CLI runner
 
 Enable lean builds (e.g., CI) or developer variants.
 

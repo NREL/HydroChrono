@@ -76,13 +76,10 @@ endif()
 # ===============================================================================
 
 option(HYDROCHRONO_ENABLE_TESTS "Enable tests" ON)
-option(HYDROCHRONO_ENABLE_IRRLICHT "Enable irrlicht visualization library" OFF)
+option(HYDROCHRONO_ENABLE_IRRLICHT "Enable Irrlicht visualization library" OFF)
 option(HYDROCHRONO_ENABLE_VSG "Enable VSG visualization library" OFF)
 option(HYDROCHRONO_ENABLE_DEMOS "Enable demo executables" OFF)
 option(HYDROCHRONO_ENABLE_YAML_RUNNER "Enable YAML-based CLI runner" OFF)
-option(HYDROCHRONO_ENABLE_USER_DOC "User's documentation" OFF)
-option(HYDROCHRONO_ENABLE_PROG_DOC "Programmer's documentation" OFF)
-option(HYDROCHRONO_ENABLE_LOGGING "Enable debug logging" OFF)
 
 # Irrlicht hints (used by Chrono's Irrlicht module and by HydroChronoGUI directly)
 set(Irrlicht_ROOT "" CACHE PATH "Irrlicht root directory (contains include/, lib/, bin/)")
@@ -402,8 +399,6 @@ target_compile_definitions(HydroChrono
     PUBLIC
         "HYDROCHRONO_VERSION=\"${PROJECT_VERSION}\""
         "HYDROCHRONO_BUILD_TYPE=\"$<IF:$<CONFIG:Debug>,Debug,$<IF:$<CONFIG:Release>,Release,$<IF:$<CONFIG:RelWithDebInfo>,RelWithDebInfo,$<IF:$<CONFIG:MinSizeRel>,MinSizeRel,Unknown>>>>\""
-    PRIVATE 
-        $<$<BOOL:${HYDROCHRONO_ENABLE_LOGGING}>:"HYDROCHRONO_ENABLE_LOGGING=1">
 )
 
 # ===============================================================================
