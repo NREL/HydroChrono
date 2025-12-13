@@ -35,57 +35,16 @@ if(MSVC)
 endif()
 
 # ===============================================================================
-# -------- Parse Project Metadata ----------------------------------------------
+# -------- Project Metadata ----------------------------------------------------
 # ===============================================================================
 
-# Read and parse project.meta file if present; otherwise provide sensible defaults
-if(EXISTS "${CMAKE_SOURCE_DIR}/project.meta")
-    file(READ "${CMAKE_SOURCE_DIR}/project.meta" PROJECT_META_CONTENT)
-    string(REPLACE "\n" ";" PROJECT_META_LINES "${PROJECT_META_CONTENT}")
+# Project metadata derived from project() command - single source of truth
+set(HYDROCHRONO_NAME "${PROJECT_NAME}")
+set(HYDROCHRONO_VERSION "${PROJECT_VERSION}")
+set(HYDROCHRONO_DESCRIPTION "${PROJECT_DESCRIPTION}")
 
-    # Parse each line and extract key-value pairs
-    foreach(line ${PROJECT_META_LINES})
-        if(line MATCHES "^([^=]+)=([^=]+)$")
-            string(STRIP "${CMAKE_MATCH_1}" key)
-            string(STRIP "${CMAKE_MATCH_2}" value)
-            if(key STREQUAL "name")
-                set(HYDROCHRONO_NAME "${value}")
-            elseif(key STREQUAL "version")
-                set(HYDROCHRONO_VERSION "${value}")
-            elseif(key STREQUAL "description")
-                set(HYDROCHRONO_DESCRIPTION "${value}")
-            elseif(key STREQUAL "author")
-                set(HYDROCHRONO_AUTHOR "${value}")
-            elseif(key STREQUAL "maintainer")
-                set(HYDROCHRONO_MAINTAINER "${value}")
-            elseif(key STREQUAL "url")
-                set(HYDROCHRONO_URL "${value}")
-            elseif(key STREQUAL "license")
-                set(HYDROCHRONO_LICENSE "${value}")
-            elseif(key STREQUAL "status")
-                set(HYDROCHRONO_STATUS "${value}")
-            endif()
-        endif()
-    endforeach()
-else()
-    # Defaults when meta file is not present
-    set(HYDROCHRONO_NAME "${PROJECT_NAME}")
-    set(HYDROCHRONO_VERSION "${PROJECT_VERSION}")
-    set(HYDROCHRONO_DESCRIPTION "${PROJECT_DESCRIPTION}")
-    set(HYDROCHRONO_AUTHOR "")
-    set(HYDROCHRONO_MAINTAINER "")
-    set(HYDROCHRONO_URL "")
-    set(HYDROCHRONO_LICENSE "")
-    set(HYDROCHRONO_STATUS "")
-endif()
-
-# Display parsed metadata
 message(STATUS "Project: ${HYDROCHRONO_NAME} v${HYDROCHRONO_VERSION}")
 message(STATUS "Description: ${HYDROCHRONO_DESCRIPTION}")
-message(STATUS "Author: ${HYDROCHRONO_AUTHOR}")
-message(STATUS "Maintainer: ${HYDROCHRONO_MAINTAINER}")
-message(STATUS "License: ${HYDROCHRONO_LICENSE}")
-message(STATUS "Status: ${HYDROCHRONO_STATUS}")
 
 # Generate version.h header from template
 configure_file(${CMAKE_SOURCE_DIR}/cmake/version.h.in
@@ -592,7 +551,6 @@ if(HYDROCHRONO_ENABLE_TESTS)
         set(HYDROCHRONO_DATA_DIR "${PROJECT_SOURCE_DIR}/demos")
     endif()
 
-    include(CTest)
     enable_testing()
     
     # Configure test environment with DLL paths
