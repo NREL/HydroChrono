@@ -25,58 +25,26 @@ project(HydroChrono
     LANGUAGES CXX
 )
 
-# ===============================================================================
-# -------- Parse Project Metadata ----------------------------------------------
-# ===============================================================================
-
-# Read and parse project.meta file if present; otherwise provide sensible defaults
-if(EXISTS "${CMAKE_SOURCE_DIR}/project.meta")
-    file(READ "${CMAKE_SOURCE_DIR}/project.meta" PROJECT_META_CONTENT)
-    string(REPLACE "\n" ";" PROJECT_META_LINES "${PROJECT_META_CONTENT}")
-
-    # Parse each line and extract key-value pairs
-    foreach(line ${PROJECT_META_LINES})
-        if(line MATCHES "^([^=]+)=([^=]+)$")
-            string(STRIP "${CMAKE_MATCH_1}" key)
-            string(STRIP "${CMAKE_MATCH_2}" value)
-            if(key STREQUAL "name")
-                set(HYDROCHRONO_NAME "${value}")
-            elseif(key STREQUAL "version")
-                set(HYDROCHRONO_VERSION "${value}")
-            elseif(key STREQUAL "description")
-                set(HYDROCHRONO_DESCRIPTION "${value}")
-            elseif(key STREQUAL "author")
-                set(HYDROCHRONO_AUTHOR "${value}")
-            elseif(key STREQUAL "maintainer")
-                set(HYDROCHRONO_MAINTAINER "${value}")
-            elseif(key STREQUAL "url")
-                set(HYDROCHRONO_URL "${value}")
-            elseif(key STREQUAL "license")
-                set(HYDROCHRONO_LICENSE "${value}")
-            elseif(key STREQUAL "status")
-                set(HYDROCHRONO_STATUS "${value}")
-            endif()
-        endif()
-    endforeach()
-else()
-    # Defaults when meta file is not present
-    set(HYDROCHRONO_NAME "${PROJECT_NAME}")
-    set(HYDROCHRONO_VERSION "${PROJECT_VERSION}")
-    set(HYDROCHRONO_DESCRIPTION "${PROJECT_DESCRIPTION}")
-    set(HYDROCHRONO_AUTHOR "")
-    set(HYDROCHRONO_MAINTAINER "")
-    set(HYDROCHRONO_URL "")
-    set(HYDROCHRONO_LICENSE "")
-    set(HYDROCHRONO_STATUS "")
+# MSVC: CMake may pass "SYSTEM" include directories as external headers (/external:I).
+# Some third-party headers (e.g. Irrlicht) rely on nested quoted includes that can fail
+# intermittently when treated as external headers. Force SYSTEM include dirs to be emitted
+# as normal /I include paths instead.
+if(MSVC)
+    set(CMAKE_INCLUDE_SYSTEM_FLAG_C "/I")
+    set(CMAKE_INCLUDE_SYSTEM_FLAG_CXX "/I")
 endif()
 
-# Display parsed metadata
+# ===============================================================================
+# -------- Project Metadata ----------------------------------------------------
+# ===============================================================================
+
+# Project metadata derived from project() command - single source of truth
+set(HYDROCHRONO_NAME "${PROJECT_NAME}")
+set(HYDROCHRONO_VERSION "${PROJECT_VERSION}")
+set(HYDROCHRONO_DESCRIPTION "${PROJECT_DESCRIPTION}")
+
 message(STATUS "Project: ${HYDROCHRONO_NAME} v${HYDROCHRONO_VERSION}")
 message(STATUS "Description: ${HYDROCHRONO_DESCRIPTION}")
-message(STATUS "Author: ${HYDROCHRONO_AUTHOR}")
-message(STATUS "Maintainer: ${HYDROCHRONO_MAINTAINER}")
-message(STATUS "License: ${HYDROCHRONO_LICENSE}")
-message(STATUS "Status: ${HYDROCHRONO_STATUS}")
 
 # Generate version.h header from template
 configure_file(${CMAKE_SOURCE_DIR}/cmake/version.h.in
@@ -108,13 +76,14 @@ endif()
 # ===============================================================================
 
 option(HYDROCHRONO_ENABLE_TESTS "Enable tests" ON)
-option(HYDROCHRONO_ENABLE_IRRLICHT "Enable irrlicht visualization library" OFF)
+option(HYDROCHRONO_ENABLE_IRRLICHT "Enable Irrlicht visualization library" OFF)
 option(HYDROCHRONO_ENABLE_VSG "Enable VSG visualization library" OFF)
 option(HYDROCHRONO_ENABLE_DEMOS "Enable demo executables" OFF)
 option(HYDROCHRONO_ENABLE_YAML_RUNNER "Enable YAML-based CLI runner" OFF)
-option(HYDROCHRONO_ENABLE_USER_DOC "User's documentation" OFF)
-option(HYDROCHRONO_ENABLE_PROG_DOC "Programmer's documentation" OFF)
-option(HYDROCHRONO_ENABLE_LOGGING "Enable debug logging" OFF)
+
+# Irrlicht hints (used by Chrono's Irrlicht module and by HydroChronoGUI directly)
+set(Irrlicht_ROOT "" CACHE PATH "Irrlicht root directory (contains include/, lib/, bin/)")
+set(Irrlicht_INCLUDE_DIR "" CACHE PATH "Irrlicht include directory (contains irrlicht.h, IEventReceiver.h, etc.)")
 
 # ===============================================================================
 # ------ Build setup ------------------------------------------------------------
@@ -430,8 +399,6 @@ target_compile_definitions(HydroChrono
     PUBLIC
         "HYDROCHRONO_VERSION=\"${PROJECT_VERSION}\""
         "HYDROCHRONO_BUILD_TYPE=\"$<IF:$<CONFIG:Debug>,Debug,$<IF:$<CONFIG:Release>,Release,$<IF:$<CONFIG:RelWithDebInfo>,RelWithDebInfo,$<IF:$<CONFIG:MinSizeRel>,MinSizeRel,Unknown>>>>\""
-    PRIVATE 
-        $<$<BOOL:${HYDROCHRONO_ENABLE_LOGGING}>:"HYDROCHRONO_ENABLE_LOGGING=1">
 )
 
 # ===============================================================================
@@ -467,6 +434,26 @@ target_include_directories(HydroChronoGUI
         "$<BUILD_INTERFACE:${HC_INCLUDES_BUILD}>"
         "$<INSTALL_INTERFACE:include>"
 )
+
+# HydroChronoGUI includes Irrlicht headers directly (e.g., <IEventReceiver.h>).
+# Chrono may expose Irrlicht include dirs as SYSTEM/external includes on MSVC; add a normal /I include path too.
+if(HYDROCHRONO_ENABLE_IRRLICHT)
+    # Derive include dir from Irrlicht_ROOT if caller didn't provide it explicitly.
+    if((NOT Irrlicht_INCLUDE_DIR OR Irrlicht_INCLUDE_DIR STREQUAL "") AND (DEFINED Irrlicht_ROOT AND NOT Irrlicht_ROOT STREQUAL ""))
+        set(Irrlicht_INCLUDE_DIR "${Irrlicht_ROOT}/include" CACHE PATH "Irrlicht include directory (auto-derived from Irrlicht_ROOT)" FORCE)
+    endif()
+
+    if(NOT Irrlicht_INCLUDE_DIR OR Irrlicht_INCLUDE_DIR STREQUAL "" OR NOT EXISTS "${Irrlicht_INCLUDE_DIR}/irrlicht.h")
+        message(FATAL_ERROR "HYDROCHRONO_ENABLE_IRRLICHT is ON but Irrlicht_INCLUDE_DIR is not a valid Irrlicht include directory. Provide -DIrrlicht_INCLUDE_DIR=<IrrlichtRoot>/include (or -DIrrlicht_ROOT=<IrrlichtRoot>).")
+    endif()
+
+    target_include_directories(HydroChronoGUI PUBLIC "${Irrlicht_INCLUDE_DIR}")
+
+    if(MSVC)
+        # Force a normal include search path even if Chrono exports Irrlicht as external headers.
+        target_compile_options(HydroChronoGUI PRIVATE "/I${Irrlicht_INCLUDE_DIR}")
+    endif()
+endif()
 set_target_properties(HydroChronoGUI PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(HydroChronoGUI
     PUBLIC
@@ -559,7 +546,6 @@ if(HYDROCHRONO_ENABLE_TESTS)
         set(HYDROCHRONO_DATA_DIR "${PROJECT_SOURCE_DIR}/demos")
     endif()
 
-    include(CTest)
     enable_testing()
     
     # Configure test environment with DLL paths
