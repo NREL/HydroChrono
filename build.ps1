@@ -417,25 +417,29 @@ function Build-Project {
     Write-Subsection "Compilation Progress"
     $buildStart = Get-Date
     
+    # Run cmake build and capture exit code properly
     if ($Verbose) {
-        $buildResult = cmake --build . --config $BuildType
+        cmake --build . --config $BuildType
+        $exitCode = $LASTEXITCODE
     } else {
+        # Capture output but preserve exit code
         $buildResult = cmake --build . --config $BuildType 2>&1
+        $exitCode = $LASTEXITCODE
     }
     
     $buildEnd = Get-Date
     $buildDuration = $buildEnd - $buildStart
     
-    if ($LASTEXITCODE -eq 0) {
+    if ($exitCode -eq 0) {
         Write-Success "Build completed successfully"
         Write-Info "Build time: $($buildDuration.TotalSeconds.ToString('F1')) seconds"
         return $true
     } else {
         Write-Error "Build failed"
-        if ($Verbose) {
+        if ($Verbose -or $buildResult) {
             Write-Host ""
             Write-Host "    [DEBUG] Build output:" -ForegroundColor Yellow
-            Write-Host $buildResult -ForegroundColor Red
+            if ($buildResult) { Write-Host $buildResult -ForegroundColor Red }
         }
         return $false
     }
@@ -472,7 +476,9 @@ function Copy-ChronoDLLs {
         foreach ($dll in $dllFiles) {
             $destPath = Join-Path $hydrochronoBinDest $dll.Name
             Copy-Item -Path $dll.FullName -Destination $destPath -Force -ErrorAction SilentlyContinue
-            if (Test-Path $destPath) {
+            $exists = $false
+            try { $exists = Test-Path $destPath -ErrorAction SilentlyContinue } catch { $exists = $true }
+            if ($exists) {
                 $copiedCount++
                 if ($Verbose) {
                     Write-Info "Copied: $($dll.Name)"
@@ -523,6 +529,41 @@ function Copy-HDF5DLLs {
         return $true
     } catch {
         Write-Warning "Error during HDF5 DLL copy: $($_.Exception.Message)"
+        return $true
+    }
+}
+
+function Copy-IrrlichtDLL {
+    Write-Section "Copying Irrlicht Runtime DLL"
+    try {
+        $irrlichtRoot = $Config.IrrlichtDir
+        if (-not $irrlichtRoot -or -not (Test-Path $irrlichtRoot -ErrorAction SilentlyContinue)) {
+            Write-Info "Irrlicht directory not configured (skipping)"
+            return $true
+        }
+        $irrlichtDll = Join-Path $irrlichtRoot "bin\Win64-VisualStudio\Irrlicht.dll"
+        if (-not (Test-Path $irrlichtDll -ErrorAction SilentlyContinue)) {
+            Write-Warning "Irrlicht.dll not found at: $irrlichtDll (skipping)"
+            return $true
+        }
+        $destBin = Join-Path (Get-Location) "bin\$BuildType"
+        if (-not (Test-Path $destBin -ErrorAction SilentlyContinue)) {
+            New-Item -ItemType Directory -Path $destBin -Force | Out-Null
+        }
+        $destPath = Join-Path $destBin "Irrlicht.dll"
+        Copy-Item -Path $irrlichtDll -Destination $destPath -Force -ErrorAction SilentlyContinue
+        # Allow brief delay for file system to catch up before checking
+        Start-Sleep -Milliseconds 100
+        $exists = $false
+        try { $exists = Test-Path $destPath -ErrorAction SilentlyContinue } catch { $exists = $true }
+        if ($exists) {
+            Write-Success "Copied Irrlicht.dll to $destBin"
+        } else {
+            Write-Warning "Failed to copy Irrlicht.dll"
+        }
+        return $true
+    } catch {
+        Write-Warning "Error during Irrlicht DLL copy: $($_.Exception.Message)"
         return $true
     }
 }
@@ -601,8 +642,8 @@ function Get-BuildArguments {
     $pythonRoot = ($Config.PythonRoot -replace '\\','/')
     $eigenDir   = ($Config.EigenDir   -replace '\\','/')
     $irrlicht   = ($Config.IrrlichtDir -replace '\\','/')
-    $irrlichtDllWin = Join-Path $Config.IrrlichtDir "bin\Win64-VisualStudio\Irrlicht.dll"
-    $irrlichtDll = ($irrlichtDllWin -replace '\\','/')
+    $irrlichtIncludeWin = Join-Path $Config.IrrlichtDir "include"
+    $irrlichtInclude = ($irrlichtIncludeWin -replace '\\','/')
     $irrlichtFlag = if ($Config.IrrlichtDir -and (Test-Path $Config.IrrlichtDir)) { "ON" } else { "OFF" }
 
     # Deterministic prefix path so our roots win over ambient environment
@@ -631,7 +672,7 @@ function Get-BuildArguments {
         "-DPython3_ROOT_DIR=`"$pythonRoot`"",
         "-DEigen3_DIR=`"$eigenDir`"",
         "-DIrrlicht_ROOT=`"$irrlicht`"",
-        "-DIRRLICHT_DLL_PATH=`"$irrlichtDll`"",
+        "-DIrrlicht_INCLUDE_DIR=`"$irrlichtInclude`"",
         "-DHYDROCHRONO_ENABLE_IRRLICHT=`"$irrlichtFlag`"",
         "-DCMAKE_PREFIX_PATH=`"$prefixPath`"",
         "-DCMAKE_FIND_PACKAGE_PREFER_CONFIG=ON",
@@ -888,6 +929,7 @@ try {
     # Copy dependencies
     Copy-ChronoDLLs | Out-Null
     Copy-HDF5DLLs | Out-Null
+    Copy-IrrlichtDLL | Out-Null
     
     # Show summary
     Show-BuildSummary

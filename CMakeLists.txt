@@ -25,6 +25,15 @@ project(HydroChrono
     LANGUAGES CXX
 )
 
+# MSVC: CMake may pass "SYSTEM" include directories as external headers (/external:I).
+# Some third-party headers (e.g. Irrlicht) rely on nested quoted includes that can fail
+# intermittently when treated as external headers. Force SYSTEM include dirs to be emitted
+# as normal /I include paths instead.
+if(MSVC)
+    set(CMAKE_INCLUDE_SYSTEM_FLAG_C "/I")
+    set(CMAKE_INCLUDE_SYSTEM_FLAG_CXX "/I")
+endif()
+
 # ===============================================================================
 # -------- Parse Project Metadata ----------------------------------------------
 # ===============================================================================
@@ -115,6 +124,10 @@ option(HYDROCHRONO_ENABLE_YAML_RUNNER "Enable YAML-based CLI runner" OFF)
 option(HYDROCHRONO_ENABLE_USER_DOC "User's documentation" OFF)
 option(HYDROCHRONO_ENABLE_PROG_DOC "Programmer's documentation" OFF)
 option(HYDROCHRONO_ENABLE_LOGGING "Enable debug logging" OFF)
+
+# Irrlicht hints (used by Chrono's Irrlicht module and by HydroChronoGUI directly)
+set(Irrlicht_ROOT "" CACHE PATH "Irrlicht root directory (contains include/, lib/, bin/)")
+set(Irrlicht_INCLUDE_DIR "" CACHE PATH "Irrlicht include directory (contains irrlicht.h, IEventReceiver.h, etc.)")
 
 # ===============================================================================
 # ------ Build setup ------------------------------------------------------------
@@ -467,6 +480,26 @@ target_include_directories(HydroChronoGUI
         "$<BUILD_INTERFACE:${HC_INCLUDES_BUILD}>"
         "$<INSTALL_INTERFACE:include>"
 )
+
+# HydroChronoGUI includes Irrlicht headers directly (e.g., <IEventReceiver.h>).
+# Chrono may expose Irrlicht include dirs as SYSTEM/external includes on MSVC; add a normal /I include path too.
+if(HYDROCHRONO_ENABLE_IRRLICHT)
+    # Derive include dir from Irrlicht_ROOT if caller didn't provide it explicitly.
+    if((NOT Irrlicht_INCLUDE_DIR OR Irrlicht_INCLUDE_DIR STREQUAL "") AND (DEFINED Irrlicht_ROOT AND NOT Irrlicht_ROOT STREQUAL ""))
+        set(Irrlicht_INCLUDE_DIR "${Irrlicht_ROOT}/include" CACHE PATH "Irrlicht include directory (auto-derived from Irrlicht_ROOT)" FORCE)
+    endif()
+
+    if(NOT Irrlicht_INCLUDE_DIR OR Irrlicht_INCLUDE_DIR STREQUAL "" OR NOT EXISTS "${Irrlicht_INCLUDE_DIR}/irrlicht.h")
+        message(FATAL_ERROR "HYDROCHRONO_ENABLE_IRRLICHT is ON but Irrlicht_INCLUDE_DIR is not a valid Irrlicht include directory. Provide -DIrrlicht_INCLUDE_DIR=<IrrlichtRoot>/include (or -DIrrlicht_ROOT=<IrrlichtRoot>).")
+    endif()
+
+    target_include_directories(HydroChronoGUI PUBLIC "${Irrlicht_INCLUDE_DIR}")
+
+    if(MSVC)
+        # Force a normal include search path even if Chrono exports Irrlicht as external headers.
+        target_compile_options(HydroChronoGUI PRIVATE "/I${Irrlicht_INCLUDE_DIR}")
+    endif()
+endif()
 set_target_properties(HydroChronoGUI PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(HydroChronoGUI
     PUBLIC
