@@ -84,7 +84,6 @@ double RadiationComponent::GetRIRFval(int row, int col, int st) {
     }
 
     int body_index = row / kDofPerBody;
-    int col_dof    = col % kDofPerBody;
     int row_dof    = row % kDofPerBody;
 
     if (convolution_mode_ == RadiationConvolutionMode::TaperedDirect) {

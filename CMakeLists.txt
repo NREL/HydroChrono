@@ -463,6 +463,14 @@ target_link_libraries(HydroChronoGUI
         $<$<BOOL:${HYDROCHRONO_ENABLE_VSG}>:Chrono::Chrono_vsg>
 )
 
+# Suppress warnings from third-party Irrlicht headers on MSVC.
+# The Irrlicht headers trigger C4458 warnings (x/y hiding member) that we cannot fix.
+# Use /external:I to treat Irrlicht includes as external headers with reduced warning level.
+if(MSVC AND HYDROCHRONO_ENABLE_IRRLICHT AND DEFINED Irrlicht_ROOT)
+    target_include_directories(HydroChronoGUI SYSTEM PUBLIC "${Irrlicht_ROOT}/include")
+    target_compile_options(HydroChronoGUI PRIVATE /external:anglebrackets /external:W0)
+endif()
+
 # ===============================================================================
 # ------- Auxiliary Targets (app, tests, demos) ---------------------------------
 # ===============================================================================

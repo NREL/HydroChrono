@@ -126,7 +126,6 @@ int main(int argc, char* argv[]) {
 
     // Create the spring between body_1 and ground. The spring end points are
     // specified in the body relative frames.
-    double rest_length  = 3.0;
     double spring_coef  = 0.0;
     double damping_coef = 0.0;
     auto spring_1       = chrono_types::make_shared<ChLinkTSDA>();
@@ -297,7 +296,7 @@ int main(int argc, char* argv[]) {
                    //<< std::right << std::setw(18) << "Heave Vel (m/s)"
                    //<< std::right << std::setw(18) << "Heave Force (N)"
                    << std::endl;
-        for (int i = 0; i < time_vector.size(); ++i)
+        for (size_t i = 0; i < time_vector.size(); ++i)
             outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
                        << std::right << std::setw(12) << std::setprecision(4) << std::fixed << heave_position[i]
                        << std::endl;

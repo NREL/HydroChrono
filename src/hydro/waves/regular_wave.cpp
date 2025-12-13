@@ -32,9 +32,9 @@ void RegularWave::AddH5Data(std::vector<HydroData::RegularWaveInfo>& reg_h5_data
 
     double wave_omega_delta = GetOmegaDelta();
     double freq_index_des   = (regular_wave_omega_ / wave_omega_delta) - 1;
-    for (int b = 0; b < num_bodies_; b++) {
+    for (unsigned int b = 0; b < num_bodies_; b++) {
         for (int rowEx = 0; rowEx < 6; rowEx++) {
-            int body_offset = 6 * b;
+            unsigned int body_offset = 6 * b;
             excitation_force_mag_[body_offset + rowEx]   = GetExcitationMagInterp(b, rowEx, 0, freq_index_des);
             excitation_force_phase_[body_offset + rowEx] = GetExcitationPhaseInterp(b, rowEx, 0, freq_index_des);
         }
@@ -78,8 +78,8 @@ double RegularWave::GetElevation(const Eigen::Vector3d& position, double time) {
 Eigen::VectorXd RegularWave::GetForceAtTime(double t) {
     unsigned int dof = num_bodies_ * 6;
     Eigen::VectorXd f(dof);
-    for (int b = 0; b < num_bodies_; b++) {
-        int body_offset = 6 * b;
+    for (unsigned int b = 0; b < num_bodies_; b++) {
+        unsigned int body_offset = 6 * b;
         for (int rowEx = 0; rowEx < 6; rowEx++) {
             f[body_offset + rowEx] = excitation_force_mag_[body_offset + rowEx] * regular_wave_amplitude_ *
                                      std::cos(regular_wave_omega_ * t + excitation_force_phase_[rowEx]);
