@@ -35,14 +35,16 @@ function(build_regression_test TEST_GROUP TEST_NAME MULTIPLE)
    add_test(
        NAME ${TEST_EXE}
        WORKING_DIRECTORY "$<TARGET_FILE_DIR:${TEST_EXE}>"
-       COMMAND ${PROJECT_BINARY_DIR}/bin/${TEST_EXE} --no_gui --no_plot)
+       COMMAND $<TARGET_FILE:${TEST_EXE}> --no_gui --no_plot)
 
+   # Inject HYDROCHRONO_DATA_DIR so tests find demo assets (meshes, H5 files, etc.)
+   # regardless of what the user's shell environment has set.
    set_tests_properties(
        ${TEST_EXE}
        PROPERTIES 
        LABELS "regression;${TEST_GROUP};execute"
        FIXTURES_SETUP ${FIXTURE_FILE}
-       #ENVIRONMENT "${TEST_ENVIRONMENT}"
+       ENVIRONMENT "HYDROCHRONO_DATA_DIR=${HC_BUILD_DATA}"
    )
 
    # Reference comparison test - use the new centralized reference data location

@@ -240,7 +240,7 @@ void H5FileInfo::Init1D(H5::H5File& file, std::string data_name, Eigen::VectorXd
     // read file info into current_pos
     dataset.read(temp, H5::PredType::NATIVE_DOUBLE, mspace1, filespace);
     var.resize(dims[0] * dims[1]);
-    for (int i = 0; i < dims[0] * dims[1]; i++) {
+    for (Eigen::Index i = 0; i < static_cast<Eigen::Index>(dims[0] * dims[1]); i++) {
         var[i] = temp[i];
     }
     dataset.close();
@@ -261,9 +261,9 @@ void H5FileInfo::Init2D(H5::H5File& file, std::string data_name, Eigen::MatrixXd
     dataset.read(temp, H5::PredType::NATIVE_DOUBLE, mspace, filespace);
     // set var here
     var.resize(dims[0], dims[1]);
-    for (int i = 0; i < dims[0]; i++) {
-        for (int j = 0; j < dims[1]; j++) {
-            var(i, j) = temp[i * dims[1] + j];
+    for (Eigen::Index i = 0; i < static_cast<Eigen::Index>(dims[0]); i++) {
+        for (Eigen::Index j = 0; j < static_cast<Eigen::Index>(dims[1]); j++) {
+            var(i, j) = temp[static_cast<hsize_t>(i) * dims[1] + static_cast<hsize_t>(j)];
         }
     }
     dataset.close();
@@ -284,12 +284,12 @@ void H5FileInfo::Init3D(H5::H5File& file, std::string data_name, Eigen::Tensor<d
     // read file info into data_out, a 2d array
     dataset.read(temp, H5::PredType::NATIVE_DOUBLE, mspace, filespace);
     // set var here
-    var.resize((int64_t)dims[0], (int64_t)dims[1], (int64_t)dims[2]);
-    for (int i = 0; i < dims[0]; i++) {
-        for (int j = 0; j < dims[1]; j++) {
-            for (int k = 0; k < dims[2]; k++) {
-                int index    = k + dims[2] * (j + i * dims[1]);
-                var(i, j, k) = temp[index];
+    var.resize(static_cast<Eigen::Index>(dims[0]), static_cast<Eigen::Index>(dims[1]), static_cast<Eigen::Index>(dims[2]));
+    for (Eigen::Index i = 0; i < static_cast<Eigen::Index>(dims[0]); i++) {
+        for (Eigen::Index j = 0; j < static_cast<Eigen::Index>(dims[1]); j++) {
+            for (Eigen::Index k = 0; k < static_cast<Eigen::Index>(dims[2]); k++) {
+                hsize_t index = static_cast<hsize_t>(k) + dims[2] * (static_cast<hsize_t>(j) + static_cast<hsize_t>(i) * dims[1]);
+                var(i, j, k)  = temp[index];
             }
         }
     }
@@ -335,7 +335,7 @@ Eigen::VectorXd HydroData::GetRIRFTimeVector() const {
             if (abs(body_data_[ii].rirf_time_vector[jj] - rirf_time_vector[jj]) > tol) {
                 throw std::runtime_error(
                     "RIRF time vectors have to be exactly the same for all bodies. Difference found in body " +
-                    std::to_string(jj) + " at time index " + std::to_string(jj) + ".");
+                    std::to_string(ii) + " at time index " + std::to_string(jj) + ".");
             }
         }
     }

@@ -65,7 +65,7 @@ std::vector<double> IrregularWaves::GetFreeSurfaceTime() const {
 
 std::vector<double> IrregularWaves::GetFrequenciesHz() const {
     std::vector<double> out(spectrum_frequencies_.size());
-    for (int i = 0; i < spectrum_frequencies_.size(); ++i) {
+    for (Eigen::Index i = 0; i < spectrum_frequencies_.size(); ++i) {
         out[i] = spectrum_frequencies_[i];
     }
     return out;
@@ -110,9 +110,7 @@ void IrregularWaves::AddH5Data(std::vector<HydroData::IrregularWaveInfo>& irreg_
 Eigen::Vector3d IrregularWaves::GetVelocity(const Eigen::Vector3d& position, double time) {
     auto position_stretched = position;
     if (params_.wave_stretching_) {
-        auto eta = GetEtaIrregular(position, time, spectrum_frequencies_, spectral_densities_, spectral_widths_, wave_phases_, wavenumbers_);
-        auto z_pos = position.z() - mwl_;
-        position_stretched[2] = water_depth_ * (z_pos - eta) / (water_depth_ + eta);
+        position_stretched = GetWheelerStretchedPosition(position, GetElevation(position, time), water_depth_, mwl_);
     }
 
     return GetWaterVelocityIrregular(position_stretched,
@@ -129,9 +127,7 @@ Eigen::Vector3d IrregularWaves::GetVelocity(const Eigen::Vector3d& position, dou
 Eigen::Vector3d IrregularWaves::GetAcceleration(const Eigen::Vector3d& position, double time) {
     auto position_stretched = position;
     if (params_.wave_stretching_) {
-        auto eta = GetEtaIrregular(position, time, spectrum_frequencies_, spectral_densities_, spectral_widths_, wave_phases_, wavenumbers_);
-        auto z_pos = position.z() - mwl_;
-        position_stretched[2] = water_depth_ * (z_pos - eta) / (water_depth_ + eta);
+        position_stretched = GetWheelerStretchedPosition(position, GetElevation(position, time), water_depth_, mwl_);
     }
 
     return GetWaterAccelerationIrregular(position_stretched,
@@ -230,7 +226,7 @@ void IrregularWaves::CreateSpectrum() {
 void IrregularWaves::CreateFreeSurfaceElevation() {
     double t_irf_min = 0.0;
     double t_irf_max = 0.0;
-    for (auto ii = 0; ii < ex_irf_time_sampled_.size(); ii++) {
+    for (size_t ii = 0; ii < ex_irf_time_sampled_.size(); ii++) {
         if (ex_irf_time_sampled_[ii][0] < t_irf_min) {
             t_irf_min = ex_irf_time_sampled_[ii][0];
         }
@@ -250,7 +246,7 @@ void IrregularWaves::CreateFreeSurfaceElevation() {
 
     free_surface_time_sampled_.resize(time_array.size());
     Eigen::VectorXd::Map(&free_surface_time_sampled_[0], time_array.size()) = time_array;
-    for (int ii = 0; ii < free_surface_time_sampled_.size(); ii++) {
+    for (size_t ii = 0; ii < free_surface_time_sampled_.size(); ii++) {
         free_surface_time_sampled_[ii] += -t_irf_max;
     }
 
@@ -280,9 +276,9 @@ void IrregularWaves::CreateFreeSurfaceElevation() {
 
 void IrregularWaves::ResampleIRF(double dt) {
     for (unsigned int b = 0; b < params_.num_bodies_; b++) {
-        auto& time_array  = ex_irf_time_sampled_[b];
-        ////auto& width_array = ex_irf_width_sampled_[b];
-        auto& val_array   = ex_irf_sampled_[b];
+        auto& time_array = ex_irf_time_sampled_[b];
+        // Note: width_array is recalculated by CalculateWidthIRF() below
+        auto& val_array  = ex_irf_sampled_[b];
 
         auto time_array_old = time_array;
 
@@ -324,18 +320,19 @@ double IrregularWaves::ExcitationConvolution(int body, int dof, double time) {
 
     auto tmin = free_surface_time_sampled_.front();
     auto tmax = free_surface_time_sampled_.back();
-    double t_tau = time - irf_time_array[0];
-    int idx      = 0;
-    if (t_tau <= tmin) {
+    double t_tau_init = time - irf_time_array[0];
+    int idx           = 0;
+    if (t_tau_init <= tmin) {
         idx = 0;
-    } else if (t_tau >= tmax) {
+    } else if (t_tau_init >= tmax) {
         idx = static_cast<int>(free_surface_time_sampled_.size()) - 2;
     } else {
-        idx = (int)get_lower_index(t_tau, free_surface_time_sampled_);
+        idx = static_cast<int>(get_lower_index(t_tau_init, free_surface_time_sampled_));
     }
 
     for (Eigen::Index j = 0; j < irf_time_array.size(); ++j) {
-        t_tau = time - irf_time_array[j];
+        double tau   = irf_time_array[j];
+        double t_tau = time - tau;
         if (tmin <= t_tau && t_tau <= tmax) {
             while (free_surface_time_sampled_[idx] > t_tau) {
                 idx -= 1;
@@ -356,9 +353,8 @@ double IrregularWaves::ExcitationConvolution(int body, int dof, double time) {
                 auto w2   = 1.0 - w1;
                 eta_val   = w1 * eta1 + w2 * eta2;
             } else {
-                throw std::runtime_error("Excitation convolution: wrong tau value " +
-                                         std::to_string(irf_time_array[j]) + " not between " + std::to_string(t1) +
-                                         " and " + std::to_string(t2) + ".");
+                throw std::runtime_error("Excitation convolution: wrong tau value " + std::to_string(tau) +
+                                         " not between " + std::to_string(t1) + " and " + std::to_string(t2) + ".");
             }
 
             f_ex += irf_val_mat(dof, j) * eta_val * irf_width_array[j];

@@ -33,7 +33,7 @@ void RegularWave::AddH5Data(std::vector<HydroData::RegularWaveInfo>& reg_h5_data
     double wave_omega_delta = GetOmegaDelta();
     double freq_index_des   = (regular_wave_omega_ / wave_omega_delta) - 1;
     for (unsigned int b = 0; b < num_bodies_; b++) {
-        for (unsigned int rowEx = 0; rowEx < 6; rowEx++) {
+        for (int rowEx = 0; rowEx < 6; rowEx++) {
             unsigned int body_offset = 6 * b;
             excitation_force_mag_[body_offset + rowEx]   = GetExcitationMagInterp(b, rowEx, 0, freq_index_des);
             excitation_force_phase_[body_offset + rowEx] = GetExcitationPhaseInterp(b, rowEx, 0, freq_index_des);
@@ -42,7 +42,11 @@ void RegularWave::AddH5Data(std::vector<HydroData::RegularWaveInfo>& reg_h5_data
 }
 
 Eigen::Vector3d RegularWave::GetVelocity(const Eigen::Vector3d& position, double time) {
-    return GetWaterVelocity(position,
+    auto position_stretched = position;
+    if (wave_stretching_) {
+        position_stretched = GetWheelerStretchedPosition(position, GetElevation(position, time), water_depth_, mwl_);
+    }
+    return GetWaterVelocity(position_stretched,
                             time,
                             regular_wave_omega_,
                             regular_wave_amplitude_,
@@ -53,7 +57,11 @@ Eigen::Vector3d RegularWave::GetVelocity(const Eigen::Vector3d& position, double
 }
 
 Eigen::Vector3d RegularWave::GetAcceleration(const Eigen::Vector3d& position, double time) {
-    return GetWaterAcceleration(position,
+    auto position_stretched = position;
+    if (wave_stretching_) {
+        position_stretched = GetWheelerStretchedPosition(position, GetElevation(position, time), water_depth_, mwl_);
+    }
+    return GetWaterAcceleration(position_stretched,
                                 time,
                                 regular_wave_omega_,
                                 regular_wave_amplitude_,
@@ -72,7 +80,7 @@ Eigen::VectorXd RegularWave::GetForceAtTime(double t) {
     Eigen::VectorXd f(dof);
     for (unsigned int b = 0; b < num_bodies_; b++) {
         unsigned int body_offset = 6 * b;
-        for (unsigned int rowEx = 0; rowEx < 6; rowEx++) {
+        for (int rowEx = 0; rowEx < 6; rowEx++) {
             f[body_offset + rowEx] = excitation_force_mag_[body_offset + rowEx] * regular_wave_amplitude_ *
                                      std::cos(regular_wave_omega_ * t + excitation_force_phase_[rowEx]);
         }

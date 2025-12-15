@@ -142,7 +142,7 @@ int main(int argc, char* argv[]) {
         outputFile.open("./results/DeepCWind_decay.txt");
         outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(16) << "Base Surge (m)"
                    << std::right << std::setw(16) << "Base Pitch (radians)" << std::endl;
-        for (int i = 0; i < time_vector.size(); ++i)
+        for (size_t i = 0; i < time_vector.size(); ++i)
             outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
                        << std::right << std::setw(16) << std::setprecision(8) << std::fixed << base_surge[i]
                        << std::right << std::setw(16) << std::setprecision(8) << std::fixed << base_pitch[i]

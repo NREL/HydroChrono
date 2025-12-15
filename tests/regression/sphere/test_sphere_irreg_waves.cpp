@@ -206,7 +206,7 @@ int main(int argc, char* argv[]) {
             outputFile << std::left << std::setw(10) << "----------" << std::right << std::setw(12) << "----------"
                        << "\n";
 
-            for (int i = 0; i < time_vector.size(); i++) {
+            for (size_t i = 0; i < time_vector.size(); i++) {
                 outputFile << std::left << std::setw(10) << std::fixed << std::setprecision(3) << time_vector[i]
                            << std::right << std::setw(12) << std::fixed << std::setprecision(6) << heave_position[i]
                            << "\n";

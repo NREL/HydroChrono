@@ -23,13 +23,14 @@
 
 // Version information - these should be defined by the build system
 #ifndef HYDROCHRONO_VERSION
-    constexpr const char* HYDROCHRONO_VERSION = "unknown";
-#endif
-#ifndef CHRONO_VERSION
-    constexpr const char* CHRONO_VERSION = "unknown";
+    #define HYDROCHRONO_VERSION "unknown"
 #endif
 #ifndef HYDROCHRONO_BUILD_TYPE
-    constexpr const char* HYDROCHRONO_BUILD_TYPE = "unknown";
+    #define HYDROCHRONO_BUILD_TYPE "unknown"
+#endif
+// CHRONO_VERSION may be defined by Chrono headers or CMake; provide fallback
+#ifndef CHRONO_VERSION
+    #define CHRONO_VERSION "unknown"
 #endif
 
 namespace hydroc {

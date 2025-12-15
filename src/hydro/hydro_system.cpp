@@ -227,7 +227,7 @@ HydroSystem::HydroSystem(std::vector<std::shared_ptr<ChBody>> user_bodies,
                      std::string h5_file_name,
                      std::shared_ptr<WaveBase> waves)
     : bodies_(user_bodies),
-      num_bodies_((int)bodies_.size()),
+      num_bodies_(static_cast<int>(bodies_.size())),
       file_info_(H5FileInfo(h5_file_name, num_bodies_).ReadH5Data()),
       hydro_forces_(nullptr),
       chrono_coupler_(nullptr),
@@ -239,7 +239,7 @@ HydroSystem::HydroSystem(std::vector<std::shared_ptr<ChBody>> user_bodies,
     rirf_time_vector = file_info_.GetRIRFTimeVector();
     // width array
     rirf_width_vector.resize(rirf_time_vector.size());
-    for (int ii = 0; ii < rirf_width_vector.size(); ii++) {
+    for (Eigen::Index ii = 0; ii < rirf_width_vector.size(); ii++) {
         rirf_width_vector[ii] = 0.0;
         if (ii < rirf_time_vector.size() - 1) {
             rirf_width_vector[ii] += 0.5 * abs(rirf_time_vector[ii + 1] - rirf_time_vector[ii]);

@@ -15,8 +15,42 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 
 #include <hydroc/logging.h>
+
+bool is_in_deep_water(double wavenumber, double water_depth) {
+    // Keep behavior consistent with ComputeWaveNumber(), which treats non-positive depth, very large
+    // depth, or infinite depth as "effectively infinite".
+    constexpr double EFFECTIVE_INFINITE_DEPTH = 1000.0;
+    if (water_depth <= 0.0 || water_depth > EFFECTIVE_INFINITE_DEPTH || std::isinf(water_depth)) {
+        return true;
+    }
+
+    // Numerical threshold for using deep-water asymptotic form (tanh(kh) ≈ 1).
+    return (std::abs(wavenumber) * water_depth > 89.4);
+}
+
+Eigen::Vector3d GetWheelerStretchedPosition(const Eigen::Vector3d& position, double eta, double water_depth, double mwl) {
+    // Wheeler stretching assumes finite depth. If depth is being used as a sentinel for "infinite",
+    // fall back to no stretching to avoid undefined behavior.
+    if (water_depth <= 0.0 || std::isinf(water_depth)) {
+        return position;
+    }
+
+    // Position relative to mean water level
+    double z_pos = position.z() - mwl;
+    // Wheeler stretching
+    double denom = water_depth + eta;
+    const double scale = std::max(1.0, std::abs(water_depth));
+    const double eps   = std::max(1e-12 * scale, 100.0 * std::numeric_limits<double>::epsilon() * scale);
+    if (std::abs(denom) < eps) {
+        // Pathological case (e.g., eta ≈ -water_depth): avoid division-by-zero blow-up.
+        return position;
+    }
+    double z_stretched = water_depth * (z_pos - eta) / denom;
+    return Eigen::Vector3d(position.x(), position.y(), z_stretched + mwl);
+}
 
 double GetEta(const Eigen::Vector3d& position,
               double time,
@@ -76,16 +110,31 @@ Eigen::Vector3d GetWaterVelocity(const Eigen::Vector3d& position,
     double z_pos = position.z() - mwl;
 
     Eigen::Vector3d water_velocity(0.0, 0.0, 0.0);
-    if (2 * M_PI / wavenumber > water_depth || wavenumber * water_depth > 500.0) {
+    const double k_mag = std::abs(wavenumber);
+    if (!std::isfinite(k_mag) || k_mag == 0.0 || !std::isfinite(omega) || omega == 0.0 || !std::isfinite(amplitude) || amplitude == 0.0) {
+        return water_velocity;
+    }
+
+    const double phase_arg = wavenumber * x_pos - omega * time + phase;
+
+    if (is_in_deep_water(wavenumber, water_depth)) {
         water_velocity[0] =
-            omega * amplitude * std::exp(wavenumber * z_pos) * cos(wavenumber * x_pos - omega * time + phase);
+            omega * amplitude * std::exp(k_mag * z_pos) * cos(phase_arg);
         water_velocity[2] =
-            omega * amplitude * std::exp(wavenumber * z_pos) * sin(wavenumber * x_pos - omega * time + phase);
+            omega * amplitude * std::exp(k_mag * z_pos) * sin(phase_arg);
     } else {
-        water_velocity[0] = omega * amplitude * std::cosh(wavenumber * (z_pos + water_depth)) /
-                            std::sinh(wavenumber * water_depth) * cos(wavenumber * x_pos - omega * time + phase);
-        water_velocity[2] = omega * amplitude * std::sinh(wavenumber * (z_pos + water_depth)) /
-                            std::sinh(wavenumber * water_depth) * sin(wavenumber * x_pos - omega * time + phase);
+        const double kh = k_mag * water_depth;
+        if (std::abs(kh) < 1e-8) {
+            // Small-kh safe form (avoids sinh(kh)→0 leading to inf*0 -> NaN).
+            // Uses the limiting behavior: cosh(k(z+h))/sinh(kh) ~ 1/(kh) and sinh(k(z+h))/sinh(kh) ~ (z+h)/h.
+            const double omega_over_k = omega / k_mag;
+            water_velocity[0]         = omega_over_k * amplitude / water_depth * cos(phase_arg);
+            water_velocity[2]         = omega * amplitude * ((z_pos + water_depth) / water_depth) * sin(phase_arg);
+        } else {
+            const double denom = std::sinh(kh);
+            water_velocity[0] = omega * amplitude * std::cosh(k_mag * (z_pos + water_depth)) / denom * cos(phase_arg);
+            water_velocity[2] = omega * amplitude * std::sinh(k_mag * (z_pos + water_depth)) / denom * sin(phase_arg);
+        }
     }
     return water_velocity;
 }
@@ -102,16 +151,30 @@ Eigen::Vector3d GetWaterAcceleration(const Eigen::Vector3d& position,
     double z_pos = position.z() - mwl;
 
     Eigen::Vector3d water_acceleration(0.0, 0.0, 0.0);
-    if (2 * M_PI / wavenumber > water_depth || wavenumber * water_depth > 500.0) {
+    const double k_mag = std::abs(wavenumber);
+    if (!std::isfinite(k_mag) || k_mag == 0.0 || !std::isfinite(omega) || omega == 0.0 || !std::isfinite(amplitude) || amplitude == 0.0) {
+        return water_acceleration;
+    }
+
+    const double phase_arg = wavenumber * x_pos - omega * time + phase;
+
+    if (is_in_deep_water(wavenumber, water_depth)) {
         water_acceleration[0] =
-            omega * omega * amplitude * std::exp(wavenumber * z_pos) * sin(wavenumber * x_pos - omega * time + phase);
+            omega * omega * amplitude * std::exp(k_mag * z_pos) * sin(phase_arg);
         water_acceleration[2] =
-            -omega * omega * amplitude * std::exp(wavenumber * z_pos) * cos(wavenumber * x_pos - omega * time + phase);
+            -omega * omega * amplitude * std::exp(k_mag * z_pos) * cos(phase_arg);
     } else {
-        water_acceleration[0] = omega * omega * amplitude * std::cosh(wavenumber * (z_pos + water_depth)) /
-                                std::sinh(wavenumber * water_depth) * sin(wavenumber * x_pos - omega * time + phase);
-        water_acceleration[2] = -omega * omega * amplitude * std::sinh(wavenumber * (z_pos + water_depth)) /
-                                std::sinh(wavenumber * water_depth) * cos(wavenumber * x_pos - omega * time + phase);
+        const double kh = k_mag * water_depth;
+        if (std::abs(kh) < 1e-8) {
+            // Small-kh safe form (avoids sinh(kh)→0 leading to inf*0 -> NaN).
+            const double omega_over_k = omega / k_mag;
+            water_acceleration[0]     = omega * omega_over_k * amplitude / water_depth * sin(phase_arg);
+            water_acceleration[2]     = -omega * omega * amplitude * ((z_pos + water_depth) / water_depth) * cos(phase_arg);
+        } else {
+            const double denom = std::sinh(kh);
+            water_acceleration[0] = omega * omega * amplitude * std::cosh(k_mag * (z_pos + water_depth)) / denom * sin(phase_arg);
+            water_acceleration[2] = -omega * omega * amplitude * std::sinh(k_mag * (z_pos + water_depth)) / denom * cos(phase_arg);
+        }
     }
     return water_acceleration;
 }
