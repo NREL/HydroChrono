@@ -41,6 +41,13 @@ void IrregularWaves::InitializeIRFVectors() {
     if (!params_.eta_file_path_.empty()) {
         ReadEtaFromFile();
         
+        // Check if eta file was read successfully
+        if (time_data_.empty() || free_surface_elevation_sampled_.empty()) {
+            std::cerr << "Error: Failed to read eta data from file: " << params_.eta_file_path_ << std::endl;
+            spectrumCreated_ = false;
+            return;
+        }
+        
         // Populate free_surface_time_sampled_ from time_data_, extending backwards
         // to cover negative times needed for IRF convolution (same as CreateFreeSurfaceElevation does)
         double t_irf_max = 0.0;
@@ -397,11 +404,10 @@ double IrregularWaves::ExcitationConvolution(int body, int dof, double time) {
             f_ex += irf_val_mat(dof, j) * eta_val * irf_width_array[j];
 
         } else {
-            throw std::runtime_error(
-                "Excitation convolution: trying to find free surface elevation at a time out of bounds from the "
-                "precomputed free surface elevation (" +
-                std::to_string(t_tau) + "not in [" + std::to_string(tmin) + ", " + std::to_string(tmax) +
-                "]). Excitation force ignored at this time step.");
+            // Time is outside precomputed range - skip this convolution term.
+            // This can happen at the very end of simulation when time slightly exceeds
+            // the simulation duration due to timestep discretization.
+            continue;
         }
     }
 

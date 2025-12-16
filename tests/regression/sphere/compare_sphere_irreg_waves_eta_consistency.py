@@ -13,10 +13,11 @@ Usage:
 import sys
 import os
 from pathlib import Path
+import numpy as np
 
 # Import the comparison template
 sys.path.append(os.path.join(os.path.dirname(__file__), '../utilities'))
-from compare_template import run_consistency_comparison
+from compare_template import create_comparison_plot, format_path
 
 if __name__ == '__main__':
     """
@@ -42,17 +43,34 @@ if __name__ == '__main__':
 
     # Test-specific configuration
     test_name = "Sphere Irreg Waves Eta Consistency"
-    safe_test_name = test_name.lower().replace(' ', '_').replace('-', '_')
-    print(f"Plot filename: {plots_dir}/{safe_test_name}_comparison.png")
     y_label = "Heave (m)"
     tolerance = 1e-6
+
+    # Load the results file (columns: time, heave_spectrum, heave_eta, diff)
+    # Skip header lines (title + separator)
+    data = np.loadtxt(fname_rst, skiprows=2)
     
-    # Run the consistency comparison using the template
-    max_diff, passed = run_consistency_comparison(
-        fname_rst, test_name, y_label,
-        tolerance=tolerance,
-        ref_label="Spectrum",
-        sim_label="Eta-Import"
+    # Extract columns as ref (spectrum) and test (eta) data for comparison
+    ref_data = np.column_stack((data[:, 0], data[:, 1]))   # time, spectrum
+    test_data = np.column_stack((data[:, 0], data[:, 2]))  # time, eta
+    
+    print(f"Loaded {len(data)} data points")
+
+    # Generate comparison plot using standard template
+    n1, n2 = create_comparison_plot(
+        ref_data, test_data, test_name, plots_dir,
+        ref_file_path=format_path(fname_rst),
+        test_file_path=format_path(fname_rst),
+        y_label=y_label
     )
+
+    # Check pass/fail
+    max_diff = np.max(np.abs(data[:, 3]))  # Use pre-computed diff column
+    passed = max_diff < tolerance
+    
+    if passed:
+        print(f"TEST PASSED - Max difference: {max_diff:.2e}, Tolerance: {tolerance:.2e}")
+    else:
+        print(f"TEST FAILED - Max difference: {max_diff:.2e} exceeds tolerance: {tolerance:.2e}")
     
     sys.exit(0 if passed else 1)
