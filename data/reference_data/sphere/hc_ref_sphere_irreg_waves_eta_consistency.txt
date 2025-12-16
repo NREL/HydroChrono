@@ -1,0 +1,8 @@
+# Reference file for sphere_irreg_waves_eta_consistency test
+# This test is self-validating: it compares spectrum-generated and eta-imported
+# irregular waves internally. The comparison script validates that the maximum
+# difference between the two code paths is within tolerance (1e-6 m).
+#
+# This file is a placeholder required by the build system.
+# The actual validation is performed by the test executable itself.
+
