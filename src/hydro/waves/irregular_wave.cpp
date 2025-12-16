@@ -40,6 +40,43 @@ void IrregularWaves::InitializeIRFVectors() {
 
     if (!params_.eta_file_path_.empty()) {
         ReadEtaFromFile();
+        
+        // Populate free_surface_time_sampled_ from time_data_, extending backwards
+        // to cover negative times needed for IRF convolution (same as CreateFreeSurfaceElevation does)
+        double t_irf_max = 0.0;
+        for (size_t b = 0; b < ex_irf_time_sampled_.size(); b++) {
+            if (ex_irf_time_sampled_[b].size() > 0) {
+                double t_end = ex_irf_time_sampled_[b][ex_irf_time_sampled_[b].size() - 1];
+                if (t_end > t_irf_max) t_irf_max = t_end;
+            }
+        }
+        
+        double eta_tmin = time_data_.front();
+        double required_tmin = -t_irf_max;
+        
+        if (required_tmin < eta_tmin && time_data_.size() > 1) {
+            // Extend backwards with zero elevation padding
+            double dt = time_data_[1] - time_data_[0];
+            int num_pad = static_cast<int>(std::ceil((eta_tmin - required_tmin) / dt));
+            
+            std::vector<double> extended_time(num_pad + time_data_.size());
+            std::vector<double> extended_eta(num_pad + free_surface_elevation_sampled_.size());
+            
+            for (int i = 0; i < num_pad; ++i) {
+                extended_time[i] = eta_tmin - (num_pad - i) * dt;
+                extended_eta[i] = 0.0;
+            }
+            for (size_t i = 0; i < time_data_.size(); ++i) {
+                extended_time[num_pad + i] = time_data_[i];
+                extended_eta[num_pad + i] = free_surface_elevation_sampled_[i];
+            }
+            
+            free_surface_time_sampled_ = std::move(extended_time);
+            free_surface_elevation_sampled_ = std::move(extended_eta);
+        } else {
+            free_surface_time_sampled_ = time_data_;
+        }
+        
         spectrumCreated_ = false;
     } else if (params_.wave_height_ != 0.0 && params_.wave_period_ != 0.0) {
         CreateSpectrum();
