@@ -250,7 +250,7 @@ if ($LASTEXITCODE -ne 0) {
 Write-OK "Built in $buildSecs seconds"
 
 # =============================================================================
-# Copy Third-Party DLLs (Irrlicht - not handled by Chrono's DLL copy command)
+# Copy Third-Party DLLs (not handled by Chrono's DLL copy command)
 # =============================================================================
 
 $binPath = ".\build\bin\$BuildType"
@@ -270,28 +270,39 @@ if ($useIrrlicht) {
 }
 
 if ($useVSG) {
-    # Get VSG DLLs from vsgFramework bin directory
-    # First try to find vsg_DIR from chrono config
-    if ($chronoContent -match 'vsg_DIR\s+"([^"]+)"') {
-        $vsgDir = $Matches[1]
-        # vsg_DIR typically points to lib/cmake/vsg, so go up to find bin
-        $vsgRoot = Split-Path (Split-Path (Split-Path $vsgDir))
-        $vsgBinDir = Join-Path $vsgRoot "bin"
-        
-        if (Test-Path $vsgBinDir) {
-            $vsgDlls = Get-ChildItem -Path $vsgBinDir -Filter "*.dll" -ErrorAction SilentlyContinue
-            $copiedCount = 0
-            foreach ($dll in $vsgDlls) {
-                $destDll = Join-Path $binPath $dll.Name
-                if (-not (Test-Path $destDll)) {
-                    Copy-Item $dll.FullName $destDll -Force
-                    $copiedCount++
-                }
-            }
-            if ($copiedCount -gt 0) {
-                Write-OK "Copied $copiedCount VSG DLLs"
+    # Get VSG DLL directory from Chrono config (set by find_package(vsg))
+    # VSG_DLL_DIR is set by Chrono when it finds VSG
+    $vsgDllDir = $null
+    
+    if ($chronoContent -match 'VSG_DLL_DIR\s+([^\s\)]+)') {
+        $vsgDllDir = $Matches[1].Trim('"')
+    }
+    
+    # Fallback: derive from vsg_DIR (lib/cmake/vsg -> bin)
+    if (-not $vsgDllDir -or -not (Test-Path $vsgDllDir)) {
+        if ($chronoContent -match 'vsg_DIR\s+"([^"]+)"') {
+            $vsgCmakeDir = $Matches[1]
+            # Go up from lib/cmake/vsg to root, then into bin
+            $vsgRoot = Split-Path (Split-Path (Split-Path $vsgCmakeDir))
+            $vsgDllDir = Join-Path $vsgRoot "bin"
+        }
+    }
+    
+    if ($vsgDllDir -and (Test-Path $vsgDllDir)) {
+        $vsgDlls = Get-ChildItem -Path $vsgDllDir -Filter "*.dll" -ErrorAction SilentlyContinue
+        $copiedCount = 0
+        foreach ($dll in $vsgDlls) {
+            $destDll = Join-Path $binPath $dll.Name
+            if (-not (Test-Path $destDll)) {
+                Copy-Item $dll.FullName $destDll -Force
+                $copiedCount++
             }
         }
+        if ($copiedCount -gt 0) {
+            Write-OK "Copied $copiedCount VSG DLLs from $vsgDllDir"
+        }
+    } else {
+        Write-Warn "VSG enabled but could not find VSG DLL directory"
     }
 }
 

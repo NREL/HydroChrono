@@ -654,6 +654,31 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
         endif()
     endif()
     
+    # VSG DLLs (vsg, vsgImGui, vsgXchange, draco, etc.)
+    if(HYDROCHRONO_ENABLE_VSG)
+        # VSG_DLL_DIR is set by Chrono's find_package when VSG is found
+        # Fall back to deriving from vsg_DIR if VSG_DLL_DIR is not set
+        if(NOT DEFINED VSG_DLL_DIR OR VSG_DLL_DIR STREQUAL "")
+            if(DEFINED vsg_DIR)
+                # vsg_DIR points to lib/cmake/vsg, go up 3 levels to root then into bin
+                get_filename_component(_vsg_root "${vsg_DIR}" DIRECTORY)  # lib/cmake
+                get_filename_component(_vsg_root "${_vsg_root}" DIRECTORY)  # lib
+                get_filename_component(_vsg_root "${_vsg_root}" DIRECTORY)  # root
+                set(VSG_DLL_DIR "${_vsg_root}/bin")
+            endif()
+        endif()
+        
+        if(DEFINED VSG_DLL_DIR AND EXISTS "${VSG_DLL_DIR}")
+            file(GLOB _vsg_dlls "${VSG_DLL_DIR}/*.dll")
+            if(_vsg_dlls)
+                message(STATUS "Installing VSG DLLs from: ${VSG_DLL_DIR}")
+                install(FILES ${_vsg_dlls} DESTINATION bin COMPONENT runtime)
+            endif()
+        else()
+            message(WARNING "HYDROCHRONO_ENABLE_VSG is ON but VSG_DLL_DIR not found. VSG DLLs will not be packaged.")
+        endif()
+    endif()
+    
     # Python DLLs, if Chrono::Parsers depends on it
     if(CHRONO_PARSERS_PYTHON)
         find_package(Python3 QUIET COMPONENTS Interpreter Development)
