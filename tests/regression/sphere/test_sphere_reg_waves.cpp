@@ -54,7 +54,7 @@ int main(int argc, char* argv[]) {
         system.GetSolver()->AsIterative()->SetMaxIterations(
             300);  // the higher, the easier to keep the constraints satisfied.
         ChRealtimeStepTimer realtime_timer;
-        double simulation_duration = 600.0;
+        double simulation_duration = 240.0;
 
         // Create user interface
         std::shared_ptr<hydroc::gui::UI> pui = hydroc::gui::CreateUI(visualizationOn);
@@ -128,7 +128,7 @@ int main(int argc, char* argv[]) {
         ui.Init(&system, "Sphere - Regular Waves Test");
         ui.SetCamera(8, -25, 15, 0, 0, 0);
 
-        while (system.GetChTime() <= simulation_duration) {
+        while (system.GetChTime() < simulation_duration - timestep / 2.0) {
             if (ui.IsRunning(timestep) == false) break;
 
             if (ui.simulationStarted) {
