@@ -182,8 +182,15 @@ int main(int argc, char* argv[]) {
             my_hydro_inputs = std::make_shared<IrregularWaves>(wave_inputs);
         } catch (const std::exception& e) {
             std::cerr << "Caught exception: " << e.what() << '\n';
+            return 1;
         } catch (...) {
             std::cerr << "Caught unknown exception.\n";
+            return 1;
+        }
+
+        if (!my_hydro_inputs) {
+            std::cerr << "ERROR: Failed to create IrregularWaves object." << std::endl;
+            return 1;
         }
 
         HydroForces hydro_forces(bodies, h5fname);

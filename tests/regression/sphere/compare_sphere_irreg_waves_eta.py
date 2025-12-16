@@ -1,58 +1,57 @@
 #!/usr/bin/env python3
 """
-Sphere Irregular Waves with ETA Import Regression Test Comparison Script
+HydroChrono Sphere Irregular Waves with ETA Import Regression Test Comparison
 
-This script compares the results of the sphere irregular waves with ETA import test against reference data.
-Note: This test uses the same reference data as the regular irregular waves test since the output format is identical.
+This script compares sphere irregular waves with eta import test results against reference data
+using the standardized comparison template.
+
+Usage:
+    python compare_sphere_irreg_waves_eta.py <reference_file> <test_file>
+    python compare_sphere_irreg_waves_eta.py default <test_file>  # Uses default reference data
 """
 
 import sys
-from pathlib import Path
 import os
+from pathlib import Path
 
-# Add the utilities directory to the path to import the comparison template
-sys.path.append(str(Path(__file__).parent.parent.parent / "utilities"))
+# Import the comparison template
+sys.path.append(os.path.join(os.path.dirname(__file__), '../utilities'))
 from compare_template import run_comparison
 
-def main():
-    """Main comparison function for sphere irregular waves with ETA import test."""
-    
-    # Get the reference data file (same as regular irregular waves)
-    ref_file = Path(__file__).parent.parent.parent / "reference_data" / "sphere" / "irreg_waves" / "ref_sphere_irreg_waves.txt"
-    
-    # Look for CHRONO-named result file in various locations
-    build_dir = Path(os.environ.get('HYDROCHRONO_BUILD_DIR', 'C:/code/HydroChrono/build'))
-    result_file = build_dir / "bin" / "tests" / "regression" / "sphere" / "results" / "CHRONO_SPHERE_IRREGULAR_WAVES.txt"
-    
-    if not result_file.exists():
-        print(f"Error: Result file not found: {result_file}")
-        sys.exit(1)
-    
-    print(f"Comparing sphere irregular waves with ETA import test...")
-    print(f"  Reference: {ref_file}")
-    print(f"  Result:    {result_file}")
-    
-    # Run comparison using the template
-    try:
-        n1, n2, passed = run_comparison(
-            str(ref_file),
-            str(result_file),
-            test_name="Sphere Irregular Waves with ETA Import",
-            y_label="Heave (m)",
-            executable_patterns=["sphere_irreg_waves_eta_test"],
-            pass_criteria=(1e-4, 0.02)
-        )
-        
-        if passed:
-            print("Sphere irregular waves with ETA import comparison PASSED")
-            sys.exit(0)
-        else:
-            print("Sphere irregular waves with ETA import comparison FAILED")
-            sys.exit(1)
-            
-    except Exception as e:
-        print(f"ERROR during comparison: {e}")
+if __name__ == '__main__':
+    """
+    Compare sphere irregular waves eta test results with reference data
+    """
+    if len(sys.argv) != 3:
+        print("Usage: python compare_sphere_irreg_waves_eta.py <reference_file> <test_file>")
+        print("       python compare_sphere_irreg_waves_eta.py default <test_file>  # Uses default reference data")
         sys.exit(1)
 
-if __name__ == "__main__":
-    main() 
+    # Use new reference data location - use correct relative path
+    default_ref = os.path.join(os.path.dirname(__file__), '../../data/reference_data/sphere/hc_ref_sphere_irreg_waves_eta.txt')
+    fname_ref = sys.argv[1] if sys.argv[1] != 'default' else default_ref
+    fname_rst = sys.argv[2]
+
+    # Show where the plot will be saved
+    test_file_path = Path(fname_rst)
+    plots_dir = test_file_path.parent / "plots"
+    # Ensure the plots directory exists
+    plots_dir.mkdir(parents=True, exist_ok=True)
+    print(f"Plot will be saved to: {plots_dir}")
+
+    # Test-specific configuration
+    test_name = "Sphere Irregular Waves with ETA Import"
+    # Convert test_name to lowercase with underscores for filename
+    safe_test_name = test_name.lower().replace(' ', '_').replace('-', '_')
+    print(f"Plot filename: {plots_dir}/{safe_test_name}_comparison.png")
+    y_label = "Heave (m)"
+    executable_patterns = ["test_sphere_irreg_waves_eta", "sphere_irreg_waves_eta"]
+    pass_criteria = (1e-4, 0.02)  # (L2 threshold, L-infinity threshold)
+    
+    # Run the comparison using the template
+    n1, n2, passed = run_comparison(
+        fname_ref, fname_rst, test_name, y_label, 
+        executable_patterns, pass_criteria
+    )
+    
+    sys.exit(0 if passed else 1)
