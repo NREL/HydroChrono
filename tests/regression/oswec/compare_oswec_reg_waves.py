@@ -1,85 +1,101 @@
 #!/usr/bin/env python3
 """
-OSWEC Regular Waves Regression Test Comparison (Batch Mode)
+OSWEC Regular Waves Regression Test Comparison Script
 
-This script compares all OSWEC regular waves test results with reference data and generates
-comparison plots using the standardized template. It loops over all available result files.
-
-Usage:
-    python compare_reg_waves.py
+This script compares the results of the OSWEC regular waves test against reference data.
+The test runs 16 different wave conditions (periods 4-24s), so we need to compare each one.
 """
 
 import sys
 import os
-from pathlib import Path
-import numpy as np
 import glob
-import re
+from pathlib import Path
 
-# Import the comparison template
-sys.path.append(os.path.join(os.path.dirname(__file__), '../utilities'))
-from compare_template import create_comparison_plot, format_path
+# Add the utilities directory to the path to import the comparison template
+sys.path.append(str(Path(__file__).parent.parent / "utilities"))
+from compare_template import run_comparison, run_multi_column_comparison
 
 def main():
-    # Directories
-    script_dir = Path(__file__).parent
-    ref_dir = script_dir.parent / "reference_data" / "oswec" / "reg_waves"
-    # Default build results dir
-    build_dir = Path(os.environ.get('HYDROCHRONO_BUILD_DIR', 'C:/code/HydroChrono/build'))
-    # New recommended layout
-    results_dir = build_dir / "bin" / "tests" / "regression" / "oswec" / "results"
-    if not results_dir.exists():
-        # Fallback to older Release layout used previously
-        results_dir = build_dir / "tests" / "regression" / "Release" / "oswec" / "results" / "oswec" / "regular_waves"
-    if not results_dir.exists():
-        print(f"Results directory not found: {results_dir}")
+    """Main comparison function for OSWEC regular waves test."""
+    
+    if len(sys.argv) != 3:
+        print("Usage: python compare_oswec_reg_waves.py <reference_file> <test_file>")
         sys.exit(1)
 
-    # Find all result files
-    all_files = [p for p in results_dir.glob("CHRONO_OSWEC_REG_WAVES_*.txt") if not p.stem.endswith("DURATION")]
-    def wave_num_from_stem(stem: str):
-        m = re.search(r"_(\d+)$", stem)
-        return int(m.group(1)) if m else -1
-    result_files = sorted(all_files, key=lambda p: wave_num_from_stem(p.stem))
+    # Get the reference data directory from the reference file
+    ref_file = sys.argv[1]
+    ht = os.path.split(ref_file)
+    ref_dir = Path(ht[0])
+    
+    if not ref_dir.exists():
+        print(f"Error: Reference directory not found: {ref_dir}")
+        sys.exit(1)
+    
+    # Get the results directory from the results file
+    results_file = sys.argv[2]
+    ht = os.path.split(results_file)
+    results_dir = Path(ht[0])
+    
+    if not results_dir.exists():
+        print(f"Error: Results directory not found: {results_dir}")
+        sys.exit(1)
+    
+    # Find all result files produced by the C++ test
+    # C++ writes files named: results_oswec_reg_waves_<N>.txt
+    result_files = list(results_dir.glob("results_oswec_reg_waves_*.txt"))
+    # Filter out duration files
+    result_files = [f for f in result_files if "_duration" not in f.stem]
+    result_files.sort(key=lambda x: int(x.stem.split('_')[-1]))
+    
     if not result_files:
-        print(f"No result files found in {results_dir}")
+        print(f"Error: No result files found in {results_dir}")
         sys.exit(1)
-
-    # Output directory for plots
-    plots_dir = results_dir / "plots"
-    plots_dir.mkdir(parents=True, exist_ok=True)
-    print(f"Plots will be saved to: {plots_dir}")
-
-    # Loop over all result files
+    
+    print(f"Found {len(result_files)} result files in {results_dir}")
+    
+    # Compare each wave condition
+    all_passed = True
+    
     for result_file in result_files:
+        # Extract wave number from filename
         wave_num = result_file.stem.split('_')[-1]
         ref_file = ref_dir / f"hc_ref_oswec_reg_waves_{wave_num}.txt"
+        
         if not ref_file.exists():
-            print(f"[WARNING] Reference file not found for wave {wave_num}: {ref_file}. Skipping.")
+            print(f"Warning: Reference file {ref_file} not found, skipping wave {wave_num}")
             continue
-        print(f"\nComparing wave {wave_num}...")
+        
+        print(f"\nComparing wave condition {wave_num}...")
         print(f"  Reference: {ref_file}")
         print(f"  Result:    {result_file}")
+        
+        # Run comparison using the template
         try:
-            # Load data (skip headers)
-            ref_data = np.loadtxt(ref_file, skiprows=5)
-            test_data = np.loadtxt(result_file, skiprows=5)
-            # Prepare data for plotting (Pitch is column 1)
-            ref_col_data = np.column_stack((ref_data[:, 0], ref_data[:, 1]))
-            test_col_data = np.column_stack((test_data[:, 0], test_data[:, 1]))
-            test_name = f"OSWEC Regular Waves Test - Pitch - Wave {wave_num}"
-            y_label = "Pitch (radians)"
-            executable_patterns = ["oswec_reg_waves_test", "oswec_reg_waves_test.exe"]
-            create_comparison_plot(
-                ref_col_data, test_col_data, test_name, plots_dir,
-                ref_file_path=format_path(str(ref_file)),
-                test_file_path=format_path(str(result_file)),
-                y_label=y_label,
-                executable_patterns=executable_patterns
+            n1, n2, passed = run_comparison(
+                str(ref_file),
+                str(result_file),
+                test_name=f"OSWEC Regular Waves - Wave {wave_num}",
+                y_label="Pitch (radians)",
+                executable_patterns=["test_oswec_reg_waves"],
+                pass_criteria=(1e-4, 0.02)
             )
-            print(f"  [OK] Plot generated: {plots_dir}/{test_name.lower().replace(' ', '_').replace('-', '_')}_comparison.png")
+            
+            if not passed:
+                all_passed = False
+                print(f"  FAILED Wave {wave_num} comparison")
+            else:
+                print(f"  PASSED Wave {wave_num} comparison")
+                
         except Exception as e:
-            print(f"  [ERROR] Failed to compare wave {wave_num}: {e}")
+            print(f"  ERROR comparing wave {wave_num}: {e}")
+            all_passed = False
+    
+    if all_passed:
+        print("\nAll wave conditions passed comparison!")
+        sys.exit(0)
+    else:
+        print("\nSome wave conditions failed comparison!")
+        sys.exit(1)
 
 if __name__ == "__main__":
-    main() 
+    main()
