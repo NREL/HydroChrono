@@ -67,8 +67,9 @@ class GUIImplIRR : public GUIImpl {
 #endif
 
 #ifdef HYDROCHRONO_HAVE_VSG
-// Forward declaration for animated water surface (defined in guihelperVSG.cpp).
+// Forward declarations (defined in vsg_water_surface.h, vsg_gui_component.h).
 class AnimatedWaterSurface;
+struct ViewerSettings;
 
 class GUIImplVSG : public GUIImpl {
   public:
@@ -90,6 +91,7 @@ class GUIImplVSG : public GUIImpl {
     std::shared_ptr<WaveBase> wave_model_;               ///< Wave model for animated surface
     chrono::ChSystem* system_ = nullptr;                 ///< Cached system pointer for time access
     std::unique_ptr<AnimatedWaterSurface> animated_water_;  ///< Animated water surface (owned)
+    std::unique_ptr<ViewerSettings> viewer_settings_;    ///< Runtime viewer settings (owned)
     bool water_surface_created_ = false;                 ///< True if any water surface was added
 };
 #endif

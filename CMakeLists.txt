@@ -418,6 +418,17 @@ endif()
 if(HYDROCHRONO_ENABLE_VSG)
   set(HCGUI_SOURCES ${HCGUI_SOURCES}
       src/gui/guihelperVSG.cpp
+      src/gui/vsg_gui_component.cpp
+      src/gui/vsg_lighting.cpp
+      src/gui/vsg_materials.cpp
+      src/gui/vsg_water_surface.cpp
+  )
+  set(HCGUI_HEADERS ${HCGUI_HEADERS}
+      src/gui/vsg_config.h
+      src/gui/vsg_gui_component.h
+      src/gui/vsg_lighting.h
+      src/gui/vsg_materials.h
+      src/gui/vsg_water_surface.h
   )
 endif()
 
