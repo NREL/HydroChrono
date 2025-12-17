@@ -26,9 +26,8 @@ project(HydroChrono
 )
 
 # MSVC: CMake may pass "SYSTEM" include directories as external headers (/external:I).
-# Some third-party headers (e.g. Irrlicht) rely on nested quoted includes that can fail
-# intermittently when treated as external headers. Force SYSTEM include dirs to be emitted
-# as normal /I include paths instead.
+# Some third-party headers rely on nested quoted includes that can fail intermittently when treated as external headers.
+# Force SYSTEM include dirs to be emitted as normal /I include paths instead.
 if(MSVC)
     set(CMAKE_INCLUDE_SYSTEM_FLAG_C "/I")
     set(CMAKE_INCLUDE_SYSTEM_FLAG_CXX "/I")
@@ -81,10 +80,6 @@ option(HYDROCHRONO_ENABLE_VSG "Enable VSG visualization library" OFF)
 option(HYDROCHRONO_ENABLE_DEMOS "Enable demo executables" OFF)
 option(HYDROCHRONO_ENABLE_YAML_RUNNER "Enable YAML-based CLI runner" OFF)
 
-# Irrlicht hints (used by Chrono's Irrlicht module and by HydroChronoGUI directly)
-set(Irrlicht_ROOT "" CACHE PATH "Irrlicht root directory (contains include/, lib/, bin/)")
-set(Irrlicht_INCLUDE_DIR "" CACHE PATH "Irrlicht include directory (contains irrlicht.h, IEventReceiver.h, etc.)")
-
 # ===============================================================================
 # ------ Build setup ------------------------------------------------------------
 # ===============================================================================
@@ -105,7 +100,7 @@ if(MSVC)
         -D_SCL_SECURE_NO_DEPRECATE   # Disable SCL deprecation warnings
         -DNOMINMAX                   # Prevent Windows.h from defining min/max macros
     )
-    add_compile_options(/wd4275)     # Disable warnings triggered by Irrlicht
+    add_compile_options(/wd4275)     # Disable non-DLL class used as base for DLL-interface class
     add_compile_options(/wd4251)     # Disable "class needs to have dll-interface" warnings
 endif()
 
@@ -436,26 +431,6 @@ target_include_directories(HydroChronoGUI
         "$<INSTALL_INTERFACE:include>"
 )
 
-# HydroChronoGUI includes Irrlicht headers directly (e.g., <IEventReceiver.h>).
-# Chrono may expose Irrlicht include dirs as SYSTEM/external includes on MSVC; add a normal /I include path too.
-if(HYDROCHRONO_ENABLE_IRRLICHT)
-    # Derive include dir from Irrlicht_ROOT if caller didn't provide it explicitly.
-    if((NOT Irrlicht_INCLUDE_DIR OR Irrlicht_INCLUDE_DIR STREQUAL "") AND (DEFINED Irrlicht_ROOT AND NOT Irrlicht_ROOT STREQUAL ""))
-        set(Irrlicht_INCLUDE_DIR "${Irrlicht_ROOT}/include" CACHE PATH "Irrlicht include directory (auto-derived from Irrlicht_ROOT)" FORCE)
-    endif()
-
-    if(NOT Irrlicht_INCLUDE_DIR OR Irrlicht_INCLUDE_DIR STREQUAL "" OR NOT EXISTS "${Irrlicht_INCLUDE_DIR}/irrlicht.h")
-        message(FATAL_ERROR "HYDROCHRONO_ENABLE_IRRLICHT is ON but Irrlicht_INCLUDE_DIR is not a valid Irrlicht include directory. Provide -DIrrlicht_INCLUDE_DIR=<IrrlichtRoot>/include (or -DIrrlicht_ROOT=<IrrlichtRoot>).")
-    endif()
-
-    target_include_directories(HydroChronoGUI PUBLIC "${Irrlicht_INCLUDE_DIR}")
-
-    if(MSVC)
-        # Force a normal include search path even if Chrono exports Irrlicht as external headers.
-        target_compile_options(HydroChronoGUI PRIVATE "/I${Irrlicht_INCLUDE_DIR}")
-    endif()
-endif()
-
 set_target_properties(HydroChronoGUI PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(HydroChronoGUI
     PUBLIC
@@ -464,14 +439,6 @@ target_link_libraries(HydroChronoGUI
         $<$<BOOL:${HYDROCHRONO_ENABLE_IRRLICHT}>:Chrono::Chrono_irrlicht>
         $<$<BOOL:${HYDROCHRONO_ENABLE_VSG}>:Chrono::Chrono_vsg>
 )
-
-# Suppress warnings from third-party Irrlicht headers on MSVC.
-# The Irrlicht headers trigger C4458 warnings (x/y hiding member) that we cannot fix.
-# Use /external:I to treat Irrlicht includes as external headers with reduced warning level.
-if(MSVC AND HYDROCHRONO_ENABLE_IRRLICHT AND DEFINED Irrlicht_ROOT)
-    target_include_directories(HydroChronoGUI SYSTEM PUBLIC "${Irrlicht_ROOT}/include")
-    target_compile_options(HydroChronoGUI PRIVATE /external:anglebrackets /external:W0)
-endif()
 
 # ===============================================================================
 # ------- Auxiliary Targets (app, tests, demos) ---------------------------------
@@ -646,12 +613,14 @@ endif()
 
 # On Windows, install DLLs
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    message(STATUS "Set DLLs for installation")
 
     # Chrono DLLs
     foreach(tgt ${CHRONO_TARGETS})
         get_target_property(tgt_DLL ${tgt} IMPORTED_LOCATION_RELEASE)
         get_target_property(tgt_DLL_d ${tgt} IMPORTED_LOCATION_DEBUG)
         if(EXISTS ${tgt_DLL})
+            message(STATUS "  Chrono DLL ${tgt_DLL}")
             install(FILES ${tgt_DLL} DESTINATION bin COMPONENT runtime)
         endif()
         if(EXISTS ${tgt_DLL_d})
@@ -659,42 +628,30 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
         endif()
     endforeach()
 
-    # HDF5 DLLs - use glob to find all DLLs in HDF5 bin directory
-    if(DEFINED HDF5_ROOT OR DEFINED HDF5_DIR)
-        # Determine HDF5 root from various possible variables
-        if(DEFINED HDF5_ROOT)
-            set(_hdf5_root "${HDF5_ROOT}")
-        elseif(DEFINED HDF5_DIR)
-            # HDF5_DIR might point to share/cmake/hdf5 or similar
-            get_filename_component(_hdf5_root "${HDF5_DIR}" DIRECTORY)
-            get_filename_component(_hdf5_root "${_hdf5_root}" DIRECTORY)
-            get_filename_component(_hdf5_root "${_hdf5_root}" DIRECTORY)
-        endif()
-        
-        set(_hdf5_bin "${_hdf5_root}/bin")
-        if(EXISTS "${_hdf5_bin}")
-            file(GLOB _hdf5_dlls "${_hdf5_bin}/*.dll")
-            if(_hdf5_dlls)
-                message(STATUS "Installing HDF5 DLLs from: ${_hdf5_bin}")
-                install(FILES ${_hdf5_dlls} DESTINATION bin COMPONENT runtime)
-            endif()
-        endif()
-    endif()
-    
-    # Also try target-based approach as fallback
+    # HDF5 DLLs
     foreach(tgt ${HDF5_TARGETS})
         get_target_property(tgt_DLL ${tgt} IMPORTED_LOCATION_RELEASE)
         if(EXISTS ${tgt_DLL})
+            message(STATUS "  HDF5 DLL ${tgt_DLL}")
             install(FILES ${tgt_DLL} DESTINATION bin COMPONENT runtime)
         endif()
     endforeach()
     
     # Irrlicht DLL
-    if(HYDROCHRONO_ENABLE_IRRLICHT AND DEFINED Irrlicht_ROOT)
-        set(_irr_dll "${Irrlicht_ROOT}/bin/Win64-VisualStudio/Irrlicht.dll")
+    if(HYDROCHRONO_ENABLE_IRRLICHT AND EXISTS ${Irrlicht_DLL_DIR})
+        set(_irr_dll "${Irrlicht_DLL_DIR}/Irrlicht.dll")
         if(EXISTS "${_irr_dll}")
-            message(STATUS "Installing Irrlicht.dll from: ${_irr_dll}")
+            message(STATUS "  Irrlicht DLL ${_irr_dll}")
             install(FILES "${_irr_dll}" DESTINATION bin COMPONENT runtime)
+        endif()
+    endif()
+
+    # VSG DLLs
+    if(HYDROCHRONO_ENABLE_VSG AND EXISTS "${VSG_DLL_DIR}")
+        file(GLOB _vsg_dlls "${VSG_DLL_DIR}/*.dll")
+        if(_vsg_dlls)
+            message(STATUS "  VSG DLLs ${_vsg_dlls}")
+            install(FILES ${_vsg_dlls} DESTINATION bin COMPONENT runtime)
         endif()
     endif()
     
@@ -702,12 +659,13 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     if(CHRONO_PARSERS_PYTHON)
         find_package(Python3 QUIET COMPONENTS Interpreter Development)
         if(Python3_Interpreter_FOUND AND Python3_Development_FOUND)
-            message(STATUS "Found Python and dependencies")
-            message(STATUS "  Python3_Interpreter_FOUND: ${Python3_Interpreter_FOUND}")
-            message(STATUS "  Python3_Development_FOUND: ${Python3_Development_FOUND}")
+            #message(STATUS "Found Python and dependencies")
+            #message(STATUS "  Python3_Interpreter_FOUND: ${Python3_Interpreter_FOUND}")
+            #message(STATUS "  Python3_Development_FOUND: ${Python3_Development_FOUND}")
             get_target_property(tgt_DLL Python3::Python IMPORTED_LOCATION_RELEASE)
             get_target_property(tgt_DLL_d Python3::Python IMPORTED_LOCATION_DEBUG)
             if(EXISTS ${tgt_DLL})
+                message(STATUS "  Python DLL ${tgt_DLL}")
                 install(FILES ${tgt_DLL} DESTINATION bin COMPONENT runtime)
             endif()
             if(EXISTS ${tgt_DLL_d})
