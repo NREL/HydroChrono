@@ -101,7 +101,6 @@ int main(int argc, char* argv[]) {
     // main simulation loop
     ui.Init(&system, "Sphere - Decay Test");
     ui.simulationStarted = true;
-    ui.simulationStarted = true;
 
     while (system.GetChTime() <= simulationDuration) {
         if (ui.IsRunning(timestep) == false) break;
