@@ -6,6 +6,9 @@ namespace chrono {
 class ChSystem;
 }
 
+// Forward declaration for wave model
+class WaveBase;
+
 namespace hydroc {
 namespace gui {
 
@@ -36,6 +39,15 @@ class UI {
      */
     virtual bool IsRunning(double timestep);
 
+    /**@brief Set the wave model for animated free-surface rendering.
+     *
+     * Should be called after Init() and before the simulation loop.
+     * If not called, a static flat water plane is rendered.
+     *
+     * @param wave Shared pointer to the wave model (may be nullptr for still water).
+     */
+    virtual void SetWaveModel(std::shared_ptr<WaveBase> wave);
+
     /**@brief return the internal system.
      *
      * Should be called after init.
@@ -62,6 +74,7 @@ class GUI : public UI {
     void Init(chrono::ChSystem*, const char* title) override;
     void SetCamera(double x, double y, double z, double dirx, double diry, double dirz) override;
     bool IsRunning(double timestep) override;
+    void SetWaveModel(std::shared_ptr<WaveBase> wave) override;
 
   private:
     std::shared_ptr<hydroc::gui::GUIImpl> pImpl;

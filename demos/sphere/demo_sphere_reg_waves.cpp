@@ -127,6 +127,7 @@ int main(int argc, char* argv[]) {
         // main simulation loop
         ui.Init(&system, "Sphere - Regular Waves Test");
         ui.SetCamera(8, -25, 15, 0, 0, 0);
+        ui.SetWaveModel(my_hydro_inputs);  // Enable animated water surface
 
         while (system.GetChTime() <= simulation_duration) {
             if (ui.IsRunning(timestep) == false) break;

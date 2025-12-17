@@ -598,6 +598,22 @@ int RunHydroChronoFromYAML(int argc, char* argv[]) {
             hydroc::cli::LogError("🔥 Unknown exception during SetCamera");
             hydroc::cli::LogWarning("Camera setup failed, using default position");
         }
+
+        // Set wave model for animated free-surface rendering.
+        try {
+            if (hydro_forces) {
+                auto wave_ptr = hydro_forces->GetWave();
+                if (wave_ptr) {
+                    hydroc::debug::LogDebug("🌊 Setting wave model for animated surface...");
+                    ui.SetWaveModel(wave_ptr);
+                    hydroc::debug::LogDebug("✅ Wave model set successfully");
+                }
+            }
+        } catch (const std::exception& e) {
+            hydroc::cli::LogWarning(std::string("Wave visualization setup failed: ") + e.what());
+        } catch (...) {
+            hydroc::cli::LogWarning("Wave visualization setup failed (unknown error)");
+        }
         // ========== END GUARDED VISUALIZATION SETUP ==========
         
         hydroc::debug::LogDebug("Visualization setup complete");

@@ -146,6 +146,7 @@ int main(int argc, char* argv[]) {
     // main simulation loop
     ui.Init(&system, "RM3 - Regular Wave Test");
     ui.SetCamera(0, -50, -10, 0, 0, -10);
+    ui.SetWaveModel(my_hydro_inputs);  // Enable animated water surface
 
     while (system.GetChTime() <= simulationDuration) {
         if (ui.IsRunning(timestep) == false) break;

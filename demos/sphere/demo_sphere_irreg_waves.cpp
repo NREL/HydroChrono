@@ -159,6 +159,7 @@ int main(int argc, char* argv[]) {
     // main simulation loop
     ui.Init(&system, "Sphere - Irregular Waves Test");
     ui.SetCamera(8, -25, 15, 0, 0, 0);
+    ui.SetWaveModel(my_hydro_inputs);  // Enable animated water surface
 
     while (system.GetChTime() <= simulationDuration) {
         if (ui.IsRunning(timestep) == false) break;
