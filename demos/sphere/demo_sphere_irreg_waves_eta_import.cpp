@@ -132,39 +132,6 @@ int main(int argc, char* argv[]) {
     std::cout << "Adding waves to TestHydro object..." << std::endl;
     hydro_forces.AddWaves(my_hydro_inputs);
 
-    std::cout << "Creating fse mesh..." << std::endl;
-    // set up free surface from a mesh
-    auto fse_plane = chrono_types::make_shared<ChBody>();
-    fse_plane->SetPos(ChVector3d(0, 0, 0));
-    fse_plane->SetFixed(true);
-    fse_plane->EnableCollision(false);
-    system.AddBody(fse_plane);
-
-    // std::cout << "SetUpWaveMesh..." << std::endl;
-    // my_hydro_inputs->SetUpWaveMesh();
-    // std::shared_ptr<ChBody> fse_mesh = chrono_types::make_shared<ChBodyEasyMesh>(  //
-    //     my_hydro_inputs->GetMeshFile(),                                            // file name
-    //     1000,                                                                      // density
-    //     false,                                                                     // do not evaluate mass
-    //     automatically true,                                                                      // create
-    //     visualization asset false                                                                      // do not
-    //     collide
-    //);
-    // fse_mesh->SetMass(1.0);
-    // fse_mesh->SetPos_dt(my_hydro_inputs->GetWaveMeshVelocity());
-    // std::cout << "system.Add(fse_mesh)..." << std::endl;
-    // system.Add(fse_mesh);
-    // auto fse_prismatic = chrono_types::make_shared<ChLinkLockPrismatic>();
-    // fse_prismatic->Initialize(fse_plane, fse_mesh, ChFramed(ChVector3d(1.0, 0.0, 0.0), QuatFromAnglY(CH_PI_2)));
-    // system.AddLink(fse_prismatic);
-
-    //// Create a visualization material
-    // std::cout << "Create a visualization material..." << std::endl;
-    // auto fse_texture = chrono_types::make_shared<ChVisualMaterial>();
-    // fse_texture->SetDiffuseColor(ChColor(0.026f, 0.084f, 0.168f));
-    // fse_texture->SetOpacity(0.1);
-    // fse_mesh->GetVisualShape(0)->SetMaterial(0, fse_texture);
-
     // for profiling
     auto start = std::chrono::high_resolution_clock::now();
     // main simulation loop

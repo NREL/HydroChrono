@@ -99,7 +99,7 @@ int main(int argc, char* argv[]) {
         // system.GetSolver()->AsIterative()->SetMaxIterations(300);  // the higher, the easier to keep the constraints
         // satisfied.
         ChRealtimeStepTimer realtime_timer;
-        double simulationDuration = 1000.0;
+        double simulationDuration = 240.0;
 
         // Create user interface
         std::shared_ptr<hydroc::gui::UI> pui = hydroc::gui::CreateUI(visualizationOn);
@@ -218,7 +218,7 @@ int main(int argc, char* argv[]) {
         ui.SetCamera(0, -50, -10, 0, 0, -10);
         ui.simulationStarted = true;
 
-        while (system.GetChTime() <= simulationDuration) {
+        while (system.GetChTime() < simulationDuration - timestep / 2.0) {
             if (ui.IsRunning(timestep) == false) break;
 
             if (ui.simulationStarted) {
