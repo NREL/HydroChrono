@@ -62,6 +62,18 @@ double GetEta(const Eigen::Vector3d& position,
     return amplitude * cos(wavenumber * x_pos - omega * time + phase);
 }
 
+double GetEtaGradientX(const Eigen::Vector3d& position,
+                       double time,
+                       double omega,
+                       double amplitude,
+                       double phase,
+                       double wavenumber) {
+    // Analytic derivative of η = A·cos(k·x − ω·t + φ):
+    //   ∂η/∂x = −A·k·sin(k·x − ω·t + φ)
+    double x_pos = position.x();
+    return -amplitude * wavenumber * sin(wavenumber * x_pos - omega * time + phase);
+}
+
 double GetEtaIrregular(const Eigen::Vector3d& position,
                        double time,
                        const Eigen::VectorXd& freqs_hz,
@@ -76,6 +88,23 @@ double GetEtaIrregular(const Eigen::Vector3d& position,
         eta += GetEta(position, time, omega, amplitude, wave_phases[i], wavenumbers[i]);
     }
     return eta;
+}
+
+double GetEtaGradientXIrregular(const Eigen::Vector3d& position,
+                                double time,
+                                const Eigen::VectorXd& freqs_hz,
+                                const Eigen::VectorXd& spectral_densities,
+                                const Eigen::VectorXd& spectral_widths,
+                                const Eigen::VectorXd& wave_phases,
+                                const Eigen::VectorXd& wavenumbers) {
+    // Sum of component gradients: ∂η/∂x = Σ[−Aᵢ·kᵢ·sin(kᵢ·x − ωᵢ·t + φᵢ)]
+    double deta_dx = 0.0;
+    for (Eigen::Index i = 0; i < freqs_hz.size(); ++i) {
+        double amplitude = std::sqrt(2.0 * spectral_densities[i] * spectral_widths[i]);
+        double omega     = 2.0 * M_PI * freqs_hz[i];
+        deta_dx += GetEtaGradientX(position, time, omega, amplitude, wave_phases[i], wavenumbers[i]);
+    }
+    return deta_dx;
 }
 
 std::vector<double> GetEtaIrregularTimeSeries(const Eigen::Vector3d& position,

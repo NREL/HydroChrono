@@ -77,6 +77,13 @@ double RegularWave::GetElevation(const Eigen::Vector3d& position, double time) {
     return GetEta(position, time, regular_wave_omega_, regular_wave_amplitude_, regular_wave_phase_, wavenumber_);
 }
 
+Eigen::Vector2d RegularWave::GetElevationGradientXY(const Eigen::Vector3d& position, double time) const {
+    // Regular waves propagate in +X direction only; ∂η/∂y = 0.
+    double deta_dx = GetEtaGradientX(position, time, regular_wave_omega_, regular_wave_amplitude_,
+                                      regular_wave_phase_, wavenumber_);
+    return Eigen::Vector2d(deta_dx, 0.0);
+}
+
 Eigen::VectorXd RegularWave::GetForceAtTime(double t) {
     unsigned int dof = num_bodies_ * 6;
     Eigen::VectorXd f(dof);

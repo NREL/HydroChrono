@@ -189,6 +189,13 @@ double IrregularWaves::GetElevation(const Eigen::Vector3d& position, double time
     return GetEtaIrregular(position, time, spectrum_frequencies_, spectral_densities_, spectral_widths_, wave_phases_, wavenumbers_);
 }
 
+Eigen::Vector2d IrregularWaves::GetElevationGradientXY(const Eigen::Vector3d& position, double time) const {
+    // Irregular waves propagate in +X direction only; ∂η/∂y = 0.
+    double deta_dx = GetEtaGradientXIrregular(position, time, spectrum_frequencies_, spectral_densities_,
+                                               spectral_widths_, wave_phases_, wavenumbers_);
+    return Eigen::Vector2d(deta_dx, 0.0);
+}
+
 Eigen::VectorXd IrregularWaves::GetForceAtTime(double t) {
     unsigned int total_dofs = params_.num_bodies_ * 6;
     Eigen::VectorXd f(total_dofs);

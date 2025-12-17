@@ -33,6 +33,7 @@ class RegularWave : public WaveBase {
     double GetElevation(const Eigen::Vector3d& position, double time) override;
     Eigen::Vector3d GetVelocity(const Eigen::Vector3d& position, double time) override;
     Eigen::Vector3d GetAcceleration(const Eigen::Vector3d& position, double time) override;
+    Eigen::Vector2d GetElevationGradientXY(const Eigen::Vector3d& position, double time) const override;
 
   private:
     unsigned int num_bodies_ = 0;
