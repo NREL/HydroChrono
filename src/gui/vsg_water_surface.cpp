@@ -1,11 +1,10 @@
-// =============================================================================
-// HydroChrono VSG Water Surface Visualization - Implementation
-// =============================================================================
+// HydroChrono VSG Water Surface Visualization
 #include "vsg_water_surface.h"
 
 #include "vsg_config.h"
 #include "vsg_gui_component.h"
 #include "vsg_materials.h"
+#include "vsg_radiation_surface.h"
 
 #include <cmath>
 #include <iostream>
@@ -22,15 +21,7 @@ namespace gui {
 
 using namespace vsg_config;
 
-// =============================================================================
-// Helper: VSG Buffer Visitor
-// =============================================================================
-// VSG stores geometry data in a tree structure. This "visitor" walks the tree
-// to find the actual float arrays containing vertex positions (N=0) or
-// normals (N=1). We need these pointers to update the mesh each frame.
-//
-// This follows the same pattern used internally by Chrono-VSG.
-// =============================================================================
+// Visitor to find vertex (N=0) or normal (N=1) arrays in VSG scene graph.
 template <int N>
 class FindVec3BufferData : public vsg::Visitor {
   public:
@@ -64,15 +55,81 @@ class FindVec3BufferData : public vsg::Visitor {
     vsg::ref_ptr<vsg::vec3Array> buffer_;
 };
 
-// =============================================================================
-// AnimatedWaterSurface Implementation
-// =============================================================================
+// Visitor to find vec4 color array at index N in VSG scene graph.
+template <int N>
+class FindVec4BufferData : public vsg::Visitor {
+  public:
+    FindVec4BufferData() : buffer_(nullptr) {}
+
+    void apply(vsg::Object& object) override { object.traverse(*this); }
+
+    void apply(vsg::VertexDraw& vd) override {
+        if (vd.arrays.empty() || static_cast<int>(vd.arrays.size()) <= N) {
+            return;
+        }
+        vd.arrays[N]->data->accept(*this);
+    }
+
+    void apply(vsg::VertexIndexDraw& vid) override {
+        if (vid.arrays.empty() || static_cast<int>(vid.arrays.size()) <= N) {
+            return;
+        }
+        vid.arrays[N]->data->accept(*this);
+    }
+
+    void apply(vsg::vec4Array& colors) override {
+        if (!buffer_) {
+            buffer_ = &colors;
+        }
+    }
+
+    vsg::ref_ptr<vsg::vec4Array> GetBufferData() { return buffer_; }
+
+  private:
+    vsg::ref_ptr<vsg::vec4Array> buffer_;
+};
+
+// Visitor to enable alpha blending on a VSG graphics pipeline.
+// This modifies the ColorBlendState to support transparent rendering.
+class EnableAlphaBlending : public vsg::Visitor {
+  public:
+    EnableAlphaBlending() = default;
+
+    void apply(vsg::Object& object) override { object.traverse(*this); }
+
+    void apply(vsg::GraphicsPipeline& pipeline) override {
+        // Find and modify the ColorBlendState in the pipeline's state objects.
+        for (auto& state : pipeline.pipelineStates) {
+            if (auto* cbs = dynamic_cast<vsg::ColorBlendState*>(state.get())) {
+                // Enable alpha blending for the first attachment.
+                if (!cbs->attachments.empty()) {
+                    auto& att = cbs->attachments[0];
+                    att.blendEnable = VK_TRUE;
+                    att.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+                    att.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+                    att.colorBlendOp = VK_BLEND_OP_ADD;
+                    att.srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+                    att.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+                    att.alphaBlendOp = VK_BLEND_OP_ADD;
+                    modified_ = true;
+                }
+            }
+        }
+        // Continue traversal in case there are nested pipelines.
+        pipeline.traverse(*this);
+    }
+
+    bool WasModified() const { return modified_; }
+
+  private:
+    bool modified_ = false;
+};
 
 AnimatedWaterSurface::AnimatedWaterSurface() = default;
 AnimatedWaterSurface::~AnimatedWaterSurface() = default;
 
 void AnimatedWaterSurface::Reset() {
-    // Remove from scene if still attached.
+    // Remove water surface from scene if still attached.
     if (scene_ && vsg_node_) {
         auto& children = scene_->children;
         auto it = std::find(children.begin(), children.end(), vsg_node_);
@@ -81,10 +138,26 @@ void AnimatedWaterSurface::Reset() {
         }
     }
 
+    // Remove wireframe from scene if attached.
+    if (scene_ && wireframe_node_) {
+        auto& children = scene_->children;
+        auto it = std::find(children.begin(), children.end(), wireframe_node_);
+        if (it != children.end()) {
+            children.erase(it);
+        }
+    }
+
     mesh_.reset();
     vsg_vertices_.reset();
     vsg_normals_.reset();
+    vsg_colors_.reset();
     vsg_node_.reset();
+
+    wireframe_vertices_.reset();
+    wireframe_node_.reset();
+    wireframe_visible_ = false;
+    wireframe_initialized_ = false;
+
     scene_.reset();
     bound_vis_ = nullptr;
     initialized_ = false;
@@ -92,6 +165,11 @@ void AnimatedWaterSurface::Reset() {
     num_triangles_ = 0;
     current_resolution_ = 0;
     last_update_time_ = -1.0;
+
+    // Reset adaptive height-shading range.
+    adaptive_eta_min_ = 0.0f;
+    adaptive_eta_max_ = 0.0f;
+    adaptive_range_initialized_ = false;
 }
 
 void AnimatedWaterSurface::Initialize(chrono::vsg3d::ChVisualSystemVSG* vis, int resolution) {
@@ -189,16 +267,15 @@ void AnimatedWaterSurface::InitializeInternal(chrono::vsg3d::ChVisualSystemVSG* 
 
     num_triangles_ = faces.size();
 
-    // Create water material with translucency and PBR properties.
+    // Create transparent white material for the water surface.
+    // White diffuse allows vertex colors to show through when multiplied.
+    // Opacity enables transparency so we can see through the water.
     auto water_material = chrono_types::make_shared<chrono::ChVisualMaterial>();
-    water_material->SetDiffuseColor(chrono::ChColor(kWaterR, kWaterG, kWaterB));
+    water_material->SetDiffuseColor(chrono::ChColor(1.0f, 1.0f, 1.0f));
     water_material->SetOpacity(kWaterOpacity);
     water_material->SetRoughness(kWaterRoughness);
     water_material->SetMetallic(kWaterMetallic);
-    water_material->SetSpecularColor(chrono::ChColor(kWaterSpecular, kWaterSpecular, kWaterSpecular));
 
-    // Use CreateTrimeshPbrMatShape for proper material with transparency.
-    // This creates dynamic-compatible buffers with PBR rendering.
     auto transform = vsg::MatrixTransform::create();
     std::vector<chrono::ChVisualMaterialSharedPtr> materials = {water_material};
     vsg_node_ = shape_builder->CreateTrimeshPbrMatShape(mesh_, transform, materials, false);
@@ -210,9 +287,12 @@ void AnimatedWaterSurface::InitializeInternal(chrono::vsg3d::ChVisualSystemVSG* 
         return;
     }
 
-    // Use VSG visitor pattern to find vertex and normal arrays (same as Chrono-VSG).
+    // Use VSG visitor pattern to find vertex and normal arrays.
+    // For CreateTrimeshPbrMatShape: [0]=vertices, [1]=normals, [2]=texcoords
     vsg_vertices_ = vsg::visit<FindVec3BufferData<0>>(vsg_node_).GetBufferData();
     vsg_normals_ = vsg::visit<FindVec3BufferData<1>>(vsg_node_).GetBufferData();
+    // PbrMatShape may not have vertex colors - try to find them anyway.
+    vsg_colors_ = vsg::visit<FindVec4BufferData<3>>(vsg_node_).GetBufferData();
 
     if (!vsg_vertices_ || !vsg_normals_) {
         if constexpr (kDebugWaveSurface) {
@@ -224,6 +304,9 @@ void AnimatedWaterSurface::InitializeInternal(chrono::vsg3d::ChVisualSystemVSG* 
     // Mark arrays as dynamic for GPU re-upload support.
     vsg_vertices_->properties.dataVariance = vsg::DataVariance::DYNAMIC_DATA;
     vsg_normals_->properties.dataVariance = vsg::DataVariance::DYNAMIC_DATA;
+    if (vsg_colors_) {
+        vsg_colors_->properties.dataVariance = vsg::DataVariance::DYNAMIC_DATA;
+    }
 
     // Add to scene.
     scene_->addChild(vsg_node_);
@@ -235,9 +318,11 @@ void AnimatedWaterSurface::InitializeInternal(chrono::vsg3d::ChVisualSystemVSG* 
     std::cout << "[WaterSurface] init vis=" << static_cast<void*>(vis)
               << " verts=" << vsg_vertices_->size()
               << " normals=" << vsg_normals_->size()
+              << " colors=" << (vsg_colors_ ? vsg_colors_->size() : 0)
               << " triangles=" << num_triangles_
               << " resolution=" << resolution
-              << " bound=yes" << std::endl;
+              << " transparent=yes"
+              << " height_shading=" << (vsg_colors_ ? "yes" : "no") << std::endl;
 }
 
 void AnimatedWaterSurface::SetVisible(bool visible) {
@@ -278,9 +363,236 @@ bool AnimatedWaterSurface::IsVisible() const {
     return visible_;
 }
 
+void AnimatedWaterSurface::SetWireframeVisible(bool visible) {
+    if (!initialized_ || !scene_) {
+        wireframe_visible_ = visible;
+        return;
+    }
+
+    // Initialize wireframe on first show if needed.
+    if (visible && !wireframe_initialized_) {
+        InitializeWireframe();
+    }
+
+    if (!wireframe_node_ || !wireframe_initialized_) {
+        wireframe_visible_ = visible;
+        return;
+    }
+
+    if (visible == wireframe_visible_) {
+        return;  // No change.
+    }
+
+    wireframe_visible_ = visible;
+
+    auto& children = scene_->children;
+    if (visible) {
+        // Add to scene if not present.
+        auto it = std::find(children.begin(), children.end(), wireframe_node_);
+        if (it == children.end()) {
+            children.push_back(wireframe_node_);
+        }
+    } else {
+        // Remove from scene.
+        auto it = std::find(children.begin(), children.end(), wireframe_node_);
+        if (it != children.end()) {
+            children.erase(it);
+        }
+    }
+}
+
+void AnimatedWaterSurface::InitializeWireframe() {
+    if (wireframe_initialized_ || !bound_vis_ || !scene_) {
+        return;
+    }
+
+    auto shape_builder = bound_vis_->GetVSGShapeBuilder();
+    if (!shape_builder) {
+        return;
+    }
+
+    const int n = current_resolution_;
+    if (n < 2) {
+        return;
+    }
+
+    // Create thin quad segments as "lines" that follow the wave surface.
+    auto wireframe_mesh = chrono_types::make_shared<chrono::ChTriangleMeshConnected>();
+
+    const double half_size = kWaterGridSize / 2.0;
+    const double spacing = kWaterGridSize / (n - 1);
+    const double line_half_width = 0.05;
+
+    std::vector<chrono::ChVector3d>& verts = wireframe_mesh->m_vertices;
+    std::vector<chrono::ChVector3i>& faces = wireframe_mesh->m_face_v_indices;
+
+    int vertex_idx = 0;
+
+    // Horizontal segments (along X, one per grid edge).
+    for (int j = 0; j < n; ++j) {
+        double y = -half_size + j * spacing;
+        for (int i = 0; i < n - 1; ++i) {
+            double x0 = -half_size + i * spacing;
+            double x1 = -half_size + (i + 1) * spacing;
+
+            verts.push_back(chrono::ChVector3d(x0, y - line_half_width, 0.0));
+            verts.push_back(chrono::ChVector3d(x1, y - line_half_width, 0.0));
+            verts.push_back(chrono::ChVector3d(x1, y + line_half_width, 0.0));
+            verts.push_back(chrono::ChVector3d(x0, y + line_half_width, 0.0));
+
+            faces.push_back(chrono::ChVector3i(vertex_idx, vertex_idx + 1, vertex_idx + 2));
+            faces.push_back(chrono::ChVector3i(vertex_idx, vertex_idx + 2, vertex_idx + 3));
+            vertex_idx += 4;
+        }
+    }
+
+    // Vertical segments (along Y, one per grid edge).
+    for (int i = 0; i < n; ++i) {
+        double x = -half_size + i * spacing;
+        for (int j = 0; j < n - 1; ++j) {
+            double y0 = -half_size + j * spacing;
+            double y1 = -half_size + (j + 1) * spacing;
+
+            verts.push_back(chrono::ChVector3d(x - line_half_width, y0, 0.0));
+            verts.push_back(chrono::ChVector3d(x + line_half_width, y0, 0.0));
+            verts.push_back(chrono::ChVector3d(x + line_half_width, y1, 0.0));
+            verts.push_back(chrono::ChVector3d(x - line_half_width, y1, 0.0));
+
+            faces.push_back(chrono::ChVector3i(vertex_idx, vertex_idx + 1, vertex_idx + 2));
+            faces.push_back(chrono::ChVector3i(vertex_idx, vertex_idx + 2, vertex_idx + 3));
+            vertex_idx += 4;
+        }
+    }
+
+    // Faint blue-gray material.
+    auto wire_material = chrono_types::make_shared<chrono::ChVisualMaterial>();
+    wire_material->SetDiffuseColor(chrono::ChColor(0.1f, 0.2f, 0.3f));
+    wire_material->SetOpacity(0.35f);
+    wire_material->SetRoughness(0.9f);
+    wire_material->SetMetallic(0.0f);
+
+    auto transform = vsg::MatrixTransform::create();
+    std::vector<chrono::ChVisualMaterialSharedPtr> materials = {wire_material};
+    wireframe_node_ = shape_builder->CreateTrimeshPbrMatShape(wireframe_mesh, transform, materials, false);
+
+    if (!wireframe_node_) {
+        return;
+    }
+
+    wireframe_vertices_ = vsg::visit<FindVec3BufferData<0>>(wireframe_node_).GetBufferData();
+    if (wireframe_vertices_) {
+        wireframe_vertices_->properties.dataVariance = vsg::DataVariance::DYNAMIC_DATA;
+    }
+
+    wireframe_initialized_ = true;
+    std::cout << "[WaterSurface] wireframe: " << faces.size() << " triangles" << std::endl;
+}
+
+void AnimatedWaterSurface::UpdateWireframe() {
+    if (!wireframe_initialized_ || !wireframe_vertices_ || !vsg_vertices_) {
+        return;
+    }
+
+    const int n = current_resolution_;
+    if (n < 2) {
+        return;
+    }
+
+    // Get Z at grid position (i, j) from the water surface soup mesh.
+    auto get_z_at_grid = [&](int i, int j) -> float {
+        i = std::max(0, std::min(i, n - 1));
+        j = std::max(0, std::min(j, n - 1));
+
+        // Try as v00 of cell (i, j).
+        if (i < n - 1 && j < n - 1) {
+            size_t cell_idx = static_cast<size_t>(j * (n - 1) + i);
+            size_t idx = cell_idx * 6;
+            if (idx < vsg_vertices_->size()) {
+                return (*vsg_vertices_)[idx].z;
+            }
+        }
+        // Try as v10 of cell (i-1, j).
+        if (i > 0 && j < n - 1) {
+            size_t cell_idx = static_cast<size_t>(j * (n - 1) + (i - 1));
+            size_t idx = cell_idx * 6 + 1;
+            if (idx < vsg_vertices_->size()) {
+                return (*vsg_vertices_)[idx].z;
+            }
+        }
+        // Try as v01 of cell (i, j-1).
+        if (i < n - 1 && j > 0) {
+            size_t cell_idx = static_cast<size_t>((j - 1) * (n - 1) + i);
+            size_t idx = cell_idx * 6 + 5;
+            if (idx < vsg_vertices_->size()) {
+                return (*vsg_vertices_)[idx].z;
+            }
+        }
+        // Try as v11 of cell (i-1, j-1).
+        if (i > 0 && j > 0) {
+            size_t cell_idx = static_cast<size_t>((j - 1) * (n - 1) + (i - 1));
+            size_t idx = cell_idx * 6 + 2;
+            if (idx < vsg_vertices_->size()) {
+                return (*vsg_vertices_)[idx].z;
+            }
+        }
+        return 0.0f;
+    };
+
+    const double half_size = kWaterGridSize / 2.0;
+    const double spacing = kWaterGridSize / (n - 1);
+    const double line_half_width = 0.05;
+    const float z_offset = 0.02f;
+
+    size_t soup_idx = 0;
+
+    // Update horizontal segments.
+    for (int j = 0; j < n; ++j) {
+        double y = -half_size + j * spacing;
+        for (int i = 0; i < n - 1; ++i) {
+            double x0 = -half_size + i * spacing;
+            double x1 = -half_size + (i + 1) * spacing;
+            float z0 = get_z_at_grid(i, j) + z_offset;
+            float z1 = get_z_at_grid(i + 1, j) + z_offset;
+
+            if (soup_idx + 5 < wireframe_vertices_->size()) {
+                (*wireframe_vertices_)[soup_idx + 0] = vsg::vec3(static_cast<float>(x0), static_cast<float>(y - line_half_width), z0);
+                (*wireframe_vertices_)[soup_idx + 1] = vsg::vec3(static_cast<float>(x1), static_cast<float>(y - line_half_width), z1);
+                (*wireframe_vertices_)[soup_idx + 2] = vsg::vec3(static_cast<float>(x1), static_cast<float>(y + line_half_width), z1);
+                (*wireframe_vertices_)[soup_idx + 3] = vsg::vec3(static_cast<float>(x0), static_cast<float>(y - line_half_width), z0);
+                (*wireframe_vertices_)[soup_idx + 4] = vsg::vec3(static_cast<float>(x1), static_cast<float>(y + line_half_width), z1);
+                (*wireframe_vertices_)[soup_idx + 5] = vsg::vec3(static_cast<float>(x0), static_cast<float>(y + line_half_width), z0);
+            }
+            soup_idx += 6;
+        }
+    }
+
+    // Update vertical segments.
+    for (int i = 0; i < n; ++i) {
+        double x = -half_size + i * spacing;
+        for (int j = 0; j < n - 1; ++j) {
+            double y0 = -half_size + j * spacing;
+            double y1 = -half_size + (j + 1) * spacing;
+            float z0 = get_z_at_grid(i, j) + z_offset;
+            float z1 = get_z_at_grid(i, j + 1) + z_offset;
+
+            if (soup_idx + 5 < wireframe_vertices_->size()) {
+                (*wireframe_vertices_)[soup_idx + 0] = vsg::vec3(static_cast<float>(x - line_half_width), static_cast<float>(y0), z0);
+                (*wireframe_vertices_)[soup_idx + 1] = vsg::vec3(static_cast<float>(x + line_half_width), static_cast<float>(y0), z0);
+                (*wireframe_vertices_)[soup_idx + 2] = vsg::vec3(static_cast<float>(x + line_half_width), static_cast<float>(y1), z1);
+                (*wireframe_vertices_)[soup_idx + 3] = vsg::vec3(static_cast<float>(x - line_half_width), static_cast<float>(y0), z0);
+                (*wireframe_vertices_)[soup_idx + 4] = vsg::vec3(static_cast<float>(x + line_half_width), static_cast<float>(y1), z1);
+                (*wireframe_vertices_)[soup_idx + 5] = vsg::vec3(static_cast<float>(x - line_half_width), static_cast<float>(y1), z1);
+            }
+            soup_idx += 6;
+        }
+    }
+
+    wireframe_vertices_->dirty();
+}
+
 void AnimatedWaterSurface::Update(const std::shared_ptr<WaveBase>& wave, double t,
                                   const ViewerSettings* settings) {
-    if (!initialized_ || !vsg_vertices_ || !vsg_normals_ || !mesh_) {
+    if (!initialized_ || !vsg_vertices_ || !vsg_normals_ || !vsg_colors_ || !mesh_) {
         if constexpr (kDebugWaveSurface) {
             if (frame_count_++ % kDebugPrintEveryNFrames == 0) {
                 std::cout << "[WaveSurfaceDebug] Update() early return: initialized_="
@@ -308,10 +620,25 @@ void AnimatedWaterSurface::Update(const std::shared_ptr<WaveBase>& wave, double 
     // Get visual scale from settings (default 1.0).
     float visual_scale = (settings) ? settings->wave_visual_scale : 1.0f;
 
+    // Check if radiation visualization is enabled.
+    // Note: Params are set in UpdateRadiationSourceBody() BEFORE SetSourceState()
+    // to ensure amplitude computation uses the correct source radius.
+    const bool use_radiation = settings && settings->show_radiation_viz;
+
     const auto& orig_verts = mesh_->m_vertices;
     const auto& faces = mesh_->m_face_v_indices;
 
-    // Debug statistics (only computed when debug is enabled).
+    // Track min/max eta this frame for adaptive range.
+    float frame_min_eta = std::numeric_limits<float>::max();
+    float frame_max_eta = std::numeric_limits<float>::lowest();
+
+    // Compute adaptive range for height-based shading.
+    // Uses previous frame's smoothed range (1-frame lag is imperceptible).
+    constexpr float kMinRange = 0.05f;  // Minimum range to avoid extreme sensitivity
+    float adaptive_range = std::max(kMinRange, adaptive_eta_max_ - adaptive_eta_min_);
+    float adaptive_center = (adaptive_eta_max_ + adaptive_eta_min_) * 0.5f;
+
+    // Debug statistics.
     [[maybe_unused]] double min_eta = std::numeric_limits<double>::max();
     [[maybe_unused]] double max_eta = std::numeric_limits<double>::lowest();
 
@@ -330,27 +657,89 @@ void AnimatedWaterSurface::Update(const std::shared_ptr<WaveBase>& wave, double 
             const auto& grid_pos = orig_verts[static_cast<size_t>(grid_idx)];
 
             // Get wave elevation eta(x, y, t) at this grid point.
-            double eta = 0.0;
+            double eta_incident = 0.0;
             if (wave) {
                 Eigen::Vector3d pos(grid_pos.x(), grid_pos.y(), 0.0);
-                eta = wave->GetElevation(pos, t);
+                eta_incident = wave->GetElevation(pos, t);
             }
+
+            // Add radiation visualization if enabled.
+            // NOTE: This is visualization-only and does NOT affect physics.
+            double eta_radiation = 0.0;
+            if (use_radiation && radiation_viz_.IsInitialized()) {
+                eta_radiation = radiation_viz_.EvaluateEta(grid_pos.x(), grid_pos.y(), t);
+            }
+
+            // Combine incident and radiated wave elevation.
+            double eta = eta_incident + eta_radiation;
 
             // Apply visual scale multiplier.
             eta *= visual_scale;
+
+            float eta_f = static_cast<float>(eta);
+
+            // Track frame min/max for adaptive range update.
+            frame_min_eta = std::min(frame_min_eta, eta_f);
+            frame_max_eta = std::max(frame_max_eta, eta_f);
 
             // Write updated position to VSG vertex buffer.
             size_t vsg_idx = tri * 3 + static_cast<size_t>(corner);
             if (vsg_idx < vsg_vertices_->size()) {
                 (*vsg_vertices_)[vsg_idx].x = static_cast<float>(grid_pos.x());
                 (*vsg_vertices_)[vsg_idx].y = static_cast<float>(grid_pos.y());
-                (*vsg_vertices_)[vsg_idx].z = static_cast<float>(eta);
+                (*vsg_vertices_)[vsg_idx].z = eta_f;
+            }
+
+            // Height-based color shading: lighter for crests, darker for troughs.
+            // Uses adaptive range based on observed min/max eta values.
+            if (vsg_colors_ && vsg_idx < vsg_colors_->size()) {
+                // Normalize eta to [-1, +1] using adaptive range.
+                // Center at the midpoint between min and max for balanced shading.
+                float norm_eta = (eta_f - adaptive_center) / (adaptive_range * 0.5f);
+                norm_eta = std::clamp(norm_eta, -1.0f, 1.0f);
+                
+                // Additive offset: adds/subtracts a fixed amount to channels.
+                // Weighted more toward blue/green for water-like appearance.
+                constexpr float kAddOffset = 0.18f;
+                float add_term = kAddOffset * norm_eta;
+                
+                // Multiplicative brightness: 0.55 (dark trough) to 1.45 (bright crest).
+                float brightness = 1.0f + 0.45f * norm_eta;
+                
+                // Combine: multiply first, then add offset for visible shading.
+                float r = std::clamp(kWaterR * brightness + add_term * 0.3f, 0.0f, 1.0f);
+                float g = std::clamp(kWaterG * brightness + add_term * 0.85f, 0.0f, 1.0f);
+                float b = std::clamp(kWaterB * brightness + add_term * 1.0f, 0.0f, 1.0f);
+                
+                (*vsg_colors_)[vsg_idx] = vsg::vec4(r, g, b, kWaterOpacity);
             }
 
             if constexpr (kDebugWaveSurface) {
                 min_eta = std::min(min_eta, eta);
                 max_eta = std::max(max_eta, eta);
             }
+        }
+    }
+
+    // Update adaptive range using exponential smoothing.
+    // Fast adaptation when range expands, slow decay when range shrinks.
+    // This prevents flickering while still responding to new wave conditions.
+    if (frame_min_eta < std::numeric_limits<float>::max()) {
+        constexpr float kExpandAlpha = 0.3f;   // Fast expansion (30% new value)
+        constexpr float kShrinkAlpha = 0.02f;  // Slow shrinkage (2% new value)
+        
+        if (!adaptive_range_initialized_) {
+            // Initialize on first valid frame.
+            adaptive_eta_min_ = frame_min_eta;
+            adaptive_eta_max_ = frame_max_eta;
+            adaptive_range_initialized_ = true;
+        } else {
+            // Expand quickly, shrink slowly.
+            float min_alpha = (frame_min_eta < adaptive_eta_min_) ? kExpandAlpha : kShrinkAlpha;
+            float max_alpha = (frame_max_eta > adaptive_eta_max_) ? kExpandAlpha : kShrinkAlpha;
+            
+            adaptive_eta_min_ += min_alpha * (frame_min_eta - adaptive_eta_min_);
+            adaptive_eta_max_ += max_alpha * (frame_max_eta - adaptive_eta_max_);
         }
     }
 
@@ -410,9 +799,25 @@ void AnimatedWaterSurface::Update(const std::shared_ptr<WaveBase>& wave, double 
         }
     }
 
-    // Mark vertex and normal buffers as dirty for GPU re-upload.
+    // Mark vertex, normal, and color buffers as dirty for GPU re-upload.
     vsg_vertices_->dirty();
     vsg_normals_->dirty();
+    if (vsg_colors_) {
+        vsg_colors_->dirty();
+    }
+
+    // Handle wireframe visibility toggle.
+    if (settings) {
+        bool want_wireframe = settings->show_water_grid;
+        if (want_wireframe != wireframe_visible_) {
+            SetWireframeVisible(want_wireframe);
+        }
+    }
+
+    // Update wireframe if visible.
+    if (wireframe_visible_ && wireframe_initialized_) {
+        UpdateWireframe();
+    }
 
     // Debug output.
     if constexpr (kDebugWaveSurface) {
@@ -454,12 +859,7 @@ std::string AnimatedWaterSurface::GetStatusString() const {
     return ss.str();
 }
 
-// =============================================================================
-// Static Water Plane Factory
-// =============================================================================
-
 std::shared_ptr<chrono::ChBody> CreateStaticWaterPlane() {
-    // Create a thin box as the water surface (visual only: no collision, fixed).
     auto water = chrono_types::make_shared<chrono::ChBodyEasyBox>(
         kWaterPlaneSize,       // x dimension
         kWaterPlaneSize,       // y dimension

@@ -422,6 +422,7 @@ if(HYDROCHRONO_ENABLE_VSG)
       src/gui/vsg_lighting.cpp
       src/gui/vsg_materials.cpp
       src/gui/vsg_water_surface.cpp
+      src/gui/vsg_radiation_surface.cpp
   )
   set(HCGUI_HEADERS ${HCGUI_HEADERS}
       src/gui/vsg_config.h
@@ -429,6 +430,7 @@ if(HYDROCHRONO_ENABLE_VSG)
       src/gui/vsg_lighting.h
       src/gui/vsg_materials.h
       src/gui/vsg_water_surface.h
+      src/gui/vsg_radiation_surface.h
   )
 endif()
 

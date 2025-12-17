@@ -11,7 +11,11 @@
 #include "vsg_gui_component.h"
 #include "vsg_lighting.h"
 #include "vsg_materials.h"
+#include "vsg_radiation_surface.h"
 #include "vsg_water_surface.h"
+
+#include <hydroc/waves/regular_wave.h>
+#include <hydroc/waves/irregular_wave.h>
 
 #include <iostream>
 #include <memory>
@@ -124,49 +128,35 @@ void GUIImplVSG::EnsureWaterSurface() {
         return;
     }
 
-    // Check if we have a valid wave model (not NoWave).
-    bool has_waves = wave_model_ && wave_model_->GetWaveMode() != WaveMode::noWaveCIC;
-
     // If already initialized for this visual system, nothing to do.
     if (animated_water_->IsInitializedFor(pVis.get())) {
         return;
     }
 
     if constexpr (kDebugWaveSurface) {
-        std::cout << "[WaterSurface] EnsureWaterSurface: has_waves=" << has_waves
-                  << " kForceWaterSurface=" << kForceWaterSurface << std::endl;
+        bool has_waves = wave_model_ && wave_model_->GetWaveMode() != WaveMode::noWaveCIC;
+        std::cout << "[WaterSurface] EnsureWaterSurface: has_waves=" << has_waves << std::endl;
     }
 
-    // Handle animated or static water surface.
-    if (has_waves || kForceWaterSurface) {
-        // Initialize animated water surface directly in VSG scene.
-        // Must be done after pVis->Initialize() which happens in Init().
-        // Use viewer_settings_ resolution if available.
-        int resolution = (viewer_settings_) ? viewer_settings_->grid_resolution : 0;
-        animated_water_->Initialize(pVis.get(), resolution);
+    // Always create animated water surface (supports waves + radiation viz).
+    // Static plane fallback removed - animated water handles all cases.
+    int resolution = (viewer_settings_) ? viewer_settings_->grid_resolution : 0;
+    animated_water_->Initialize(pVis.get(), resolution);
 
-        if (animated_water_->IsInitialized()) {
-            // Print status: wave pointer status.
-            std::cout << "[WaterSurface] wave_ptr=" << (wave_model_ ? "ok" : "null");
-            if (wave_model_) {
-                std::cout << " mode=" << static_cast<int>(wave_model_->GetWaveMode());
-            }
-            std::cout << " " << animated_water_->GetStatusString() << std::endl;
-
-            // Initial update at current system time.
-            double t = system_->GetChTime();
-            animated_water_->Update(wave_model_, t);
-        } else {
-            if constexpr (kDebugWaveSurface) {
-                std::cout << "[WaterSurface] Initialize() failed!" << std::endl;
-            }
+    if (animated_water_->IsInitialized()) {
+        std::cout << "[WaterSurface] wave_ptr=" << (wave_model_ ? "ok" : "null");
+        if (wave_model_) {
+            std::cout << " mode=" << static_cast<int>(wave_model_->GetWaveMode());
         }
-    } else if (!water_surface_created_) {
-        // No waves and not forcing: add static water plane.
-        auto water_plane = CreateStaticWaterPlane();
-        system_->AddBody(water_plane);
-        water_surface_created_ = true;
-        std::cout << "[WaterSurface] static plane created (no wave model)" << std::endl;
+        std::cout << " " << animated_water_->GetStatusString() << std::endl;
+
+        // Initial update at current system time.
+        double t = system_->GetChTime();
+        animated_water_->Update(wave_model_, t);
+    } else {
+        if constexpr (kDebugWaveSurface) {
+            std::cout << "[WaterSurface] Initialize() failed!" << std::endl;
+        }
     }
 }
 
@@ -194,6 +184,14 @@ bool GUIImplVSG::IsRunning(double timestep) {
     // VSG vertex buffers are marked dirty() in Update() for GPU re-upload.
     if (animated_water_ && animated_water_->IsInitialized()) {
         double t = system_ ? system_->GetChTime() : 0.0;
+
+        // Update radiation source body state if radiation viz is enabled.
+        // Chooses the first non-water body in the system as the source.
+        // NOTE: This is visualization-only and does NOT affect physics.
+        if (viewer_settings_ && viewer_settings_->show_radiation_viz && system_) {
+            UpdateRadiationSourceBody(t);
+        }
+
         // Update() handles null wave_model_ gracefully (keeps surface flat).
         // Pass viewer_settings_ for scale multiplier and throttle.
         animated_water_->Update(wave_model_, t, viewer_settings_.get());
@@ -204,6 +202,96 @@ bool GUIImplVSG::IsRunning(double timestep) {
     pVis->EndScene();
 
     return true;
+}
+
+void GUIImplVSG::UpdateRadiationSourceBody(double t) {
+    if (!animated_water_ || !system_) {
+        return;
+    }
+
+    // Update global params.
+    if (viewer_settings_) {
+        RadiationSurfaceViz::Params rad_params;
+        rad_params.visual_scale = static_cast<double>(viewer_settings_->radiation_visual_scale);
+        rad_params.wave_period = 8.0;  // Default; should match body oscillation frequency
+
+        // Get wave properties from wave model if available.
+        if (wave_model_) {
+            // Water depth and gravity (available in all wave models).
+            if (wave_model_->water_depth_ > 0.0) {
+                rad_params.water_depth = wave_model_->water_depth_;
+            }
+            rad_params.gravity = wave_model_->g_;
+
+            // Wave period from RegularWave.
+            if (wave_model_->GetWaveMode() == WaveMode::regular) {
+                auto* reg_wave = dynamic_cast<RegularWave*>(wave_model_.get());
+                if (reg_wave && reg_wave->regular_wave_omega_ > 0.0) {
+                    constexpr double kTwoPi = 2.0 * 3.14159265358979323846;
+                    rad_params.wave_period = kTwoPi / reg_wave->regular_wave_omega_;
+                }
+            }
+            // Peak period from IrregularWaves (JONSWAP).
+            else if (wave_model_->GetWaveMode() == WaveMode::irregular) {
+                auto* irreg_wave = dynamic_cast<IrregularWaves*>(wave_model_.get());
+                if (irreg_wave) {
+                    // Note: IrregularWaves doesn't expose params_ directly.
+                    // For now, keep default. Could add a GetPeakPeriod() accessor.
+                }
+            }
+            // NoWave mode (decay tests): wave_period should ideally be set to the 
+            // body's natural period T_n ≈ 2π√((M+A_∞)/K_hs). Using default 8s as fallback.
+        }
+
+        animated_water_->GetRadiationViz().SetParams(rad_params);
+    }
+
+    // Log source bodies once.
+    static bool logged_sources = false;
+
+    // Iterate over ALL moving bodies and update their radiation state.
+    for (auto& body : system_->GetBodies()) {
+        if (!body) {
+            continue;
+        }
+
+        const std::string& name = body->GetName();
+
+        // Skip water surfaces and ground bodies.
+        if (name == "water_surface" || name == "animated_water_surface" ||
+            name == "ground" || name == "floor" || name.empty()) {
+            continue;
+        }
+
+        // Skip fixed bodies.
+        if (body->IsFixed()) {
+            continue;
+        }
+
+        // Get body motion state.
+        const chrono::ChVector3d pos = body->GetPos();
+        const chrono::ChVector3d vel = body->GetPosDt();
+        const chrono::ChVector3d ang_vel = body->GetAngVelLocal();
+
+        // Estimate body radius from AABB (rough approximation).
+        double radius = 5.0;  // Default
+        auto aabb = body->GetTotalAABB();
+        if (aabb.max.x() > aabb.min.x()) {
+            double dx = aabb.max.x() - aabb.min.x();
+            double dy = aabb.max.y() - aabb.min.y();
+            radius = std::max(dx, dy) / 2.0;
+            radius = std::max(radius, 1.0);  // Minimum 1m
+        }
+
+        // Update radiation viz for this body.
+        animated_water_->GetRadiationViz().SetSourceState(name, pos, vel, ang_vel, radius, t);
+
+        if (!logged_sources) {
+            std::cout << "[RadiationViz] Source: " << name << " (r=" << radius << "m)" << std::endl;
+        }
+    }
+
+    logged_sources = true;
 }
 
 }  // namespace gui

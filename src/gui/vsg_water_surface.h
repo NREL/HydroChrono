@@ -1,16 +1,4 @@
-// =============================================================================
 // HydroChrono VSG Water Surface Visualization
-// =============================================================================
-// Provides both static and animated water surface rendering for ocean simulation.
-//
-// AnimatedWaterSurface:
-//   Manages a deformable water surface mesh for visualizing ocean waves.
-//   Each frame, queries the wave model for elevation eta(x,y,t) at each vertex
-//   and updates the GPU buffers accordingly.
-//
-// CreateStaticWaterPlane:
-//   Creates a simple flat water plane for use when no wave model is set.
-// =============================================================================
 #pragma once
 
 #include <memory>
@@ -24,26 +12,16 @@
 
 #include <vsg/all.h>
 
+#include "vsg_radiation_surface.h"
+
 namespace hydroc {
 namespace gui {
 
 // Forward declaration (defined in vsg_gui_component.h).
 struct ViewerSettings;
 
-// =============================================================================
-// AnimatedWaterSurface
-// =============================================================================
-/// Manages a deformable water surface mesh for visualizing ocean waves.
-///
-/// How it works:
-/// 1. Creates a flat grid of triangles (64×64 vertices by default).
-/// 2. Each frame, queries the wave model for elevation eta(x,y,t) at each vertex.
-/// 3. Updates the Z-coordinate of each vertex to match the wave height.
-/// 4. Recomputes surface normals for correct lighting.
-/// 5. Tells the GPU to re-upload the modified vertex data.
-///
-/// The mesh uses "soup" format where each triangle has its own 3 vertices
-/// (not shared with neighbors), which simplifies GPU buffer updates.
+/// Deformable water surface mesh for visualizing ocean waves.
+/// Updates vertex Z-coordinates each frame based on wave elevation.
 class AnimatedWaterSurface {
   public:
     AnimatedWaterSurface();
@@ -56,69 +34,62 @@ class AnimatedWaterSurface {
     /// Reset state for reuse with a new visual system.
     void Reset();
 
-    /// Initialize the mesh geometry and add to the visual system scene.
-    /// @note Must be called after ChVisualSystemVSG::Initialize() so the scene exists.
-    /// @param vis Pointer to the initialized VSG visual system.
-    /// @param resolution Grid resolution (vertices per side). Uses default if 0.
+    /// Initialize mesh and add to scene (call after ChVisualSystemVSG::Initialize).
     void Initialize(chrono::vsg3d::ChVisualSystemVSG* vis, int resolution = 0);
 
-    /// Reinitialize with a new grid resolution. Safe to call if already initialized.
-    /// @param resolution New grid resolution (vertices per side).
+    /// Reinitialize with new grid resolution.
     void Reinitialize(int resolution);
 
-    /// Update vertex Z coordinates based on wave elevation at time t.
-    /// If wave is null, keeps surface flat (useful for forced water surface mode).
-    /// @param wave The wave model to query for elevation (may be null).
-    /// @param t Current simulation time in seconds.
-    /// @param settings Optional viewer settings (for scale multiplier and throttle).
+    /// Update vertex Z from wave elevation at time t.
     void Update(const std::shared_ptr<WaveBase>& wave, double t,
                 const ViewerSettings* settings = nullptr);
 
-    /// Set visibility of the water surface.
-    /// @param visible True to show, false to hide (skips rendering).
     void SetVisible(bool visible);
-
-    /// Check if the water surface is currently visible.
     bool IsVisible() const;
-
-    /// Check if the water surface has been initialized.
     bool IsInitialized() const;
-
-    /// Check if initialized for the given visual system.
-    /// @param vis The visual system to check against.
     bool IsInitializedFor(chrono::vsg3d::ChVisualSystemVSG* vis) const;
-
-    /// Get current grid resolution.
     int GetGridResolution() const { return current_resolution_; }
-
-    /// Get a human-readable status string (for logging).
     std::string GetStatusString() const;
 
+    RadiationSurfaceViz& GetRadiationViz() { return radiation_viz_; }
+    const RadiationSurfaceViz& GetRadiationViz() const { return radiation_viz_; }
+
+    void SetWireframeVisible(bool visible);
+    bool IsWireframeVisible() const { return wireframe_visible_; }
+
   private:
-    /// Internal initialization with specified resolution.
     void InitializeInternal(chrono::vsg3d::ChVisualSystemVSG* vis, int resolution);
+    void InitializeWireframe();
+    void UpdateWireframe();
 
     std::shared_ptr<chrono::ChTriangleMeshConnected> mesh_;
-    vsg::ref_ptr<vsg::vec3Array> vsg_vertices_;   ///< VSG vertex positions (dynamic, mesh soup)
-    vsg::ref_ptr<vsg::vec3Array> vsg_normals_;    ///< VSG vertex normals (dynamic, mesh soup)
-    vsg::ref_ptr<vsg::Node> vsg_node_;            ///< Reference to VSG scene node
-    vsg::ref_ptr<vsg::Group> scene_;              ///< Cached scene for add/remove
+    vsg::ref_ptr<vsg::vec3Array> vsg_vertices_;
+    vsg::ref_ptr<vsg::vec3Array> vsg_normals_;
+    vsg::ref_ptr<vsg::vec4Array> vsg_colors_;  ///< Per-vertex colors for height shading
+    vsg::ref_ptr<vsg::Node> vsg_node_;
+    vsg::ref_ptr<vsg::Group> scene_;
     chrono::vsg3d::ChVisualSystemVSG* bound_vis_ = nullptr;
-    size_t num_triangles_ = 0;                    ///< Number of triangles in mesh
-    int current_resolution_ = 0;                  ///< Current grid resolution
+    size_t num_triangles_ = 0;
+    int current_resolution_ = 0;
     bool initialized_ = false;
-    bool visible_ = true;                         ///< Visibility state
-    mutable int frame_count_ = 0;                 ///< Frame counter for debug output throttling
-    double last_update_time_ = -1.0;              ///< Last update time (for throttling)
+    bool visible_ = true;
+    mutable int frame_count_ = 0;
+    double last_update_time_ = -1.0;
+
+    RadiationSurfaceViz radiation_viz_;
+
+    vsg::ref_ptr<vsg::vec3Array> wireframe_vertices_;
+    vsg::ref_ptr<vsg::Node> wireframe_node_;
+    bool wireframe_visible_ = false;
+    bool wireframe_initialized_ = false;
+
+    // Adaptive height-shading range (smoothed min/max eta values).
+    float adaptive_eta_min_ = 0.0f;
+    float adaptive_eta_max_ = 0.0f;
+    bool adaptive_range_initialized_ = false;
 };
 
-// =============================================================================
-// Static Water Plane Factory
-// =============================================================================
-
-/// Creates a visual-only water plane (fixed, non-colliding) at z ~ 0.
-/// Used when no wave model is set (static still water).
-/// @return A shared pointer to the water plane body (ready to add to system).
+/// Creates a static water plane (visual only, no collision).
 std::shared_ptr<chrono::ChBody> CreateStaticWaterPlane();
 
 }  // namespace gui

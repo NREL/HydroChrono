@@ -51,6 +51,13 @@ void HydroChronoGuiComponent::render(vsg::CommandBuffer& cb) {
         // Water visibility toggle.
         ImGui::Checkbox("Show Water", &settings_->show_water);
 
+        // Wireframe overlay for better surface visibility.
+        ImGui::Checkbox("Show Wireframe", &settings_->show_water_grid);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Show mesh edges on water surface.\n"
+                              "Helps visualize wave motion and ripples.");
+        }
+
         // Grid resolution combo box.
         {
             const char* resolution_labels[] = {"32x32", "64x64", "96x96", "128x128"};
@@ -83,6 +90,35 @@ void HydroChronoGuiComponent::render(vsg::CommandBuffer& cb) {
                                 settings_->show_water ? "ON" : "OFF",
                                 settings_->grid_resolution,
                                 settings_->update_hz);
+        }
+
+        ImGui::Separator();
+
+        // Radiation visualization controls (Tier 0 - approximate).
+        // Clear labeling that this is a visual approximation, not physics.
+        ImGui::Checkbox("Radiation (viz, approximate)", &settings_->show_radiation_viz);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Visual approximation of radiated waves.\n"
+                              "Does NOT affect physics - for feedback only.");
+        }
+
+        // Show Visual Scale slider when radiation is enabled.
+        // All other parameters are auto-derived from physics.
+        if (settings_->show_radiation_viz) {
+            ImGui::Indent();
+
+            // Visual scale slider - clearly labeled as visualization-only.
+            ImGui::SliderFloat("Visual Scale##rad", &settings_->radiation_visual_scale, 0.1f, 5.0f, "%.1fx");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Visual amplification for inspection.\n"
+                                  "1.0x = baseline, increase to see small ripples.\n"
+                                  "Does NOT affect physics.");
+            }
+
+            // Info text about auto-derived parameters.
+            ImGui::TextDisabled("Wavelength/speed derived from wave period");
+
+            ImGui::Unindent();
         }
 
         ImGui::End();

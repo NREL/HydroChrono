@@ -30,6 +30,22 @@ struct ViewerSettings {
 
     // Track if resolution changed (requires mesh rebuild).
     bool resolution_changed = false;
+
+    // =========================================================================
+    // Radiation Visualization (Tier 0 - Approximate, Visual Only)
+    // =========================================================================
+    // Simple visualization of radiated waves from moving bodies.
+    // NOT physically accurate - purely for visual feedback.
+    //
+    // Most parameters are auto-derived from physics:
+    //   - Wavelength derived from wave speed using deep water dispersion
+    //   - Amplitude scales with body velocity and size
+    //   - Only "Visual Scale" is user-adjustable (for inspection)
+    bool show_radiation_viz = false;       ///< Enable radiated wave visualization
+    float radiation_visual_scale = 1.0f;   ///< Visual amplification (range 0.1-5x, for inspection only)
+
+    // Water surface grid overlay for better visibility.
+    bool show_water_grid = false;          ///< Show wireframe grid on water surface
 };
 
 /// ImGui component for HydroChrono visualization overlay.

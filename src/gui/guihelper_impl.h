@@ -87,12 +87,16 @@ class GUIImplVSG : public GUIImpl {
     /// Ensure water surface is created (animated if wave model set, static otherwise).
     void EnsureWaterSurface();
 
+    /// Update radiation source bodies for visualization.
+    /// Iterates over all moving bodies and updates their radiation state.
+    void UpdateRadiationSourceBody(double t);
+
     std::shared_ptr<chrono::vsg3d::ChVisualSystemVSG> pVis;
-    std::shared_ptr<WaveBase> wave_model_;               ///< Wave model for animated surface
-    chrono::ChSystem* system_ = nullptr;                 ///< Cached system pointer for time access
-    std::unique_ptr<AnimatedWaterSurface> animated_water_;  ///< Animated water surface (owned)
-    std::unique_ptr<ViewerSettings> viewer_settings_;    ///< Runtime viewer settings (owned)
-    bool water_surface_created_ = false;                 ///< True if any water surface was added
+    std::shared_ptr<WaveBase> wave_model_;
+    chrono::ChSystem* system_ = nullptr;
+    std::unique_ptr<AnimatedWaterSurface> animated_water_;
+    std::unique_ptr<ViewerSettings> viewer_settings_;
+    bool water_surface_created_ = false;
 };
 #endif
 
