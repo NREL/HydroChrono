@@ -8,12 +8,14 @@
 
 #include <cmath>
 
-RegularWave::RegularWave() {
-    num_bodies_ = 1;
+RegularWave::RegularWave()
+    : num_bodies_(1),
+      wavenumber_(0.0) {
 }
 
-RegularWave::RegularWave(unsigned int num_b) {
-    num_bodies_ = num_b;
+RegularWave::RegularWave(unsigned int num_b)
+    : num_bodies_(num_b),
+      wavenumber_(0.0) {
 }
 
 void RegularWave::Initialize() {
@@ -82,7 +84,7 @@ Eigen::VectorXd RegularWave::GetForceAtTime(double t) {
         unsigned int body_offset = 6 * b;
         for (int rowEx = 0; rowEx < 6; rowEx++) {
             f[body_offset + rowEx] = excitation_force_mag_[body_offset + rowEx] * regular_wave_amplitude_ *
-                                     std::cos(regular_wave_omega_ * t + excitation_force_phase_[rowEx]);
+                                     std::cos(regular_wave_omega_ * t + excitation_force_phase_[body_offset + rowEx]);
         }
     }
     return f;

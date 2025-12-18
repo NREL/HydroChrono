@@ -23,10 +23,10 @@ class RegularWave : public WaveBase {
     Eigen::VectorXd GetForceAtTime(double t) override;
     WaveMode GetWaveMode() override { return mode_; }
 
-    double regular_wave_amplitude_;
-    double regular_wave_omega_;
-    double regular_wave_phase_ = 0.0;
-    bool wave_stretching_      = true;
+    double regular_wave_amplitude_ = 0.0;
+    double regular_wave_omega_     = 0.0;
+    double regular_wave_phase_     = 0.0;
+    bool wave_stretching_          = true;
 
     void AddH5Data(std::vector<HydroData::RegularWaveInfo>& reg_h5_data, HydroData::SimulationParameters& sim_data);
 
