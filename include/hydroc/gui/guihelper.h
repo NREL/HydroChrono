@@ -48,6 +48,19 @@ class UI {
      */
     virtual void SetWaveModel(std::shared_ptr<WaveBase> wave);
 
+    /**@brief Set the water grid extent for visualization.
+     *
+     * Configures the dimensions and position of the water surface mesh.
+     * Call after Init() and before SetWaveModel().
+     *
+     * @param width Grid extent in X direction [m] (default: 100m)
+     * @param length Grid extent in Y direction [m] (default: 100m)
+     * @param center_x Grid center X coordinate [m] (default: 0)
+     * @param center_y Grid center Y coordinate [m] (default: 0)
+     */
+    virtual void SetWaterGridExtent(double width, double length,
+                                    double center_x = 0.0, double center_y = 0.0);
+
     /**@brief return the internal system.
      *
      * Should be called after init.
@@ -75,6 +88,8 @@ class GUI : public UI {
     void SetCamera(double x, double y, double z, double dirx, double diry, double dirz) override;
     bool IsRunning(double timestep) override;
     void SetWaveModel(std::shared_ptr<WaveBase> wave) override;
+    void SetWaterGridExtent(double width, double length,
+                            double center_x = 0.0, double center_y = 0.0) override;
 
   private:
     std::shared_ptr<hydroc::gui::GUIImpl> pImpl;

@@ -114,6 +114,21 @@ void GUIImplVSG::SetWaveModel(std::shared_ptr<WaveBase> wave) {
     // Water surface will be created/updated on first render via EnsureWaterSurface().
 }
 
+void GUIImplVSG::SetWaterGridExtent(double width, double length, double center_x, double center_y) {
+    if (!viewer_settings_) {
+        return;
+    }
+
+    viewer_settings_->grid_width = width;
+    viewer_settings_->grid_length = length;
+    viewer_settings_->grid_center_x = center_x;
+    viewer_settings_->grid_center_y = center_y;
+    viewer_settings_->grid_extent_changed = true;
+
+    std::cout << "[WaterSurface] Grid extent: " << width << " x " << length << " m"
+              << ", center: (" << center_x << ", " << center_y << ")" << std::endl;
+}
+
 void GUIImplVSG::EnsureWaterSurface() {
     // Require both system and visual system to be valid.
     if (!system_ || !pVis) {
@@ -141,7 +156,7 @@ void GUIImplVSG::EnsureWaterSurface() {
     // Always create animated water surface (supports waves + radiation viz).
     // Static plane fallback removed - animated water handles all cases.
     int resolution = (viewer_settings_) ? viewer_settings_->grid_resolution : 0;
-    animated_water_->Initialize(pVis.get(), resolution);
+    animated_water_->Initialize(pVis.get(), resolution, viewer_settings_.get());
 
     if (animated_water_->IsInitialized()) {
         std::cout << "[WaterSurface] wave_ptr=" << (wave_model_ ? "ok" : "null");
@@ -173,10 +188,12 @@ bool GUIImplVSG::IsRunning(double timestep) {
         // Handle visibility toggle.
         animated_water_->SetVisible(viewer_settings_->show_water);
 
-        // Handle resolution change (requires mesh rebuild).
-        if (viewer_settings_->resolution_changed && animated_water_->IsInitialized()) {
-            animated_water_->Reinitialize(viewer_settings_->grid_resolution);
+        // Handle resolution or extent change (requires mesh rebuild).
+        if ((viewer_settings_->resolution_changed || viewer_settings_->grid_extent_changed) &&
+            animated_water_->IsInitialized()) {
+            animated_water_->Reinitialize(viewer_settings_->grid_resolution, viewer_settings_.get());
             viewer_settings_->resolution_changed = false;
+            viewer_settings_->grid_extent_changed = false;
         }
     }
 

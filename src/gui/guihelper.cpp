@@ -29,9 +29,13 @@ bool UI::IsRunning(double timestep) {
     return true;
 }
 
-void UI::SetWaveModel(std::shared_ptr<WaveBase> wave) {
+void UI::SetWaveModel(std::shared_ptr<WaveBase> /*wave*/) {
     // Default (headless) UI does not render waves.
-    (void)wave;
+}
+
+void UI::SetWaterGridExtent(double /*width*/, double /*length*/,
+                            double /*center_x*/, double /*center_y*/) {
+    // Default (headless) UI does not render water surface.
 }
 
 // -----------------------------------------------------------------------------
@@ -63,4 +67,8 @@ bool GUI::IsRunning(double timestep) {
 
 void GUI::SetWaveModel(std::shared_ptr<WaveBase> wave) {
     pImpl->SetWaveModel(wave);
+}
+
+void GUI::SetWaterGridExtent(double width, double length, double center_x, double center_y) {
+    pImpl->SetWaterGridExtent(width, length, center_x, center_y);
 }

@@ -172,19 +172,29 @@ void AnimatedWaterSurface::Reset() {
     adaptive_range_initialized_ = false;
 }
 
-void AnimatedWaterSurface::Initialize(chrono::vsg3d::ChVisualSystemVSG* vis, int resolution) {
+void AnimatedWaterSurface::Initialize(chrono::vsg3d::ChVisualSystemVSG* vis, int resolution,
+                                       const ViewerSettings* settings) {
     // Use default resolution from config if not specified.
     int res = (resolution > 0) ? resolution : kWaterGridResolution;
-    InitializeInternal(vis, res);
+    InitializeInternal(vis, res, settings);
 }
 
-void AnimatedWaterSurface::Reinitialize(int resolution) {
+void AnimatedWaterSurface::Reinitialize(int resolution, const ViewerSettings* settings) {
     if (!bound_vis_) {
         return;
     }
 
-    // Skip if resolution is the same.
-    if (resolution == current_resolution_ && initialized_) {
+    // Check if extent changed.
+    bool extent_changed = false;
+    if (settings) {
+        if (settings->grid_width > 0 && settings->grid_width != grid_width_) extent_changed = true;
+        if (settings->grid_length > 0 && settings->grid_length != grid_length_) extent_changed = true;
+        if (settings->grid_center_x != grid_center_x_) extent_changed = true;
+        if (settings->grid_center_y != grid_center_y_) extent_changed = true;
+    }
+
+    // Skip if resolution and extent are the same.
+    if (resolution == current_resolution_ && initialized_ && !extent_changed) {
         return;
     }
 
@@ -197,10 +207,11 @@ void AnimatedWaterSurface::Reinitialize(int resolution) {
 
     // Reset and reinitialize with new resolution.
     Reset();
-    InitializeInternal(vis, resolution);
+    InitializeInternal(vis, resolution, settings);
 }
 
-void AnimatedWaterSurface::InitializeInternal(chrono::vsg3d::ChVisualSystemVSG* vis, int resolution) {
+void AnimatedWaterSurface::InitializeInternal(chrono::vsg3d::ChVisualSystemVSG* vis, int resolution,
+                                               const ViewerSettings* settings) {
     if constexpr (kDebugWaveSurface) {
         std::cout << "[WaveSurfaceDebug] Initialize called, vis=" << static_cast<void*>(vis)
                   << " resolution=" << resolution << std::endl;
@@ -223,6 +234,14 @@ void AnimatedWaterSurface::InitializeInternal(chrono::vsg3d::ChVisualSystemVSG* 
     bound_vis_ = vis;
     current_resolution_ = resolution;
 
+    // Store custom grid extent from settings.
+    if (settings) {
+        grid_width_ = settings->grid_width;
+        grid_length_ = settings->grid_length;
+        grid_center_x_ = settings->grid_center_x;
+        grid_center_y_ = settings->grid_center_y;
+    }
+
     auto shape_builder = vis->GetVSGShapeBuilder();
     scene_ = vis->GetVSGScene();
     if (!shape_builder || !scene_) {
@@ -236,16 +255,22 @@ void AnimatedWaterSurface::InitializeInternal(chrono::vsg3d::ChVisualSystemVSG* 
     mesh_ = chrono_types::make_shared<chrono::ChTriangleMeshConnected>();
 
     const int n = resolution;
-    const double half_size = kWaterGridSize / 2.0;
-    const double spacing = kWaterGridSize / (n - 1);
 
-    // Create vertices (n x n grid centered at origin).
+    // Use custom grid extent if specified, otherwise use defaults.
+    const double grid_size_x = (grid_width_ > 0) ? grid_width_ : kWaterGridSize;
+    const double grid_size_y = (grid_length_ > 0) ? grid_length_ : kWaterGridSize;
+    const double half_size_x = grid_size_x / 2.0;
+    const double half_size_y = grid_size_y / 2.0;
+    const double spacing_x = grid_size_x / (n - 1);
+    const double spacing_y = grid_size_y / (n - 1);
+
+    // Create vertices (n x n grid centered at custom center).
     std::vector<chrono::ChVector3d>& verts = mesh_->m_vertices;
     verts.resize(static_cast<size_t>(n * n));
     for (int j = 0; j < n; ++j) {
         for (int i = 0; i < n; ++i) {
-            double x = -half_size + i * spacing;
-            double y = -half_size + j * spacing;
+            double x = grid_center_x_ - half_size_x + i * spacing_x;
+            double y = grid_center_y_ - half_size_y + j * spacing_y;
             verts[static_cast<size_t>(j * n + i)] = chrono::ChVector3d(x, y, 0.0);
         }
     }
@@ -314,15 +339,16 @@ void AnimatedWaterSurface::InitializeInternal(chrono::vsg3d::ChVisualSystemVSG* 
     initialized_ = true;
     visible_ = true;
 
-    // Always print one-time status log when water surface is created.
-    std::cout << "[WaterSurface] init vis=" << static_cast<void*>(vis)
-              << " verts=" << vsg_vertices_->size()
-              << " normals=" << vsg_normals_->size()
-              << " colors=" << (vsg_colors_ ? vsg_colors_->size() : 0)
-              << " triangles=" << num_triangles_
-              << " resolution=" << resolution
-              << " transparent=yes"
-              << " height_shading=" << (vsg_colors_ ? "yes" : "no") << std::endl;
+    // Log water surface creation.
+    const double extent_x = (grid_width_ > 0) ? grid_width_ : kWaterGridSize;
+    const double extent_y = (grid_length_ > 0) ? grid_length_ : kWaterGridSize;
+
+    std::cout << "[WaterSurface] Created: " << resolution << "x" << resolution
+              << " grid, " << extent_x << " x " << extent_y << " m";
+    if (grid_center_x_ != 0.0 || grid_center_y_ != 0.0) {
+        std::cout << ", center: (" << grid_center_x_ << ", " << grid_center_y_ << ")";
+    }
+    std::cout << std::endl;
 }
 
 void AnimatedWaterSurface::SetVisible(bool visible) {
@@ -419,8 +445,13 @@ void AnimatedWaterSurface::InitializeWireframe() {
     // Create thin quad segments as "lines" that follow the wave surface.
     auto wireframe_mesh = chrono_types::make_shared<chrono::ChTriangleMeshConnected>();
 
-    const double half_size = kWaterGridSize / 2.0;
-    const double spacing = kWaterGridSize / (n - 1);
+    // Use custom grid extent if specified, otherwise use defaults.
+    const double grid_size_x = (grid_width_ > 0) ? grid_width_ : kWaterGridSize;
+    const double grid_size_y = (grid_length_ > 0) ? grid_length_ : kWaterGridSize;
+    const double half_size_x = grid_size_x / 2.0;
+    const double half_size_y = grid_size_y / 2.0;
+    const double spacing_x = grid_size_x / (n - 1);
+    const double spacing_y = grid_size_y / (n - 1);
     const double line_half_width = 0.05;
 
     std::vector<chrono::ChVector3d>& verts = wireframe_mesh->m_vertices;
@@ -430,10 +461,10 @@ void AnimatedWaterSurface::InitializeWireframe() {
 
     // Horizontal segments (along X, one per grid edge).
     for (int j = 0; j < n; ++j) {
-        double y = -half_size + j * spacing;
+        double y = grid_center_y_ - half_size_y + j * spacing_y;
         for (int i = 0; i < n - 1; ++i) {
-            double x0 = -half_size + i * spacing;
-            double x1 = -half_size + (i + 1) * spacing;
+            double x0 = grid_center_x_ - half_size_x + i * spacing_x;
+            double x1 = grid_center_x_ - half_size_x + (i + 1) * spacing_x;
 
             verts.push_back(chrono::ChVector3d(x0, y - line_half_width, 0.0));
             verts.push_back(chrono::ChVector3d(x1, y - line_half_width, 0.0));
@@ -448,10 +479,10 @@ void AnimatedWaterSurface::InitializeWireframe() {
 
     // Vertical segments (along Y, one per grid edge).
     for (int i = 0; i < n; ++i) {
-        double x = -half_size + i * spacing;
+        double x = grid_center_x_ - half_size_x + i * spacing_x;
         for (int j = 0; j < n - 1; ++j) {
-            double y0 = -half_size + j * spacing;
-            double y1 = -half_size + (j + 1) * spacing;
+            double y0 = grid_center_y_ - half_size_y + j * spacing_y;
+            double y1 = grid_center_y_ - half_size_y + (j + 1) * spacing_y;
 
             verts.push_back(chrono::ChVector3d(x - line_half_width, y0, 0.0));
             verts.push_back(chrono::ChVector3d(x + line_half_width, y0, 0.0));
@@ -485,7 +516,7 @@ void AnimatedWaterSurface::InitializeWireframe() {
     }
 
     wireframe_initialized_ = true;
-    std::cout << "[WaterSurface] wireframe: " << faces.size() << " triangles" << std::endl;
+    std::cout << "[WaterSurface] Wireframe overlay enabled" << std::endl;
 }
 
 void AnimatedWaterSurface::UpdateWireframe() {
@@ -538,8 +569,13 @@ void AnimatedWaterSurface::UpdateWireframe() {
         return 0.0f;
     };
 
-    const double half_size = kWaterGridSize / 2.0;
-    const double spacing = kWaterGridSize / (n - 1);
+    // Use custom grid extent if specified, otherwise use defaults.
+    const double grid_size_x = (grid_width_ > 0) ? grid_width_ : kWaterGridSize;
+    const double grid_size_y = (grid_length_ > 0) ? grid_length_ : kWaterGridSize;
+    const double half_size_x = grid_size_x / 2.0;
+    const double half_size_y = grid_size_y / 2.0;
+    const double spacing_x = grid_size_x / (n - 1);
+    const double spacing_y = grid_size_y / (n - 1);
     const double line_half_width = 0.05;
     const float z_offset = 0.02f;
 
@@ -547,10 +583,10 @@ void AnimatedWaterSurface::UpdateWireframe() {
 
     // Update horizontal segments.
     for (int j = 0; j < n; ++j) {
-        double y = -half_size + j * spacing;
+        double y = grid_center_y_ - half_size_y + j * spacing_y;
         for (int i = 0; i < n - 1; ++i) {
-            double x0 = -half_size + i * spacing;
-            double x1 = -half_size + (i + 1) * spacing;
+            double x0 = grid_center_x_ - half_size_x + i * spacing_x;
+            double x1 = grid_center_x_ - half_size_x + (i + 1) * spacing_x;
             float z0 = get_z_at_grid(i, j) + z_offset;
             float z1 = get_z_at_grid(i + 1, j) + z_offset;
 
@@ -568,10 +604,10 @@ void AnimatedWaterSurface::UpdateWireframe() {
 
     // Update vertical segments.
     for (int i = 0; i < n; ++i) {
-        double x = -half_size + i * spacing;
+        double x = grid_center_x_ - half_size_x + i * spacing_x;
         for (int j = 0; j < n - 1; ++j) {
-            double y0 = -half_size + j * spacing;
-            double y1 = -half_size + (j + 1) * spacing;
+            double y0 = grid_center_y_ - half_size_y + j * spacing_y;
+            double y1 = grid_center_y_ - half_size_y + (j + 1) * spacing_y;
             float z0 = get_z_at_grid(i, j) + z_offset;
             float z1 = get_z_at_grid(i, j + 1) + z_offset;
 

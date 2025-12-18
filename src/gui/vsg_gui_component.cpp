@@ -12,7 +12,7 @@ HydroChronoGuiComponent::HydroChronoGuiComponent(chrono::vsg3d::ChVisualSystemVS
                                                  ViewerSettings* settings)
     : vsys_(vsys), pressed_(button_pressed), settings_(settings) {}
 
-void HydroChronoGuiComponent::render(vsg::CommandBuffer& cb) {
+void HydroChronoGuiComponent::render(vsg::CommandBuffer& /*cb*/) {
     // Play/Pause button (top center, no background).
     {
         ImGuiWindowFlags window_flags = 0;

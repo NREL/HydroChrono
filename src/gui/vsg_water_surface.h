@@ -35,10 +35,11 @@ class AnimatedWaterSurface {
     void Reset();
 
     /// Initialize mesh and add to scene (call after ChVisualSystemVSG::Initialize).
-    void Initialize(chrono::vsg3d::ChVisualSystemVSG* vis, int resolution = 0);
+    void Initialize(chrono::vsg3d::ChVisualSystemVSG* vis, int resolution = 0,
+                    const ViewerSettings* settings = nullptr);
 
-    /// Reinitialize with new grid resolution.
-    void Reinitialize(int resolution);
+    /// Reinitialize with new grid resolution or extent.
+    void Reinitialize(int resolution, const ViewerSettings* settings = nullptr);
 
     /// Update vertex Z from wave elevation at time t.
     void Update(const std::shared_ptr<WaveBase>& wave, double t,
@@ -58,7 +59,8 @@ class AnimatedWaterSurface {
     bool IsWireframeVisible() const { return wireframe_visible_; }
 
   private:
-    void InitializeInternal(chrono::vsg3d::ChVisualSystemVSG* vis, int resolution);
+    void InitializeInternal(chrono::vsg3d::ChVisualSystemVSG* vis, int resolution,
+                            const ViewerSettings* settings = nullptr);
     void InitializeWireframe();
     void UpdateWireframe();
 
@@ -87,6 +89,12 @@ class AnimatedWaterSurface {
     float adaptive_eta_min_ = 0.0f;
     float adaptive_eta_max_ = 0.0f;
     bool adaptive_range_initialized_ = false;
+
+    // Custom grid extent. Values <= 0 use defaults from vsg_config.h.
+    double grid_width_ = 0.0;   ///< Grid extent in X direction [m]
+    double grid_length_ = 0.0;  ///< Grid extent in Y direction [m]
+    double grid_center_x_ = 0.0;  ///< Grid center X coordinate [m]
+    double grid_center_y_ = 0.0;  ///< Grid center Y coordinate [m]
 };
 
 /// Creates a static water plane (visual only, no collision).
