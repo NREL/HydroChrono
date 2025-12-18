@@ -1,12 +1,8 @@
-#include <hydroc/gui/guihelper.h>
 #include <hydroc/helper.h>
 #include <hydroc/hydro_forces.h>
 
-#include <chrono/core/ChRealtimeStep.h>
 #include <chrono/physics/ChBodyEasy.h>
 #include <chrono/physics/ChSystemSMC.h>
-
-#include "chrono_postprocess/ChGnuPlot.h"
 
 #include <chrono>   // std::chrono::high_resolution_clock::now
 #include <iomanip>  // std::setprecision
@@ -18,18 +14,9 @@ using namespace chrono;
 int main(int argc, char* argv[]) {
     std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
-    // Parse CLI arguments and initialize environment
-    bool profilingOn     = true;
-    bool saveDataOn      = true;
-    bool plotOn          = true;
-    bool visualizationOn = true;
+    // Initialize environment
     std::string data_dir;
-    if (!hydroc::GetCLIArguments(argc, argv, "F3OF DT3 regression test", saveDataOn, profilingOn, plotOn,
-                                 visualizationOn, data_dir))
-        return 1;
     if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
-
-    std::cout << "Current working directory: " << std::filesystem::current_path() << std::endl;
 
     // Get model file names
     std::filesystem::path DATADIR(hydroc::getDataDir());
@@ -39,25 +26,15 @@ int main(int argc, char* argv[]) {
     auto body3_meshfame = (DATADIR / "demos" / "f3of" / "geometry" / "flap.obj").lexically_normal().generic_string();
     auto h5fname        = (DATADIR / "demos" / "f3of" / "hydroData" / "f3of.h5").lexically_normal().generic_string();
 
-    std::cout << "Resolved body1_meshfame: " << body1_meshfame << std::endl;
-    std::cout << "Resolved body2_meshfame: " << body2_meshfame << std::endl;
-    std::cout << "Resolved body3_meshfame: " << body3_meshfame << std::endl;
-    std::cout << "Resolved h5fname: " << h5fname << std::endl;
-
     // system/solver settings
     ChSystemSMC system;
 
     system.SetGravitationalAcceleration(ChVector3d(0.0, 0.0, -9.81));
     double timestep = 0.02;
     system.SetSolverType(ChSolver::Type::SPARSE_QR);
-    ChRealtimeStepTimer realtime_timer;
     double simulationDuration = 300.0;
 
-    // Create user interface
-    std::shared_ptr<hydroc::gui::UI> pui = hydroc::gui::CreateUI(visualizationOn);
-    hydroc::gui::UI& ui                  = *pui.get();
-
-    // some io/viz options
+    // Output timeseries
     std::vector<double> time_vector;
     std::vector<double> base_surge;
     std::vector<double> base_pitch;
@@ -66,7 +43,7 @@ int main(int argc, char* argv[]) {
 
     // set up body from a mesh
     std::cout << "Attempting to open mesh file: " << body1_meshfame << std::endl;
-    std::shared_ptr<ChBody> base = chrono_types::make_shared<ChBodyEasyMesh>(  //
+    std::shared_ptr<ChBody> base = chrono_types::make_shared<ChBodyEasyMesh>(
         body1_meshfame,
         0,      // density
         false,  // do not evaluate mass automatically
@@ -74,19 +51,14 @@ int main(int argc, char* argv[]) {
         false   // collisions
     );
 
-    // Create a visualization material
-    auto red = chrono_types::make_shared<ChVisualMaterial>();
-    red->SetDiffuseColor(ChColor(0.3f, 0.1f, 0.1f));
-    base->GetVisualShape(0)->SetMaterial(0, red);
-
-    // define the base's initial conditions (position and rotation defined later for specific test)
+    // define the base's initial conditions
     system.Add(base);
     base->SetName("body1");
     base->SetMass(1089825.0);
     base->SetInertiaXX(ChVector3d(100000000.0, 76300000.0, 100000000.0));
 
     std::cout << "Attempting to open mesh file: " << body2_meshfame << std::endl;
-    std::shared_ptr<ChBody> flapFore = chrono_types::make_shared<ChBodyEasyMesh>(  //
+    std::shared_ptr<ChBody> flapFore = chrono_types::make_shared<ChBodyEasyMesh>(
         body2_meshfame,
         0,      // density
         false,  // do not evaluate mass automatically
@@ -94,19 +66,14 @@ int main(int argc, char* argv[]) {
         false   // collisions
     );
 
-    // Create a visualization material
-    auto blue = chrono_types::make_shared<ChVisualMaterial>();
-    blue->SetDiffuseColor(ChColor(0.3f, 0.1f, 0.6f));
-    flapFore->GetVisualShape(0)->SetMaterial(0, blue);
-
-    // define the fore flap's initial conditions (position and rotation defined later for specific tests
+    // define the fore flap's initial conditions
     system.Add(flapFore);
     flapFore->SetName("body2");
     flapFore->SetMass(179250.0);
     flapFore->SetInertiaXX(ChVector3d(100000000.0, 1300000.0, 100000000.0));
 
     std::cout << "Attempting to open mesh file: " << body3_meshfame << std::endl;
-    std::shared_ptr<ChBody> flapAft = chrono_types::make_shared<ChBodyEasyMesh>(  //
+    std::shared_ptr<ChBody> flapAft = chrono_types::make_shared<ChBodyEasyMesh>(
         body3_meshfame,
         0,      // density
         false,  // do not evaluate mass automatically
@@ -114,18 +81,13 @@ int main(int argc, char* argv[]) {
         false   // collisions
     );
 
-    // Create a visualization material
-    auto green = chrono_types::make_shared<ChVisualMaterial>();
-    green->SetDiffuseColor(ChColor(0.3f, 0.6f, 0.1f));
-    flapAft->GetVisualShape(0)->SetMaterial(0, green);
-
-    // define the aft flap's initial conditions (position and rotation defined later for specific tests
+    // define the aft flap's initial conditions
     system.Add(flapAft);
     flapAft->SetName("body3");
     flapAft->SetMass(179250.0);
     flapAft->SetInertiaXX(ChVector3d(100000000.0, 1300000.0, 100000000.0));
 
-    // ---------------- DT3 set up (flap decay, base fixed, no waves) ---------------------------------
+    // DT3 set up (flap decay, base fixed, no waves)
     base->SetPos(ChVector3d(0.0, 0.0, -9.0));
     double fore_ang_rad = CH_PI / 18.0;  // fore flap starts with 10 degree initial rotation
     flapFore->SetRot(QuatFromAngleY(fore_ang_rad));
@@ -135,14 +97,16 @@ int main(int argc, char* argv[]) {
     flapAft->SetRot(QuatFromAngleY(aft_ang_rad));
     flapAft->SetPos(ChVector3d(12.5 + 3.5 * std::cos(CH_PI / 2.0 - aft_ang_rad), 0.0,
                                -9.0 + 3.5 * std::sin(CH_PI / 2.0 - fore_ang_rad)));
+
     // set up revolute joints with damping for each flap
     auto revoluteFore          = chrono_types::make_shared<ChLinkLockRevolute>();
     auto revoluteAft           = chrono_types::make_shared<ChLinkLockRevolute>();
-    ChQuaternion<> revoluteRot = QuatFromAngleX(CH_PI / 2.0);  // do not change
+    ChQuaternion<> revoluteRot = QuatFromAngleX(CH_PI / 2.0);
     revoluteFore->Initialize(base, flapFore, ChFramed(ChVector3d(-12.5, 0.0, -9.0), revoluteRot));
     system.AddLink(revoluteFore);
     revoluteAft->Initialize(base, flapAft, ChFramed(ChVector3d(12.5, 0.0, -9.0), revoluteRot));
     system.AddLink(revoluteAft);
+
     // create ground
     auto ground = chrono_types::make_shared<ChBody>();
     system.AddBody(ground);
@@ -150,13 +114,14 @@ int main(int argc, char* argv[]) {
     ground->SetTag(-1);
     ground->SetFixed(true);
     ground->EnableCollision(false);
-    // fix base to ground with special constraint (don't use setfixed() because of mass matrix)
+
+    // fix base to ground with special constraint
     auto anchor = chrono_types::make_shared<ChLinkMateGeneric>();
     anchor->Initialize(base, ground, false, base->GetVisualModelFrame(), base->GetVisualModelFrame());
     system.Add(anchor);
-    anchor->SetConstrainedCoords(true, true, true, true, true, true);  // x, y, z, Rx, Ry, Rz
+    anchor->SetConstrainedCoords(true, true, true, true, true, true);
 
-    // define wave parameters (not used in this demo TODO have hydroforces constructor without hydro inputs)
+    // define wave parameters
     auto default_dont_add_waves = std::make_shared<NoWave>(3);
 
     // set up hydro forces
@@ -170,82 +135,43 @@ int main(int argc, char* argv[]) {
     auto start = std::chrono::high_resolution_clock::now();
 
     // main simulation loop
-    ui.Init(&system, "F3OF - Decay Test 3, Base locked flap decay");
-    ui.SetCamera(0, -50, -10, 0, 0, -10);
-    ui.simulationStarted = true;
-
     while (system.GetChTime() <= simulationDuration) {
-        if (ui.IsRunning(timestep) == false) break;
+        system.DoStepDynamics(timestep);
 
-        if (ui.simulationStarted) {
-            system.DoStepDynamics(timestep);
-
-            // append data to output vector
-            time_vector.push_back(system.GetChTime());
-            base_surge.push_back(base->GetPos().x());
-            base_pitch.push_back(base->GetRot().GetCardanAnglesXYZ().y());
-            fore_pitch.push_back(flapFore->GetRot().GetCardanAnglesXYZ().y());
-            aft_pitch.push_back(flapAft->GetRot().GetCardanAnglesXYZ().y());
-        }
+        // append data to output vector
+        time_vector.push_back(system.GetChTime());
+        base_surge.push_back(base->GetPos().x());
+        base_pitch.push_back(base->GetRot().GetCardanAnglesXYZ().y());
+        fore_pitch.push_back(flapFore->GetRot().GetCardanAnglesXYZ().y());
+        aft_pitch.push_back(flapAft->GetRot().GetCardanAnglesXYZ().y());
     }
 
     // for profiling
     auto end          = std::chrono::high_resolution_clock::now();
     unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    std::cout << "Simulation completed in " << duration << " ms" << std::endl;
 
-    std::string out_dir = hydroc::getTestOutDir();
-    if (profilingOn || saveDataOn) {
-        out_dir = out_dir + "/" + RESULTS_DIR_NAME;
-        std::filesystem::create_directory(std::filesystem::path(out_dir));
-    }
+    // Save results
+    std::string out_dir = hydroc::getTestOutDir() + "/" + RESULTS_DIR_NAME;
+    std::filesystem::create_directories(std::filesystem::path(out_dir));
 
-    if (profilingOn) {
-        std::ofstream profilingFile(out_dir + "/" + RESULTS_FILE_NAME + "_duration.txt");
-        if (profilingFile.is_open()) {
-            profilingFile << duration << " ms\n";
-            profilingFile.close();
-        } else {
-            std::cout << "Error: Could not open profiling file for writing." << std::endl;
-        }
-    }
-
-    if (saveDataOn) {
-        std::ofstream outputFile(out_dir + "/" + RESULTS_FILE_NAME + ".txt");
-        if (outputFile.is_open()) {
-            outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(16) << "Base Surge (m)"
-                       << std::right << std::setw(16) << "Base Pitch (radians)" << std::right << std::setw(16)
-                       << "Flap Fore Pitch (radians)" << std::right << std::setw(16) << "Flap Aft Pitch (radians)"
+    std::ofstream outputFile(out_dir + "/" + RESULTS_FILE_NAME + ".txt");
+    if (outputFile.is_open()) {
+        outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(16) << "Base Surge (m)"
+                   << std::right << std::setw(16) << "Base Pitch (radians)" << std::right << std::setw(16)
+                   << "Flap Fore Pitch (radians)" << std::right << std::setw(16) << "Flap Aft Pitch (radians)"
+                   << std::endl;
+        for (size_t i = 0; i < time_vector.size(); ++i)
+            outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
+                       << std::right << std::setw(16) << std::setprecision(4) << std::fixed << base_surge[i]
+                       << std::right << std::setw(16) << std::setprecision(4) << std::fixed << base_pitch[i]
+                       << std::right << std::setw(16) << std::setprecision(4) << std::fixed << fore_pitch[i]
+                       << std::right << std::setw(16) << std::setprecision(4) << std::fixed << aft_pitch[i]
                        << std::endl;
-            for (size_t i = 0; i < time_vector.size(); ++i)
-                outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
-                           << std::right << std::setw(16) << std::setprecision(4) << std::fixed << base_surge[i]
-                           << std::right << std::setw(16) << std::setprecision(4) << std::fixed << base_pitch[i]
-                           << std::right << std::setw(16) << std::setprecision(4) << std::fixed << fore_pitch[i]
-                           << std::right << std::setw(16) << std::setprecision(4) << std::fixed << aft_pitch[i]
-                           << std::endl;
-            outputFile.close();
-
-
-
-
-        } else {
-            std::cout << "Error: Could not open output file for writing." << std::endl;
-            return 1;  // Return an error code
-        }
-    }
-
-    if (plotOn) {
-        postprocess::ChGnuPlot gplot(out_dir + "/f3of_dt3.gpl");
-        gplot.SetGrid();
-        gplot.SetLabelX("time (s)");
-        gplot.SetLabelY("surge");
-        gplot.SetLabelY2("pitch");
-        gplot.SetRangeX(0, simulationDuration);
-        gplot.SetTitle("F3OF DT3");
-        gplot.Plot(time_vector, base_surge, "base surge", " with lines lw 2");
-        gplot.Plot(time_vector, base_pitch, "base pitch", " axes x1y2  with lines lw 2");
-        gplot.Plot(time_vector, fore_pitch, "fore pitch", " axes x1y2  with lines lw 2");
-        gplot.Plot(time_vector, aft_pitch, "aft pitch", " axes x1y2  with lines lw 2");
+        outputFile.close();
+    } else {
+        std::cout << "Error: Could not open output file for writing." << std::endl;
+        return 1;
     }
 
     return 0;

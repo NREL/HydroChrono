@@ -1,11 +1,8 @@
 #include <hydroc/helper.h>
 #include <hydroc/hydro_forces.h>
 
-#include <chrono/core/ChRealtimeStep.h>
 #include <chrono/physics/ChBodyEasy.h>
 #include <chrono/physics/ChSystemSMC.h>
-
-#include "chrono_postprocess/ChGnuPlot.h"
 
 #include <chrono>   // std::chrono::high_resolution_clock::now
 #include <iomanip>  // std::setprecision
@@ -17,15 +14,8 @@ using namespace chrono;
 int main(int argc, char* argv[]) {
     std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
-    // Parse CLI arguments and initialize environment
-    bool profilingOn     = true;
-    bool saveDataOn      = true;
-    bool plotOn          = true;
-    bool visualizationOn = true;
+    // Initialize environment
     std::string data_dir;
-    if (!hydroc::GetCLIArguments(argc, argv, "F3OF DT2 regression test", saveDataOn, profilingOn, plotOn,
-                                 visualizationOn, data_dir))
-        return 1;
     if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
 
     // Get model file names
@@ -42,10 +32,9 @@ int main(int argc, char* argv[]) {
     system.SetGravitationalAcceleration(ChVector3d(0.0, 0.0, -9.81));
     double timestep = 0.02;
     system.SetSolverType(ChSolver::Type::SPARSE_QR);
-    ChRealtimeStepTimer realtime_timer;
     double simulationDuration = 300.0;
 
-    // some io/viz options
+    // Output timeseries
     std::vector<double> time_vector;
     std::vector<double> base_surge;
     std::vector<double> base_pitch;
@@ -54,7 +43,7 @@ int main(int argc, char* argv[]) {
 
     // set up body from a mesh
     std::cout << "Attempting to open mesh file: " << body1_meshfame << std::endl;
-    std::shared_ptr<ChBody> base = chrono_types::make_shared<ChBodyEasyMesh>(  //
+    std::shared_ptr<ChBody> base = chrono_types::make_shared<ChBodyEasyMesh>(
         body1_meshfame,
         0,      // density
         false,  // do not evaluate mass automatically
@@ -62,19 +51,14 @@ int main(int argc, char* argv[]) {
         false   // collisions
     );
 
-    // Create a visualization material
-    auto red = chrono_types::make_shared<ChVisualMaterial>();
-    red->SetDiffuseColor(ChColor(0.3f, 0.1f, 0.1f));
-    base->GetVisualShape(0)->SetMaterial(0, red);
-
-    // define the base's initial conditions (position and rotation defined later for specific test)
+    // define the base's initial conditions
     system.Add(base);
     base->SetName("body1");
     base->SetMass(1089825.0);
     base->SetInertiaXX(ChVector3d(100000000.0, 76300000.0, 100000000.0));
 
     std::cout << "Attempting to open mesh file: " << body2_meshfame << std::endl;
-    std::shared_ptr<ChBody> flapFore = chrono_types::make_shared<ChBodyEasyMesh>(  //
+    std::shared_ptr<ChBody> flapFore = chrono_types::make_shared<ChBodyEasyMesh>(
         body2_meshfame,
         0,      // density
         false,  // do not evaluate mass automatically
@@ -82,19 +66,14 @@ int main(int argc, char* argv[]) {
         false   // collisions
     );
 
-    // Create a visualization material
-    auto blue = chrono_types::make_shared<ChVisualMaterial>();
-    blue->SetDiffuseColor(ChColor(0.3f, 0.1f, 0.6f));
-    flapFore->GetVisualShape(0)->SetMaterial(0, blue);
-
-    // define the fore flap's initial conditions (position and rotation defined later for specific tests
+    // define the fore flap's initial conditions
     system.Add(flapFore);
     flapFore->SetName("body2");
     flapFore->SetMass(179250.0);
     flapFore->SetInertiaXX(ChVector3d(100000000.0, 1300000.0, 100000000.0));
 
     std::cout << "Attempting to open mesh file: " << body3_meshfame << std::endl;
-    std::shared_ptr<ChBody> flapAft = chrono_types::make_shared<ChBodyEasyMesh>(  //
+    std::shared_ptr<ChBody> flapAft = chrono_types::make_shared<ChBodyEasyMesh>(
         body3_meshfame,
         0,      // density
         false,  // do not evaluate mass automatically
@@ -102,21 +81,14 @@ int main(int argc, char* argv[]) {
         false   // collisions
     );
 
-    // Create a visualization material
-    auto green = chrono_types::make_shared<ChVisualMaterial>();
-    green->SetDiffuseColor(ChColor(0.3f, 0.6f, 0.1f));
-    flapAft->GetVisualShape(0)->SetMaterial(0, green);
-
-    // define the aft flap's initial conditions (position and rotation defined later for specific tests
+    // define the aft flap's initial conditions
     system.Add(flapAft);
     flapAft->SetName("body3");
     flapAft->SetMass(179250.0);
     flapAft->SetInertiaXX(ChVector3d(100000000.0, 1300000.0, 100000000.0));
 
-    // ---------------- DT2 set up (flaps locked, base pitch decay, no waves) ---------------------------------
-    // adjust initial pitch here only, rotations and positions calcuated from this:
+    // DT2 set up (flaps locked, base pitch decay, no waves)
     double ang_rad = CH_PI / 18.0;
-    // set up pos/rotations (do not modify unless you know what you're doing)
     base->SetPos(ChVector3d(0.0, 0.0, -9.0));
     base->SetRot(QuatFromAngleY(ang_rad));
     flapFore->SetRot(QuatFromAngleY(ang_rad));
@@ -126,10 +98,10 @@ int main(int argc, char* argv[]) {
     flapAft->SetPos(ChVector3d(12.5 * std::cos(ang_rad) + 3.5 * std::sin(ang_rad), 0.0,
                                -9.0 - 12.5 * std::sin(ang_rad) + 3.5 * std::cos(ang_rad)));
 
-    // set up revolute joints and lock them (do not modify unless you know what you're doing)
+    // set up revolute joints and lock them
     auto revoluteFore          = chrono_types::make_shared<ChLinkLockRevolute>();
     auto revoluteAft           = chrono_types::make_shared<ChLinkLockRevolute>();
-    ChQuaternion<> revoluteRot = QuatFromAngleX(CH_PI / 2.0);  // do not change
+    ChQuaternion<> revoluteRot = QuatFromAngleX(CH_PI / 2.0);
     revoluteFore->Initialize(
         base, flapFore,
         ChFramed(ChVector3d(-12.5 * std::cos(ang_rad), 0.0, -9.0 + 12.5 * std::sin(ang_rad)), revoluteRot));
@@ -140,6 +112,7 @@ int main(int argc, char* argv[]) {
     system.AddLink(revoluteAft);
     revoluteFore->Lock(true);
     revoluteAft->Lock(true);
+
     // create ground
     auto ground = chrono_types::make_shared<ChBody>();
     system.AddBody(ground);
@@ -147,12 +120,13 @@ int main(int argc, char* argv[]) {
     ground->SetTag(-1);
     ground->SetFixed(true);
     ground->EnableCollision(false);
+
     // add revolute joint between the base and ground
     auto base_rev = chrono_types::make_shared<ChLinkLockRevolute>();
     base_rev->Initialize(base, ground, ChFramed(ChVector3d(0.0, 0.0, -9.0), revoluteRot));
     system.AddLink(base_rev);
 
-    // define wave parameters (not used in this demo TODO have hydroforces constructor without hydro inputs)
+    // define wave parameters
     auto default_dont_add_waves = std::make_shared<NoWave>(3);
 
     // set up hydro forces
@@ -162,22 +136,6 @@ int main(int argc, char* argv[]) {
     bodies.push_back(flapAft);
 
     HydroForces hydroforces(bodies, h5fname, default_dont_add_waves);
-
-    // create output directory
-    bool saveDbgOn      = false;
-    std::string out_dir = hydroc::getTestOutDir() + "/" + RESULTS_DIR_NAME;
-    if (profilingOn || saveDataOn || saveDbgOn) {
-        std::filesystem::create_directory(std::filesystem::path(out_dir));
-        if (saveDbgOn) {
-            std::string dbg_dir = out_dir + "/dbg";
-            std::filesystem::create_directory(std::filesystem::path(dbg_dir));
-            system.EnableSolverMatrixWrite(true, dbg_dir);
-        }
-    }
-
-    std::cout << "Start simulation" << std::endl;
-    std::cout << "  Step size:  " << timestep << std::endl;
-    std::cout << "  Duration:   " << simulationDuration << std::endl;
 
     // for profiling
     auto start = std::chrono::high_resolution_clock::now();
@@ -197,47 +155,26 @@ int main(int argc, char* argv[]) {
     // for profiling
     auto end          = std::chrono::high_resolution_clock::now();
     unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    std::cout << "Simulation completed in " << duration << " ms" << std::endl;
 
-    if (profilingOn) {
-        std::ofstream profilingFile(out_dir + "/" + RESULTS_FILE_NAME + "_duration.txt");
-        if (profilingFile.is_open()) {
-            profilingFile << duration << " ms\n";
-            profilingFile.close();
-        } else {
-            std::cout << "Error: Could not open profiling file for writing." << std::endl;
+    // Save results
+    std::string out_dir = hydroc::getTestOutDir() + "/" + RESULTS_DIR_NAME;
+    std::filesystem::create_directories(std::filesystem::path(out_dir));
+
+    std::ofstream outputFile(out_dir + "/" + RESULTS_FILE_NAME + ".txt");
+    if (outputFile.is_open()) {
+        outputFile
+            << "Time (s)    Base Surge (m)Base Pitch (radians)Flap Fore Pitch (radians)Flap Aft Pitch (radians)"
+            << std::endl;
+        for (size_t i = 0; i < time_vector.size(); i++) {
+            outputFile << std::fixed << std::setprecision(4) << time_vector[i] << "                "
+                       << base_surge[i] << "         " << base_pitch[i] << "         " << fore_pitch[i]
+                       << "          " << aft_pitch[i] << std::endl;
         }
-    }
-
-    if (saveDataOn) {
-        std::ofstream outputFile(out_dir + "/" + RESULTS_FILE_NAME + ".txt");
-        if (outputFile.is_open()) {
-            outputFile
-                << "Time (s)    Base Surge (m)Base Pitch (radians)Flap Fore Pitch (radians)Flap Aft Pitch (radians)"
-                << std::endl;
-            for (size_t i = 0; i < time_vector.size(); i++) {
-                outputFile << std::fixed << std::setprecision(4) << time_vector[i] << "                "
-                           << base_surge[i] << "         " << base_pitch[i] << "         " << fore_pitch[i]
-                           << "          " << aft_pitch[i] << std::endl;
-            }
-            outputFile.close();
-        } else {
-            std::cout << "Error: Could not open output file for writing." << std::endl;
-            return 1;  // Return an error code
-        }
-    }
-
-    if (plotOn) {
-        postprocess::ChGnuPlot gplot(out_dir + "/f3of_dt2.gpl");
-        gplot.SetGrid();
-        gplot.SetLabelX("time (s)");
-        gplot.SetLabelY("surge");
-        gplot.SetLabelY2("pitch");
-        gplot.SetRangeX(0, simulationDuration);
-        gplot.SetTitle("F3OF DT3");
-        gplot.Plot(time_vector, base_surge, "base surge", " with lines lw 2");
-        gplot.Plot(time_vector, base_pitch, "base pitch", " axes x1y2  with lines lw 2");
-        gplot.Plot(time_vector, fore_pitch, "fore pitch", " axes x1y2  with lines lw 2");
-        gplot.Plot(time_vector, aft_pitch, "aft pitch", " axes x1y2  with lines lw 2");
+        outputFile.close();
+    } else {
+        std::cout << "Error: Could not open output file for writing." << std::endl;
+        return 1;
     }
 
     return 0;
