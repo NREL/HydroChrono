@@ -71,7 +71,26 @@ class IrregularWaves : public WaveBase {
     Eigen::VectorXd wavenumbers_;
     Eigen::VectorXd wave_phases_;
 
+    // -------------------------------------------------------------------------
+    // Pre-computed arrays for fast elevation calculation.
+    // These are computed once from the spectrum and reused for every GetElevation() call.
+    // This optimization is critical for real-time visualization where GetElevation()
+    // may be called thousands of times per frame (once per water surface grid point).
+    // -------------------------------------------------------------------------
+    
+    /// Wave amplitude for each frequency component [m].
+    /// Computed as: A_i = sqrt(2 * S(f_i) * df_i), where S is the spectral density.
+    Eigen::VectorXd amplitudes_;
+    
+    /// Angular frequency for each component [rad/s].
+    /// Computed as: omega_i = 2 * pi * f_i
+    Eigen::VectorXd angular_freqs_;
+
     void InitializeIRFVectors();
+    
+    /// Pre-compute amplitudes_ and angular_freqs_ arrays from the spectrum.
+    /// Called automatically after CreateSpectrum(). Must be called before GetElevation().
+    void PrecomputeAmplitudes();
     void ReadEtaFromFile();
     void CreateFreeSurfaceElevation();
 

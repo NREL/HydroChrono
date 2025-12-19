@@ -186,13 +186,70 @@ Eigen::Vector3d IrregularWaves::GetAcceleration(const Eigen::Vector3d& position,
 }
 
 double IrregularWaves::GetElevation(const Eigen::Vector3d& position, double time) {
-    return GetEtaIrregular(position, time, spectrum_frequencies_, spectral_densities_, spectral_widths_, wave_phases_, wavenumbers_);
+    // Fallback for eta-file import mode (spectrum not generated).
+    if (amplitudes_.size() == 0) {
+        return GetEtaIrregular(position, time, spectrum_frequencies_, spectral_densities_,
+                               spectral_widths_, wave_phases_, wavenumbers_);
+    }
+
+    // -------------------------------------------------------------------------
+    // Free-surface elevation from linear superposition of wave components.
+    //
+    // The irregular sea state is represented as a sum of regular wave components:
+    //
+    //     η(x, t) = Σ A_i · cos(k_i·x − ω_i·t + φ_i)
+    //
+    // where:
+    //     A_i   = wave amplitude for component i [m]
+    //     k_i   = wavenumber [rad/m], from dispersion relation ω² = g·k·tanh(k·h)
+    //     ω_i   = angular frequency [rad/s] = 2π·f_i
+    //     φ_i   = random phase [rad], uniformly distributed in [0, 2π)
+    //     x     = position along wave propagation direction [m]
+    //     t     = time [s]
+    //
+    // Performance: amplitudes_ and angular_freqs_ are pre-computed to avoid
+    // repeated sqrt() and multiplication calls (critical for visualization).
+    // -------------------------------------------------------------------------
+    const double x = position.x();
+    double eta = 0.0;
+
+    const Eigen::Index num_components = amplitudes_.size();
+    for (Eigen::Index i = 0; i < num_components; ++i) {
+        const double phase = wavenumbers_[i] * x - angular_freqs_[i] * time + wave_phases_[i];
+        eta += amplitudes_[i] * std::cos(phase);
+    }
+
+    return eta;
 }
 
 Eigen::Vector2d IrregularWaves::GetElevationGradientXY(const Eigen::Vector3d& position, double time) const {
-    // Irregular waves propagate in +X direction only; ∂η/∂y = 0.
-    double deta_dx = GetEtaGradientXIrregular(position, time, spectrum_frequencies_, spectral_densities_,
-                                               spectral_widths_, wave_phases_, wavenumbers_);
+    // Fallback for eta-file import mode (spectrum not generated).
+    if (amplitudes_.size() == 0) {
+        double deta_dx = GetEtaGradientXIrregular(position, time, spectrum_frequencies_, spectral_densities_,
+                                                   spectral_widths_, wave_phases_, wavenumbers_);
+        return Eigen::Vector2d(deta_dx, 0.0);
+    }
+
+    // -------------------------------------------------------------------------
+    // Free-surface slope (gradient) for visualization and normal computation.
+    //
+    // Taking the derivative of the elevation equation:
+    //
+    //     η(x, t)   = Σ A_i · cos(k_i·x − ω_i·t + φ_i)
+    //     ∂η/∂x     = Σ −A_i · k_i · sin(k_i·x − ω_i·t + φ_i)
+    //
+    // Since waves propagate only in the +X direction, ∂η/∂y = 0.
+    // The surface normal can be computed as: n = normalize(-∂η/∂x, -∂η/∂y, 1)
+    // -------------------------------------------------------------------------
+    const double x = position.x();
+    double deta_dx = 0.0;
+
+    const Eigen::Index num_components = amplitudes_.size();
+    for (Eigen::Index i = 0; i < num_components; ++i) {
+        const double phase = wavenumbers_[i] * x - angular_freqs_[i] * time + wave_phases_[i];
+        deta_dx -= amplitudes_[i] * wavenumbers_[i] * std::sin(phase);
+    }
+
     return Eigen::Vector2d(deta_dx, 0.0);
 }
 
@@ -250,6 +307,37 @@ void IrregularWaves::CreateSpectrum() {
 
     auto omegas  = 2 * M_PI * spectrum_frequencies_;
     wavenumbers_ = ComputeWaveNumbers(omegas, water_depth_, g_);
+
+    // Pre-compute amplitude and omega arrays for fast GetElevation().
+    PrecomputeAmplitudes();
+}
+
+void IrregularWaves::PrecomputeAmplitudes() {
+    // -------------------------------------------------------------------------
+    // Pre-compute wave component amplitudes and angular frequencies.
+    //
+    // For each frequency component i:
+    //     A_i     = sqrt(2 · S(f_i) · Δf_i)   [m]
+    //     ω_i     = 2π · f_i                  [rad/s]
+    //
+    // where:
+    //     S(f_i)  = spectral density at frequency f_i [m²/Hz]
+    //     Δf_i    = frequency bin width [Hz]
+    //
+    // This pre-computation eliminates ~2N operations per GetElevation() call,
+    // which is critical when evaluating thousands of grid points per frame.
+    // -------------------------------------------------------------------------
+    const Eigen::Index num_frequencies = spectrum_frequencies_.size();
+    amplitudes_.resize(num_frequencies);
+    angular_freqs_.resize(num_frequencies);
+
+    for (Eigen::Index i = 0; i < num_frequencies; ++i) {
+        // Wave amplitude from spectral density: A = sqrt(2 * S * df)
+        amplitudes_[i] = std::sqrt(2.0 * spectral_densities_[i] * spectral_widths_[i]);
+        
+        // Angular frequency: omega = 2*pi*f
+        angular_freqs_[i] = 2.0 * M_PI * spectrum_frequencies_[i];
+    }
 }
 
 void IrregularWaves::CreateFreeSurfaceElevation() {

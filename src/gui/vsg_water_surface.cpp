@@ -678,45 +678,66 @@ void AnimatedWaterSurface::Update(const std::shared_ptr<WaveBase>& wave, double 
     [[maybe_unused]] double min_eta = std::numeric_limits<double>::max();
     [[maybe_unused]] double max_eta = std::numeric_limits<double>::lowest();
 
-    // Update each triangle's vertices with wave elevation.
-    // "Mesh soup" format: each triangle has 3 separate (non-shared) vertices,
-    // laid out as [tri0_v0, tri0_v1, tri0_v2, tri1_v0, tri1_v1, tri1_v2, ...]
+    // -------------------------------------------------------------------------
+    // Step 1: Compute wave elevation η(x,y,t) for each unique grid vertex.
+    //
+    // Performance optimization: The GPU mesh uses a "triangle soup" format where
+    // each triangle stores its own copy of vertices. This means interior grid
+    // points appear in up to 6 triangles. By computing η once per unique grid
+    // point and then copying to the soup, we avoid redundant wave calculations.
+    //
+    // For irregular sea states with ~1000 frequency components:
+    //   - Without optimization: ~24,000 × 1000 = 24M trig operations/frame
+    //   - With optimization:     ~4,000 × 1000 = 4M trig operations/frame
+    // -------------------------------------------------------------------------
+    std::vector<float> grid_eta(orig_verts.size(), 0.0f);
+
+    for (size_t i = 0; i < orig_verts.size(); ++i) {
+        const auto& grid_pos = orig_verts[i];
+
+        // Incident wave elevation from the wave model (regular or irregular).
+        double eta_incident = 0.0;
+        if (wave) {
+            Eigen::Vector3d pos(grid_pos.x(), grid_pos.y(), 0.0);
+            eta_incident = wave->GetElevation(pos, t);
+        }
+
+        // Radiated wave visualization (approximate, for visual feedback only).
+        double eta_radiation = 0.0;
+        if (use_radiation && radiation_viz_.IsInitialized()) {
+            eta_radiation = radiation_viz_.EvaluateEta(grid_pos.x(), grid_pos.y(), t);
+        }
+
+        // Total surface elevation with visual scaling.
+        const double eta = (eta_incident + eta_radiation) * visual_scale;
+        const float eta_f = static_cast<float>(eta);
+
+        grid_eta[i] = eta_f;
+
+        // Track min/max for adaptive color shading range.
+        frame_min_eta = std::min(frame_min_eta, eta_f);
+        frame_max_eta = std::max(frame_max_eta, eta_f);
+
+        if constexpr (kDebugWaveSurface) {
+            min_eta = std::min(min_eta, eta);
+            max_eta = std::max(max_eta, eta);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Step 2: Copy pre-computed elevations to triangle soup vertex buffer.
+    // -------------------------------------------------------------------------
     for (size_t tri = 0; tri < faces.size(); ++tri) {
         const auto& face = faces[tri];
 
         for (int corner = 0; corner < 3; ++corner) {
-            int grid_idx = face[corner];  // Index into original grid vertices
+            int grid_idx = face[corner];
             if (grid_idx < 0 || static_cast<size_t>(grid_idx) >= orig_verts.size()) {
                 continue;
             }
 
             const auto& grid_pos = orig_verts[static_cast<size_t>(grid_idx)];
-
-            // Get wave elevation eta(x, y, t) at this grid point.
-            double eta_incident = 0.0;
-            if (wave) {
-                Eigen::Vector3d pos(grid_pos.x(), grid_pos.y(), 0.0);
-                eta_incident = wave->GetElevation(pos, t);
-            }
-
-            // Add radiation visualization if enabled.
-            // NOTE: This is visualization-only and does NOT affect physics.
-            double eta_radiation = 0.0;
-            if (use_radiation && radiation_viz_.IsInitialized()) {
-                eta_radiation = radiation_viz_.EvaluateEta(grid_pos.x(), grid_pos.y(), t);
-            }
-
-            // Combine incident and radiated wave elevation.
-            double eta = eta_incident + eta_radiation;
-
-            // Apply visual scale multiplier.
-            eta *= visual_scale;
-
-            float eta_f = static_cast<float>(eta);
-
-            // Track frame min/max for adaptive range update.
-            frame_min_eta = std::min(frame_min_eta, eta_f);
-            frame_max_eta = std::max(frame_max_eta, eta_f);
+            float eta_f = grid_eta[static_cast<size_t>(grid_idx)];
 
             // Write updated position to VSG vertex buffer.
             size_t vsg_idx = tri * 3 + static_cast<size_t>(corner);
@@ -727,32 +748,19 @@ void AnimatedWaterSurface::Update(const std::shared_ptr<WaveBase>& wave, double 
             }
 
             // Height-based color shading: lighter for crests, darker for troughs.
-            // Uses adaptive range based on observed min/max eta values.
             if (vsg_colors_ && vsg_idx < vsg_colors_->size()) {
-                // Normalize eta to [-1, +1] using adaptive range.
-                // Center at the midpoint between min and max for balanced shading.
                 float norm_eta = (eta_f - adaptive_center) / (adaptive_range * 0.5f);
                 norm_eta = std::clamp(norm_eta, -1.0f, 1.0f);
                 
-                // Additive offset: adds/subtracts a fixed amount to channels.
-                // Weighted more toward blue/green for water-like appearance.
                 constexpr float kAddOffset = 0.18f;
                 float add_term = kAddOffset * norm_eta;
-                
-                // Multiplicative brightness: 0.55 (dark trough) to 1.45 (bright crest).
                 float brightness = 1.0f + 0.45f * norm_eta;
                 
-                // Combine: multiply first, then add offset for visible shading.
                 float r = std::clamp(kWaterR * brightness + add_term * 0.3f, 0.0f, 1.0f);
                 float g = std::clamp(kWaterG * brightness + add_term * 0.85f, 0.0f, 1.0f);
                 float b = std::clamp(kWaterB * brightness + add_term * 1.0f, 0.0f, 1.0f);
                 
                 (*vsg_colors_)[vsg_idx] = vsg::vec4(r, g, b, kWaterOpacity);
-            }
-
-            if constexpr (kDebugWaveSurface) {
-                min_eta = std::min(min_eta, eta);
-                max_eta = std::max(max_eta, eta);
             }
         }
     }
