@@ -149,15 +149,6 @@ Eigen::VectorXd JONSWAPSpectrumHz(Eigen::VectorXd& f,
                                   double gamma       = 3.3,
                                   bool is_normalized = false);
 
-std::vector<std::array<double, 3>> CreateFreeSurface3DPts(const Eigen::VectorXd& eta,
-                                                          const Eigen::VectorXd& t_vec);
-
-std::vector<std::array<size_t, 3>> CreateFreeSurfaceTriangles(size_t eta_size);
-
-void WriteFreeSurfaceMeshObj(const std::vector<std::array<double, 3>>& points,
-                             const std::vector<std::array<size_t, 3>>& triangles,
-                             const std::string& file_name);
-
 Eigen::VectorXd GetWidthArray(const Eigen::VectorXd& input_array);
 
 #endif  // HYDRO_WAVES_WAVE_UTILITIES_H

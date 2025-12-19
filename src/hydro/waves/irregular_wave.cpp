@@ -226,28 +226,6 @@ Eigen::VectorXd IrregularWaves::SetSpectrumFrequencies(double start, double end,
     return result;
 }
 
-void IrregularWaves::SetUpWaveMesh(std::string filename) {
-    mesh_file_name_   = filename;
-    int num_timesteps = static_cast<int>(std::ceil(params_.simulation_duration_ / params_.simulation_dt_));
-    Eigen::VectorXd time_index = Eigen::VectorXd::LinSpaced(num_timesteps + 1, 0, num_timesteps * params_.simulation_dt_);
-    Eigen::VectorXd eta_vec    = Eigen::Map<const Eigen::VectorXd>(free_surface_elevation_sampled_.data(),
-                                                                   static_cast<Eigen::Index>(free_surface_elevation_sampled_.size()));
-
-    std::vector<std::array<double, 3>> free_surface_3d_pts = CreateFreeSurface3DPts(eta_vec, time_index);
-    std::vector<std::array<size_t, 3>> free_surface_triangles =
-        CreateFreeSurfaceTriangles(static_cast<size_t>(time_index.size()));
-
-    WriteFreeSurfaceMeshObj(free_surface_3d_pts, free_surface_triangles, mesh_file_name_);
-}
-
-std::string IrregularWaves::GetMeshFile() {
-    return mesh_file_name_;
-}
-
-Eigen::Vector3<double> IrregularWaves::GetWaveMeshVelocity() {
-    return Eigen::Vector3d(1.0, 0, 0);
-}
-
 void IrregularWaves::CreateSpectrum() {
     int nf;
     if (params_.nfrequencies_ == 0) {

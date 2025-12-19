@@ -44,9 +44,6 @@ class IrregularWaves : public WaveBase {
     WaveMode GetWaveMode() override { return mode_; }
 
     Eigen::VectorXd SetSpectrumFrequencies(double start, double end, int num_steps);
-    void SetUpWaveMesh(std::string filename = "fse_mesh.obj");
-    std::string GetMeshFile();
-    Eigen::Vector3<double> GetWaveMeshVelocity();
 
     void AddH5Data(std::vector<HydroData::IrregularWaveInfo>& irreg_h5_data, HydroData::SimulationParameters& sim_data);
 
@@ -73,7 +70,6 @@ class IrregularWaves : public WaveBase {
     Eigen::VectorXd spectral_widths_;
     Eigen::VectorXd wavenumbers_;
     Eigen::VectorXd wave_phases_;
-    std::string mesh_file_name_;
 
     void InitializeIRFVectors();
     void ReadEtaFromFile();

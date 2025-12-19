@@ -353,67 +353,6 @@ Eigen::VectorXd JONSWAPSpectrumHz(Eigen::VectorXd& f,
     return spectral_densities;
 }
 
-std::vector<std::array<double, 3>> CreateFreeSurface3DPts(const Eigen::VectorXd& eta,
-                                                          const Eigen::VectorXd& t_vec) {
-    std::vector<std::array<double, 3>> surface(t_vec.size() * 2);
-
-    for (int i = 0; i < t_vec.size(); ++i) {
-        double t = -1 * t_vec[i];
-        double z = eta[i];
-
-        surface[2 * i]     = {t, -10.0, z};
-        surface[2 * i + 1] = {t, 10.0, z};
-    }
-
-    return surface;
-}
-
-std::vector<std::array<size_t, 3>> CreateFreeSurfaceTriangles(size_t eta_size) {
-    std::vector<std::array<size_t, 3>> triangles;
-
-    for (size_t i = 0; i < eta_size / 2 - 1; ++i) {
-        triangles.push_back({2 * i, 2 * i + 1, 2 * i + 3});
-        triangles.push_back({2 * i, 2 * i + 3, 2 * i + 2});
-    }
-
-    return triangles;
-}
-
-void WriteFreeSurfaceMeshObj(const std::vector<std::array<double, 3>>& points,
-                             const std::vector<std::array<size_t, 3>>& triangles,
-                             const std::string& file_name) {
-    std::ofstream out(file_name);
-    if (!out) {
-        std::cerr << "Failed to open " << file_name << std::endl;
-        return;
-    }
-
-    auto t  = std::time(nullptr);
-    auto tm = *std::localtime(&t);
-    out << "# Wavefront OBJ file exported by HydroChrono" << std::endl;
-    out << "# File Created: " << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << std::endl << std::endl;
-
-    out << "# Vertices: " << points.size() << std::endl << std::endl;
-    out << std::fixed << std::setprecision(6);
-    for (const auto& point : points) {
-        out << "v ";
-        out << std::setw(14) << point[0] << ' ';
-        out << std::setw(14) << point[1] << ' ';
-        out << std::setw(14) << point[2] << std::endl;
-    }
-    out << std::endl;
-
-    out << "# Faces: " << triangles.size() << std::endl << std::endl;
-    for (const auto& triangle : triangles) {
-        out << "f ";
-        out << std::setw(9) << triangle[0] + 1;
-        out << std::setw(9) << triangle[1] + 1;
-        out << std::setw(9) << triangle[2] + 1 << std::endl;
-    }
-
-    out.close();
-}
-
 Eigen::VectorXd GetWidthArray(const Eigen::VectorXd& input_array) {
     Eigen::VectorXd width_array(input_array.size());
     for (int ii = 0; ii < width_array.size(); ii++) {
