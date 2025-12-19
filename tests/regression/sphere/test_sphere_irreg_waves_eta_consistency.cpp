@@ -60,8 +60,7 @@ int main(int argc, char* argv[]) {
     {
         ChSystemNSC system;
         system.SetGravitationalAcceleration(ChVector3d(0.0, 0.0, -9.81));
-        system.SetSolverType(ChSolver::Type::GMRES);
-        system.GetSolver()->AsIterative()->SetMaxIterations(300);
+        system.SetSolverType(ChSolver::Type::SPARSE_QR);
 
         // Ground
         auto ground = chrono_types::make_shared<ChBody>();
@@ -147,8 +146,7 @@ int main(int argc, char* argv[]) {
     {
         ChSystemNSC system;
         system.SetGravitationalAcceleration(ChVector3d(0.0, 0.0, -9.81));
-        system.SetSolverType(ChSolver::Type::GMRES);
-        system.GetSolver()->AsIterative()->SetMaxIterations(300);
+        system.SetSolverType(ChSolver::Type::SPARSE_QR);
 
         // Ground
         auto ground = chrono_types::make_shared<ChBody>();

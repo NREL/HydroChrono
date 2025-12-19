@@ -41,9 +41,7 @@ int main(int argc, char* argv[]) {
     system.SetGravitationalAcceleration(ChVector3d(0.0, 0.0, -9.81));
     double timestep = 0.08;
     system.SetTimestepperType(ChTimestepper::Type::HHT);
-    system.SetSolverType(ChSolver::Type::GMRES);
-    system.GetSolver()->AsIterative()->SetMaxIterations(
-        300);  // the higher, the easier to keep the constraints satisfied.
+    system.SetSolverType(ChSolver::Type::SPARSE_QR);
     double simulationDuration = 1000.0;
 
     // Create user interface
