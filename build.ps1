@@ -269,6 +269,32 @@ if ($useIrrlicht) {
     }
 }
 
+if ($useVSG) {
+    # Get VSG DLLs from vsgFramework bin directory
+    # First try to find vsg_DIR from chrono config
+    if ($chronoContent -match 'vsg_DIR\s+"([^"]+)"') {
+        $vsgDir = $Matches[1]
+        # vsg_DIR typically points to lib/cmake/vsg, so go up to find bin
+        $vsgRoot = Split-Path (Split-Path (Split-Path $vsgDir))
+        $vsgBinDir = Join-Path $vsgRoot "bin"
+        
+        if (Test-Path $vsgBinDir) {
+            $vsgDlls = Get-ChildItem -Path $vsgBinDir -Filter "*.dll" -ErrorAction SilentlyContinue
+            $copiedCount = 0
+            foreach ($dll in $vsgDlls) {
+                $destDll = Join-Path $binPath $dll.Name
+                if (-not (Test-Path $destDll)) {
+                    Copy-Item $dll.FullName $destDll -Force
+                    $copiedCount++
+                }
+            }
+            if ($copiedCount -gt 0) {
+                Write-OK "Copied $copiedCount VSG DLLs"
+            }
+        }
+    }
+}
+
 # =============================================================================
 # Verify
 # =============================================================================
