@@ -170,8 +170,10 @@ std::vector<double> RadiationRirfConvolution::ComputeForces(
             // Multibody loop: process each body's velocity history
             for (int body_index = 0; body_index < num_bodies_; ++body_index) {
                 const auto& velocity_history_body = velocity_history_[body_index];
-                if (velocity_history_body.size() <= history_index_local) {
-                    continue;  // inconsistent; should not happen in normal flow
+                // InterpolateVelocity6D accesses [history_index_local] and [history_index_local + 1]
+                // so we need at least history_index_local + 2 elements
+                if (velocity_history_body.size() < history_index_local + 2) {
+                    continue;  // not enough history entries for interpolation
                 }
 
                 double interpolated_velocity_dof[kDofPerBody];
@@ -231,8 +233,10 @@ std::vector<double> RadiationRirfConvolution::ComputeForces(
         // Multibody loop: process each body's velocity history
         for (int body_index = 0; body_index < num_bodies_; ++body_index) {
             const auto& velocity_history_body = velocity_history_[body_index];
-            if (velocity_history_body.size() <= history_index) {
-                continue;  // skip if inconsistent; should not happen in normal flow
+            // InterpolateVelocity6D accesses [history_index] and [history_index + 1]
+            // so we need at least history_index + 2 elements
+            if (velocity_history_body.size() < history_index + 2) {
+                continue;  // not enough history entries for interpolation
             }
 
             double interpolated_velocity_dof[kDofPerBody];

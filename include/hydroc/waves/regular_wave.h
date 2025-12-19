@@ -35,13 +35,13 @@ class RegularWave : public WaveBase {
     Eigen::Vector3d GetAcceleration(const Eigen::Vector3d& position, double time) override;
 
   private:
-    unsigned int num_bodies_;
+    unsigned int num_bodies_ = 0;
     const WaveMode mode_ = WaveMode::regular;
     std::vector<HydroData::RegularWaveInfo> wave_info_;
     Eigen::VectorXd excitation_force_mag_;
     Eigen::VectorXd excitation_force_phase_;
     Eigen::VectorXd force_;
-    double wavenumber_;
+    double wavenumber_ = 0.0;
 
     double GetOmegaDelta() const;
     double GetExcitationMagInterp(int b, int i, int j, double freq_index_des) const;

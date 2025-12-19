@@ -13,9 +13,9 @@
 #include <vector>
 
 struct IrregularWaveParams {
-    unsigned int num_bodies_;
-    double simulation_dt_;
-    double simulation_duration_;
+    unsigned int num_bodies_ = 0;
+    double simulation_dt_ = 0.0;
+    double simulation_duration_ = 0.0;
     double ramp_duration_ = 0.0;
     std::string eta_file_path_;
     double wave_height_             = 0.0;
@@ -60,7 +60,7 @@ class IrregularWaves : public WaveBase {
     std::vector<double> time_data_;
     std::vector<double> free_surface_elevation_sampled_;
     std::vector<double> free_surface_time_sampled_;
-    bool spectrumCreated_;
+    bool spectrumCreated_ = false;
 
     const WaveMode mode_ = WaveMode::irregular;
     std::vector<HydroData::IrregularWaveInfo> wave_info_;

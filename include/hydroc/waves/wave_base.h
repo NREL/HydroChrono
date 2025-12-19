@@ -43,7 +43,7 @@ class NoWave : public WaveBase {
     Eigen::Vector3d GetAcceleration(const Eigen::Vector3d&, double) override { return Eigen::Vector3d(0.0, 0.0, 0.0); }
 
   private:
-    unsigned int num_bodies_;
+    unsigned int num_bodies_ = 0;
     const WaveMode mode_ = WaveMode::noWaveCIC;
 };
 

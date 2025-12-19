@@ -35,10 +35,10 @@ class HydroData {
   public:
     struct BodyInfo {
         std::string body_name;
-        int body_num;
-        double disp_vol;
+        int body_num = 0;
+        double disp_vol = 0.0;
         Eigen::VectorXd rirf_time_vector;
-        double rirf_timestep;
+        double rirf_timestep = 0.0;
         Eigen::VectorXd cg;
         Eigen::VectorXd cb;
         Eigen::MatrixXd lin_matrix;
@@ -47,9 +47,9 @@ class HydroData {
     };
     struct SimulationParameters {
         std::string h5_file_name;
-        double rho;
-        double g;
-        double water_depth;
+        double rho = 0.0;
+        double g = 0.0;
+        double water_depth = 0.0;
     };
     struct RegularWaveInfo {
         Eigen::VectorXd freq_list;
