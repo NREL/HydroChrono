@@ -207,19 +207,18 @@ double IrregularWaves::GetElevation(const Eigen::Vector3d& position, double time
     //     x     = position along wave propagation direction [m]
     //     t     = time [s]
     //
-    // Performance: amplitudes_ and angular_freqs_ are pre-computed to avoid
-    // repeated sqrt() and multiplication calls (critical for visualization).
+    // Performance: Uses Eigen's vectorized operations (SIMD) for the summation.
+    // The cos() is applied element-wise and the dot product sums the result.
     // -------------------------------------------------------------------------
     const double x = position.x();
-    double eta = 0.0;
 
-    const Eigen::Index num_components = amplitudes_.size();
-    for (Eigen::Index i = 0; i < num_components; ++i) {
-        const double phase = wavenumbers_[i] * x - angular_freqs_[i] * time + wave_phases_[i];
-        eta += amplitudes_[i] * std::cos(phase);
-    }
+    // Vectorized phase computation: phase_i = k_i*x - ω_i*t + φ_i
+    const Eigen::ArrayXd phases = wavenumbers_.array() * x 
+                                - angular_freqs_.array() * time 
+                                + wave_phases_.array();
 
-    return eta;
+    // Vectorized elevation: η = Σ A_i * cos(phase_i)
+    return (amplitudes_.array() * phases.cos()).sum();
 }
 
 Eigen::Vector2d IrregularWaves::GetElevationGradientXY(const Eigen::Vector3d& position, double time) const {
@@ -240,17 +239,44 @@ Eigen::Vector2d IrregularWaves::GetElevationGradientXY(const Eigen::Vector3d& po
     //
     // Since waves propagate only in the +X direction, ∂η/∂y = 0.
     // The surface normal can be computed as: n = normalize(-∂η/∂x, -∂η/∂y, 1)
+    //
+    // Performance: Uses Eigen's vectorized operations (SIMD) for the summation.
     // -------------------------------------------------------------------------
     const double x = position.x();
-    double deta_dx = 0.0;
 
-    const Eigen::Index num_components = amplitudes_.size();
-    for (Eigen::Index i = 0; i < num_components; ++i) {
-        const double phase = wavenumbers_[i] * x - angular_freqs_[i] * time + wave_phases_[i];
-        deta_dx -= amplitudes_[i] * wavenumbers_[i] * std::sin(phase);
-    }
+    // Vectorized phase computation: phase_i = k_i*x - ω_i*t + φ_i
+    const Eigen::ArrayXd phases = wavenumbers_.array() * x 
+                                - angular_freqs_.array() * time 
+                                + wave_phases_.array();
+
+    // Vectorized gradient: ∂η/∂x = -Σ A_i * k_i * sin(phase_i)
+    const double deta_dx = -(amplitudes_.array() * wavenumbers_.array() * phases.sin()).sum();
 
     return Eigen::Vector2d(deta_dx, 0.0);
+}
+
+double IrregularWaves::GetElevationForVisualization(const Eigen::Vector3d& position, 
+                                                     double time, 
+                                                     int max_components) const {
+    // If no pre-computed amplitudes or max_components covers all, use full calculation.
+    const Eigen::Index num_total = amplitudes_.size();
+    if (num_total == 0) {
+        return GetEtaIrregular(position, time, spectrum_frequencies_, spectral_densities_,
+                               spectral_widths_, wave_phases_, wavenumbers_);
+    }
+    
+    // Determine how many components to use.
+    const Eigen::Index n = (max_components <= 0 || max_components >= num_total) 
+                         ? num_total 
+                         : static_cast<Eigen::Index>(max_components);
+    
+    // Use Eigen head() to get first n elements - still vectorized (SIMD).
+    const double x = position.x();
+    const Eigen::ArrayXd phases = wavenumbers_.head(n).array() * x 
+                                - angular_freqs_.head(n).array() * time 
+                                + wave_phases_.head(n).array();
+
+    return (amplitudes_.head(n).array() * phases.cos()).sum();
 }
 
 Eigen::VectorXd IrregularWaves::GetForceAtTime(double t) {

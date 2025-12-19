@@ -13,6 +13,7 @@
 
 #include <chrono/core/ChTypes.h>
 #include <chrono/physics/ChBodyEasy.h>
+#include <hydroc/waves/irregular_wave.h>
 
 #include <Eigen/Dense>
 
@@ -692,13 +693,27 @@ void AnimatedWaterSurface::Update(const std::shared_ptr<WaveBase>& wave, double 
     // -------------------------------------------------------------------------
     std::vector<float> grid_eta(orig_verts.size(), 0.0f);
 
+    // For irregular waves, use limited frequency components for visualization.
+    // 500 components provides excellent visual quality while being faster than
+    // using all components (which can be 1000+). Physics always uses all components.
+    constexpr int kVizFrequencyLimit = 500;
+    
+    // Try to cast to IrregularWaves for the optimized visualization path.
+    IrregularWaves* irreg_wave = nullptr;
+    if (wave && wave->GetWaveMode() == WaveMode::irregular) {
+        irreg_wave = dynamic_cast<IrregularWaves*>(wave.get());
+    }
+
     for (size_t i = 0; i < orig_verts.size(); ++i) {
         const auto& grid_pos = orig_verts[i];
+        const Eigen::Vector3d pos(grid_pos.x(), grid_pos.y(), 0.0);
 
-        // Incident wave elevation from the wave model (regular or irregular).
+        // Incident wave elevation from the wave model.
+        // For irregular waves, use the visualization-optimized method with limited components.
         double eta_incident = 0.0;
-        if (wave) {
-            Eigen::Vector3d pos(grid_pos.x(), grid_pos.y(), 0.0);
+        if (irreg_wave) {
+            eta_incident = irreg_wave->GetElevationForVisualization(pos, t, kVizFrequencyLimit);
+        } else if (wave) {
             eta_incident = wave->GetElevation(pos, t);
         }
 

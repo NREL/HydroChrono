@@ -1,9 +1,21 @@
 // =============================================================================
 // HydroChrono VSG GUI Component - Implementation
 // =============================================================================
+
+// Suppress MSVC warning about IMGUI_API macro redefinition in vsgImGui headers.
+// This is a harmless conflict between vsgImGui/imgui.h and vsgImGui/Export.h.
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4005)  // macro redefinition
+#endif
+
 #include "vsg_gui_component.h"
 
 #include <vsgImGui/imgui.h>
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 namespace hydroc {
 namespace gui {
