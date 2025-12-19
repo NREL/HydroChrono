@@ -169,8 +169,7 @@ endif()
 
 find_package(Chrono
              CONFIG REQUIRED
-             COMPONENTS Parsers
-             OPTIONAL_COMPONENTS Irrlicht VSG)
+             COMPONENTS Parsers)
 
 message(STATUS "----\n")
 
