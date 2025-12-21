@@ -6,7 +6,9 @@
 #include <chrono/physics/ChBodyEasy.h>
 #include <chrono/physics/ChSystemNSC.h>
 
-#include "chrono_postprocess/ChGnuPlot.h"
+#include <chrono/utils/ChUtils.h>
+
+#include "../test_utils.h"
 
 #include <chrono>   // std::chrono::high_resolution_clock::now
 #include <iomanip>  // std::setprecision
@@ -14,6 +16,7 @@
 
 // Use the namespaces of Chrono
 using namespace chrono;
+using namespace chrono::utils;
 
 int main(int argc, char* argv[]) {
     std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
@@ -53,13 +56,7 @@ int main(int argc, char* argv[]) {
 
     // Create user interface
     std::shared_ptr<hydroc::gui::UI> pui = hydroc::gui::CreateUI(visualizationOn);
-
     hydroc::gui::UI& ui = *pui.get();
-
-    // some io/viz options
-    std::vector<double> time_vector;
-    std::vector<double> float_heave_position;
-    std::vector<double> plate_heave_position;
 
     // set up body from a mesh
     std::cout << "Attempting to open mesh file: " << body1_meshfame << std::endl;
@@ -127,10 +124,10 @@ int main(int argc, char* argv[]) {
 
     HydroForces hydroForces(bodies, h5fname, default_dont_add_waves);
 
-    //// Debug printing added mass matrix and system mass matrix
-    // ChSparseMatrix M;
-    // system.GetMassMatrix(&M);
-    // std::cout << M << std::endl;
+    // Result arrays
+    std::vector<double> time_vector;
+    std::vector<double> float_heave_position;
+    std::vector<double> plate_heave_position;
 
     // for profiling
     auto start = std::chrono::high_resolution_clock::now();
@@ -190,14 +187,39 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    // Read reference data
+    ChValidation::Headers col_headers;
+    ChValidation::Data ref_data = ChValidation::ReadDataFile(REFERENCE_FILE_NAME, col_headers);
+    ChAssertAlways(ref_data.size() == 3);
+
+    // Simulation data
+    ChValidation::Data res_data = ChValidation::CreateData({time_vector, float_heave_position, plate_heave_position});
+
+    // Perform validation
+    auto norm_type   = ChValidation::NormType::RMS;
+    double tolerance = 1e-8;
+    ChValidation::DataVector error_norms;
+    bool passed = ChValidation::Test(res_data, ref_data, ChValidation::NormType::RMS, tolerance, error_norms);
+
+    std::cout << "\nValidation";
+    std::cout << "\n  Reference file:   " << REFERENCE_FILE_NAME;
+    std::cout << "\n  Data series:      ";
+    for (const auto& c : col_headers)
+        std::cout << c << "  ";
+    std::cout << "\n  Ref. data points: " << ref_data[0].size();
+    std::cout << "\n  Sim. data points: " << res_data[0].size();
+    std::cout << "\n  Validation norm:  " << ChValidation::GetNormTypeAsString(norm_type);
+    std::cout << "\n  Tolerance:        " << tolerance;
+    std::cout << "\n  " << (passed ? "Passed" : "Failed");
+    std::cout << "            [ ";
+    for (const auto& nrm : error_norms)
+        std::cout << nrm << " ";
+    std::cout << "]" << std::endl;
+
+    // Plot simulation and reference results
     if (plotOn) {
-        postprocess::ChGnuPlot gplot(out_dir + "/rm3_decay.gpl");
-        gplot.SetGrid();
-        gplot.SetLabelX("time (s)");
-        gplot.SetLabelY("heave (m)");
-        gplot.SetTitle("RM3 decay");
-        gplot.Plot(time_vector, plate_heave_position, "", " with lines lt rgb '#FF5500' lw 2");
+        PlotValidation(out_dir + "/rm3_decay.gpl", "RM3 decay", col_headers, ref_data, res_data, simulationDuration);
     }
 
-    return 0;
+    return !passed;
 }

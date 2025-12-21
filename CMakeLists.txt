@@ -431,6 +431,11 @@ target_include_directories(HydroChronoGUI
         "$<INSTALL_INTERFACE:include>"
 )
 
+if(MSVC)
+  target_compile_options(HydroChronoGUI PRIVATE $<$<COMPILE_LANGUAGE:CXX>:/wd4996>)  # deprecated function or class member
+  target_compile_options(HydroChronoGUI PRIVATE $<$<COMPILE_LANGUAGE:CXX>:/wd4458>)  # declaration hides class member
+endif()
+
 set_target_properties(HydroChronoGUI PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(HydroChronoGUI
     PUBLIC

@@ -1,4 +1,4 @@
-Time (s)   Float Heave (m) Plate Heave (m)
+Time(s)        Float_Heave(m) Plate_Heave(m)
 0.01           -0.62000515    -21.29000007
 0.02           -0.62002233    -21.29000032
 0.03           -0.62005382    -21.29000078
