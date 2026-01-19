@@ -18,6 +18,12 @@ void BuildSystemStateFromChronoBodies(
     for (const auto& body : bodies) {
         BodyState body_state;
         
+        //// RADU - why not simply do:
+        ////body_state.position = body->GetPos().eigen();
+        ////body_state.orientation_rpy = body->GetRot().GetCardanAnglesXYZ().eigen();
+        ////body_state.linear_velocity = body->GetPosDt().eigen();
+        ////body_state.angular_velocity = body->GetAngVelParent().eigen();
+
         // Extract position and orientation
         const chrono::ChVector3d position_world = body->GetPos();
         const chrono::ChVector3d rotation_rpy    = body->GetRot().GetCardanAnglesXYZ();
