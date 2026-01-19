@@ -3,24 +3,19 @@
 
 #pragma once
 
-#include <Eigen/Dense>  // Need for the container function
 #include <fstream>
 #include <iostream>
-#include <hydroc/logging.h>
 #include <string>
 #include <filesystem>  // C++17
 
+#include <Eigen/Dense>  // Need for the container function
+
+#include <hydroc/logging.h>
+
+//// RADU - why not use constants from Chrono?
 #ifndef M_PI
     #define M_PI 3.14159265358979323846
 #endif
-
-/**@brief Returns last index of vector element below value.
- *
- * @param value Input value
- * @param ticks Array of ticks from which to find lower-bound index (assuming ascending order)
- *
- */
-size_t get_lower_index(double value, const std::vector<double>& ticks);
 
 /**@brief Base namespace for HydroChrono library
  *
