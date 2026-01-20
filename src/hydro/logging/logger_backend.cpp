@@ -14,6 +14,8 @@
 #include <direct.h>
 #elif defined(__APPLE__)
 #include <mach-o/dyld.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #else
 #include <unistd.h>
 #include <limits.h>
