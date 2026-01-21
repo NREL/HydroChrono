@@ -51,8 +51,8 @@ class IrregularWaves : public WaveBase {
     void AddH5Data(std::vector<HydroData::IrregularWaveInfo>& irreg_h5_data, HydroData::SimulationParameters& sim_data);
 
     double GetElevation(const Eigen::Vector3d& position, double time) override;
-    Eigen::Vector3d GetVelocity(const Eigen::Vector3d& position, double time) override;
-    Eigen::Vector3d GetAcceleration(const Eigen::Vector3d& position, double time) override;
+    Eigen::Vector3d GetVelocity(const Eigen::Vector3d& position, double time, double elevation) override;
+    Eigen::Vector3d GetAcceleration(const Eigen::Vector3d& position, double time, double elevation) override;
 
   private:
     IrregularWaveParams params_;
