@@ -22,6 +22,7 @@ function(build_regression_test TEST_GROUP TEST_NAME MULTIPLE)
       
    target_compile_definitions(${TEST_EXE} 
 	   PRIVATE
+       "REFERENCE_FILE_NAME=\"${FILE_REF}\""
        "RESULTS_DIR_NAME=\"${TEST_GROUP}\""
        "RESULTS_FILE_NAME=\"results_${TEST_NAME}\""
    )

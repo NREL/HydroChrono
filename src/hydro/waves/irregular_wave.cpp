@@ -18,10 +18,11 @@
 #include <sstream>
 #include <unsupported/Eigen/Splines>
 
-#include <hydroc/helper.h>
 #include <hydroc/logging.h>
 
-IrregularWaves::IrregularWaves(const IrregularWaveParams& params) : params_(params) {}
+IrregularWaves::IrregularWaves(const IrregularWaveParams& params) : params_(params) {
+    wave_stretching_ = params.wave_stretching_;
+}
 
 void IrregularWaves::InitializeIRFVectors() {
     ex_irf_sampled_.resize(params_.num_bodies_);
@@ -151,38 +152,18 @@ void IrregularWaves::AddH5Data(std::vector<HydroData::IrregularWaveInfo>& irreg_
     InitializeIRFVectors();
 }
 
-Eigen::Vector3d IrregularWaves::GetVelocity(const Eigen::Vector3d& position, double time) {
-    auto position_stretched = position;
-    if (params_.wave_stretching_) {
-        position_stretched = GetWheelerStretchedPosition(position, GetElevation(position, time), water_depth_, mwl_);
-    }
-
-    return GetWaterVelocityIrregular(position_stretched,
-                                     time,
-                                     spectrum_frequencies_,
-                                     spectral_densities_,
-                                     spectral_widths_,
-                                     wave_phases_,
-                                     wavenumbers_,
-                                     water_depth_,
-                                     mwl_);
+Eigen::Vector3d IrregularWaves::GetVelocity(const Eigen::Vector3d& position, double time, double elevation) {
+    auto position_stretched =
+        params_.wave_stretching_ ? GetWheelerStretchedPosition(position, elevation, water_depth_, mwl_) : position;
+    return GetWaterVelocityIrregular(position_stretched, time, spectrum_frequencies_, spectral_densities_,
+                                     spectral_widths_, wave_phases_, wavenumbers_, water_depth_, mwl_);
 }
 
-Eigen::Vector3d IrregularWaves::GetAcceleration(const Eigen::Vector3d& position, double time) {
-    auto position_stretched = position;
-    if (params_.wave_stretching_) {
-        position_stretched = GetWheelerStretchedPosition(position, GetElevation(position, time), water_depth_, mwl_);
-    }
-
-    return GetWaterAccelerationIrregular(position_stretched,
-                                         time,
-                                         spectrum_frequencies_,
-                                         spectral_densities_,
-                                         spectral_widths_,
-                                         wave_phases_,
-                                         wavenumbers_,
-                                         water_depth_,
-                                         mwl_);
+Eigen::Vector3d IrregularWaves::GetAcceleration(const Eigen::Vector3d& position, double time, double elevation) {
+    auto position_stretched =
+        params_.wave_stretching_ ? GetWheelerStretchedPosition(position, elevation, water_depth_, mwl_) : position;
+    return GetWaterAccelerationIrregular(position_stretched, time, spectrum_frequencies_, spectral_densities_,
+                                         spectral_widths_, wave_phases_, wavenumbers_, water_depth_, mwl_);
 }
 
 double IrregularWaves::GetElevation(const Eigen::Vector3d& position, double time) {
@@ -453,6 +434,25 @@ void IrregularWaves::CalculateWidthIRF() {
         auto& width_array = ex_irf_width_sampled_[b];
         width_array       = GetWidthArray(time_array);
     }
+}
+
+// Return last index of vector element below value.
+// - value: Input value
+// - ticks: Array of ticks from which to find lower-bound index (assuming ascending order)
+static size_t get_lower_index(double value, const std::vector<double>& ticks) {
+    auto it = std::upper_bound(ticks.begin(), ticks.end(), value);
+    // get nearest-below index
+    size_t idx = it - ticks.begin() - 1;
+    // remove one if equal to value
+    if (ticks[idx] == value) {
+        idx -= 1;
+    }
+    if (idx <= 0 || idx >= ticks.size() - 1) {
+        throw std::runtime_error("Could not find index for value " + std::to_string(value) + " in array with bounds (" +
+                                 std::to_string(ticks.front()) + ", " + std::to_string(ticks.back()) + ").");
+    }
+    // return index
+    return idx;
 }
 
 double IrregularWaves::ExcitationConvolution(int body, int dof, double time) {

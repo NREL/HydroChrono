@@ -18,6 +18,14 @@ RegularWave::RegularWave(unsigned int num_b)
       wavenumber_(0.0) {
 }
 
+RegularWave::RegularWave(const RegularWaveParams& params) {
+    num_bodies_ = params.num_bodies_;
+    regular_wave_amplitude_ = params.regular_wave_amplitude_;
+    regular_wave_omega_     = params.regular_wave_omega_;
+    regular_wave_phase_     = params.regular_wave_phase_;
+    wave_stretching_        = params.wave_stretching_;
+}
+
 void RegularWave::Initialize() {
     wavenumber_ = ComputeWaveNumber(regular_wave_omega_, water_depth_, g_);
 }
@@ -43,36 +51,20 @@ void RegularWave::AddH5Data(std::vector<HydroData::RegularWaveInfo>& reg_h5_data
     }
 }
 
-Eigen::Vector3d RegularWave::GetVelocity(const Eigen::Vector3d& position, double time) {
-    auto position_stretched = position;
-    if (wave_stretching_) {
-        position_stretched = GetWheelerStretchedPosition(position, GetElevation(position, time), water_depth_, mwl_);
-    }
-    return GetWaterVelocity(position_stretched,
-                            time,
-                            regular_wave_omega_,
-                            regular_wave_amplitude_,
-                            regular_wave_phase_,
-                            wavenumber_,
-                            water_depth_,
-                            mwl_);
+Eigen::Vector3d RegularWave::GetVelocity(const Eigen::Vector3d& position, double time, double elevation) {
+    auto position_stretched =
+        wave_stretching_ ? GetWheelerStretchedPosition(position, elevation, water_depth_, mwl_) : position;
+    return GetWaterVelocity(position_stretched, time, regular_wave_omega_, regular_wave_amplitude_, regular_wave_phase_,
+                            wavenumber_, water_depth_, mwl_);
 }
 
-Eigen::Vector3d RegularWave::GetAcceleration(const Eigen::Vector3d& position, double time) {
-    auto position_stretched = position;
-    if (wave_stretching_) {
-        position_stretched = GetWheelerStretchedPosition(position, GetElevation(position, time), water_depth_, mwl_);
-    }
-    return GetWaterAcceleration(position_stretched,
-                                time,
-                                regular_wave_omega_,
-                                regular_wave_amplitude_,
-                                regular_wave_phase_,
-                                wavenumber_,
-                                water_depth_,
-                                mwl_);
+Eigen::Vector3d RegularWave::GetAcceleration(const Eigen::Vector3d& position, double time, double elevation) {
+    auto position_stretched =
+        wave_stretching_ ? GetWheelerStretchedPosition(position, elevation, water_depth_, mwl_) : position;
+    return GetWaterAcceleration(position_stretched, time, regular_wave_omega_, regular_wave_amplitude_,
+                                regular_wave_phase_, wavenumber_, water_depth_, mwl_);
 }
-
+  
 double RegularWave::GetElevation(const Eigen::Vector3d& position, double time) {
     return GetEta(position, time, regular_wave_omega_, regular_wave_amplitude_, regular_wave_phase_, wavenumber_);
 }

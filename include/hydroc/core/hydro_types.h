@@ -23,7 +23,7 @@ namespace hydrochrono::hydro {
  * Force vector [Fx, Fy, Fz, Mx, My, Mz] for surge, sway, heave,
  * roll, pitch, yaw degrees of freedom.
  */
-using GeneralizedForce = Eigen::VectorXd;
+using GeneralizedForce = Eigen::VectorXd;   //// RADU - why is this not an Eigen vector of fixed size 6, or better yet 2 vectors?
 
 /**
  * @brief Forces for all bodies in the system.

@@ -8,6 +8,10 @@
 
 #include <Eigen/Dense>
 
+//// RADU - why is this not in some namespace?
+////      - should these classes be DLL-exported (e.g., to allow AddWave(NoWave))?
+////        if not, why is this a public headers?
+
 enum class WaveMode {
     noWaveCIC = 0,
     regular   = 1,
@@ -34,48 +38,38 @@ class WaveBase {
   public:
     virtual ~WaveBase() = default;
 
-    virtual void Initialize()                                   = 0;
-    virtual Eigen::VectorXd GetForceAtTime(double t)            = 0;
-    virtual WaveMode         GetWaveMode()                      = 0;
-    virtual double           GetElevation(const Eigen::Vector3d& position, double time)    = 0;
-    virtual Eigen::Vector3d  GetVelocity(const Eigen::Vector3d& position, double time)     = 0;
-    virtual Eigen::Vector3d  GetAcceleration(const Eigen::Vector3d& position, double time) = 0;
+    virtual void Initialize()                                                                               = 0;
+    virtual Eigen::VectorXd GetForceAtTime(double t)                                                        = 0;
+    virtual WaveMode GetWaveMode()                                                                          = 0;
+    virtual double GetElevation(const Eigen::Vector3d& position, double time)                               = 0;
+    virtual Eigen::Vector3d GetVelocity(const Eigen::Vector3d& position, double time, double elevation)     = 0;
+    virtual Eigen::Vector3d GetAcceleration(const Eigen::Vector3d& position, double time, double elevation) = 0;
 
-    /**
-     * @brief Returns the free-surface gradient (∂η/∂x, ∂η/∂y) at the given position and time.
-     *
-     * Used for computing surface normals in visualization. The normal vector can be
-     * constructed as: n = normalize(−∂η/∂x, −∂η/∂y, 1).
-     *
-     * @param position World coordinates (x, y, z) in meters. Only x, y are used.
-     * @param time     Simulation time in seconds.
-     * @return Eigen::Vector2d containing (∂η/∂x, ∂η/∂y), dimensionless.
-     *
-     * @note Default implementation returns (0, 0) for flat surface (NoWave).
-     * @note Current wave models are unidirectional (+X), so ∂η/∂y = 0.
-     */
-    virtual Eigen::Vector2d GetElevationGradientXY(const Eigen::Vector3d& position, double time) const {
-        (void)position;
-        (void)time;
-        return Eigen::Vector2d::Zero();
-    }
+    Eigen::Vector3d GetVelocity(const Eigen::Vector3d& position, double time);
+    Eigen::Vector3d GetAcceleration(const Eigen::Vector3d& position, double time);
 
-    double mwl_         = 0.0;
-    double g_           = 9.81;
-    double water_depth_ = 0.0;
+    double mwl_           = 0.0;
+    double g_             = 9.81;
+    double water_depth_   = 0.0;
+    bool wave_stretching_ = true;
+};
+
+struct NoWaveParams {
+    unsigned int num_bodies_;
 };
 
 class NoWave : public WaveBase {
   public:
     NoWave();
     explicit NoWave(unsigned int num_b);
+    explicit NoWave(const NoWaveParams& params);
 
     void Initialize() override {}
     Eigen::VectorXd GetForceAtTime(double t) override;
     WaveMode GetWaveMode() override { return mode_; }
     double GetElevation(const Eigen::Vector3d&, double) override { return 0.0; }
-    Eigen::Vector3d GetVelocity(const Eigen::Vector3d&, double) override { return Eigen::Vector3d(0.0, 0.0, 0.0); }
-    Eigen::Vector3d GetAcceleration(const Eigen::Vector3d&, double) override { return Eigen::Vector3d(0.0, 0.0, 0.0); }
+    Eigen::Vector3d GetVelocity(const Eigen::Vector3d&, double, double) override { return Eigen::Vector3d(0.0, 0.0, 0.0); }
+    Eigen::Vector3d GetAcceleration(const Eigen::Vector3d&, double, double) override { return Eigen::Vector3d(0.0, 0.0, 0.0); }
 
   private:
     unsigned int num_bodies_ = 0;

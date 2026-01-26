@@ -48,24 +48,8 @@ class IrregularWaves : public WaveBase {
     void AddH5Data(std::vector<HydroData::IrregularWaveInfo>& irreg_h5_data, HydroData::SimulationParameters& sim_data);
 
     double GetElevation(const Eigen::Vector3d& position, double time) override;
-    Eigen::Vector3d GetVelocity(const Eigen::Vector3d& position, double time) override;
-    Eigen::Vector3d GetAcceleration(const Eigen::Vector3d& position, double time) override;
-    Eigen::Vector2d GetElevationGradientXY(const Eigen::Vector3d& position, double time) const override;
-
-    /// @brief Compute elevation using only the first N frequency components (for visualization).
-    /// 
-    /// This method is optimized for real-time visualization where visual quality can be
-    /// traded for performance. Using fewer components (e.g., 50-100 instead of 1000)
-    /// provides a significant speedup while maintaining a visually acceptable wave surface.
-    /// 
-    /// @param position  World coordinates [m]. Only x-coordinate is used (waves propagate in +X).
-    /// @param time      Simulation time [s].
-    /// @param max_components  Maximum number of frequency components to use.
-    ///                        If <= 0 or >= num_components, all components are used.
-    /// @return Free-surface elevation [m] above mean water level.
-    /// 
-    /// @note Physics calculations should use GetElevation() which uses all components.
-    double GetElevationForVisualization(const Eigen::Vector3d& position, double time, int max_components) const;
+    Eigen::Vector3d GetVelocity(const Eigen::Vector3d& position, double time, double elevation) override;
+    Eigen::Vector3d GetAcceleration(const Eigen::Vector3d& position, double time, double elevation) override;
 
   private:
     IrregularWaveParams params_;

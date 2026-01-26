@@ -30,6 +30,8 @@ class H5File;
 
 class H5FileInfo;
 
+//// RADU - these should not be in the global namespace!
+
 // contains "chunked" data from the h5 file, generated from H5FileInfo class
 class HydroData {
   public:
@@ -78,9 +80,10 @@ class HydroData {
     std::vector<IrregularWaveInfo> irreg_wave_data_;
     friend H5FileInfo;
     void resize(int num_bodies);
-    HydroData() = default;
 
   public:
+    HydroData() = default;
+
     // getter function naming conventions: put Matrix, Vector, or Val at end to denote return type, always put body_num
     // argument first, body_num is always 0 indexed, one line return types can be defined here and not in cpp
 

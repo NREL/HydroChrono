@@ -12,6 +12,8 @@
 
  */
 
+//// RADU - does this need to be public?
+
 #pragma once
 
 #include <cstddef>
