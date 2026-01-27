@@ -281,7 +281,7 @@ HydroSystem::HydroSystem(std::vector<std::shared_ptr<ChBody>> user_bodies,
     const auto& body_info = file_info_.GetBodyInfos();
     ChBodyAddedMassBlocks body_blocks;
     for (size_t i = 0; i < num_bodies_; i++) {
-        body_blocks.insert(std::pair(bodies_[i], body_info[i].inf_added_mass));
+        body_blocks.push_back({bodies_[i], body_info[i].inf_added_mass});
     }
     if (num_bodies_ > 0) {
         auto hydro_load = chrono_types::make_shared<ChLoadHydrodynamics>(body_blocks);
