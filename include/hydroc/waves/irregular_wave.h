@@ -51,6 +51,15 @@ class IrregularWaves : public WaveBase {
     Eigen::Vector3d GetVelocity(const Eigen::Vector3d& position, double time, double elevation) override;
     Eigen::Vector3d GetAcceleration(const Eigen::Vector3d& position, double time, double elevation) override;
 
+    /// Return the surface slope (∂η/∂x, ∂η/∂y) at a given position and time.
+    /// Used for computing surface normals in visualization.
+    Eigen::Vector2d GetElevationGradientXY(const Eigen::Vector3d& position, double time) const;
+
+    /// Compute elevation using only the first max_components wave components.
+    /// Used for faster visualization rendering when full accuracy is not required.
+    /// @param max_components Maximum number of frequency components to use (0 or negative = use all)
+    double GetElevationForVisualization(const Eigen::Vector3d& position, double time, int max_components) const;
+
   private:
     IrregularWaveParams params_;
     std::vector<double> spectrum_;

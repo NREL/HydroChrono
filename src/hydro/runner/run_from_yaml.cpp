@@ -204,14 +204,20 @@ std::shared_ptr<chrono::ChSystem> InitializeChronoSystem(const std::string& mode
         hydroc::debug::LogDebug("Creating Chrono YAML parser");
         auto parser = chrono::parsers::ChParserMbsYAML();
         
+        // Load simulation settings (solver, integrator, visualization, etc.)
         hydroc::debug::LogDebug(std::string("Loading simulation file: ") + sim_file);
-        parser.LoadSimulationFile(sim_file);
+        auto sim_yaml = YAML::LoadFile(sim_file);
+        parser.LoadSimData(sim_yaml);
+        if (sim_yaml["solver"])
+            parser.LoadSolverData(sim_yaml);
         
         hydroc::debug::LogDebug("Creating system");
         auto system = parser.CreateSystem();
         
+        // Load MBS model (bodies, joints, etc.)
         hydroc::debug::LogDebug(std::string("Loading model file: ") + model_file);
-        parser.LoadModelFile(model_file);
+        auto model_yaml = YAML::LoadFile(model_file);
+        parser.LoadModelData(model_yaml);
         
         hydroc::debug::LogDebug("Analyzing mesh files referenced in YAML model");
         std::filesystem::path model_dir = std::filesystem::path(model_file).parent_path();

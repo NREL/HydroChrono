@@ -43,6 +43,10 @@ class RegularWave : public WaveBase {
     Eigen::Vector3d GetVelocity(const Eigen::Vector3d& position, double time, double elevation) override;
     Eigen::Vector3d GetAcceleration(const Eigen::Vector3d& position, double time, double elevation) override;
 
+    /// Return the surface slope (∂η/∂x, ∂η/∂y) at a given position and time.
+    /// Used for computing surface normals in visualization.
+    Eigen::Vector2d GetElevationGradientXY(const Eigen::Vector3d& position, double time) const;
+
   private:
     unsigned int num_bodies_ = 0;
     const WaveMode mode_ = WaveMode::regular;

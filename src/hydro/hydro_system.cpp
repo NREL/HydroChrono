@@ -33,7 +33,6 @@
 #include <chrono/physics/ChSystemSMC.h>
 #include <chrono/physics/ChLoadHydrodynamics.h>
 #include <chrono/solver/ChIterativeSolverLS.h>
-#include <chrono/solver/ChSolverPMINRES.h>
 #include <chrono/timestepper/ChTimestepper.h>
 #include <chrono/timestepper/ChTimestepperHHT.h>
 #include <chrono/fea/ChMeshFileLoader.h>
@@ -278,11 +277,13 @@ HydroSystem::HydroSystem(std::vector<std::shared_ptr<ChBody>> user_bodies,
         force_per_body_.emplace_back(bodies_[b], this);
     }
 
-    // Handle added mass info (applied via a Chrono ChLoadHydrodynamics)
+    // Handle added mass info (applied via Chrono's ChLoadHydrodynamics).
+    // ChBodyAddedMassBlocks is a std::vector<ChBodyAddedMassBlock>; each entry
+    // pairs a body with its 6×6N row of the infinite-frequency added mass matrix.
     const auto& body_info = file_info_.GetBodyInfos();
     ChBodyAddedMassBlocks body_blocks;
-    for (size_t i = 0; i < num_bodies_; i++) {
-        body_blocks.insert(std::pair(bodies_[i], body_info[i].inf_added_mass));
+    for (int i = 0; i < num_bodies_; i++) {
+        body_blocks.push_back({bodies_[i], body_info[i].inf_added_mass});
     }
     if (num_bodies_ > 0) {
         auto hydro_load = chrono_types::make_shared<ChLoadHydrodynamics>(body_blocks);
