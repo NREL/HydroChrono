@@ -443,11 +443,6 @@ target_include_directories(HydroChronoGUI
         "$<INSTALL_INTERFACE:include>"
 )
 
-if(MSVC)
-  target_compile_options(HydroChronoGUI PRIVATE $<$<COMPILE_LANGUAGE:CXX>:/wd4996>)  # deprecated function or class member
-  target_compile_options(HydroChronoGUI PRIVATE $<$<COMPILE_LANGUAGE:CXX>:/wd4458>)  # declaration hides class member
-endif()
-
 set_target_properties(HydroChronoGUI PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(HydroChronoGUI
     PUBLIC
@@ -548,6 +543,7 @@ if(HYDROCHRONO_ENABLE_TESTS)
     endif()
 
     add_subdirectory(tests/regression)
+    add_subdirectory(tests/unit)
 endif()
 
 # ===============================================================================
@@ -697,23 +693,16 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
         endif()
     endif()
     
-    # Python DLLs, if Chrono::Parsers depends on it
-    if(CHRONO_PARSERS_PYTHON)
-        find_package(Python3 QUIET COMPONENTS Interpreter Development)
-        if(Python3_Interpreter_FOUND AND Python3_Development_FOUND)
-            #message(STATUS "Found Python and dependencies")
-            #message(STATUS "  Python3_Interpreter_FOUND: ${Python3_Interpreter_FOUND}")
-            #message(STATUS "  Python3_Development_FOUND: ${Python3_Development_FOUND}")
-            get_target_property(tgt_DLL Python3::Python IMPORTED_LOCATION_RELEASE)
-            get_target_property(tgt_DLL_d Python3::Python IMPORTED_LOCATION_DEBUG)
-            if(EXISTS ${tgt_DLL})
-                message(STATUS "  Python DLL ${tgt_DLL}")
-                install(FILES ${tgt_DLL} DESTINATION bin COMPONENT runtime)
-            endif()
-            if(EXISTS ${tgt_DLL_d})
-                install(FILES ${tgt_DLL_d} DESTINATION bin COMPONENT runtime)
-            endif()
-        endif()
+    # Python DLLs, if Chrono::Parsers depends on it.
+    # Derive the DLL path from the already-found interpreter rather than calling
+    # find_package(Python3 ... Development), which can stall on Windows/conda.
+    if(CHRONO_PARSERS_PYTHON AND Python3_EXECUTABLE)
+        get_filename_component(_py_bin_dir "${Python3_EXECUTABLE}" DIRECTORY)
+        file(GLOB _py_dlls "${_py_bin_dir}/python3*.dll")
+        foreach(_py_dll ${_py_dlls})
+            message(STATUS "  Python DLL ${_py_dll}")
+            install(FILES "${_py_dll}" DESTINATION bin COMPONENT runtime)
+        endforeach()
     endif()
 
 endif()
