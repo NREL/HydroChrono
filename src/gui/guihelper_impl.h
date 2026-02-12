@@ -100,7 +100,6 @@ class GUIImplVSG : public GUIImpl {
     chrono::ChSystem* system_ = nullptr;
     std::unique_ptr<AnimatedWaterSurface> animated_water_;
     std::unique_ptr<ViewerSettings> viewer_settings_;
-    bool water_surface_created_ = false;
 };
 #endif
 

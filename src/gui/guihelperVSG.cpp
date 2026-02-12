@@ -46,7 +46,6 @@ void GUIImplVSG::Init(UI& ui, chrono::ChSystem* system, const char* title) {
     pVis->SetWindowTitle(title);
     pVis->SetWindowSize(1280, 720);
     pVis->SetWindowPosition(100, 100);
-    pVis->SetWindowTitle(title);
 
     // Deterministic side-on camera: eye on -Y axis, slightly above, looking at origin.
     const chrono::ChVector3d eye(0.0, -kCameraDistance, kCameraHeight);
@@ -244,8 +243,7 @@ void GUIImplVSG::UpdateRadiationSourceBody(double t) {
             if (wave_model_->GetWaveMode() == WaveMode::regular) {
                 auto* reg_wave = dynamic_cast<RegularWave*>(wave_model_.get());
                 if (reg_wave && reg_wave->regular_wave_omega_ > 0.0) {
-                    constexpr double kTwoPi = 2.0 * 3.14159265358979323846;
-                    rad_params.wave_period = kTwoPi / reg_wave->regular_wave_omega_;
+                    rad_params.wave_period = (2.0 * M_PI) / reg_wave->regular_wave_omega_;
                 }
             }
             // Peak period from IrregularWaves (JONSWAP).

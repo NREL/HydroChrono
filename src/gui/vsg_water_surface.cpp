@@ -629,7 +629,7 @@ void AnimatedWaterSurface::UpdateWireframe() {
 
 void AnimatedWaterSurface::Update(const std::shared_ptr<WaveBase>& wave, double t,
                                   const ViewerSettings* settings) {
-    if (!initialized_ || !vsg_vertices_ || !vsg_normals_ || !vsg_colors_ || !mesh_) {
+    if (!initialized_ || !vsg_vertices_ || !vsg_normals_ || !mesh_) {
         if constexpr (kDebugWaveSurface) {
             if (frame_count_++ % kDebugPrintEveryNFrames == 0) {
                 std::cout << "[WaveSurfaceDebug] Update() early return: initialized_="
