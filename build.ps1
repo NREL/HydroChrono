@@ -1,4 +1,4 @@
-﻿<#
+<#
     HydroChrono Build Script
     
     Configures and builds HydroChrono. Dependency paths (Eigen, HDF5, Irrlicht)
@@ -362,4 +362,6 @@ Write-Host "========================================`n" -ForegroundColor Green
 
 Write-Host "Output: $binPath" -ForegroundColor Cyan
 Write-Host "Tests:  ctest -C $BuildType -L regression --test-dir build" -ForegroundColor Gray
+Write-Host "        ctest -C $BuildType -L unit       --test-dir build" -ForegroundColor Gray
+Write-Host "        Add -V for verbose output, --output-on-failure for failures only" -ForegroundColor DarkGray
 Write-Host ""
