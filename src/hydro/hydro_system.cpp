@@ -282,7 +282,7 @@ HydroSystem::HydroSystem(std::vector<std::shared_ptr<ChBody>> user_bodies,
     // pairs a body with its 6×6N row of the infinite-frequency added mass matrix.
     const auto& body_info = file_info_.GetBodyInfos();
     ChBodyAddedMassBlocks body_blocks;
-    for (int i = 0; i < num_bodies_; i++) {
+    for (size_t i = 0; i < num_bodies_; i++) {
         body_blocks.push_back({bodies_[i], body_info[i].inf_added_mass});
     }
     if (num_bodies_ > 0) {
