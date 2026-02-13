@@ -60,3 +60,4 @@ build-config.json
 /tests/regression/run_hydrochrono/iea_sphere/decay/outputs
 /tests/regression/run_hydrochrono/oswec/decay/outputs
 /tests/regression/run_hydrochrono/rm3/decay/outputs
+/data/demos/run_hydrochrono/**/outputs

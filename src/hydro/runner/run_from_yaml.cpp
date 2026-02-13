@@ -197,19 +197,52 @@ bool ResolveInputFiles(const std::filesystem::path& input_dir,
     return true;
 }
 
+// ---------------------------------------------------------------------------
+// Thin subclass of ChParserMbsYAML that exposes the protected
+// m_script_directory member.  When HydroChrono loads model and solver
+// data from separate YAML files (rather than via ChParserMbsYAML::LoadFile),
+// this directory is never set, which breaks relative-path resolution for
+// mesh files referenced in model YAML (e.g. "../../assets/geometry/flap.obj").
+// ---------------------------------------------------------------------------
+namespace {
+class HCParser : public chrono::parsers::ChParserMbsYAML {
+  public:
+    HCParser() : ChParserMbsYAML() {}
+    /// Set the base directory used by GetDatafilePath() when data_path is RELATIVE.
+    void SetScriptDir(const std::string& dir) { m_script_directory = dir; }
+};
+}  // namespace
+
 std::shared_ptr<chrono::ChSystem> InitializeChronoSystem(const std::string& model_file, const std::string& sim_file) {
     hydroc::debug::LogDebug("Initializing Chrono system from YAML inputs...");
     
     try {
         hydroc::debug::LogDebug("Creating Chrono YAML parser");
-        auto parser = chrono::parsers::ChParserMbsYAML();
+        HCParser parser;
         
-        // Load simulation settings (solver, integrator, visualization, etc.)
+        // Tell the parser where the model file lives so that relative mesh
+        // paths (data_path type: RELATIVE) are resolved correctly.
+        std::filesystem::path model_dir = std::filesystem::path(model_file).parent_path();
+        parser.SetScriptDir(model_dir.generic_string());
+        hydroc::debug::LogDebug(std::string("Script directory set to: ") + model_dir.generic_string());
+        
+        // Load simulation settings (end_time, gravity, visualization, etc.)
         hydroc::debug::LogDebug(std::string("Loading simulation file: ") + sim_file);
         auto sim_yaml = YAML::LoadFile(sim_file);
         parser.LoadSimData(sim_yaml);
-        if (sim_yaml["solver"])
-            parser.LoadSolverData(sim_yaml);
+        
+        // Load solver/integrator/contact-method settings.
+        // HydroChrono nests these under the "simulation" key, while the Chrono
+        // parser's LoadSolverData() expects them as direct children of the node.
+        // Additionally, HydroChrono puts time_step at the simulation level,
+        // while Chrono expects it inside the integrator block.
+        auto sim_node = sim_yaml["simulation"];
+        if (sim_node && sim_node["contact_method"]) {
+            // Promote time_step into the integrator block if needed
+            if (sim_node["time_step"] && sim_node["integrator"] && !sim_node["integrator"]["time_step"])
+                sim_node["integrator"]["time_step"] = sim_node["time_step"];
+            parser.LoadSolverData(sim_node);
+        }
         
         hydroc::debug::LogDebug("Creating system");
         auto system = parser.CreateSystem();
@@ -220,7 +253,6 @@ std::shared_ptr<chrono::ChSystem> InitializeChronoSystem(const std::string& mode
         parser.LoadModelData(model_yaml);
         
         hydroc::debug::LogDebug("Analyzing mesh files referenced in YAML model");
-        std::filesystem::path model_dir = std::filesystem::path(model_file).parent_path();
         hydroc::debug::LogDebug(std::string("Model directory: ") + model_dir.generic_string());
         
         hydroc::debug::LogDebug("Populating system");
