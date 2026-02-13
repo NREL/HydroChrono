@@ -95,7 +95,7 @@ int main(int argc, char* argv[]) {
         system.SetGravitationalAcceleration(ChVector3d(0.0, 0.0, -9.81));
         double timestep = 0.03;
         // system.SetTimestepperType(ChTimestepper::Type::HHT);
-        system.SetSolverType(ChSolver::Type::SPARSE_QR);
+        system.SetSolverType(ChSolver::Type::GMRES);
         // system.GetSolver()->AsIterative()->SetMaxIterations(300);
         ChRealtimeStepTimer realtime_timer;
         double simulationDuration = 1000.0;
