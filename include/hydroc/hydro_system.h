@@ -115,8 +115,8 @@ class ComponentFunc : public chrono::ChFunction {
     virtual double GetVal(double x) const override;
 
   private:
-    ForceFunc6d* base_;  ///< Pointer to the full 6D force on the body.
-    int index_;          ///< Index representing force degree of freedom on the body.
+    ForceFunc6d* base_ = nullptr;  ///< Pointer to the full 6D force on the body.
+    int index_ = 0;          ///< Index representing force degree of freedom on the body.
 };
 
 /**
@@ -176,13 +176,13 @@ class ForceFunc6d {
     
     /// Body index in the system (1-indexed, parsed from Chrono body name "bodyN").
     /// This matches Chrono's body naming convention where bodies are named body1, body2, etc.
-    int b_num_;
+    int b_num_ = 0;
     
     ComponentFunc forces_[kDofPerBody];                       ///< Forces for each degree of freedom.
     std::shared_ptr<ComponentFunc> force_ptrs_[kDofPerBody];  ///< Pointers to the forces.
     std::shared_ptr<chrono::ChForce> chrono_force_;  ///< Chrono force for the body.
     std::shared_ptr<chrono::ChForce> chrono_torque_; ///< Chrono torque for the body.
-    HydroSystem* all_hydro_forces_;                 ///< Pointer to HydroSystem for calculations.
+    HydroSystem* all_hydro_forces_ = nullptr;                 ///< Pointer to HydroSystem for calculations.
 };
 
 // Forward declaration of ChLoadAddedMass (defined in added_mass.h, included in .cpp)
@@ -425,6 +425,12 @@ class HydroSystem {
 
     // Time tracking for force caching
     double prev_time;
+    
+    // Debug counter for printing first few timesteps
+    int debug_call_count_ = 0;
+    
+    // Track if we've already reported NaN (to avoid spamming)
+    bool nan_reported_ = false;
 
     // Cached SystemState: built once per time step and reused by all force computations
     hydrochrono::hydro::SystemState cached_state_;

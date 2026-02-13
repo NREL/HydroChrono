@@ -1,8 +1,6 @@
-#include <hydroc/gui/guihelper.h>
 #include <hydroc/helper.h>
 #include <hydroc/hydro_forces.h>
 
-#include <chrono/core/ChRealtimeStep.h>
 #include <chrono/physics/ChBodyEasy.h>
 #include <chrono/physics/ChSystemNSC.h>
 
@@ -25,21 +23,13 @@ int main(int argc, char* argv[]) {
                                       479668.979, 633979.761, 784083.286, 932117.647, 1077123.445};
     int reg_wave_num_max           = (int)task10_wave_amps.size();
 
-    std::cout << reg_wave_num_max;
-
     std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
-    // Parse CLI arguments and initialize environment
-    bool profilingOn     = true;
-    bool saveDataOn      = true;
-    bool plotOn          = true;
-    bool visualizationOn = true;
+
+    // Initialize environment
     std::string data_dir;
-    if (!hydroc::GetCLIArguments(argc, argv, "Sphere regular waves regression test", saveDataOn, profilingOn, plotOn,
-                                 visualizationOn, data_dir))
-        return 1;
     if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
 
-    // Get model file names using regression test data structure
+    // Get model file names
     std::filesystem::path DATADIR(hydroc::getDataDir());
 
     auto body1_meshfname =
@@ -47,20 +37,14 @@ int main(int argc, char* argv[]) {
     auto h5fname = (DATADIR / "demos" / "sphere" / "hydroData" / "sphere.h5").lexically_normal().generic_string();
 
     for (int reg_wave_num = 1; reg_wave_num <= reg_wave_num_max; ++reg_wave_num) {
+        std::cout << "Wave number: " << reg_wave_num << " of " << reg_wave_num_max << std::endl;
+
         // system/solver settings
         ChSystemNSC system;
         system.SetGravitationalAcceleration(ChVector3d(0.0, 0.0, -9.81));
         double timestep = 0.015;
-        system.SetSolverType(ChSolver::Type::GMRES);
-        system.GetSolver()->AsIterative()->SetMaxIterations(
-            300);  // the higher, the easier to keep the constraints satisfied.
-        ChRealtimeStepTimer realtime_timer;
+        system.SetSolverType(ChSolver::Type::SPARSE_QR);
         double simulation_duration = 240.0;
-
-        // Create user interface
-        std::shared_ptr<hydroc::gui::UI> pui = hydroc::gui::CreateUI(visualizationOn);
-
-        hydroc::gui::UI& ui = *pui.get();
 
         // Setup Ground
         auto ground = chrono_types::make_shared<ChBody>();
@@ -75,10 +59,10 @@ int main(int argc, char* argv[]) {
         std::vector<double> heave_position;
 
         // set up body from a mesh
-        std::cout << "Attempting to open mesh file: " << body1_meshfname << std::endl;
-        std::shared_ptr<ChBody> sphereBody = chrono_types::make_shared<ChBodyEasyMesh>(  //
-            body1_meshfname,                                                             // file name
-            1000,                                                                        // density
+        std::cout << "  Attempting to open mesh file: " << body1_meshfname << std::endl;
+        std::shared_ptr<ChBody> sphereBody = chrono_types::make_shared<ChBodyEasyMesh>(
+            body1_meshfname,
+            1000,   // density
             false,  // do not evaluate mass automatically
             true,   // create visualization asset
             false   // do not collide
@@ -90,112 +74,70 @@ int main(int argc, char* argv[]) {
         sphereBody->SetPos(ChVector3d(0, 0, -2));
         sphereBody->SetMass(261.8e3);
 
-        // Create a visualization material
-        auto red = chrono_types::make_shared<ChVisualMaterial>();
-        red->SetDiffuseColor(ChColor(0.3f, 0.1f, 0.1f));
-        sphereBody->GetVisualShape(0)->SetMaterial(0, red);
-
         // add prismatic joint between sphere and ground (limit to heave motion only)
         auto prismatic = chrono_types::make_shared<ChLinkLockPrismatic>();
         prismatic->Initialize(sphereBody, ground, false, ChFramed(ChVector3d(0, 0, -2)),
                               ChFramed(ChVector3d(0, 0, -5)));
         system.AddLink(prismatic);
 
-        // Create the spring between body_1 and ground. The spring end points are
-        // specified in the body relative frames.
-        double rest_length  = 3.0;
+        // Create the spring between body_1 and ground
         double spring_coef  = 0.0;
         double damping_coef = task10_damping_coeffs[reg_wave_num - 1];
         auto spring_1       = chrono_types::make_shared<ChLinkTSDA>();
-        spring_1->Initialize(sphereBody, ground, false, ChVector3d(0, 0, -2),
-                             ChVector3d(0, 0, -5));  // false means positions are in global frame
-        // spring_1->SetRestLength(rest_length); // if not set, the rest length is calculated from initial position
+        spring_1->Initialize(sphereBody, ground, false, ChVector3d(0, 0, -2), ChVector3d(0, 0, -5));
         spring_1->SetSpringCoefficient(spring_coef);
         spring_1->SetDampingCoefficient(damping_coef);
         system.AddLink(spring_1);
 
         auto my_hydro_inputs                     = std::make_shared<RegularWave>(1);
-        my_hydro_inputs->regular_wave_amplitude_ = task10_wave_amps[reg_wave_num - 1];    // 0.095;
-        my_hydro_inputs->regular_wave_omega_     = task10_wave_omegas[reg_wave_num - 1];  // 1.427996661;
+        my_hydro_inputs->regular_wave_amplitude_ = task10_wave_amps[reg_wave_num - 1];
+        my_hydro_inputs->regular_wave_omega_     = task10_wave_omegas[reg_wave_num - 1];
 
         std::vector<std::shared_ptr<ChBody>> bodies;
         bodies.push_back(sphereBody);
         HydroForces hydro_forces(bodies, h5fname);
         hydro_forces.AddWaves(my_hydro_inputs);
+
         // for profiling
         auto start = std::chrono::high_resolution_clock::now();
 
         // main simulation loop
-        ui.Init(&system, "Sphere - Regular Waves Test");
-        ui.SetCamera(8, -25, 15, 0, 0, 0);
-        ui.simulationStarted = true;
-
         while (system.GetChTime() < simulation_duration - timestep / 2.0) {
-            if (ui.IsRunning(timestep) == false) break;
+            system.DoStepDynamics(timestep);
 
-            if (ui.simulationStarted) {
-                system.DoStepDynamics(timestep);
-
-                // append data to output vector
-                time_vector.push_back(system.GetChTime());
-                heave_position.push_back(sphereBody->GetPos().z());
-            }
+            // append data to output vector
+            time_vector.push_back(system.GetChTime());
+            heave_position.push_back(sphereBody->GetPos().z());
         }
 
         // for profiling
         auto end          = std::chrono::high_resolution_clock::now();
         unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        std::cout << "  Simulation completed in " << duration << " ms" << std::endl;
 
-        std::string out_dir = hydroc::getTestOutDir();
-        if (profilingOn || saveDataOn) {
-            out_dir = out_dir + "/" + RESULTS_DIR_NAME;
-            std::filesystem::create_directory(std::filesystem::path(out_dir));
-        }
+        // Save results
+        std::string out_dir = hydroc::getTestOutDir() + "/" + RESULTS_DIR_NAME;
+        std::filesystem::create_directories(std::filesystem::path(out_dir));
 
-        if (profilingOn) {
-            std::ofstream profilingFile(out_dir + "/" + RESULTS_FILE_NAME + "_" + std::to_string(reg_wave_num) +
-                                        "_duration.txt");
-            if (profilingFile.is_open()) {
-                profilingFile << duration << " ms\n";
-                profilingFile.close();
-            } else {
-                std::cout << "Error: Could not open profiling file for writing." << std::endl;
-            }
-        }
+        std::ofstream outputFile(out_dir + "/" + RESULTS_FILE_NAME + "_" + std::to_string(reg_wave_num) + ".txt");
+        if (outputFile.is_open()) {
+            outputFile.precision(10);
+            outputFile.width(12);
+            outputFile << "Wave #: \t" << reg_wave_num << "\n";
+            outputFile << "Wave amplitude (m): \t" << my_hydro_inputs->regular_wave_amplitude_ << "\n";
+            outputFile << "Wave omega (rad/s): \t" << my_hydro_inputs->regular_wave_omega_ << "\n";
+            outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(12) << "Heave (m)" << "\n";
+            outputFile << std::left << std::setw(10) << "----------" << std::right << std::setw(12) << "----------" << "\n";
 
-        if (saveDataOn) {
-            std::ofstream outputFile(out_dir + "/" + RESULTS_FILE_NAME + "_" + std::to_string(reg_wave_num) + ".txt");
-            if (outputFile.is_open()) {
-                outputFile.precision(10);
-                outputFile.width(12);
-                outputFile << "Wave #: \t" << reg_wave_num << "\n";
-                outputFile << "Wave amplitude (m): \t" << my_hydro_inputs->regular_wave_amplitude_ << "\n";
-                outputFile << "Wave omega (rad/s): \t" << my_hydro_inputs->regular_wave_omega_ << "\n";
-                outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(12)
-                           << "Heave (m)"
-                           //<< std::right << std::setw(18) << "Heave Vel (m/s)"
-                           //<< std::right << std::setw(18) << "Heave Force (N)"
+            for (size_t i = 0; i < time_vector.size(); i++) {
+                outputFile << std::left << std::setw(10) << std::fixed << std::setprecision(3) << time_vector[i]
+                           << std::right << std::setw(12) << std::fixed << std::setprecision(6) << heave_position[i]
                            << "\n";
-                outputFile << std::left << std::setw(10) << "----------" << std::right << std::setw(12)
-                           << "----------"
-                           //<< std::right << std::setw(18) << "----------"
-                           //<< std::right << std::setw(18) << "----------"
-                           << "\n";
-
-                for (size_t i = 0; i < time_vector.size(); i++) {
-                    outputFile
-                        << std::left << std::setw(10) << std::fixed << std::setprecision(3) << time_vector[i]
-                        << std::right << std::setw(12) << std::fixed << std::setprecision(6)
-                        << heave_position[i]
-                        //<< std::right << std::setw(18) << std::fixed << std::setprecision(6) << heave_velocity[i]
-                        //<< std::right << std::setw(18) << std::fixed << std::setprecision(6) << heave_force[i]
-                        << "\n";
-                }
-                outputFile.close();
-            } else {
-                std::cout << "Error: Could not open output file for writing." << std::endl;
-                return 1;  // Return an error code
             }
+            outputFile.close();
+        } else {
+            std::cout << "Error: Could not open output file for writing." << std::endl;
+            return 1;
         }
 
         // Clear vectors for next iteration

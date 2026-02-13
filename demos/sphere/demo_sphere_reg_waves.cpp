@@ -53,9 +53,7 @@ int main(int argc, char* argv[]) {
         ChSystemNSC system;
         system.SetGravitationalAcceleration(ChVector3d(0.0, 0.0, -9.81));
         double timestep = 0.015;
-        system.SetSolverType(ChSolver::Type::GMRES);
-        system.GetSolver()->AsIterative()->SetMaxIterations(
-            300);  // the higher, the easier to keep the constraints satisfied.
+        system.SetSolverType(ChSolver::Type::SPARSE_QR);
         ChRealtimeStepTimer realtime_timer;
         double simulation_duration = 600.0;
 
@@ -129,6 +127,7 @@ int main(int argc, char* argv[]) {
         // main simulation loop
         ui.Init(&system, "Sphere - Regular Waves Test");
         ui.SetCamera(8, -25, 15, 0, 0, 0);
+        ui.SetWaveModel(my_hydro_inputs);  // Enable animated water surface
 
         while (system.GetChTime() <= simulation_duration) {
             if (ui.IsRunning(timestep) == false) break;

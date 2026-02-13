@@ -62,6 +62,18 @@ double GetEta(const Eigen::Vector3d& position,
     return amplitude * cos(wavenumber * x_pos - omega * time + phase);
 }
 
+double GetEtaGradientX(const Eigen::Vector3d& position,
+                       double time,
+                       double omega,
+                       double amplitude,
+                       double phase,
+                       double wavenumber) {
+    // Analytic derivative of η = A·cos(k·x − ω·t + φ):
+    //   ∂η/∂x = −A·k·sin(k·x − ω·t + φ)
+    double x_pos = position.x();
+    return -amplitude * wavenumber * sin(wavenumber * x_pos - omega * time + phase);
+}
+
 double GetEtaIrregular(const Eigen::Vector3d& position,
                        double time,
                        const Eigen::VectorXd& freqs_hz,
@@ -76,6 +88,23 @@ double GetEtaIrregular(const Eigen::Vector3d& position,
         eta += GetEta(position, time, omega, amplitude, wave_phases[i], wavenumbers[i]);
     }
     return eta;
+}
+
+double GetEtaGradientXIrregular(const Eigen::Vector3d& position,
+                                double time,
+                                const Eigen::VectorXd& freqs_hz,
+                                const Eigen::VectorXd& spectral_densities,
+                                const Eigen::VectorXd& spectral_widths,
+                                const Eigen::VectorXd& wave_phases,
+                                const Eigen::VectorXd& wavenumbers) {
+    // Sum of component gradients: ∂η/∂x = Σ[−Aᵢ·kᵢ·sin(kᵢ·x − ωᵢ·t + φᵢ)]
+    double deta_dx = 0.0;
+    for (Eigen::Index i = 0; i < freqs_hz.size(); ++i) {
+        double amplitude = std::sqrt(2.0 * spectral_densities[i] * spectral_widths[i]);
+        double omega     = 2.0 * M_PI * freqs_hz[i];
+        deta_dx += GetEtaGradientX(position, time, omega, amplitude, wave_phases[i], wavenumbers[i]);
+    }
+    return deta_dx;
 }
 
 std::vector<double> GetEtaIrregularTimeSeries(const Eigen::Vector3d& position,
@@ -322,67 +351,6 @@ Eigen::VectorXd JONSWAPSpectrumHz(Eigen::VectorXd& f,
         }
     }
     return spectral_densities;
-}
-
-std::vector<std::array<double, 3>> CreateFreeSurface3DPts(const Eigen::VectorXd& eta,
-                                                          const Eigen::VectorXd& t_vec) {
-    std::vector<std::array<double, 3>> surface(t_vec.size() * 2);
-
-    for (int i = 0; i < t_vec.size(); ++i) {
-        double t = -1 * t_vec[i];
-        double z = eta[i];
-
-        surface[2 * i]     = {t, -10.0, z};
-        surface[2 * i + 1] = {t, 10.0, z};
-    }
-
-    return surface;
-}
-
-std::vector<std::array<size_t, 3>> CreateFreeSurfaceTriangles(size_t eta_size) {
-    std::vector<std::array<size_t, 3>> triangles;
-
-    for (size_t i = 0; i < eta_size / 2 - 1; ++i) {
-        triangles.push_back({2 * i, 2 * i + 1, 2 * i + 3});
-        triangles.push_back({2 * i, 2 * i + 3, 2 * i + 2});
-    }
-
-    return triangles;
-}
-
-void WriteFreeSurfaceMeshObj(const std::vector<std::array<double, 3>>& points,
-                             const std::vector<std::array<size_t, 3>>& triangles,
-                             const std::string& file_name) {
-    std::ofstream out(file_name);
-    if (!out) {
-        std::cerr << "Failed to open " << file_name << std::endl;
-        return;
-    }
-
-    auto t  = std::time(nullptr);
-    auto tm = *std::localtime(&t);
-    out << "# Wavefront OBJ file exported by HydroChrono" << std::endl;
-    out << "# File Created: " << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << std::endl << std::endl;
-
-    out << "# Vertices: " << points.size() << std::endl << std::endl;
-    out << std::fixed << std::setprecision(6);
-    for (const auto& point : points) {
-        out << "v ";
-        out << std::setw(14) << point[0] << ' ';
-        out << std::setw(14) << point[1] << ' ';
-        out << std::setw(14) << point[2] << std::endl;
-    }
-    out << std::endl;
-
-    out << "# Faces: " << triangles.size() << std::endl << std::endl;
-    for (const auto& triangle : triangles) {
-        out << "f ";
-        out << std::setw(9) << triangle[0] + 1;
-        out << std::setw(9) << triangle[1] + 1;
-        out << std::setw(9) << triangle[2] + 1 << std::endl;
-    }
-
-    out.close();
 }
 
 Eigen::VectorXd GetWidthArray(const Eigen::VectorXd& input_array) {

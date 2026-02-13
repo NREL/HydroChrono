@@ -169,8 +169,7 @@ endif()
 
 find_package(Chrono
              CONFIG REQUIRED
-             COMPONENTS Parsers
-             OPTIONAL_COMPONENTS Irrlicht VSG)
+             COMPONENTS Parsers)
 
 message(STATUS "----\n")
 
@@ -419,6 +418,19 @@ endif()
 if(HYDROCHRONO_ENABLE_VSG)
   set(HCGUI_SOURCES ${HCGUI_SOURCES}
       src/gui/guihelperVSG.cpp
+      src/gui/vsg_gui_component.cpp
+      src/gui/vsg_lighting.cpp
+      src/gui/vsg_materials.cpp
+      src/gui/vsg_water_surface.cpp
+      src/gui/vsg_radiation_surface.cpp
+  )
+  set(HCGUI_HEADERS ${HCGUI_HEADERS}
+      src/gui/vsg_config.h
+      src/gui/vsg_gui_component.h
+      src/gui/vsg_lighting.h
+      src/gui/vsg_materials.h
+      src/gui/vsg_water_surface.h
+      src/gui/vsg_radiation_surface.h
   )
 endif()
 
@@ -430,11 +442,6 @@ target_include_directories(HydroChronoGUI
         "$<BUILD_INTERFACE:${HC_INCLUDES_BUILD}>"
         "$<INSTALL_INTERFACE:include>"
 )
-
-if(MSVC)
-  target_compile_options(HydroChronoGUI PRIVATE $<$<COMPILE_LANGUAGE:CXX>:/wd4996>)  # deprecated function or class member
-  target_compile_options(HydroChronoGUI PRIVATE $<$<COMPILE_LANGUAGE:CXX>:/wd4458>)  # declaration hides class member
-endif()
 
 set_target_properties(HydroChronoGUI PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(HydroChronoGUI
@@ -536,6 +543,7 @@ if(HYDROCHRONO_ENABLE_TESTS)
     endif()
 
     add_subdirectory(tests/regression)
+    add_subdirectory(tests/unit)
 endif()
 
 # ===============================================================================
@@ -611,27 +619,33 @@ endif()
 # Flat install tree for public distribution
 option(HC_INSTALL_DEV_DEMOS "Install developer demo executables" OFF)
 
-# Install main CLI only (if built)
+# Install main CLI and project shared libraries (if built)
 if(TARGET run_hydrochrono)
     install(TARGETS run_hydrochrono  CONFIGURATIONS Release DESTINATION bin COMPONENT runtime)
+endif()
+if(TARGET HydroChrono)
+    install(TARGETS HydroChrono      CONFIGURATIONS Release RUNTIME DESTINATION bin COMPONENT runtime)
+endif()
+if(TARGET HydroChronoGUI)
+    install(TARGETS HydroChronoGUI   CONFIGURATIONS Release RUNTIME DESTINATION bin COMPONENT runtime)
 endif()
 
 # On Windows, install DLLs
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     message(STATUS "Set DLLs for installation")
 
-    # Chrono DLLs
-    foreach(tgt ${CHRONO_TARGETS})
-        get_target_property(tgt_DLL ${tgt} IMPORTED_LOCATION_RELEASE)
-        get_target_property(tgt_DLL_d ${tgt} IMPORTED_LOCATION_DEBUG)
-        if(EXISTS ${tgt_DLL})
-            message(STATUS "  Chrono DLL ${tgt_DLL}")
-            install(FILES ${tgt_DLL} DESTINATION bin COMPONENT runtime)
-        endif()
-        if(EXISTS ${tgt_DLL_d})
-            install(FILES ${tgt_DLL_d} DESTINATION bin COMPONENT runtime)
-        endif()
-    endforeach()
+    # Chrono DLLs — glob ALL DLLs from the Chrono bin directory to catch
+    # transitive dependencies (e.g., Chrono_fsitdpf_vsg, yaml-cpp) that may
+    # not be listed in CHRONO_TARGETS.
+    get_target_property(_chrono_core_dll Chrono::Chrono_core IMPORTED_LOCATION_RELEASE)
+    if(_chrono_core_dll)
+        get_filename_component(_chrono_dll_dir "${_chrono_core_dll}" DIRECTORY)
+        file(GLOB _chrono_dlls "${_chrono_dll_dir}/*.dll")
+        foreach(_dll ${_chrono_dlls})
+            message(STATUS "  Chrono DLL ${_dll}")
+            install(FILES "${_dll}" DESTINATION bin COMPONENT runtime)
+        endforeach()
+    endif()
 
     # HDF5 DLLs
     foreach(tgt ${HDF5_TARGETS})
@@ -660,23 +674,41 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
         endif()
     endif()
     
-    # Python DLLs, if Chrono::Parsers depends on it
-    if(CHRONO_PARSERS_PYTHON)
-        find_package(Python3 QUIET COMPONENTS Interpreter Development)
-        if(Python3_Interpreter_FOUND AND Python3_Development_FOUND)
-            #message(STATUS "Found Python and dependencies")
-            #message(STATUS "  Python3_Interpreter_FOUND: ${Python3_Interpreter_FOUND}")
-            #message(STATUS "  Python3_Development_FOUND: ${Python3_Development_FOUND}")
-            get_target_property(tgt_DLL Python3::Python IMPORTED_LOCATION_RELEASE)
-            get_target_property(tgt_DLL_d Python3::Python IMPORTED_LOCATION_DEBUG)
-            if(EXISTS ${tgt_DLL})
-                message(STATUS "  Python DLL ${tgt_DLL}")
-                install(FILES ${tgt_DLL} DESTINATION bin COMPONENT runtime)
-            endif()
-            if(EXISTS ${tgt_DLL_d})
-                install(FILES ${tgt_DLL_d} DESTINATION bin COMPONENT runtime)
+    # VSG DLLs (vsg, vsgImGui, vsgXchange, draco, etc.)
+    if(HYDROCHRONO_ENABLE_VSG)
+        # VSG_DLL_DIR is set by Chrono's find_package when VSG is found
+        # Fall back to deriving from vsg_DIR if VSG_DLL_DIR is not set
+        if(NOT DEFINED VSG_DLL_DIR OR VSG_DLL_DIR STREQUAL "")
+            if(DEFINED vsg_DIR)
+                # vsg_DIR points to lib/cmake/vsg, go up 3 levels to root then into bin
+                get_filename_component(_vsg_root "${vsg_DIR}" DIRECTORY)  # lib/cmake
+                get_filename_component(_vsg_root "${_vsg_root}" DIRECTORY)  # lib
+                get_filename_component(_vsg_root "${_vsg_root}" DIRECTORY)  # root
+                set(VSG_DLL_DIR "${_vsg_root}/bin")
             endif()
         endif()
+        
+        if(DEFINED VSG_DLL_DIR AND EXISTS "${VSG_DLL_DIR}")
+            file(GLOB _vsg_dlls "${VSG_DLL_DIR}/*.dll")
+            if(_vsg_dlls)
+                message(STATUS "Installing VSG DLLs from: ${VSG_DLL_DIR}")
+                install(FILES ${_vsg_dlls} DESTINATION bin COMPONENT runtime)
+            endif()
+        else()
+            message(WARNING "HYDROCHRONO_ENABLE_VSG is ON but VSG_DLL_DIR not found. VSG DLLs will not be packaged.")
+        endif()
+    endif()
+    
+    # Python DLLs, if Chrono::Parsers depends on it.
+    # Derive the DLL path from the already-found interpreter rather than calling
+    # find_package(Python3 ... Development), which can stall on Windows/conda.
+    if(CHRONO_PARSERS_PYTHON AND Python3_EXECUTABLE)
+        get_filename_component(_py_bin_dir "${Python3_EXECUTABLE}" DIRECTORY)
+        file(GLOB _py_dlls "${_py_bin_dir}/python3*.dll")
+        foreach(_py_dll ${_py_dlls})
+            message(STATUS "  Python DLL ${_py_dll}")
+            install(FILES "${_py_dll}" DESTINATION bin COMPONENT runtime)
+        endforeach()
     endif()
 
 endif()
@@ -699,6 +731,20 @@ install(PROGRAMS ${PROJECT_SOURCE_DIR}/scripts/RUN-TESTS.ps1
         DESTINATION tests COMPONENT python-tests)
 
 # MSVC runtime DLLs and ZIP packaging via CPack
+# InstallRequiredSystemLibraries handles msvcp/vcruntime/ucrt, but not vcomp (OpenMP).
+# Append the OpenMP runtime so it's included in the package.
+if(MSVC AND OpenMP_CXX_FOUND)
+    get_filename_component(_msvc_dir "${CMAKE_CXX_COMPILER}" DIRECTORY)
+    find_file(_vcomp_dll "vcomp140.dll"
+        PATHS "${_msvc_dir}" "${_msvc_dir}/../../../redist/x64" "C:/Windows/System32"
+        NO_DEFAULT_PATH)
+    if(_vcomp_dll)
+        list(APPEND CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS "${_vcomp_dll}")
+        message(STATUS "  OpenMP DLL ${_vcomp_dll}")
+    else()
+        message(WARNING "vcomp140.dll not found — OpenMP runtime will be missing from package")
+    endif()
+endif()
 include(InstallRequiredSystemLibraries)
 set(CPACK_GENERATOR "ZIP")
 set(CPACK_PACKAGE_NAME "HydroChrono")

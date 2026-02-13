@@ -1,6 +1,7 @@
 #include <hydroc/config.h>
 #include <hydroc/gui/guihelper.h>
 #include <hydroc/logging.h>
+#include <hydroc/waves/wave_base.h>
 
 #include "guihelper_impl.h"
 
@@ -28,6 +29,15 @@ bool UI::IsRunning(double timestep) {
     return true;
 }
 
+void UI::SetWaveModel(std::shared_ptr<WaveBase> /*wave*/) {
+    // Default (headless) UI does not render waves.
+}
+
+void UI::SetWaterGridExtent(double /*width*/, double /*length*/,
+                            double /*center_x*/, double /*center_y*/) {
+    // Default (headless) UI does not render water surface.
+}
+
 // -----------------------------------------------------------------------------
 
 GUI::GUI() {
@@ -53,4 +63,12 @@ void GUI::SetCamera(double x, double y, double z, double dirx, double diry, doub
 
 bool GUI::IsRunning(double timestep) {
     return pImpl->IsRunning(timestep);
+}
+
+void GUI::SetWaveModel(std::shared_ptr<WaveBase> wave) {
+    pImpl->SetWaveModel(wave);
+}
+
+void GUI::SetWaterGridExtent(double width, double length, double center_x, double center_y) {
+    pImpl->SetWaterGridExtent(width, length, center_x, center_y);
 }

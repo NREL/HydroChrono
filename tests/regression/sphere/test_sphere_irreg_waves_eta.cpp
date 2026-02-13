@@ -5,12 +5,9 @@
 #include <iostream>
 #include <vector>
 
-#include <chrono/assets/ChColor.h>
-#include <chrono/core/ChRealtimeStep.h>
 #include <chrono/physics/ChBodyEasy.h>
 #include <chrono/physics/ChSystemNSC.h>
 
-#include <hydroc/gui/guihelper.h>
 #include <hydroc/helper.h>
 #include <hydroc/hydro_forces.h>
 
@@ -22,18 +19,9 @@ int main(int argc, char* argv[]) {
     std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
     try {
-        // Parse CLI arguments and initialize environment
-        bool profilingOn     = true;
-        bool saveDataOn      = true;
-        bool plotOn          = true;
-        bool visualizationOn = true;
+        // Initialize environment
         std::string data_dir;
-        if (!hydroc::GetCLIArguments(argc, argv, "Sphere irregular waves eta regression test", saveDataOn, profilingOn,
-                                     plotOn, visualizationOn, data_dir))
-            return 1;
         if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
-
-        std::cout << "DEBUG: Visualization mode: " << (visualizationOn ? "ON" : "OFF") << std::endl;
 
         std::filesystem::path DATADIR(hydroc::getDataDir());
         std::cout << "DEBUG: Data directory: " << DATADIR << std::endl;
@@ -66,10 +54,6 @@ int main(int argc, char* argv[]) {
             return 1;
         }
 
-        std::cout << "DEBUG: Mesh file path: " << body1_meshfame << std::endl;
-        std::cout << "DEBUG: H5 file path: " << h5fname << std::endl;
-        std::cout << "DEBUG: ETA file path: " << eta_file_path << std::endl;
-
         // Check if files exist
         if (!std::filesystem::exists(body1_meshfame)) {
             std::cerr << "ERROR: Mesh file does not exist: " << body1_meshfame << std::endl;
@@ -79,35 +63,13 @@ int main(int argc, char* argv[]) {
             std::cerr << "ERROR: H5 file does not exist: " << h5fname << std::endl;
             return 1;
         }
-        if (!std::filesystem::exists(eta_file_path)) {
-            std::cerr << "ERROR: ETA file does not exist: " << eta_file_path << std::endl;
-            return 1;
-        }
 
-        // Check if the .h5 file can be opened (using HDF5 C API)
-        std::cout << "DEBUG: Checking if H5 file can be opened..." << std::endl;
-        FILE* h5file = fopen(h5fname.c_str(), "rb");
-        if (!h5file) {
-            std::cerr << "ERROR: Could not open H5 file: " << h5fname << std::endl;
-            return 1;
-        } else {
-            std::cout << "DEBUG: H5 file opened successfully." << std::endl;
-            fclose(h5file);
-        }
-
-        //    // system/solver settings
+        // system/solver settings
         ChSystemNSC system;
         system.SetGravitationalAcceleration(ChVector3d(0.0, 0.0, -9.81));
         double timestep = 0.015;
-        system.SetSolverType(ChSolver::Type::GMRES);
-        system.GetSolver()->AsIterative()->SetMaxIterations(300);
-        ChRealtimeStepTimer realtime_timer;
+        system.SetSolverType(ChSolver::Type::SPARSE_QR);
         double simulationDuration = 600.0;
-
-        // Create user interface
-        std::shared_ptr<hydroc::gui::UI> pui = hydroc::gui::CreateUI(visualizationOn);
-
-        hydroc::gui::UI& ui = *pui.get();
 
         // Setup Ground
         auto ground = chrono_types::make_shared<ChBody>();
@@ -117,30 +79,25 @@ int main(int argc, char* argv[]) {
         ground->SetFixed(true);
         ground->EnableCollision(false);
 
-        // some io/viz options
+        // Output timeseries
         std::vector<double> time_vector;
         std::vector<double> heave_position;
-        //
+
         // set up body from a mesh
         std::cout << "Attempting to open mesh file: " << body1_meshfame << std::endl;
-        std::shared_ptr<ChBody> sphereBody = chrono_types::make_shared<ChBodyEasyMesh>(  //
-            body1_meshfame,                                                              // file name
-            1000,                                                                        // density
+        std::shared_ptr<ChBody> sphereBody = chrono_types::make_shared<ChBodyEasyMesh>(
+            body1_meshfame,
+            1000,   // density
             false,  // do not evaluate mass automatically
             true,   // create visualization asset
             false   // do not collide
         );
-        //
+
         // define the body's initial conditions
         system.Add(sphereBody);
         sphereBody->SetName("body1");  // must set body name correctly! (must match .h5 file)
         sphereBody->SetPos(ChVector3d(0, 0, -2));
         sphereBody->SetMass(261.8e3);
-
-        // create a visualization material
-        auto yellow = chrono_types::make_shared<ChVisualMaterial>();
-        yellow->SetDiffuseColor(ChColor(0.244f, 0.225f, 0.072f));
-        sphereBody->GetVisualShape(0)->SetMaterial(0, yellow);
 
         std::cout << "Body created from the mesh file: " << body1_meshfame << std::endl;
 
@@ -150,14 +107,11 @@ int main(int argc, char* argv[]) {
                               ChFramed(ChVector3d(0, 0, -5)));
         system.AddLink(prismatic);
 
-        // create the spring between body_1 and ground. The spring end points are
-        // specified in the body relative frames.
-        ////double rest_length  = 3.0;
+        // create the spring between body_1 and ground
         double spring_coef  = 0.0;
         double damping_coef = 0.0;
         auto spring_1       = chrono_types::make_shared<ChLinkTSDA>();
-        spring_1->Initialize(sphereBody, ground, false, ChVector3d(0, 0, -2),
-                             ChVector3d(0, 0, -5));  // false means positions are in global frame
+        spring_1->Initialize(sphereBody, ground, false, ChVector3d(0, 0, -2), ChVector3d(0, 0, -5));
         spring_1->SetSpringCoefficient(spring_coef);
         spring_1->SetDampingCoefficient(damping_coef);
         system.AddLink(spring_1);
@@ -165,20 +119,19 @@ int main(int argc, char* argv[]) {
         std::vector<std::shared_ptr<ChBody>> bodies;
         bodies.push_back(sphereBody);
 
-        // MODIFIED SECTION: Use ETA file instead of regular wave parameters
+        // Use ETA file for irregular waves
         IrregularWaveParams wave_inputs;
         wave_inputs.num_bodies_          = static_cast<unsigned int>(bodies.size());
         wave_inputs.simulation_dt_       = timestep;
         wave_inputs.simulation_duration_ = simulationDuration;
-        wave_inputs.ramp_duration_       = 0.0;  // Changed from 60.0
+        wave_inputs.ramp_duration_       = 0.0;
         wave_inputs.eta_file_path_ =
-            (DATADIR / "demos" / "sphere" / "eta" / "eta.txt").lexically_normal().generic_string();  // Added ETA file
+            (DATADIR / "demos" / "sphere" / "eta" / "eta.txt").lexically_normal().generic_string();
         wave_inputs.frequency_min_ = 0.001;
         wave_inputs.frequency_max_ = 1.0;
         wave_inputs.nfrequencies_  = 1000;
-        // Removed wave_height_ and wave_period_ as they're not used with ETA
 
-        std::shared_ptr<IrregularWaves> my_hydro_inputs;  // declare outside the try-catch block
+        std::shared_ptr<IrregularWaves> my_hydro_inputs;
 
         try {
             my_hydro_inputs = std::make_shared<IrregularWaves>(wave_inputs);
@@ -200,63 +153,41 @@ int main(int argc, char* argv[]) {
 
         // for profiling
         auto start = std::chrono::high_resolution_clock::now();
+
         // main simulation loop
-        ui.Init(&system, "Sphere - Irregular Waves Test");
-        ui.SetCamera(8, -25, 15, 0, 0, 0);
-        ui.simulationStarted = true;
-
         while (system.GetChTime() <= simulationDuration) {
-            if (ui.IsRunning(timestep) == false) break;
+            system.DoStepDynamics(timestep);
 
-            if (ui.simulationStarted) {
-                system.DoStepDynamics(timestep);
-
-                // append data to output vector
-                time_vector.push_back(system.GetChTime());
-                heave_position.push_back(sphereBody->GetPos().z());
-            }
+            // append data to output vector
+            time_vector.push_back(system.GetChTime());
+            heave_position.push_back(sphereBody->GetPos().z());
         }
 
         // for profiling
         auto end          = std::chrono::high_resolution_clock::now();
         unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        std::cout << "Simulation completed in " << duration << " ms" << std::endl;
 
-        std::string out_dir = hydroc::getTestOutDir();
-        if (profilingOn || saveDataOn) {
-            out_dir = out_dir + "/" + RESULTS_DIR_NAME;
-            std::filesystem::create_directory(std::filesystem::path(out_dir));
-        }
+        // Save results
+        std::string out_dir = hydroc::getTestOutDir() + "/" + RESULTS_DIR_NAME;
+        std::filesystem::create_directories(std::filesystem::path(out_dir));
 
-        if (profilingOn) {
-            std::ofstream profilingFile(out_dir + "/" + RESULTS_FILE_NAME + "_duration.txt");
-            if (profilingFile.is_open()) {
-                profilingFile << duration << " ms\n";
-                profilingFile.close();
-            } else {
-                std::cout << "Error: Could not open profiling file for writing." << std::endl;
-            }
-        }
+        std::ofstream outputFile(out_dir + "/" + RESULTS_FILE_NAME + ".txt");
+        if (outputFile.is_open()) {
+            outputFile.precision(10);
+            outputFile.width(12);
+            outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(12) << "Heave (m)" << "\n";
+            outputFile << std::left << std::setw(10) << "----------" << std::right << std::setw(12) << "----------" << "\n";
 
-        if (saveDataOn) {
-            std::ofstream outputFile(out_dir + "/" + RESULTS_FILE_NAME + ".txt");
-            if (outputFile.is_open()) {
-                outputFile.precision(10);
-                outputFile.width(12);
-                outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(12) << "Heave (m)"
+            for (size_t i = 0; i < time_vector.size(); i++) {
+                outputFile << std::left << std::setw(10) << std::fixed << std::setprecision(3) << time_vector[i]
+                           << std::right << std::setw(12) << std::fixed << std::setprecision(6) << heave_position[i]
                            << "\n";
-                outputFile << std::left << std::setw(10) << "----------" << std::right << std::setw(12) << "----------"
-                           << "\n";
-
-                for (size_t i = 0; i < time_vector.size(); i++) {
-                    outputFile << std::left << std::setw(10) << std::fixed << std::setprecision(3) << time_vector[i]
-                               << std::right << std::setw(12) << std::fixed << std::setprecision(6) << heave_position[i]
-                               << "\n";
-                }
-                outputFile.close();
-            } else {
-                std::cout << "Error: Could not open output file for writing." << std::endl;
-                return 1;  // Return an error code
             }
+            outputFile.close();
+        } else {
+            std::cout << "Error: Could not open output file for writing." << std::endl;
+            return 1;
         }
 
         return 0;

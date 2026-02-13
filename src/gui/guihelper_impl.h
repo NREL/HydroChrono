@@ -1,8 +1,11 @@
 #pragma once
 
+#include <memory>
+
 #include <hydroc/config.h>
 #include <hydroc/gui/guihelper.h>
 #include <hydroc/logging.h>
+#include <hydroc/waves/wave_base.h>
 
 #include <chrono/physics/ChSystem.h>
 
@@ -39,8 +42,12 @@ class GUIImpl {
         hydroc::cli::LogWarning(
             "Warning: GUI deactivated. HydroChrono was built without run-time visualization support.");
     }
-    virtual void SetCamera(double x, double y, double z, double dirx, double diry, double dirz) {}
-    virtual bool IsRunning(double timestep) { return true; }
+    virtual void SetCamera(double /*x*/, double /*y*/, double /*z*/,
+                           double /*dirx*/, double /*diry*/, double /*dirz*/) {}
+    virtual bool IsRunning(double /*timestep*/) { return true; }
+    virtual void SetWaveModel(std::shared_ptr<WaveBase> /*wave*/) {}
+    virtual void SetWaterGridExtent(double /*width*/, double /*length*/,
+                                     double /*center_x*/, double /*center_y*/) {}
 };
 
 #ifdef HYDROCHRONO_HAVE_IRRLICHT
@@ -63,18 +70,36 @@ class GUIImplIRR : public GUIImpl {
 #endif
 
 #ifdef HYDROCHRONO_HAVE_VSG
+// Forward declarations (defined in vsg_water_surface.h, vsg_gui_component.h).
+class AnimatedWaterSurface;
+struct ViewerSettings;
+
 class GUIImplVSG : public GUIImpl {
   public:
     GUIImplVSG();
+    ~GUIImplVSG();
     GUIImplVSG(const GUIImplVSG&)            = delete;
     GUIImplVSG& operator=(const GUIImplVSG&) = delete;
 
     virtual void Init(UI& ui, chrono::ChSystem*, const char* title) override;
     virtual void SetCamera(double x, double y, double z, double dirx, double diry, double dirz) override;
     virtual bool IsRunning(double timestep) override;
+    virtual void SetWaveModel(std::shared_ptr<WaveBase> wave) override;
+    virtual void SetWaterGridExtent(double width, double length, double center_x, double center_y) override;
 
   private:
+    /// Ensure water surface is created (animated if wave model set, static otherwise).
+    void EnsureWaterSurface();
+
+    /// Update radiation source bodies for visualization.
+    /// Iterates over all moving bodies and updates their radiation state.
+    void UpdateRadiationSourceBody(double t);
+
     std::shared_ptr<chrono::vsg3d::ChVisualSystemVSG> pVis;
+    std::shared_ptr<WaveBase> wave_model_;
+    chrono::ChSystem* system_ = nullptr;
+    std::unique_ptr<AnimatedWaterSurface> animated_water_;
+    std::unique_ptr<ViewerSettings> viewer_settings_;
 };
 #endif
 

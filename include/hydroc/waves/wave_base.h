@@ -18,6 +18,22 @@ enum class WaveMode {
     irregular = 2
 };
 
+/**
+ * @brief Abstract base class for all wave models.
+ *
+ * Coordinate conventions:
+ *   - Waves propagate in the +X direction (unidirectional).
+ *   - Z is vertical (positive upward), with z = mwl_ at mean water level.
+ *   - Y is horizontal, perpendicular to wave propagation.
+ *
+ * Units:
+ *   - Positions: meters [m]
+ *   - Time: seconds [s]
+ *   - Elevation η: meters [m]
+ *   - Gradients ∂η/∂x, ∂η/∂y: dimensionless [m/m]
+ *   - Velocities: meters per second [m/s]
+ *   - Accelerations: meters per second squared [m/s²]
+ */
 class WaveBase {
   public:
     virtual ~WaveBase() = default;
@@ -56,7 +72,7 @@ class NoWave : public WaveBase {
     Eigen::Vector3d GetAcceleration(const Eigen::Vector3d&, double, double) override { return Eigen::Vector3d(0.0, 0.0, 0.0); }
 
   private:
-    unsigned int num_bodies_;
+    unsigned int num_bodies_ = 0;
     const WaveMode mode_ = WaveMode::noWaveCIC;
 };
 

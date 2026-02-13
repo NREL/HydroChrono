@@ -26,10 +26,10 @@ namespace hydrochrono::hydro {
  * and angular velocity for one body in the system.
  */
 struct BodyState {
-    Eigen::Vector3d position;        // Position in world frame (x, y, z)
-    Eigen::Vector3d orientation_rpy; // Orientation as roll-pitch-yaw angles (radians)
-    Eigen::Vector3d linear_velocity;  // Linear velocity in world frame (m/s)
-    Eigen::Vector3d angular_velocity; // Angular velocity in parent frame (rad/s)
+    Eigen::Vector3d position = Eigen::Vector3d::Zero();        // Position in world frame (x, y, z)
+    Eigen::Vector3d orientation_rpy = Eigen::Vector3d::Zero(); // Orientation as roll-pitch-yaw angles (radians)
+    Eigen::Vector3d linear_velocity = Eigen::Vector3d::Zero();  // Linear velocity in world frame (m/s)
+    Eigen::Vector3d angular_velocity = Eigen::Vector3d::Zero(); // Angular velocity in parent frame (rad/s)
 };
 
 /**

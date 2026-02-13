@@ -8,12 +8,14 @@
 
 #include <cmath>
 
-RegularWave::RegularWave() {
-    num_bodies_ = 1;
+RegularWave::RegularWave()
+    : num_bodies_(1),
+      wavenumber_(0.0) {
 }
 
-RegularWave::RegularWave(unsigned int num_b) {
-    num_bodies_ = num_b;
+RegularWave::RegularWave(unsigned int num_b)
+    : num_bodies_(num_b),
+      wavenumber_(0.0) {
 }
 
 RegularWave::RegularWave(const RegularWaveParams& params) {
@@ -67,6 +69,13 @@ double RegularWave::GetElevation(const Eigen::Vector3d& position, double time) {
     return GetEta(position, time, regular_wave_omega_, regular_wave_amplitude_, regular_wave_phase_, wavenumber_);
 }
 
+Eigen::Vector2d RegularWave::GetElevationGradientXY(const Eigen::Vector3d& position, double time) const {
+    // Regular waves propagate in +X direction only; ∂η/∂y = 0.
+    double deta_dx = GetEtaGradientX(position, time, regular_wave_omega_, regular_wave_amplitude_,
+                                      regular_wave_phase_, wavenumber_);
+    return Eigen::Vector2d(deta_dx, 0.0);
+}
+
 Eigen::VectorXd RegularWave::GetForceAtTime(double t) {
     unsigned int dof = num_bodies_ * 6;
     Eigen::VectorXd f(dof);
@@ -74,7 +83,7 @@ Eigen::VectorXd RegularWave::GetForceAtTime(double t) {
         unsigned int body_offset = 6 * b;
         for (int rowEx = 0; rowEx < 6; rowEx++) {
             f[body_offset + rowEx] = excitation_force_mag_[body_offset + rowEx] * regular_wave_amplitude_ *
-                                     std::cos(regular_wave_omega_ * t + excitation_force_phase_[rowEx]);
+                                     std::cos(regular_wave_omega_ * t + excitation_force_phase_[body_offset + rowEx]);
         }
     }
     return f;

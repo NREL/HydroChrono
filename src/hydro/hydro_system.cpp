@@ -277,7 +277,9 @@ HydroSystem::HydroSystem(std::vector<std::shared_ptr<ChBody>> user_bodies,
         force_per_body_.emplace_back(bodies_[b], this);
     }
 
-    // Handle added mass info (applied via a Chrono ChLoadHydrodynamics)
+    // Handle added mass info (applied via Chrono's ChLoadHydrodynamics).
+    // ChBodyAddedMassBlocks is a std::vector<ChBodyAddedMassBlock>; each entry
+    // pairs a body with its 6×6N row of the infinite-frequency added mass matrix.
     const auto& body_info = file_info_.GetBodyInfos();
     ChBodyAddedMassBlocks body_blocks;
     for (size_t i = 0; i < num_bodies_; i++) {
