@@ -226,6 +226,11 @@ def get_test_results(categorized_plots):
     
     return test_results
 
+def _relative_plot_path(plot_file, output_dir):
+    """Compute the relative path from the report output directory to a plot file."""
+    rel = os.path.relpath(plot_file, output_dir).replace('\\', '/')
+    return rel.replace(' ', '%20')
+
 def generate_markdown_report(categorized_plots, output_dir, build_dir, html_styling=False):
     """Generate the markdown report content."""
     
@@ -358,10 +363,7 @@ def generate_markdown_report(categorized_plots, output_dir, build_dir, html_styl
             content.append("")
             for plot_file in model_plots['decay']:
                 plot_name = plot_file.stem.replace('_', ' ').replace('comparison', '').strip()
-                # Create path relative to report directory
-                relative_path = f"../{model}/results/plots/{plot_file.name}"
-                relative_path = relative_path.replace('\\', '/')
-                relative_path = relative_path.replace(' ', '%20')
+                relative_path = _relative_plot_path(plot_file, output_dir)
                 
                 test_type = "Decay Test"
                 # Get the actual test status
@@ -392,9 +394,7 @@ def generate_markdown_report(categorized_plots, output_dir, build_dir, html_styl
             content.append("")
             for plot_file in model_plots['regular_waves']:
                 plot_name = plot_file.stem.replace('_', ' ').replace('comparison', '').strip()
-                relative_path = f"../{model}/results/plots/{plot_file.name}"
-                relative_path = relative_path.replace('\\', '/')
-                relative_path = relative_path.replace(' ', '%20')
+                relative_path = _relative_plot_path(plot_file, output_dir)
                 
                 # Extract wave number if present
                 wave_num = ""
@@ -433,9 +433,7 @@ def generate_markdown_report(categorized_plots, output_dir, build_dir, html_styl
             content.append("")
             for plot_file in model_plots['irregular_waves']:
                 plot_name = plot_file.stem.replace('_', ' ').replace('comparison', '').strip()
-                relative_path = f"../{model}/results/plots/{plot_file.name}"
-                relative_path = relative_path.replace('\\', '/')
-                relative_path = relative_path.replace(' ', '%20')
+                relative_path = _relative_plot_path(plot_file, output_dir)
                 
                 test_type = "Irregular Waves"
                 # Get the actual test status
@@ -466,9 +464,7 @@ def generate_markdown_report(categorized_plots, output_dir, build_dir, html_styl
             content.append("")
             for plot_file in model_plots['other']:
                 plot_name = plot_file.stem.replace('_', ' ').replace('comparison', '').strip()
-                relative_path = f"../{model}/results/plots/{plot_file.name}"
-                relative_path = relative_path.replace('\\', '/')
-                relative_path = relative_path.replace(' ', '%20')
+                relative_path = _relative_plot_path(plot_file, output_dir)
                 
                 test_type = "Other Test"
                 # Get the actual test status (try to infer from filename)

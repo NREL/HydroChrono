@@ -365,3 +365,7 @@ Write-Host "Tests:  ctest -C $BuildType -L regression --test-dir build" -Foregro
 Write-Host "        ctest -C $BuildType -L unit       --test-dir build" -ForegroundColor Gray
 Write-Host "        Add -V for verbose output, --output-on-failure for failures only" -ForegroundColor DarkGray
 Write-Host ""
+Write-Host "Report: python tests/regression/utilities/generate_report.py --build-dir build --pdf" -ForegroundColor Gray
+Write-Host "        Generates regression test report (markdown + PDF) in build/bin/report/" -ForegroundColor DarkGray
+Write-Host "        Requires: pip install pypandoc  (or pandoc on PATH)" -ForegroundColor DarkGray
+Write-Host ""
