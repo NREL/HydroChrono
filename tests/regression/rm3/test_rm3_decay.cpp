@@ -50,7 +50,7 @@ int main(int argc, char* argv[]) {
 
     double timestep = 0.01;
     system.SetTimestepperType(ChTimestepper::Type::HHT);
-    system.SetSolverType(ChSolver::Type::SPARSE_QR);
+    system.SetSolverType(ChSolver::Type::GMRES);
     double simulationDuration = 40.0;
 
     // Output timeseries

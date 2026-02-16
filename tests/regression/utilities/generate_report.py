@@ -117,8 +117,8 @@ def get_test_summary(categorized_plots):
         'models': list(categorized_plots.keys())
     }
 
-def get_test_results(categorized_plots):
-    """Get test results by inferring from available plots and checking CTest logs."""
+def get_test_results(categorized_plots, build_dir=None):
+    """Get test results from CTest logs, falling back to UNKNOWN when unavailable."""
     test_results = {
         'sphere': {},
         'f3of': {},
@@ -126,28 +126,48 @@ def get_test_results(categorized_plots):
         'rm3': {}
     }
     
-    # First, infer PASS status from the existence of comparison plots
-    # If a comparison plot exists, it means the test ran and likely passed
+    # Default status: plots exist but we don't know pass/fail without CTest logs
     for model, model_plots in categorized_plots.items():
         if model not in test_results:
             test_results[model] = {}
         
         for test_type, plots in model_plots.items():
-            if plots:  # If plots exist, assume PASS
-                test_results[model][test_type] = 'PASS'
+            if plots:
+                test_results[model][test_type] = 'UNKNOWN'
             else:
                 test_results[model][test_type] = 'NO DATA'
     
-    # Try to find and parse CTest log files for more accurate results
-    import glob
+    # Try to find and parse CTest log files for accurate results
     import re
     
-    # Look for CTest log files in the build directory
-    build_dir = Path.cwd().parent.parent  # Go up to build directory
-    ctest_log_patterns = [
-        build_dir / "Testing" / "Temporary" / "LastTest.log",
-        build_dir / "Testing" / "Temporary" / "LastTest.log.tmp"
-    ]
+    # Search for CTest log in likely locations relative to build_dir
+    search_roots = []
+    if build_dir:
+        search_roots.append(Path(build_dir).resolve())
+    search_roots.append(Path.cwd())
+    
+    ctest_log_patterns = []
+    for root in search_roots:
+        ctest_log_patterns.append(root / "Testing" / "Temporary" / "LastTest.log")
+        ctest_log_patterns.append(root / "Testing" / "Temporary" / "LastTest.log.tmp")
+    
+    # Mapping from CTest test names to (model, test_type) pairs.
+    # Only regression comparison tests (the *_regression tests) matter here;
+    # the C++ execute tests just produce data files.
+    test_name_map = {
+        'sphere_decay_regression':                      ('sphere', 'decay'),
+        'sphere_reg_waves_regression':                  ('sphere', 'regular_waves'),
+        'sphere_irreg_waves_regression':                ('sphere', 'irregular_waves'),
+        'sphere_irreg_waves_eta_regression':            ('sphere', 'irregular_waves_eta'),
+        'sphere_irreg_waves_eta_consistency_regression': ('sphere', 'other'),
+        'f3of_dt1_regression':                          ('f3of', 'decay'),
+        'f3of_dt2_regression':                          ('f3of', 'decay'),
+        'f3of_dt3_regression':                          ('f3of', 'decay'),
+        'oswec_decay_regression':                       ('oswec', 'decay'),
+        'oswec_reg_waves_regression':                   ('oswec', 'regular_waves'),
+        'rm3_decay_regression':                         ('rm3', 'decay'),
+        'rm3_reg_waves_regression':                     ('rm3', 'regular_waves'),
+    }
     
     ctest_found = False
     for log_file in ctest_log_patterns:
@@ -156,73 +176,61 @@ def get_test_results(categorized_plots):
                 with open(log_file, 'r', encoding='utf-8', errors='ignore') as f:
                     content = f.read()
                 
-                # Parse test results from CTest log
-                # Look for patterns like "Test #X: test_name .................   Passed/Failed"
-                test_pattern = r'Test #\d+:\s+(\w+)\s+\.+\s+(Passed|Failed|Not Run)'
-                matches = re.findall(test_pattern, content)
+                # LastTest.log format:
+                #   X/Y Testing: <test_name>
+                #   ... (output) ...
+                #   Test Passed.   OR   Test Failed.
+                test_blocks = re.findall(
+                    r'\d+/\d+\s+Testing:\s+(\S+).*?Test\s+(Passed|Failed)\.',
+                    content, re.DOTALL)
                 
-                for test_name, status in matches:
-                    # Map test names to models and test types
-                    if 'sphere' in test_name.lower():
-                        model = 'sphere'
-                        if 'decay' in test_name.lower():
-                            test_type = 'decay'
-                        elif 'reg_waves' in test_name.lower():
-                            test_type = 'regular_waves'
-                        elif 'irreg_waves' in test_name.lower() and 'eta' in test_name.lower():
-                            test_type = 'irregular_waves_eta'
-                        elif 'irreg_waves' in test_name.lower():
-                            test_type = 'irregular_waves'
-                        else:
-                            continue
-                    elif 'f3of' in test_name.lower():
-                        model = 'f3of'
-                        if 'dt1' in test_name.lower():
-                            test_type = 'dt1'
-                        elif 'dt2' in test_name.lower():
-                            test_type = 'dt2'
-                        elif 'dt3' in test_name.lower():
-                            test_type = 'dt3'
-                        else:
-                            continue
-                    elif 'oswec' in test_name.lower():
-                        model = 'oswec'
-                        if 'decay' in test_name.lower():
-                            test_type = 'decay'
-                        elif 'reg_waves' in test_name.lower():
-                            test_type = 'regular_waves'
-                        else:
-                            continue
-                    elif 'rm3' in test_name.lower():
-                        model = 'rm3'
-                        if 'decay' in test_name.lower():
-                            test_type = 'decay'
-                        elif 'reg_waves' in test_name.lower():
-                            test_type = 'regular_waves'
-                        else:
-                            continue
-                    else:
+                for test_name, status in test_blocks:
+                    mapping = test_name_map.get(test_name)
+                    if not mapping:
                         continue
+                    model, test_type = mapping
                     
-                    # Convert status to our format and override inferred status
-                    if status == 'Passed':
-                        result_status = 'PASS'
-                    elif status == 'Failed':
-                        result_status = 'FAIL'
-                    else:
-                        result_status = 'NOT RUN'
+                    result_status = 'PASS' if status == 'Passed' else 'FAIL'
                     
-                    if model in test_results and test_type:
+                    if model in test_results:
+                        # For f3of, multiple tests map to 'decay' — only mark FAIL
+                        # if any sub-test fails (don't overwrite FAIL with PASS).
+                        existing = test_results[model].get(test_type)
+                        if existing == 'FAIL':
+                            continue
                         test_results[model][test_type] = result_status
                         ctest_found = True
                                 
             except Exception as e:
                 print(f"Warning: Could not parse CTest log {log_file}: {e}")
     
+    # Also check LastTestsFailed.log — contains names of failed tests from the
+    # most recent ctest run.  This is a quick cross-check even if LastTest.log
+    # was already parsed (belt-and-suspenders).
+    for root in search_roots:
+        failed_log = root / "Testing" / "Temporary" / "LastTestsFailed.log"
+        if failed_log.exists():
+            try:
+                with open(failed_log, 'r', encoding='utf-8', errors='ignore') as f:
+                    for line in f:
+                        # Format: "<test_number>:<test_name>"
+                        parts = line.strip().split(':', 1)
+                        if len(parts) == 2:
+                            failed_name = parts[1].strip()
+                            mapping = test_name_map.get(failed_name)
+                            if mapping:
+                                model, test_type = mapping
+                                if model in test_results:
+                                    test_results[model][test_type] = 'FAIL'
+                                    ctest_found = True
+            except Exception as e:
+                print(f"Warning: Could not parse {failed_log}: {e}")
+    
     if ctest_found:
         print("Successfully parsed CTest results.")
     else:
-        print("No CTest log found, using inferred results from available plots.")
+        print("WARNING: No CTest log found — test results shown as UNKNOWN.")
+        print("  Run tests via ctest first so that Testing/Temporary/LastTest.log exists.")
     
     return test_results
 
@@ -302,7 +310,7 @@ def generate_markdown_report(categorized_plots, output_dir, build_dir, html_styl
     content.append("")
     
     # Get test results
-    test_results = get_test_results(categorized_plots)
+    test_results = get_test_results(categorized_plots, build_dir=build_dir)
     
     # Regression Test Summary with styled table
     if html_styling:

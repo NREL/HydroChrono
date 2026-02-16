@@ -21,21 +21,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Switched added-mass implementation to Chrono's built-in `ChLoadHydrodynamics`** — replaces HydroChrono's legacy `ChLoadAddedMass` (`ChLoadCustomMultiple`-based) as the default. The legacy implementation is retained in the codebase and can be re-activated by uncommenting `#define HYDROCHRONO_USE_LEGACY_ADDED_MASS` in `hydro_system.h`.
 - Default solver changed from GMRES to SPARSE_QR for most regression tests (faster, deterministic)
 - Irregular wave surface evaluation performance improved (parallelism and caching)
+- Regression test report generator now correctly parses CTest logs for PASS/FAIL status instead of assuming PASS when plots exist
 
 ### Fixed
 
 - **YAML runner: `LoadSolverData` never called** — YAML structure mismatch prevented solver data from being loaded
 - **YAML runner: mesh file paths broken** — `m_script_directory` was empty, breaking relative `model_file:` paths
+- **Regression report image paths** — report generator now computes correct relative paths to plot images instead of using hardcoded paths
 - OSWEC solver switched from SPARSE_QR to GMRES to prevent divergence (see Known Issues)
 - RM3 decay test fixes and cleanup
 - Sphere irregular wave test default arguments corrected
-- Regular wave bug fixes
+- **Regular wave excitation phase indexing for multi-body systems** — `RegularWave::GetForceAtTime()` used `excitation_force_phase_[rowEx]` instead of `excitation_force_phase_[body_offset + rowEx]`, causing body 2+ to use body 1's excitation phase. This affected the RM3 plate (and any second+ body) heave response in regular waves. Single-body models (e.g., sphere) were unaffected.
 
 ### Known Issues
 
-- **SPARSE_QR solver causes OSWEC simulations to diverge.** The constrained multi-body OSWEC model (revolute joints) diverges under the SPARSE_QR solver. OSWEC demos and tests use GMRES as a workaround. Other models (sphere, RM3, F3OF) are unaffected. Root cause not yet diagnosed.
+- **OSWEC tests use GMRES solver.** OSWEC demos and tests use GMRES rather than SPARSE_QR. SPARSE_QR may work for OSWEC but has not yet been validated.
 - **PSOR solver cannot handle added-mass assembly.** The added-mass determinism unit test solver sweep reports that PSOR errors out because it cannot handle stiffness/damping matrices. All other swept solvers (SPARSE_QR, SPARSE_LU, MINRES, GMRES, BICGSTAB, BARZILAIBORWEIN, APGD) pass assembly.
 
 ## [0.4.0] — 2025
