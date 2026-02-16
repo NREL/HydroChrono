@@ -28,13 +28,13 @@ using namespace chrono;
 
 // Shared simulation parameters
 const double TIMESTEP      = 0.015;
-const double DURATION      = 60.0;  // Short duration for faster testing
 const double WAVE_HEIGHT   = 2.0;
 const double WAVE_PERIOD   = 12.0;
 const double RAMP_DURATION = 0.0;  // No ramp for exact comparison
 const int SEED             = 42;   // Fixed seed for reproducibility
 
 int main(int argc, char* argv[]) {
+    const double DURATION = hydroc::getSimDuration(60.0, 120.0);
     std::cout << "=== IRREGULAR WAVES ETA CONSISTENCY TEST ===" << std::endl;
     std::cout << "Validates spectrum-generated and eta-imported waves produce identical results.\n" << std::endl;
 

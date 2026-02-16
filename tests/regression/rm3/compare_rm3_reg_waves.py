@@ -13,7 +13,7 @@ import numpy as np
 
 # Import the comparison template
 sys.path.append(os.path.join(os.path.dirname(__file__), '../utilities'))
-from compare_template import run_multi_column_comparison
+from compare_template import run_multi_column_comparison, write_status_file, clip_to_common_time
 
 def main():
 
@@ -57,6 +57,7 @@ def main():
         # Load data for additional RM3-specific validations
         ref_data = np.loadtxt(ref_file, skiprows=1)  # Skip header line
         test_data = np.loadtxt(results_file, skiprows=1)  # Skip header line
+        ref_data, test_data = clip_to_common_time(ref_data, test_data)
         
         # Show where the plots will be saved
         test_file_path = Path(results_file)
@@ -160,6 +161,7 @@ def main():
             print(f"RM3 validation failed: Float heave difference {floatHeaven1:.2e} > 1e-4 or {floatHeaven2:.2e} > 0.02")
             print(f"RM3 validation failed: Plate heave difference {plateHeaven1:.2e} > 1e-4 or {plateHeaven2:.2e} > 0.02")
             print(f"RM3 validation failed: Float drift difference {floatDriftn1:.2e} > 1e-4 or {floatDriftn2:.2e} > 0.02")
+            write_status_file(test_file_path.parent, "rm3_reg_waves", "FAIL")
             sys.exit(1)
         
         # Check if all template comparisons passed
@@ -167,12 +169,14 @@ def main():
         
         if all_passed:
             print("RM3 REGULAR WAVES TEST PASSED - All comparisons within tolerance")
+            write_status_file(test_file_path.parent, "rm3_reg_waves", "PASS")
             print(f"Generated plots:")
             for config in test_configs:
                 plot_name = config['test_name'].lower().replace(' ', '_').replace('-', '_')
                 print(f"  - {config['test_name']}: {plots_dir}/{plot_name}_comparison.png")
         else:
             print("RM3 REGULAR WAVES TEST FAILED - Some comparisons outside tolerance")
+            write_status_file(test_file_path.parent, "rm3_reg_waves", "FAIL")
             sys.exit(1)
         
     except Exception as e:

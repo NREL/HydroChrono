@@ -44,6 +44,7 @@ def main():
             y_label="Heave (m)",
             executable_patterns=["sphere_irreg_waves_test"],
             pass_criteria=(1e-4, 0.02),
+            status_name="sphere_irreg_waves"
         )
 
         if passed:

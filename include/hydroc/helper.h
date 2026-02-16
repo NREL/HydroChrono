@@ -54,6 +54,17 @@ bool GetCLIArguments(int argc,
  */
 bool SetInitialEnvironment(const std::string& data_dir) noexcept;
 
+/**@brief Get simulation duration based on HYDROCHRONO_LONG_TESTS environment variable.
+ *
+ * Tests use shorter durations by default for fast CI/regression checks.
+ * Set HYDROCHRONO_LONG_TESTS=1 to use longer durations for publication-quality results.
+ *
+ * @param short_duration Duration (seconds) for quick testing
+ * @param long_duration  Duration (seconds) for thorough/publication testing
+ * @return short_duration normally, long_duration when HYDROCHRONO_LONG_TESTS=1
+ */
+double getSimDuration(double short_duration, double long_duration) noexcept;
+
 /**@brief Get base name of data directory
  *
  * @return the string containing the path in standard format

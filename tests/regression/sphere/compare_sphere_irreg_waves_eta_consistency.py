@@ -17,7 +17,7 @@ import numpy as np
 
 # Import the comparison template
 sys.path.append(os.path.join(os.path.dirname(__file__), '../utilities'))
-from compare_template import create_comparison_plot, format_path
+from compare_template import create_comparison_plot, format_path, write_status_file
 
 if __name__ == '__main__':
     """
@@ -70,7 +70,9 @@ if __name__ == '__main__':
     
     if passed:
         print(f"TEST PASSED - Max difference: {max_diff:.2e}, Tolerance: {tolerance:.2e}")
+        write_status_file(test_file_path.parent, "sphere_irreg_waves_eta_consistency", "PASS")
     else:
         print(f"TEST FAILED - Max difference: {max_diff:.2e} exceeds tolerance: {tolerance:.2e}")
+        write_status_file(test_file_path.parent, "sphere_irreg_waves_eta_consistency", "FAIL")
     
     sys.exit(0 if passed else 1)

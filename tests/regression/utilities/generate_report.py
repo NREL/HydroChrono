@@ -117,8 +117,86 @@ def get_test_summary(categorized_plots):
         'models': list(categorized_plots.keys())
     }
 
+def _read_status_files(build_dir):
+    """Scan for .status.json files written by comparison scripts.
+    
+    These files are the most reliable source of pass/fail information because
+    they are written by the comparison scripts themselves and persist across
+    ctest invocations (unlike LastTest.log which is overwritten each run).
+    
+    Returns:
+        dict mapping (model, status_name) -> {"status": "PASS"/"FAIL", ...}
+    """
+    import json
+    
+    build_path = Path(build_dir).resolve() if build_dir else Path.cwd()
+    models = ['sphere', 'f3of', 'oswec', 'rm3']
+    
+    results = {}
+    
+    for model in models:
+        # Status files live alongside the result .txt files
+        possible_dirs = [
+            build_path / "bin" / "Release" / "results" / "tests" / model,
+            build_path / "bin" / "results" / "tests" / model,
+            build_path / "bin" / "tests" / "regression" / model / "results",
+        ]
+        
+        for results_dir in possible_dirs:
+            if not results_dir.exists():
+                continue
+            for sf in results_dir.glob("*.status.json"):
+                try:
+                    with open(sf, 'r', encoding='utf-8') as f:
+                        payload = json.load(f)
+                    status_name = payload.get("test_name", sf.stem.replace(".status", ""))
+                    results[(model, status_name)] = payload
+                except Exception as e:
+                    print(f"Warning: could not read status file {sf}: {e}")
+    
+    return results
+
+
+# Mapping from status-file test names to the report's (model, test_type) pairs.
+# Keys are substrings matched against the status-file test_name field.
+# Canonical status-file names → report (model, test_type).
+# Each key is a prefix matched against the status-file test_name.
+# Longest prefix wins, so "sphere_irreg_waves_eta_consistency" is tried
+# before "sphere_irreg_waves_eta" which is tried before "sphere_irreg_waves".
+_STATUS_NAME_TO_REPORT_TYPE = {
+    'sphere_decay':                         ('sphere', 'decay'),
+    'sphere_reg_waves':                     ('sphere', 'regular_waves'),
+    'sphere_irreg_waves_eta_consistency':    ('sphere', 'other'),
+    'sphere_irreg_waves_eta':               ('sphere', 'irregular_waves_eta'),
+    'sphere_irreg_waves':                   ('sphere', 'irregular_waves'),
+    'f3of_dt1':                             ('f3of', 'decay'),
+    'f3of_dt2':                             ('f3of', 'decay'),
+    'f3of_dt3':                             ('f3of', 'decay'),
+    'oswec_decay':                          ('oswec', 'decay'),
+    'oswec_reg_waves':                      ('oswec', 'regular_waves'),
+    'rm3_decay':                            ('rm3', 'decay'),
+    'rm3_reg_waves':                        ('rm3', 'regular_waves'),
+}
+
+
+def _classify_status_name(model, status_name):
+    """Map a status-file test name to the report's (model, test_type) pair."""
+    # Try exact match first, then prefix match (longest prefix wins)
+    for key in sorted(_STATUS_NAME_TO_REPORT_TYPE, key=len, reverse=True):
+        if status_name == key or status_name.startswith(key):
+            mapped_model, test_type = _STATUS_NAME_TO_REPORT_TYPE[key]
+            if mapped_model == model:
+                return (model, test_type)
+    return None
+
+
 def get_test_results(categorized_plots, build_dir=None):
-    """Get test results from CTest logs, falling back to UNKNOWN when unavailable."""
+    """Get test results from status files (primary) or CTest logs (fallback).
+    
+    Status files (.status.json) are written by comparison scripts and persist
+    across ctest runs.  CTest's LastTest.log is ephemeral — it only contains
+    the results from the *most recent* ctest invocation.
+    """
     test_results = {
         'sphere': {},
         'f3of': {},
@@ -126,21 +204,49 @@ def get_test_results(categorized_plots, build_dir=None):
         'rm3': {}
     }
     
-    # Default status: plots exist but we don't know pass/fail without CTest logs
+    # Default status: plots exist but we don't know pass/fail yet
     for model, model_plots in categorized_plots.items():
         if model not in test_results:
             test_results[model] = {}
-        
         for test_type, plots in model_plots.items():
-            if plots:
-                test_results[model][test_type] = 'UNKNOWN'
-            else:
-                test_results[model][test_type] = 'NO DATA'
+            test_results[model][test_type] = 'UNKNOWN' if plots else 'NO DATA'
     
-    # Try to find and parse CTest log files for accurate results
+    # -----------------------------------------------------------------
+    # 1. Primary source: persistent .status.json files
+    # -----------------------------------------------------------------
+    status_files = _read_status_files(build_dir)
+    status_found = False
+    
+    for (model, status_name), payload in status_files.items():
+        mapping = _classify_status_name(model, status_name)
+        if not mapping:
+            continue
+        m, test_type = mapping
+        status = payload.get("status", "UNKNOWN")
+        if m in test_results:
+            existing = test_results[m].get(test_type)
+            # Don't overwrite FAIL with PASS (any sub-test failure → FAIL)
+            if existing == 'FAIL':
+                continue
+            test_results[m][test_type] = status
+            status_found = True
+    
+    if status_found:
+        print("Successfully read status files from comparison scripts.")
+    
+    # Count how many slots are still UNKNOWN after reading status files
+    unknown_count = sum(
+        1 for m in test_results for t, s in test_results[m].items() if s == 'UNKNOWN'
+    )
+    
+    if unknown_count == 0:
+        return test_results
+    
+    # -----------------------------------------------------------------
+    # 2. Fallback: parse CTest LastTest.log for any remaining UNKNOWN
+    # -----------------------------------------------------------------
     import re
     
-    # Search for CTest log in likely locations relative to build_dir
     search_roots = []
     if build_dir:
         search_roots.append(Path(build_dir).resolve())
@@ -151,9 +257,6 @@ def get_test_results(categorized_plots, build_dir=None):
         ctest_log_patterns.append(root / "Testing" / "Temporary" / "LastTest.log")
         ctest_log_patterns.append(root / "Testing" / "Temporary" / "LastTest.log.tmp")
     
-    # Mapping from CTest test names to (model, test_type) pairs.
-    # Only regression comparison tests (the *_regression tests) matter here;
-    # the C++ execute tests just produce data files.
     test_name_map = {
         'sphere_decay_regression':                      ('sphere', 'decay'),
         'sphere_reg_waves_regression':                  ('sphere', 'regular_waves'),
@@ -176,10 +279,6 @@ def get_test_results(categorized_plots, build_dir=None):
                 with open(log_file, 'r', encoding='utf-8', errors='ignore') as f:
                     content = f.read()
                 
-                # LastTest.log format:
-                #   X/Y Testing: <test_name>
-                #   ... (output) ...
-                #   Test Passed.   OR   Test Failed.
                 test_blocks = re.findall(
                     r'\d+/\d+\s+Testing:\s+(\S+).*?Test\s+(Passed|Failed)\.',
                     content, re.DOTALL)
@@ -190,30 +289,24 @@ def get_test_results(categorized_plots, build_dir=None):
                         continue
                     model, test_type = mapping
                     
-                    result_status = 'PASS' if status == 'Passed' else 'FAIL'
-                    
+                    # Only fill in slots still showing UNKNOWN
                     if model in test_results:
-                        # For f3of, multiple tests map to 'decay' — only mark FAIL
-                        # if any sub-test fails (don't overwrite FAIL with PASS).
                         existing = test_results[model].get(test_type)
-                        if existing == 'FAIL':
+                        if existing not in ('UNKNOWN',):
                             continue
+                        result_status = 'PASS' if status == 'Passed' else 'FAIL'
                         test_results[model][test_type] = result_status
                         ctest_found = True
                                 
             except Exception as e:
                 print(f"Warning: Could not parse CTest log {log_file}: {e}")
     
-    # Also check LastTestsFailed.log — contains names of failed tests from the
-    # most recent ctest run.  This is a quick cross-check even if LastTest.log
-    # was already parsed (belt-and-suspenders).
     for root in search_roots:
         failed_log = root / "Testing" / "Temporary" / "LastTestsFailed.log"
         if failed_log.exists():
             try:
                 with open(failed_log, 'r', encoding='utf-8', errors='ignore') as f:
                     for line in f:
-                        # Format: "<test_number>:<test_name>"
                         parts = line.strip().split(':', 1)
                         if len(parts) == 2:
                             failed_name = parts[1].strip()
@@ -227,10 +320,15 @@ def get_test_results(categorized_plots, build_dir=None):
                 print(f"Warning: Could not parse {failed_log}: {e}")
     
     if ctest_found:
-        print("Successfully parsed CTest results.")
-    else:
-        print("WARNING: No CTest log found — test results shown as UNKNOWN.")
-        print("  Run tests via ctest first so that Testing/Temporary/LastTest.log exists.")
+        print("Supplemented with CTest log results.")
+    
+    # Final summary
+    remaining = sum(
+        1 for m in test_results for t, s in test_results[m].items() if s == 'UNKNOWN'
+    )
+    if remaining:
+        print(f"Note: {remaining} test(s) still show UNKNOWN — re-run the regression "
+              "tests to generate status files.")
     
     return test_results
 

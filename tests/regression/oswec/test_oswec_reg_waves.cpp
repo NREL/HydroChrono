@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) {
         system.SetGravitationalAcceleration(ChVector3d(0.0, 0.0, -9.81));
         double timestep = 0.03;
         system.SetSolverType(ChSolver::Type::GMRES);
-        double simulationDuration = 240.0;
+        double simulationDuration = hydroc::getSimDuration(240.0, 1000.0);
 
         // Output timeseries
         std::vector<double> time_vector;
