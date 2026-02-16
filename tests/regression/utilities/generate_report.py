@@ -831,14 +831,54 @@ def convert_to_pdf(markdown_file, output_dir):
         print(f"ERROR: PDF generation failed: {e}")
         return None
 
+def rerun_comparisons(build_dir, config="Release"):
+    """Re-run CTest comparison tests to regenerate plot images.
+    
+    This ensures plots reflect the current reference data. Without this step,
+    plots may be stale if reference data was updated after the last test run.
+    
+    Note: The comparison tests use CTest FIXTURES_REQUIRED, which means CTest
+    will skip them unless the simulation fixture tests are also selected.
+    We use -FA "." to exclude all fixture requirements so the comparison
+    scripts run directly (the simulation output files already exist on disk).
+    """
+    print("Re-running comparison tests to regenerate plots...")
+    build_path = Path(build_dir).resolve()
+    
+    cmd = [
+        "ctest",
+        "--test-dir", str(build_path),
+        "-C", config,
+        "-R", "_regression",
+        "-LE", "report",
+        "-FA", ".",
+        "--output-on-failure"
+    ]
+    
+    result = subprocess.run(cmd, capture_output=False)
+    if result.returncode != 0:
+        print("WARNING: Some comparison tests failed (plots were still regenerated).")
+    else:
+        print("All comparison tests passed.")
+    print()
+
+
 def main():
     parser = argparse.ArgumentParser(description='Generate HydroChrono regression test report')
     parser.add_argument('--output-dir', help='Output directory for reports (default: build/bin/tests/regression/report)')
     parser.add_argument('--build-dir', default='build', help='Build directory path')
     parser.add_argument('--pdf', action='store_true', help='Generate PDF using pandoc (requires pandoc to be installed)')
     parser.add_argument('--html-styling', action='store_true', help='Include HTML styling in markdown (for advanced PDF generation)')
+    parser.add_argument('--recompare', action='store_true',
+                        help='Re-run CTest comparison tests before generating the report. '
+                             'Use this after updating reference data to ensure plots are current.')
+    parser.add_argument('--config', default='Release', help='Build configuration (default: Release)')
     
     args = parser.parse_args()
+    
+    # Re-run comparison tests if requested
+    if args.recompare:
+        rerun_comparisons(args.build_dir, args.config)
     
     # Set default output directory to build/bin/tests/regression/report if not specified
     if args.output_dir is None:
