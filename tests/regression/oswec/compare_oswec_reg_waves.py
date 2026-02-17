@@ -78,7 +78,8 @@ def main():
                 test_name=f"OSWEC Regular Waves - Wave {wave_num}",
                 y_label="Pitch (radians)",
                 executable_patterns=["test_oswec_reg_waves"],
-                pass_criteria=(1e-4, 0.02)
+                pass_criteria=(1e-4, 0.02),
+                status_name=f"oswec_reg_waves_wave_{wave_num}"
             )
             
             if not passed:

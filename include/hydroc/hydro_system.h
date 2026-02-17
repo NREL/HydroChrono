@@ -17,6 +17,16 @@
 #ifndef HYDRO_SYSTEM_H
 #define HYDRO_SYSTEM_H
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Added Mass Implementation Toggle
+// ─────────────────────────────────────────────────────────────────────────────
+// By default, HydroChrono uses Chrono's built-in ChLoadHydrodynamics for
+// infinite-frequency added mass. To switch to HydroChrono's legacy
+// ChLoadAddedMass (ChLoadCustomMultiple-based) implementation, uncomment:
+//
+// #define HYDROCHRONO_USE_LEGACY_ADDED_MASS
+//
+
 // Include hydro_types.h FIRST to ensure BodyForces and GeneralizedForce are available
 // before any other includes that might conflict (e.g., config/hydro_config.h)
 #include <hydroc/core/hydro_types.h>
@@ -37,7 +47,9 @@
 // ChForce.h includes ChFunction internally, so we don't need a separate include.
 #include <chrono/physics/ChBody.h>
 #include <chrono/physics/ChForce.h>
+#ifdef HYDROCHRONO_USE_LEGACY_ADDED_MASS
 #include <chrono/physics/ChLoadContainer.h>
+#endif
 
 // Hydroc library includes
 #include <hydroc/io/h5_reader.h>
@@ -185,8 +197,10 @@ class ForceFunc6d {
     HydroSystem* all_hydro_forces_ = nullptr;                 ///< Pointer to HydroSystem for calculations.
 };
 
+#ifdef HYDROCHRONO_USE_LEGACY_ADDED_MASS
 // Forward declaration of ChLoadAddedMass (defined in added_mass.h, included in .cpp)
 class ChLoadAddedMass;
+#endif
 
 // Lightweight hydrodynamics profiling stats
 struct HydroProfileStats {
@@ -436,9 +450,11 @@ class HydroSystem {
     hydrochrono::hydro::SystemState cached_state_;
     double cached_state_time_ = std::numeric_limits<double>::quiet_NaN();
 
-    // Added mass related properties
+#ifdef HYDROCHRONO_USE_LEGACY_ADDED_MASS
+    // Added mass related properties (legacy ChLoadAddedMass path)
     std::shared_ptr<chrono::ChLoadContainer> my_loadcontainer;
     std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia;
+#endif
 
     /**
      * @brief Returns the cached SystemState for the given time.

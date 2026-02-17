@@ -79,7 +79,8 @@ def main():
                 test_name=f"Sphere Regular Waves - Wave {wave_num}",
                 y_label="Heave (m)",
                 executable_patterns=["sphere_reg_waves_test"],
-                pass_criteria=(1e-4, 0.02)
+                pass_criteria=(1e-4, 0.02),
+                status_name=f"sphere_reg_waves_wave_{wave_num}"
             )
             
             if not passed:

@@ -29,7 +29,7 @@ ctest -C Release -L unit --test-dir build -V
 
 ## Test: added-mass assembly (`test_added_mass_determinism`)
 
-Verifies that Chrono's `ChLoadHydrodynamics` correctly assembles a cross-coupled added-mass matrix for a multi-body system.
+Verifies that Chrono's `ChLoadHydrodynamics` (the default added-mass path) correctly assembles a cross-coupled added-mass matrix for a multi-body system.
 
 ### What it does
 

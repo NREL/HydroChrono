@@ -106,6 +106,16 @@ bool hydroc::SetInitialEnvironment(const std::string& data_dir) noexcept {
     return true;
 }
 
+double hydroc::getSimDuration(double short_duration, double long_duration) noexcept {
+    const char* env = std::getenv("HYDROCHRONO_LONG_TESTS");
+    if (env) {
+        std::string val(env);
+        if (val == "1" || val == "true" || val == "TRUE" || val == "ON")
+            return long_duration;
+    }
+    return short_duration;
+}
+
 std::string hydroc::getDataDir() noexcept {
     return DATADIR.lexically_normal().generic_string();
 }

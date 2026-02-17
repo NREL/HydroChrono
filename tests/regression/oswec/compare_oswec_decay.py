@@ -13,7 +13,7 @@ import numpy as np
 
 # Import the comparison template
 sys.path.append(os.path.join(os.path.dirname(__file__), '../utilities'))
-from compare_template import run_multi_column_comparison
+from compare_template import run_multi_column_comparison, write_status_file, clip_to_common_time
 
 def main():
     if len(sys.argv) != 3:
@@ -44,6 +44,7 @@ def main():
         # Load data for additional OSWEC-specific validations
         ref_data = np.loadtxt(ref_file, skiprows=1)
         test_data = np.loadtxt(results_file, skiprows=1)
+        ref_data, test_data = clip_to_common_time(ref_data, test_data)
         
         # Show where the plots will be saved
         test_file_path = Path(results_file)
@@ -122,6 +123,7 @@ def main():
         
         if (flapPitchn1 > 1e-4 or flapPitchn2 > 0.02):
             print(f"OSWEC validation failed: Flap pitch difference {flapPitchn1:.2e} > 1e-4 or {flapPitchn2:.2e} > 0.02")
+            write_status_file(test_file_path.parent, "oswec_decay", "FAIL")
             sys.exit(1)
         
         # Check if all template comparisons passed
@@ -129,12 +131,14 @@ def main():
         
         if all_passed:
             print("OSWEC DECAY TEST PASSED - All comparisons within tolerance")
+            write_status_file(test_file_path.parent, "oswec_decay", "PASS")
             print(f"Generated plots:")
             for config in test_configs:
                 plot_name = config['test_name'].lower().replace(' ', '_').replace('-', '_')
                 print(f"  - {config['test_name']}: {plots_dir}/{plot_name}_comparison.png")
         else:
             print("OSWEC DECAY TEST FAILED - Some comparisons outside tolerance")
+            write_status_file(test_file_path.parent, "oswec_decay", "FAIL")
             sys.exit(1)
         
     except Exception as e:

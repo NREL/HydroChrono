@@ -13,7 +13,7 @@ import numpy as np
 
 # Import the comparison template
 sys.path.append(os.path.join(os.path.dirname(__file__), '../utilities'))
-from compare_template import run_multi_column_comparison
+from compare_template import run_multi_column_comparison, clip_to_common_time
 
 def main():
     # F3OF DT3 specific configuration
@@ -43,6 +43,7 @@ def main():
         # Load data for validation
         ref_data = np.loadtxt(ref_file, skiprows=1)
         test_data = np.loadtxt(results_file, skiprows=1)
+        ref_data, test_data = clip_to_common_time(ref_data, test_data)
 
         # Show where the plots will be saved
         test_file_path = Path(results_file)
@@ -62,13 +63,15 @@ def main():
                 'column_index': 3,  # Flap Fore Pitch
                 'test_name': f"{test_name} - Flap Fore Pitch",
                 'y_label': "Flap Fore Pitch (radians)",
-                'validation_tolerance': (1e-6, 1e-6)
+                'validation_tolerance': (1e-6, 1e-6),
+                'status_name': 'f3of_dt3_flap_fore_pitch'
             },
             {
                 'column_index': 4,  # Flap Aft Pitch
                 'test_name': f"{test_name} - Flap Aft Pitch",
                 'y_label': "Flap Aft Pitch (radians)",
-                'validation_tolerance': (1e-6, 1e-6)
+                'validation_tolerance': (1e-6, 1e-6),
+                'status_name': 'f3of_dt3_flap_aft_pitch'
             }
         ]
 
@@ -79,26 +82,38 @@ def main():
         )
 
         # Additional F3OF-specific validations (from the original script)
+        # Interpolate reference onto test time grid to handle different durations
+        nval = test_data.shape[0]
+        x = np.linspace(test_data[0, 0], test_data[nval-1, 0], nval)
+
         # Check base surge (column 1)
-        diff_base_surge = np.linalg.norm(ref_data[:,1] - test_data[:,1]) / len(ref_data[:,1])
+        ref_col1 = np.interp(x, ref_data[:,0], ref_data[:,1])
+        test_col1 = np.interp(x, test_data[:,0], test_data[:,1])
+        diff_base_surge = np.linalg.norm(ref_col1 - test_col1) / nval
         if diff_base_surge > 1e-6:
             print(f"F3OF DT3 validation failed: Base surge difference {diff_base_surge:.2e} > 1e-6")
             sys.exit(1)
 
         # Check base pitch (column 2) - more stringent tolerance
-        diff_base_pitch = np.linalg.norm(ref_data[:,2] - test_data[:,2]) / len(ref_data[:,2])
+        ref_col2 = np.interp(x, ref_data[:,0], ref_data[:,2])
+        test_col2 = np.interp(x, test_data[:,0], test_data[:,2])
+        diff_base_pitch = np.linalg.norm(ref_col2 - test_col2) / nval
         if diff_base_pitch > 1e-10:
             print(f"F3OF DT3 validation failed: Base pitch difference {diff_base_pitch:.2e} > 1e-10")
             sys.exit(1)
 
         # Check flap fore pitch (column 3)
-        diff_flap_fore_pitch = np.linalg.norm(ref_data[:,3] - test_data[:,3]) / len(ref_data[:,3])
+        ref_col3 = np.interp(x, ref_data[:,0], ref_data[:,3])
+        test_col3 = np.interp(x, test_data[:,0], test_data[:,3])
+        diff_flap_fore_pitch = np.linalg.norm(ref_col3 - test_col3) / nval
         if diff_flap_fore_pitch > 1e-6:
             print(f"F3OF DT3 validation failed: Flap fore pitch difference {diff_flap_fore_pitch:.2e} > 1e-6")
             sys.exit(1)
 
         # Check flap aft pitch (column 4)
-        diff_flap_aft_pitch = np.linalg.norm(ref_data[:,4] - test_data[:,4]) / len(ref_data[:,4])
+        ref_col4 = np.interp(x, ref_data[:,0], ref_data[:,4])
+        test_col4 = np.interp(x, test_data[:,0], test_data[:,4])
+        diff_flap_aft_pitch = np.linalg.norm(ref_col4 - test_col4) / nval
         if diff_flap_aft_pitch > 1e-6:
             print(f"F3OF DT3 validation failed: Flap aft pitch difference {diff_flap_aft_pitch:.2e} > 1e-6")
             sys.exit(1)

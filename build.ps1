@@ -71,6 +71,10 @@ if ($Help) {
     Write-Host "  .\build.ps1 -Clean -Verbose    # Clean build with details"
     Write-Host "  .\build.ps1 -Package           # Build and create ZIP`n"
     
+    Write-Host "LONG TESTS:" -ForegroundColor Yellow
+    Write-Host "  Set `$env:HYDROCHRONO_LONG_TESTS='1' before running ctest to use extended"
+    Write-Host "  simulation durations for publication-quality regression reports.`n"
+    
     Write-Host "CONFIG FILE:" -ForegroundColor Yellow
     Write-Host '  { "ChronoDir": "C:/path/to/chrono/build/cmake" }' -ForegroundColor Gray
     Write-Host ""
@@ -361,7 +365,16 @@ Write-Host "BUILD SUCCESSFUL" -ForegroundColor Green
 Write-Host "========================================`n" -ForegroundColor Green
 
 Write-Host "Output: $binPath" -ForegroundColor Cyan
+Write-Host ""
 Write-Host "Tests:  ctest -C $BuildType -L regression --test-dir build" -ForegroundColor Gray
 Write-Host "        ctest -C $BuildType -L unit       --test-dir build" -ForegroundColor Gray
 Write-Host "        Add -V for verbose output, --output-on-failure for failures only" -ForegroundColor DarkGray
+Write-Host ""
+Write-Host "Long:   `$env:HYDROCHRONO_LONG_TESTS='1'" -ForegroundColor Gray
+Write-Host "        ctest -C $BuildType -L regression --test-dir build" -ForegroundColor Gray
+Write-Host "        Runs with extended simulation durations" -ForegroundColor DarkGray
+Write-Host ""
+Write-Host "Report: python tests/regression/utilities/generate_report.py --build-dir build --pdf" -ForegroundColor Gray
+Write-Host "        Generates regression test report (markdown + PDF) in build/bin/report/" -ForegroundColor DarkGray
+Write-Host "        Requires: pip install pypandoc  (or pandoc on PATH)" -ForegroundColor DarkGray
 Write-Host ""

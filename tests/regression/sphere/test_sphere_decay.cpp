@@ -32,7 +32,7 @@ int main(int argc, char* argv[]) {
 
     double timestep = 0.015;
     system.SetSolverType(ChSolver::Type::SPARSE_QR);
-    double simulationDuration = 40.0;
+    double simulationDuration = hydroc::getSimDuration(40.0, 100.0);
 
     // Output timeseries
     std::vector<double> time_vector;

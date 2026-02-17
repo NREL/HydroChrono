@@ -30,7 +30,7 @@ int main(int argc, char* argv[]) {
     system.SetGravitationalAcceleration(ChVector3d(0.0, 0.0, -9.81));
     double timestep = 0.015;
     system.SetSolverType(ChSolver::Type::SPARSE_QR);
-    double simulationDuration = 600.0;
+    double simulationDuration = hydroc::getSimDuration(600.0, 1200.0);
 
     // Setup Ground
     auto ground = chrono_types::make_shared<ChBody>();

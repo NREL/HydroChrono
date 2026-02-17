@@ -20,7 +20,7 @@ endif()
 # ===============================================================================
 
 project(HydroChrono 
-    VERSION 0.4.0
+    VERSION 0.5.0
     DESCRIPTION "Hydrodynamics for Project Chrono."
     LANGUAGES CXX
 )
@@ -303,6 +303,7 @@ set(HC_SOURCES
     src/hydro/radiation/radiation_rirf_convolution.cpp
     src/hydro/core/hydro_forces.cpp
     # Chrono coupling layer (bridges Chrono physics with Chrono-free core)
+    src/hydro/chrono/added_mass.cpp
     src/hydro/chrono/chrono_state_utils.cpp
     src/hydro/chrono/chrono_hydro_coupler.cpp
     src/hydro/force_components/hydrostatics_component.cpp
@@ -325,6 +326,7 @@ set(HC_HEADERS
     include/hydroc/core/hydro_forces.h
     include/hydroc/core/hydro_types.h
     include/hydroc/core/system_state.h
+    include/hydroc/coupling/added_mass.h
     include/hydroc/coupling/chrono_coupler.h
     include/hydroc/io/h5_reader.h
     include/hydroc/io/h5_writer.h
