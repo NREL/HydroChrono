@@ -73,8 +73,7 @@ if ($Help) {
     
     Write-Host "LONG TESTS:" -ForegroundColor Yellow
     Write-Host "  Set `$env:HYDROCHRONO_LONG_TESTS='1' before running ctest to use extended"
-    Write-Host "  simulation durations (e.g. OSWEC reg waves: 240s -> 1000s) for publication-"
-    Write-Host "  quality regression reports.`n"
+    Write-Host "  simulation durations for publication-quality regression reports.`n"
     
     Write-Host "CONFIG FILE:" -ForegroundColor Yellow
     Write-Host '  { "ChronoDir": "C:/path/to/chrono/build/cmake" }' -ForegroundColor Gray

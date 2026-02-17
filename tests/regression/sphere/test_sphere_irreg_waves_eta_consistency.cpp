@@ -126,7 +126,7 @@ int main(int argc, char* argv[]) {
                 std::cerr << "ERROR: Could not create eta file: " << eta_file << std::endl;
                 return 1;
             }
-            eta_out << std::setprecision(10);
+            eta_out << std::setprecision(17);
             for (size_t i = 0; i < fse_time.size(); ++i) {
                 eta_out << fse_time[i] << ":" << fse_elevation[i] << "\n";
             }
