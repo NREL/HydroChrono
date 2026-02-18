@@ -153,7 +153,7 @@ int main(int argc, char* argv[]) {
     // ---------------- End DT specific set up, now add hydro forces ----------------------------------
 
     // define wave parameters (not used in this demo TODO have hydroforces constructor without hydro inputs)
-    auto default_dont_add_waves = std::make_shared<NoWave>(3);
+    auto default_dont_add_waves = std::make_shared<NoWave>();
 
     // set up hydro forces
     std::vector<std::shared_ptr<ChBody>> bodies;

@@ -333,6 +333,7 @@ HydroSystem::HydroSystem(std::vector<std::shared_ptr<ChBody>> user_bodies,
 
 void HydroSystem::AddWaves(std::shared_ptr<WaveBase> waves) {
     user_waves_ = waves;
+    user_waves_->SetNumBodies(static_cast<unsigned int>(num_bodies_));
 
     switch (user_waves_->GetWaveMode()) {
         case WaveMode::regular: {

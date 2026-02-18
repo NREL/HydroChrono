@@ -85,7 +85,7 @@ int main(int argc, char* argv[]) {
     // my_hydro_inputs.regular_wave_amplitude = 0.022;
     // my_hydro_inputs.regular_wave_omega = 2.10;
 
-    auto default_dont_add_waves = std::make_shared<NoWave>(1);
+    auto default_dont_add_waves = std::make_shared<NoWave>();
 
     // attach hydrodynamic forces to body
     std::vector<std::shared_ptr<ChBody>> bodies;

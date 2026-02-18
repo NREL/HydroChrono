@@ -102,15 +102,50 @@ In HydroChrono, the force is computed through trapezoidal integration at the tim
 
 ### Wave excitation force, \\( F_{exc}(t) \\)
 
-The method to compute the wave excitation force involves convolution between the excitation Impulse Response Function (IRF) \\( K_{exc}(t) \\) and the wave elevation time sequence \\( \eta(t) \\):
+The wave excitation force is defined by the convolution of the excitation Impulse Response Function (IRF) \\( K_{exc}(\tau) \\) with the free-surface elevation \\( \eta(t) \\):
 
 $$
-F_{exc}(t) = \int_{-\infty}^{+\infty} K_{exc}(\tau) \eta(x, y, t-\tau) d\tau
+F_{exc}(t) = \int_{-\infty}^{+\infty} K_{exc}(\tau) \, \eta(x, y, t-\tau) \, d\tau
 $$
 
 By amalgamating these forces into the equation of motion, one can effectively model the behavior of a multibody oceanic system influenced by hydrodynamic forces.
 
-In HydroChrono, the force is computed through trapezoidal integration by discretizing at the time values given by the excitation IRF time array relative to the current simulation time step. Linear interpolation is done for the free surface elevation if a given time value is between two values of the time series of the precomputed free surface elevation.
+#### Numerical evaluation
+
+The continuous convolution integral is discretized using the quadrature points \\( \tau_j \\) and widths \\( \Delta\tau_j \\) provided by the excitation IRF time array from the BEM data:
+
+$$
+F_{exc,d}(t) = \sum_j K_{exc,d}(\tau_j) \, \eta(t - \tau_j) \, \Delta\tau_j
+$$
+
+where \\( d \\) denotes a particular degree of freedom.
+
+HydroChrono supports two evaluation strategies, depending on how the sea state is defined.
+
+**Frequency-domain transfer function (spectrum-based waves).** When the irregular sea state is represented as a linear superposition of \\( N_f \\) wave components,
+
+$$
+\eta(t) = \sum_{i=1}^{N_f} A_i \cos(\varphi_i - \omega_i \, t)
+$$
+
+the double summation over IRF points and frequency components can be factored by swapping the summation order and applying the angle-sum identity. This yields:
+
+$$
+F_{exc,d}(t) = \sum_{i=1}^{N_f} A_i \left[ C_{d,i} \cos(\varphi_i - \omega_i \, t) \;-\; S_{d,i} \sin(\varphi_i - \omega_i \, t) \right]
+$$
+
+where the *excitation transfer function* coefficients are pre-computed once from the IRF and the spectrum:
+
+$$
+C_{d,i} = \sum_j K_{exc,d}(\tau_j) \, \Delta\tau_j \, \cos(\omega_i \, \tau_j), \qquad
+S_{d,i} = \sum_j K_{exc,d}(\tau_j) \, \Delta\tau_j \, \sin(\omega_i \, \tau_j)
+$$
+
+This reduces the per-timestep cost from \\( \mathcal{O}(N_{irf} \times N_f) \\) to \\( \mathcal{O}(N_f) \\) — the same cost as a single free-surface elevation evaluation — while producing results identical to the time-domain convolution to machine precision. Crucially, because the wave elevation is evaluated analytically, this formulation has no dependency on the simulation time step or duration, enabling the use of adaptive time integrators.
+
+During the ramp-up period (when a cosine or linear ramp modifies \\( \eta \\)), the frequency-domain factoring does not apply. HydroChrono falls back to a batched matrix evaluation that computes \\( \eta \\) at all IRF quadrature points simultaneously via pre-computed trigonometric matrices, keeping the ramp startup efficient.
+
+**Interpolation-based evaluation (imported elevation time series).** When the free-surface elevation is provided as an external time series (e.g., from a wave tank measurement or a coupled model), the convolution is evaluated directly by linearly interpolating the stored \\( \eta \\) data at each quadrature point \\( t - \tau_j \\). This path retains the traditional \\( \mathcal{O}(N_{irf}) \\) per-timestep cost.
 
 ## Links to related open-source software:
 

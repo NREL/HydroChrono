@@ -109,7 +109,7 @@ int main(int argc, char* argv[]) {
     bodies.push_back(plate_body2);
 
     // define wave parameters
-    auto my_hydro_inputs                     = std::make_shared<RegularWave>(static_cast<unsigned int>(bodies.size()));
+    auto my_hydro_inputs                     = std::make_shared<RegularWave>();
     my_hydro_inputs->regular_wave_amplitude_ = 1.0;
     my_hydro_inputs->regular_wave_omega_     = 2.10;
 

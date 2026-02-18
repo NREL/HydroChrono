@@ -104,7 +104,7 @@ int main(int argc, char* argv[]) {
         bodies.push_back(flap_body);
         bodies.push_back(base_body);
 
-        auto my_hydro_inputs = std::make_shared<RegularWave>(static_cast<unsigned int>(bodies.size()));
+        auto my_hydro_inputs = std::make_shared<RegularWave>();
         my_hydro_inputs->regular_wave_amplitude_ = 0.01;
         my_hydro_inputs->regular_wave_omega_     = (2 * CH_PI) / (periods[reg_wave_num - 1]);
 

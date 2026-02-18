@@ -13,20 +13,17 @@
 #include <vector>
 
 struct IrregularWaveParams {
-    unsigned int num_bodies_ = 0;
-    double simulation_dt_ = 0.0;
-    double simulation_duration_ = 0.0;
-    double ramp_duration_ = 0.0;
-    std::string eta_file_path_;
-    double wave_height_             = 0.0;
-    double wave_period_             = 0.0;
-    double frequency_min_           = 0.001;
-    double frequency_max_           = 1.0;
-    double nfrequencies_            = 0;
-    double peak_enhancement_factor_ = 1.0;
-    bool is_normalized_             = false;
-    int seed_                       = 1;
-    bool wave_stretching_           = true;
+    double wave_height             = 0.0;
+    double wave_period             = 0.0;
+    double frequency_min           = 0.001;
+    double frequency_max           = 1.0;
+    int    nfrequencies            = 0;
+    double peak_enhancement_factor = 1.0;
+    bool   is_normalized           = false;
+    int    seed                    = 1;
+    bool   wave_stretching         = true;
+    double ramp_duration           = 0.0;
+    std::string eta_file_path;
 };
 
 class IrregularWaves : public WaveBase {
@@ -36,20 +33,25 @@ class IrregularWaves : public WaveBase {
 
     void CreateSpectrum();
     std::vector<double> GetSpectrum();
-    std::vector<double> GetFreeSurfaceElevation();
-    std::vector<double> GetFreeSurfaceTime() const;
+    const std::vector<double>& GetFreeSurfaceElevation() const;
+    const std::vector<double>& GetFreeSurfaceTime() const;
     std::vector<double> GetFrequenciesHz() const;
 
-    Eigen::VectorXd GetForceAtTime(double t) override;
-    WaveMode GetWaveMode() override { return mode_; }
+    std::pair<std::vector<double>, std::vector<double>>
+    ComputeElevationTimeSeries(double t_start, double t_end, double dt) const;
+
+    Eigen::VectorXd GetForceAtTime(double t) const override;
+    WaveMode GetWaveMode() const override { return mode_; }
 
     Eigen::VectorXd SetSpectrumFrequencies(double start, double end, int num_steps);
 
-    void AddH5Data(std::vector<HydroData::IrregularWaveInfo>& irreg_h5_data, HydroData::SimulationParameters& sim_data);
+    void AddH5Data(std::vector<HydroData::IrregularWaveInfo>& irreg_h5_data, const HydroData::SimulationParameters& sim_data);
 
-    double GetElevation(const Eigen::Vector3d& position, double time) override;
-    Eigen::Vector3d GetVelocity(const Eigen::Vector3d& position, double time, double elevation) override;
-    Eigen::Vector3d GetAcceleration(const Eigen::Vector3d& position, double time, double elevation) override;
+    double GetIRFTimeMax() const { return irf_time_max_; }
+
+    double GetElevation(const Eigen::Vector3d& position, double time) const override;
+    Eigen::Vector3d GetVelocity(const Eigen::Vector3d& position, double time, double elevation) const override;
+    Eigen::Vector3d GetAcceleration(const Eigen::Vector3d& position, double time, double elevation) const override;
 
     /// Return the surface slope (∂η/∂x, ∂η/∂y) at a given position and time.
     /// Used for computing surface normals in visualization.
@@ -62,13 +64,10 @@ class IrregularWaves : public WaveBase {
 
   private:
     IrregularWaveParams params_;
-    std::vector<double> spectrum_;
-    std::vector<double> time_data_;
-    std::vector<double> free_surface_elevation_sampled_;
-    std::vector<double> free_surface_time_sampled_;
-    bool spectrumCreated_ = false;
+    bool spectrum_created_ = false;
+    bool use_eta_from_file_ = false;
 
-    const WaveMode mode_ = WaveMode::irregular;
+    static constexpr WaveMode mode_ = WaveMode::irregular;
     std::vector<HydroData::IrregularWaveInfo> wave_info_;
     std::vector<Eigen::MatrixXd> ex_irf_sampled_;
     std::vector<Eigen::VectorXd> ex_irf_time_sampled_;
@@ -79,33 +78,38 @@ class IrregularWaves : public WaveBase {
     Eigen::VectorXd wavenumbers_;
     Eigen::VectorXd wave_phases_;
 
-    // -------------------------------------------------------------------------
-    // Pre-computed arrays for fast elevation calculation.
-    // These are computed once from the spectrum and reused for every GetElevation() call.
-    // This optimization is critical for real-time visualization where GetElevation()
-    // may be called thousands of times per frame (once per water surface grid point).
-    // -------------------------------------------------------------------------
-    
-    /// Wave amplitude for each frequency component [m].
-    /// Computed as: A_i = sqrt(2 * S(f_i) * df_i), where S is the spectral density.
+    // Stored eta data — only populated when importing from file.
+    std::vector<double> free_surface_elevation_sampled_;
+    std::vector<double> free_surface_time_sampled_;
+
+    // Pre-computed arrays for fast elevation calculation (SIMD-optimized).
+    // Computed once from the spectrum and reused for every GetElevation() call.
     Eigen::VectorXd amplitudes_;
-    
-    /// Angular frequency for each component [rad/s].
-    /// Computed as: omega_i = 2 * pi * f_i
     Eigen::VectorXd angular_freqs_;
 
-    void InitializeIRFVectors();
-    
-    /// Pre-compute amplitudes_ and angular_freqs_ arrays from the spectrum.
-    /// Called automatically after CreateSpectrum(). Must be called before GetElevation().
-    void PrecomputeAmplitudes();
-    void ReadEtaFromFile();
-    void CreateFreeSurfaceElevation();
+    // Pre-computed excitation transfer function coefficients.
+    // Converts the O(N_irf * N_freq) time-domain convolution into an
+    // O(N_freq) frequency-domain evaluation per DOF per timestep:
+    //   F_ex(dof, t) = sum_i A_i * [C(dof,i)*cos(theta_i) - S(dof,i)*sin(theta_i)]
+    // where theta_i = phi_i - omega_i * t.
+    std::vector<Eigen::MatrixXd> ex_transfer_cos_;  // [body](6, N_freq)
+    std::vector<Eigen::MatrixXd> ex_transfer_sin_;  // [body](6, N_freq)
 
-    Eigen::MatrixXd GetExcitationIRF(int b) const;
-    void ResampleIRF(double dt);
+    // Pre-computed trig matrices for batch eta evaluation during ramp period.
+    // irf_cos_wt_[b](j, i) = cos(omega_i * tau_j), similarly for sin.
+    // Allows computing eta at all IRF points via matrix-vector product.
+    std::vector<Eigen::MatrixXd> irf_cos_wt_;  // [body](N_irf, N_freq)
+    std::vector<Eigen::MatrixXd> irf_sin_wt_;  // [body](N_irf, N_freq)
+    double irf_time_max_ = 0.0;
+
+    void InitializeIRFVectors();
+    void PrecomputeAmplitudes();
+    void PrecomputeExcitationTransfer();
+    std::vector<double> ReadEtaFromFile();
+
+    const Eigen::MatrixXd& GetExcitationIRF(int b) const;
     void CalculateWidthIRF();
-    double ExcitationConvolution(int body, int dof, double time);
+    double ExcitationConvolution(int body, int dof, double time) const;
 };
 
 #endif  // HYDROC_WAVES_IRREGULAR_WAVE_H

@@ -113,7 +113,7 @@ int main(int argc, char* argv[]) {
         spring_1->SetDampingCoefficient(damping_coef);
         system.AddLink(spring_1);
 
-        auto my_hydro_inputs                     = std::make_shared<RegularWave>(1);
+        auto my_hydro_inputs                     = std::make_shared<RegularWave>();
         my_hydro_inputs->regular_wave_amplitude_ = task10_wave_amps[reg_wave_num - 1];    // 0.095;
         my_hydro_inputs->regular_wave_omega_     = task10_wave_omegas[reg_wave_num - 1];  // 1.427996661;
 
