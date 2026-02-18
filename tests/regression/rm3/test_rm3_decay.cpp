@@ -103,7 +103,7 @@ int main(int argc, char* argv[]) {
     prismatic_pto->SetDampingCoefficient(0.0);
     system.AddLink(prismatic_pto);
 
-    auto default_dont_add_waves = std::make_shared<NoWave>(2);
+    auto default_dont_add_waves = std::make_shared<NoWave>();
 
     // attach hydrodynamic forces to body
     std::vector<std::shared_ptr<ChBody>> bodies;

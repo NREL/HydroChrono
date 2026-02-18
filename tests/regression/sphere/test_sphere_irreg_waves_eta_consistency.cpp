@@ -91,16 +91,13 @@ int main(int argc, char* argv[]) {
 
         // Create spectrum-based waves
         IrregularWaveParams spectrum_params;
-        spectrum_params.num_bodies_          = 1;
-        spectrum_params.simulation_dt_       = TIMESTEP;
-        spectrum_params.simulation_duration_ = DURATION;
-        spectrum_params.ramp_duration_       = RAMP_DURATION;
-        spectrum_params.wave_height_         = WAVE_HEIGHT;
-        spectrum_params.wave_period_         = WAVE_PERIOD;
-        spectrum_params.frequency_min_       = 0.001;
-        spectrum_params.frequency_max_       = 1.0;
-        spectrum_params.nfrequencies_        = 1000;
-        spectrum_params.seed_                = SEED;
+        spectrum_params.ramp_duration       = RAMP_DURATION;
+        spectrum_params.wave_height         = WAVE_HEIGHT;
+        spectrum_params.wave_period         = WAVE_PERIOD;
+        spectrum_params.frequency_min       = 0.001;
+        spectrum_params.frequency_max       = 1.0;
+        spectrum_params.nfrequencies        = 1000;
+        spectrum_params.seed                = SEED;
 
         auto spectrum_waves = std::make_shared<IrregularWaves>(spectrum_params);
 
@@ -109,9 +106,14 @@ int main(int argc, char* argv[]) {
         HydroForces hydro_forces(bodies, h5fname);
         hydro_forces.AddWaves(spectrum_waves);
 
-        // NOW we can get the free surface data (after AddWaves initialized it)
-        auto fse_time      = spectrum_waves->GetFreeSurfaceTime();
-        auto fse_elevation = spectrum_waves->GetFreeSurfaceElevation();
+        // Generate free surface elevation time series covering the full convolution window.
+        // The convolution at time t evaluates eta at (t - tau) where tau spans the
+        // full IRF range [-T_irf_max, +T_irf_max]. So the eta range must cover
+        // [min_t - T_irf_max, max_t + T_irf_max] = [-T_irf, DURATION + T_irf].
+        // Use a fine dt so interpolation in the eta-import path is accurate.
+        const double eta_dt = 0.001;
+        double t_irf = spectrum_waves->GetIRFTimeMax();
+        auto [fse_time, fse_elevation] = spectrum_waves->ComputeElevationTimeSeries(-t_irf, DURATION + t_irf, eta_dt);
 
         std::cout << "  Generated " << fse_time.size() << " free surface elevation samples." << std::endl;
         if (!fse_time.empty()) {
@@ -177,14 +179,11 @@ int main(int argc, char* argv[]) {
 
         // Create eta-import waves
         IrregularWaveParams eta_params;
-        eta_params.num_bodies_          = 1;
-        eta_params.simulation_dt_       = TIMESTEP;
-        eta_params.simulation_duration_ = DURATION;
-        eta_params.ramp_duration_       = RAMP_DURATION;
-        eta_params.eta_file_path_       = eta_file;
-        eta_params.frequency_min_       = 0.001;
-        eta_params.frequency_max_       = 1.0;
-        eta_params.nfrequencies_        = 1000;
+        eta_params.ramp_duration       = RAMP_DURATION;
+        eta_params.eta_file_path       = eta_file;
+        eta_params.frequency_min       = 0.001;
+        eta_params.frequency_max       = 1.0;
+        eta_params.nfrequencies        = 1000;
 
         auto eta_waves = std::make_shared<IrregularWaves>(eta_params);
 
