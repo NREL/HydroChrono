@@ -113,17 +113,19 @@ StateSpaceFitResult RadiationStateSpaceFitter::FitKernel(
     const Eigen::VectorXd& svh = svd.singularValues();
 
     // =========================================================================
-    // Try increasing orders, reusing the same SVD decomposition
+    // Try all orders up to max, keeping the best fit.
+    //
+    // We do NOT stop early when R² exceeds the threshold. Higher orders may
+    // introduce fast-decaying poles (large |Re(λ)|, small magnitude) that
+    // improve the initial transient accuracy. Stopping early at a "good
+    // enough" R² prevents these fast poles from getting through, causing a
+    // characteristic slight lag after the first response lobe.
     // =========================================================================
     for (int order = 2; order <= max_possible_order; ++order) {
         StateSpaceFitResult candidate = FitFromSVD(K, dt, order, y, U, V, svh, hankel_size);
         
-        if (candidate.IsValid()) {
+        if (candidate.IsValid() && candidate.r2 > result.r2) {
             result = candidate;
-            
-            if (result.r2 >= opts_.r2_threshold) {
-                break;
-            }
         }
     }
 
