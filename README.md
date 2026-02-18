@@ -2,11 +2,11 @@
 <p align="center">
   <img src="docs/assets/img/hydrochrono_banner.png" />
   <br/>
-  <a href="https://github.com/NREL/HydroChrono/releases"><img src="https://img.shields.io/badge/version-v0.4-blue.svg" /></a>
+  <a href="https://github.com/NREL/HydroChrono/releases"><img src="https://img.shields.io/badge/version-v0.5-blue.svg" /></a>
   <a href="#"><img src="https://img.shields.io/badge/status-Prototype-orange.svg" /></a>
 </p>
 
-> ⚠️ HydroChrono is under active development (`v0.4` prototype). This early release focuses on a YAML‑driven CLI and portable HDF5 outputs so you can try the code and share feedback. Expect rapid iteration over the coming year (inc. more advanced PTO, control, mooring & hydrodynamics) — please get in touch if you have any issues or feature requests.
+> ⚠️ HydroChrono is under active development (`v0.5` prototype). This early release focuses on a YAML‑driven CLI, real-time VSG visualization with animated free-surface rendering, and portable HDF5 outputs so you can try the code and share feedback. Expect rapid iteration over the coming year (inc. more advanced PTO, control, mooring & hydrodynamics) — please get in touch if you have any issues or feature requests.
 
 
 HydroChrono (Hydrodynamics for Project Chrono) is a hydrodynamics simulation toolkit built on [Project Chrono](https://projectchrono.org/). It is designed for simulating wave energy converters (WECs) and other complex ocean systems, and is **100% free and open‑source** end‑to‑end — no proprietary dependencies required. This repo ships a prototype, YAML‑driven CLI app for running simulations and exporting portable results.
@@ -20,6 +20,7 @@ HydroChrono (Hydrodynamics for Project Chrono) is a hydrodynamics simulation too
 - Uses Boundary Element Method (BEM) hydrodynamic coefficients (e.g., from [Capytaine](https://github.com/capytaine/capytaine)) to describe added mass, radiation damping, and wave excitation. HydroChrono reads these coefficients from BEMIO‑format HDF5 (.h5) files, an approach familiar to [WEC‑Sim](https://github.com/WEC-Sim/WEC-Sim) users.
 - Runs time‑domain simulations via the Cummins equation (impulse‑response/convolution form for radiation effects).
 - Builds complex, nonlinear multibody systems using Project Chrono; hydrodynamic loads are currently first‑order, with expanded models planned.
+- **Real-time VSG visualization** with animated free-surface rendering driven by the wave model, radiated wave overlays, PBR ocean materials, and interactive GUI stats (new in v0.5).
 - Supports a YAML-driven CLI, with logging, GUI and exports portable results to HDF5 for post‑processing and validation.
 
 ## Download
@@ -61,7 +62,7 @@ Tips: use `--quiet` to reduce logs, `--debug`/`--trace` for deeper diagnostics.
 
 ### GUI Example
 
-Use the GUI to visually inspect the assembled multibody system (bodies, joints, actuators) and verify that YAML inputs are wired correctly. Use the `--nogui` option to disable visualization straight from CLI, or change the settings in the `*.simulation.yaml` file.
+Use the GUI to visually inspect the assembled multibody system (bodies, joints, actuators) and verify that YAML inputs are wired correctly. With VSG enabled, the visualization includes an animated free-surface mesh and radiated wave overlays driven by the live wave model. Use the `--nogui` option to disable visualization straight from CLI, or change the settings in the `*.simulation.yaml` file.
 
 <p align="center"><img src="docs/assets/img/gui_example.png" width="40%" /></p>
 

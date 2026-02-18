@@ -56,9 +56,7 @@ int main(int argc, char* argv[]) {
     system.SetGravitationalAcceleration(ChVector3d(0.0, 0.0, -9.81));
     double timestep = 0.01;
     system.SetTimestepperType(ChTimestepper::Type::HHT);
-    system.SetSolverType(ChSolver::Type::GMRES);
-    system.GetSolver()->AsIterative()->SetMaxIterations(
-        300);  // the higher, the easier to keep the constraints satisfied.
+    system.SetSolverType(ChSolver::Type::SPARSE_QR);
     ChRealtimeStepTimer realtime_timer;
     double simulationDuration = 40.0;
 
@@ -148,6 +146,7 @@ int main(int argc, char* argv[]) {
     // main simulation loop
     ui.Init(&system, "RM3 - Regular Wave Test");
     ui.SetCamera(0, -50, -10, 0, 0, -10);
+    ui.SetWaveModel(my_hydro_inputs);  // Enable animated water surface
 
     while (system.GetChTime() <= simulationDuration) {
         if (ui.IsRunning(timestep) == false) break;
@@ -186,9 +185,9 @@ int main(int argc, char* argv[]) {
                    << "Float Drift (x) (m)" << std::endl;
         for (size_t i = 0; i < time_vector.size(); ++i)
             outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
-                       << std::right << std::setw(16) << std::setprecision(4) << std::fixed << float_heave_position[i]
-                       << std::right << std::setw(16) << std::setprecision(4) << std::fixed << plate_heave_position[i]
-                       << std::right << std::setw(16) << std::setprecision(4) << std::fixed << float_drift_position[i]
+                       << std::right << std::setw(16) << std::setprecision(8) << std::fixed << float_heave_position[i]
+                       << std::right << std::setw(16) << std::setprecision(8) << std::fixed << plate_heave_position[i]
+                       << std::right << std::setw(16) << std::setprecision(8) << std::fixed << float_drift_position[i]
                        << std::endl;
         outputFile.close();
     }

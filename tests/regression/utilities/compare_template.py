@@ -56,7 +56,7 @@ LAYOUT = {
         },
         'system_info': {
             'pos': (0.85, 0.82, 0.22, 0.12),
-            'font_size': 'body',
+            'font_size': 'small',
             'style': {
                 'facecolor': '#f8f9fa',
                 'edgecolor': '#e9ecef',
@@ -100,6 +100,42 @@ LAYOUT = {
         }
     }
 }
+
+def clip_to_common_time(ref_data, test_data):
+    """Clip both datasets to their overlapping time range.
+
+    When the simulation and reference have different durations (e.g. a short
+    CI run vs. full-length reference data), this function trims both arrays
+    to the time interval covered by *both* series so that the comparison is
+    always apples-to-apples.
+
+    Args:
+        ref_data:  Nx2+ array with time in column 0
+        test_data: Mx2+ array with time in column 0
+
+    Returns:
+        (ref_clipped, test_clipped) arrays covering the common time range.
+    """
+    t_start = max(ref_data[0, 0], test_data[0, 0])
+    t_end   = min(ref_data[-1, 0], test_data[-1, 0])
+
+    if t_end <= t_start:
+        print("WARNING: No overlapping time range between reference and simulation!")
+        return ref_data, test_data
+
+    ref_mask  = (ref_data[:, 0] >= t_start)  & (ref_data[:, 0] <= t_end)
+    test_mask = (test_data[:, 0] >= t_start) & (test_data[:, 0] <= t_end)
+
+    ref_clipped  = ref_data[ref_mask]
+    test_clipped = test_data[test_mask]
+
+    if len(ref_clipped) < len(ref_data) or len(test_clipped) < len(test_data):
+        print(f"Clipped to common time range [{t_start:.2f}, {t_end:.2f}]s  "
+              f"(ref {len(ref_data)}->{len(ref_clipped)} pts, "
+              f"sim {len(test_data)}->{len(test_clipped)} pts)")
+
+    return ref_clipped, test_clipped
+
 
 def format_path(path):
     """Format file paths for display by making them relative to current directory and removing HydroChrono prefix"""
@@ -176,8 +212,58 @@ def get_hydrochrono_version():
     except (OSError, IOError, UnicodeDecodeError):
         return os.environ.get('HYDROCHRONO_VERSION', 'Unknown')
 
+def _chrono_git_suffix(chrono_root):
+    """Return a git-based suffix like ' (branch@abc1234)' if Chrono is a dev build.
+    
+    Reads git metadata directly from the .git directory so that the git
+    executable does not need to be on PATH (common in CTest environments on
+    Windows).
+    """
+    try:
+        git_dir = os.path.join(chrono_root, '.git')
+        if not os.path.isdir(git_dir):
+            return ''
+
+        head_file = os.path.join(git_dir, 'HEAD')
+        with open(head_file, 'r', encoding='utf-8') as f:
+            head = f.read().strip()
+
+        if head.startswith('ref: '):
+            ref = head[5:]  # e.g. 'refs/heads/feature/fsi'
+            branch = ref.split('refs/heads/', 1)[-1] if 'refs/heads/' in ref else ref
+
+            # Resolve the commit hash from the ref
+            ref_file = os.path.join(git_dir, ref.replace('/', os.sep))
+            commit = None
+            if os.path.isfile(ref_file):
+                with open(ref_file, 'r', encoding='utf-8') as f:
+                    commit = f.read().strip()[:7]
+            else:
+                # Ref may be in packed-refs
+                packed = os.path.join(git_dir, 'packed-refs')
+                if os.path.isfile(packed):
+                    with open(packed, 'r', encoding='utf-8') as f:
+                        for line in f:
+                            if line.startswith('#'):
+                                continue
+                            parts = line.strip().split()
+                            if len(parts) == 2 and parts[1] == ref:
+                                commit = parts[0][:7]
+                                break
+            if not commit:
+                return f' ({branch})'
+        else:
+            branch = 'detached'
+            commit = head[:7]
+
+        return f' ({branch}@{commit})'
+    except Exception:
+        return ''
+
+
 def get_chrono_version():
-    """Get Chrono version from Chrono CMakeLists.txt"""
+    """Get Chrono version from Chrono CMakeLists.txt, with git branch/hash
+    appended when building from a development branch."""
     try:
         cmake_cache_path = get_cmake_cache_path()
         if not cmake_cache_path:
@@ -191,6 +277,9 @@ def get_chrono_version():
                     chrono_dir = line.split('=')[1].strip()
                     break
         
+        chrono_root = None
+        version_str = None
+
         if chrono_dir:
             # Navigate to Chrono root directory
             chrono_root = os.path.dirname(os.path.dirname(chrono_dir))
@@ -202,7 +291,6 @@ def get_chrono_version():
                     for line in f:
                         line = line.strip()
                         if line.startswith('set(CHRONO_VERSION_MAJOR'):
-                            # Extract number from: set(CHRONO_VERSION_MAJOR 9)
                             parts = line.split()
                             if len(parts) >= 2:
                                 major = parts[1].rstrip(')')
@@ -216,9 +304,40 @@ def get_chrono_version():
                                 patch = parts[1].rstrip(')')
                     
                     if major != "0" or minor != "0" or patch != "0":
-                        return f"{major}.{minor}.{patch}"
+                        version_str = f"{major}.{minor}.{patch}"
         
-        return os.environ.get('CHRONO_VERSION', 'Unknown')
+        if not version_str:
+            version_str = os.environ.get('CHRONO_VERSION', 'Unknown')
+        
+        # Locate the Chrono source tree for git metadata.
+        # Chrono_DIR is typically <source>/build/cmake, so:
+        #   chrono_build_dir  = dirname(Chrono_DIR) = <source>/build
+        #   chrono_root       = dirname(dirname(Chrono_DIR)) = <source>
+        git_suffix = ''
+        if chrono_dir:
+            chrono_build_dir = os.path.dirname(chrono_dir)
+            source_candidates = [chrono_root] if chrono_root else []
+
+            # Read Chrono's own build CMakeCache for the definitive source dir
+            chrono_build_cache = os.path.join(chrono_build_dir, 'CMakeCache.txt')
+            if os.path.exists(chrono_build_cache):
+                try:
+                    with open(chrono_build_cache, 'r', encoding='utf-8') as f:
+                        for ln in f:
+                            if ln.startswith('CMAKE_HOME_DIRECTORY:INTERNAL='):
+                                candidate = ln.split('=', 1)[1].strip()
+                                if candidate:
+                                    source_candidates.insert(0, candidate)
+                                break
+                except Exception:
+                    pass
+
+            for src in source_candidates:
+                if os.path.isdir(os.path.join(src, '.git')):
+                    git_suffix = _chrono_git_suffix(src)
+                    break
+
+        return version_str + git_suffix
     except (OSError, IOError, UnicodeDecodeError):
         return os.environ.get('CHRONO_VERSION', 'Unknown')
 
@@ -253,36 +372,43 @@ def apply_modern_style(ax):
         ax.spines[spine].set_linewidth(1.0)
     ax.set_facecolor('#ffffff')
 
+_NON_EXECUTABLE_EXTS = {'.txt', '.py', '.csv', '.json', '.md', '.log', '.png',
+                        '.jpg', '.svg', '.pdf', '.h5', '.hdf5', '.dat', '.status'}
+
 def find_executable(test_dir, executable_patterns):
     """
-    Find executable in test directory or its parent
+    Find executable in test directory or ancestor directories.
     
     Args:
-        test_dir: Directory to search in
+        test_dir: Directory to start searching from
         executable_patterns: List of patterns to search for (e.g., ["sphere_decay_test", "rm3_test"])
     
     Returns:
         Path to executable if found, None otherwise
     """
-    search_dirs = [test_dir, test_dir.parent]
+    # Search upward from the results dir to locate the binary directory
+    search_dirs = [test_dir]
+    cur = test_dir
+    for _ in range(4):
+        cur = cur.parent
+        search_dirs.append(cur)
 
     try:
         for s_dir in search_dirs:
             for pattern in executable_patterns:
-                # Look for common executable names
                 possible_names = [pattern, f"{pattern}.exe", f"{pattern}.out"]
                 
                 for name in possible_names:
                     exe_file = s_dir / name
-                    if exe_file.exists():
+                    if exe_file.exists() and exe_file.suffix not in _NON_EXECUTABLE_EXTS:
                         return exe_file
                 
-                # If not found, look for any executable with the pattern in the name
                 for exe_file in s_dir.glob("*"):
-                    if exe_file.is_file() and pattern in exe_file.name:
-                        # Check if it's executable (Unix) or has executable extension (Windows)
-                        if (os.access(exe_file, os.X_OK) or 
-                            exe_file.suffix in ['.exe', '.out', '.app']):
+                    if not exe_file.is_file() or exe_file.suffix in _NON_EXECUTABLE_EXTS:
+                        continue
+                    if pattern in exe_file.name:
+                        if exe_file.suffix in ['.exe', '.out', '.app'] or (
+                            platform.system() != 'Windows' and os.access(exe_file, os.X_OK)):
                             return exe_file
     except Exception as e:
         print(f"Warning: Could not find executable: {e}")
@@ -359,6 +485,10 @@ def create_comparison_plot(ref_data, test_data, test_name, output_dir,
     # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
     
+    # Clip both datasets to the common (overlapping) time range so that
+    # a short CI run can be compared against longer reference data.
+    ref_data, test_data = clip_to_common_time(ref_data, test_data)
+    
     # Calculate error metrics
     nval = test_data.shape[0]
     x = np.linspace(test_data[0, 0], test_data[nval-1, 0], nval)
@@ -372,19 +502,16 @@ def create_comparison_plot(ref_data, test_data, test_name, output_dir,
     fig_cfg = LAYOUT['figure']
     fig = plt.figure(figsize=fig_cfg['figsize'], facecolor=fig_cfg['facecolor'])
     
-    # Extract model name from executable path, falling back to test file stem
-    model_name = "Unknown Model"
+    # Extract model name from executable path, falling back to test name
+    model_name = test_name or "Unknown Model"
     if executable_path:
         exe_name = os.path.basename(executable_path)
-        # Remove common executable extensions
         for ext in ['.exe', '.out', '.app']:
             if exe_name.endswith(ext):
                 model_name = exe_name[:-len(ext)]
                 break
         else:
             model_name = exe_name
-    elif test_file_path:
-        model_name = Path(test_file_path).stem
     
     # Create Test Information panel
     info_content = (
@@ -487,8 +614,41 @@ def create_comparison_plot(ref_data, test_data, test_name, output_dir,
     
     return n1, n2
 
+def write_status_file(output_dir, test_name, status, metrics=None):
+    """Write a persistent status file for a comparison test.
+    
+    These files survive across ctest runs, unlike LastTest.log which is
+    overwritten each invocation.  The report generator reads them as its
+    primary source of pass/fail information.
+    
+    Args:
+        output_dir:  Directory containing the test results (e.g. results/tests/rm3)
+        test_name:   Canonical test name (e.g. "rm3_decay")
+        status:      "PASS" or "FAIL"
+        metrics:     Optional dict with numeric metrics (l2_norm, linf_norm, …)
+    """
+    import json
+    status_dir = Path(output_dir)
+    status_dir.mkdir(parents=True, exist_ok=True)
+    status_file = status_dir / f"{test_name}.status.json"
+    
+    payload = {
+        "test_name": test_name,
+        "status": status,
+        "timestamp": datetime.now().isoformat(),
+    }
+    if metrics:
+        payload["metrics"] = metrics
+    
+    try:
+        with open(status_file, 'w', encoding='utf-8') as f:
+            json.dump(payload, f, indent=2)
+    except Exception as e:
+        print(f"Warning: could not write status file {status_file}: {e}")
+
+
 def run_comparison(ref_file, test_file, test_name=None, y_label="Value", 
-                  executable_patterns=None, pass_criteria=None):
+                  executable_patterns=None, pass_criteria=None, status_name=None):
     """
     Run a complete comparison between reference and test data
     
@@ -499,6 +659,8 @@ def run_comparison(ref_file, test_file, test_name=None, y_label="Value",
         y_label: Label for y-axis
         executable_patterns: List of patterns to search for executable
         pass_criteria: Tuple of (l2_threshold, linf_threshold) for pass/fail
+        status_name: Canonical name for the status file (e.g. "sphere_decay").
+                     If None, derived from test_name.
     
     Returns:
         Tuple of (l2_norm, linf_norm)
@@ -577,11 +739,15 @@ def run_comparison(ref_file, test_file, test_name=None, y_label="Value",
     # Check pass/fail criteria if provided
     if pass_criteria:
         l2_threshold, linf_threshold = pass_criteria
+        metrics = {"l2_norm": n1, "linf_norm": n2}
+        sname = status_name if status_name else test_name.lower().replace(' ', '_').replace('-', '_')
         if (n1 > l2_threshold or n2 > linf_threshold):
             print(f"TEST FAILED - L2 Norm: {n1:.2e}, L-infinity Norm: {n2:.2e}")
+            write_status_file(test_file_path.parent, sname, "FAIL", metrics)
             return n1, n2, False
         else:
             print(f"TEST PASSED - L2 Norm: {n1:.2e}, L-infinity Norm: {n2:.2e}")
+            write_status_file(test_file_path.parent, sname, "PASS", metrics)
             return n1, n2, True
     
     return n1, n2
@@ -598,6 +764,7 @@ def run_multi_column_comparison(ref_file, test_file, test_configs, executable_pa
             - 'test_name': Name for this specific test/plot
             - 'y_label': Label for y-axis
             - 'validation_tolerance': Optional tolerance for validation (defaults to pass_criteria)
+            - 'status_name': Optional canonical name for the status file
         executable_patterns: List of patterns to search for executable
         pass_criteria: Tuple of (l2_threshold, linf_threshold) for pass/fail (default)
     
@@ -670,6 +837,7 @@ def run_multi_column_comparison(ref_file, test_file, test_configs, executable_pa
             
             # Check pass/fail criteria if provided
             passed = True
+            metrics = {"l2_norm": n1, "linf_norm": n2}
             if validation_tolerance:
                 l2_threshold, linf_threshold = validation_tolerance
                 if (n1 > l2_threshold or n2 > linf_threshold):
@@ -678,6 +846,9 @@ def run_multi_column_comparison(ref_file, test_file, test_configs, executable_pa
                 else:
                     print(f"TEST PASSED for {test_name} - L2 Norm: {n1:.2e}, L-infinity Norm: {n2:.2e}")
             
+            sname = config.get('status_name') or test_name.lower().replace(' ', '_').replace('-', '_')
+            write_status_file(test_file_path.parent, sname,
+                              "PASS" if passed else "FAIL", metrics)
             results.append((n1, n2, passed))
             
         except Exception as e:

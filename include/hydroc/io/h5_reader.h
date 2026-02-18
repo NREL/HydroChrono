@@ -30,15 +30,17 @@ class H5File;
 
 class H5FileInfo;
 
+//// RADU - these should not be in the global namespace!
+
 // contains "chunked" data from the h5 file, generated from H5FileInfo class
 class HydroData {
   public:
     struct BodyInfo {
         std::string body_name;
-        int body_num;
-        double disp_vol;
+        int body_num = 0;
+        double disp_vol = 0.0;
         Eigen::VectorXd rirf_time_vector;
-        double rirf_timestep;
+        double rirf_timestep = 0.0;
         Eigen::VectorXd cg;
         Eigen::VectorXd cb;
         Eigen::MatrixXd lin_matrix;
@@ -47,9 +49,9 @@ class HydroData {
     };
     struct SimulationParameters {
         std::string h5_file_name;
-        double rho;
-        double g;
-        double water_depth;
+        double rho = 0.0;
+        double g = 0.0;
+        double water_depth = 0.0;
     };
     struct RegularWaveInfo {
         Eigen::VectorXd freq_list;
@@ -78,9 +80,10 @@ class HydroData {
     std::vector<IrregularWaveInfo> irreg_wave_data_;
     friend H5FileInfo;
     void resize(int num_bodies);
-    HydroData() = default;
 
   public:
+    HydroData() = default;
+
     // getter function naming conventions: put Matrix, Vector, or Val at end to denote return type, always put body_num
     // argument first, body_num is always 0 indexed, one line return types can be defined here and not in cpp
 

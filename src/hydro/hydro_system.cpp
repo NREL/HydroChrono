@@ -10,6 +10,11 @@
  *********************************************************************/
 
 #include "hydroc/hydro_system.h"
+#ifdef HYDROCHRONO_USE_LEGACY_ADDED_MASS
+#include <hydroc/coupling/added_mass.h>
+#else
+#include <chrono/physics/ChLoadHydrodynamics.h>
+#endif
 #include <hydroc/io/h5_reader.h>
 #include <hydroc/waves/wave_base.h>
 #include <hydroc/waves/regular_wave.h>
@@ -26,15 +31,15 @@
 #include "radiation/radiation_rirf_processing.h"
 
 // Chrono includes needed for implementation (not exposed in public header)
+#ifdef HYDROCHRONO_USE_LEGACY_ADDED_MASS
 #include <chrono/physics/ChLoad.h>
 #include <chrono/physics/ChLoadable.h>
+#endif
 #include <chrono/physics/ChBodyEasy.h>
 #include <chrono/physics/ChLoadsBody.h>
 #include <chrono/physics/ChSystemNSC.h>
 #include <chrono/physics/ChSystemSMC.h>
-#include <chrono/physics/ChLoadHydrodynamics.h>
 #include <chrono/solver/ChIterativeSolverLS.h>
-#include <chrono/solver/ChSolverPMINRES.h>
 #include <chrono/timestepper/ChTimestepper.h>
 #include <chrono/timestepper/ChTimestepperHHT.h>
 #include <chrono/fea/ChMeshFileLoader.h>
@@ -61,9 +66,16 @@
 // Local using declarations for Chrono types (implementation only - not leaked to users)
 // These provide convenience within this translation unit while keeping the public header clean.
 using chrono::ChBody;
+using chrono::ChBodyEasyMesh;
 using chrono::ChForce;
-using chrono::ChBodyAddedMassBlocks;
-using chrono::ChLoadHydrodynamics;
+using chrono::ChFunction;
+#ifdef HYDROCHRONO_USE_LEGACY_ADDED_MASS
+using chrono::ChLoadable;
+using chrono::ChLoadContainer;
+#endif
+using chrono::ChSolver;
+using chrono::ChSystem;
+using chrono::ChVector3d;
 
 // kDofPerBody is already defined in hydro_system.h as constexpr
 const int kDofLinOrRot = 3;
@@ -279,17 +291,37 @@ HydroSystem::HydroSystem(std::vector<std::shared_ptr<ChBody>> user_bodies,
         force_per_body_.emplace_back(bodies_[b], this);
     }
 
-    // Handle added mass info (applied via a Chrono ChLoadHydrodynamics)
+    // Handle added mass info (infinite-frequency added mass applied to Chrono system).
+    // Toggle between implementations via HYDROCHRONO_USE_LEGACY_ADDED_MASS in hydro_system.h.
+#ifdef HYDROCHRONO_USE_LEGACY_ADDED_MASS
+    // Legacy path: HydroChrono's ChLoadAddedMass (ChLoadCustomMultiple-based).
+    my_loadcontainer = std::make_shared<ChLoadContainer>();
+
+    std::vector<std::shared_ptr<ChLoadable>> loadables(bodies_.size());
+    for (int i = 0; i < static_cast<int>(bodies_.size()); ++i) {
+        loadables[i] = bodies_[i];
+    }
+
+    my_loadbodyinertia =
+        std::make_shared<ChLoadAddedMass>(file_info_.GetBodyInfos(), loadables, bodies_[0]->GetSystem());
+
+    bodies_[0]->GetSystem()->Add(my_loadcontainer);
+    my_loadcontainer->Add(my_loadbodyinertia);
+#else
+    // Default path: Chrono's built-in ChLoadHydrodynamics.
+    // ChBodyAddedMassBlocks is a std::vector<ChBodyAddedMassBlock>; each entry
+    // pairs a body with its 6x6N row of the infinite-frequency added mass matrix.
     const auto& body_info = file_info_.GetBodyInfos();
-    ChBodyAddedMassBlocks body_blocks;
+    chrono::ChBodyAddedMassBlocks body_blocks;
     for (size_t i = 0; i < num_bodies_; i++) {
-        body_blocks.insert(std::pair(bodies_[i], body_info[i].inf_added_mass));
+        body_blocks.push_back({bodies_[i], body_info[i].inf_added_mass});
     }
     if (num_bodies_ > 0) {
-        auto hydro_load = chrono_types::make_shared<ChLoadHydrodynamics>(body_blocks);
+        auto hydro_load = chrono_types::make_shared<chrono::ChLoadHydrodynamics>(body_blocks);
         hydro_load->SetVerbose(false);
         bodies_[0]->GetSystem()->Add(hydro_load);
     }
+#endif
 
     // Set up hydro inputs
     user_waves_ = waves;

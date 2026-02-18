@@ -45,9 +45,7 @@ int main(int argc, char* argv[]) {
 
     double timestep = 0.01;
     system.SetTimestepperType(ChTimestepper::Type::HHT);
-    system.SetSolverType(ChSolver::Type::GMRES);
-    system.GetSolver()->AsIterative()->SetMaxIterations(
-        300);  // the higher, the easier to keep the constraints satisfied.
+    system.SetSolverType(ChSolver::Type::SPARSE_QR);
     ChRealtimeStepTimer realtime_timer;
     double simulationDuration = 40.0;
 

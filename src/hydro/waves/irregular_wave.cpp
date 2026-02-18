@@ -18,10 +18,11 @@
 #include <sstream>
 #include <unsupported/Eigen/Splines>
 
-#include <hydroc/helper.h>
 #include <hydroc/logging.h>
 
-IrregularWaves::IrregularWaves(const IrregularWaveParams& params) : params_(params) {}
+IrregularWaves::IrregularWaves(const IrregularWaveParams& params) : params_(params) {
+    wave_stretching_ = params.wave_stretching_;
+}
 
 void IrregularWaves::InitializeIRFVectors() {
     ex_irf_sampled_.resize(params_.num_bodies_);
@@ -151,42 +152,112 @@ void IrregularWaves::AddH5Data(std::vector<HydroData::IrregularWaveInfo>& irreg_
     InitializeIRFVectors();
 }
 
-Eigen::Vector3d IrregularWaves::GetVelocity(const Eigen::Vector3d& position, double time) {
-    auto position_stretched = position;
-    if (params_.wave_stretching_) {
-        position_stretched = GetWheelerStretchedPosition(position, GetElevation(position, time), water_depth_, mwl_);
-    }
-
-    return GetWaterVelocityIrregular(position_stretched,
-                                     time,
-                                     spectrum_frequencies_,
-                                     spectral_densities_,
-                                     spectral_widths_,
-                                     wave_phases_,
-                                     wavenumbers_,
-                                     water_depth_,
-                                     mwl_);
+Eigen::Vector3d IrregularWaves::GetVelocity(const Eigen::Vector3d& position, double time, double elevation) {
+    auto position_stretched =
+        params_.wave_stretching_ ? GetWheelerStretchedPosition(position, elevation, water_depth_, mwl_) : position;
+    return GetWaterVelocityIrregular(position_stretched, time, spectrum_frequencies_, spectral_densities_,
+                                     spectral_widths_, wave_phases_, wavenumbers_, water_depth_, mwl_);
 }
 
-Eigen::Vector3d IrregularWaves::GetAcceleration(const Eigen::Vector3d& position, double time) {
-    auto position_stretched = position;
-    if (params_.wave_stretching_) {
-        position_stretched = GetWheelerStretchedPosition(position, GetElevation(position, time), water_depth_, mwl_);
-    }
-
-    return GetWaterAccelerationIrregular(position_stretched,
-                                         time,
-                                         spectrum_frequencies_,
-                                         spectral_densities_,
-                                         spectral_widths_,
-                                         wave_phases_,
-                                         wavenumbers_,
-                                         water_depth_,
-                                         mwl_);
+Eigen::Vector3d IrregularWaves::GetAcceleration(const Eigen::Vector3d& position, double time, double elevation) {
+    auto position_stretched =
+        params_.wave_stretching_ ? GetWheelerStretchedPosition(position, elevation, water_depth_, mwl_) : position;
+    return GetWaterAccelerationIrregular(position_stretched, time, spectrum_frequencies_, spectral_densities_,
+                                         spectral_widths_, wave_phases_, wavenumbers_, water_depth_, mwl_);
 }
 
 double IrregularWaves::GetElevation(const Eigen::Vector3d& position, double time) {
-    return GetEtaIrregular(position, time, spectrum_frequencies_, spectral_densities_, spectral_widths_, wave_phases_, wavenumbers_);
+    // Fallback for eta-file import mode (spectrum not generated).
+    if (amplitudes_.size() == 0) {
+        return GetEtaIrregular(position, time, spectrum_frequencies_, spectral_densities_,
+                               spectral_widths_, wave_phases_, wavenumbers_);
+    }
+
+    // -------------------------------------------------------------------------
+    // Free-surface elevation from linear superposition of wave components.
+    //
+    // The irregular sea state is represented as a sum of regular wave components:
+    //
+    //     η(x, t) = Σ A_i · cos(k_i·x − ω_i·t + φ_i)
+    //
+    // where:
+    //     A_i   = wave amplitude for component i [m]
+    //     k_i   = wavenumber [rad/m], from dispersion relation ω² = g·k·tanh(k·h)
+    //     ω_i   = angular frequency [rad/s] = 2π·f_i
+    //     φ_i   = random phase [rad], uniformly distributed in [0, 2π)
+    //     x     = position along wave propagation direction [m]
+    //     t     = time [s]
+    //
+    // Performance: Uses Eigen's vectorized operations (SIMD) for the summation.
+    // The cos() is applied element-wise and the dot product sums the result.
+    // -------------------------------------------------------------------------
+    const double x = position.x();
+
+    // Vectorized phase computation: phase_i = k_i*x - ω_i*t + φ_i
+    const Eigen::ArrayXd phases = wavenumbers_.array() * x 
+                                - angular_freqs_.array() * time 
+                                + wave_phases_.array();
+
+    // Vectorized elevation: η = Σ A_i * cos(phase_i)
+    return (amplitudes_.array() * phases.cos()).sum();
+}
+
+Eigen::Vector2d IrregularWaves::GetElevationGradientXY(const Eigen::Vector3d& position, double time) const {
+    // Fallback for eta-file import mode (spectrum not generated).
+    if (amplitudes_.size() == 0) {
+        double deta_dx = GetEtaGradientXIrregular(position, time, spectrum_frequencies_, spectral_densities_,
+                                                   spectral_widths_, wave_phases_, wavenumbers_);
+        return Eigen::Vector2d(deta_dx, 0.0);
+    }
+
+    // -------------------------------------------------------------------------
+    // Free-surface slope (gradient) for visualization and normal computation.
+    //
+    // Taking the derivative of the elevation equation:
+    //
+    //     η(x, t)   = Σ A_i · cos(k_i·x − ω_i·t + φ_i)
+    //     ∂η/∂x     = Σ −A_i · k_i · sin(k_i·x − ω_i·t + φ_i)
+    //
+    // Since waves propagate only in the +X direction, ∂η/∂y = 0.
+    // The surface normal can be computed as: n = normalize(-∂η/∂x, -∂η/∂y, 1)
+    //
+    // Performance: Uses Eigen's vectorized operations (SIMD) for the summation.
+    // -------------------------------------------------------------------------
+    const double x = position.x();
+
+    // Vectorized phase computation: phase_i = k_i*x - ω_i*t + φ_i
+    const Eigen::ArrayXd phases = wavenumbers_.array() * x 
+                                - angular_freqs_.array() * time 
+                                + wave_phases_.array();
+
+    // Vectorized gradient: ∂η/∂x = -Σ A_i * k_i * sin(phase_i)
+    const double deta_dx = -(amplitudes_.array() * wavenumbers_.array() * phases.sin()).sum();
+
+    return Eigen::Vector2d(deta_dx, 0.0);
+}
+
+double IrregularWaves::GetElevationForVisualization(const Eigen::Vector3d& position, 
+                                                     double time, 
+                                                     int max_components) const {
+    // If no pre-computed amplitudes or max_components covers all, use full calculation.
+    const Eigen::Index num_total = amplitudes_.size();
+    if (num_total == 0) {
+        return GetEtaIrregular(position, time, spectrum_frequencies_, spectral_densities_,
+                               spectral_widths_, wave_phases_, wavenumbers_);
+    }
+    
+    // Determine how many components to use.
+    const Eigen::Index n = (max_components <= 0 || max_components >= num_total) 
+                         ? num_total 
+                         : static_cast<Eigen::Index>(max_components);
+    
+    // Use Eigen head() to get first n elements - still vectorized (SIMD).
+    const double x = position.x();
+    const Eigen::ArrayXd phases = wavenumbers_.head(n).array() * x 
+                                - angular_freqs_.head(n).array() * time 
+                                + wave_phases_.head(n).array();
+
+    return (amplitudes_.head(n).array() * phases.cos()).sum();
 }
 
 Eigen::VectorXd IrregularWaves::GetForceAtTime(double t) {
@@ -219,28 +290,6 @@ Eigen::VectorXd IrregularWaves::SetSpectrumFrequencies(double start, double end,
     return result;
 }
 
-void IrregularWaves::SetUpWaveMesh(std::string filename) {
-    mesh_file_name_   = filename;
-    int num_timesteps = static_cast<int>(std::ceil(params_.simulation_duration_ / params_.simulation_dt_));
-    Eigen::VectorXd time_index = Eigen::VectorXd::LinSpaced(num_timesteps + 1, 0, num_timesteps * params_.simulation_dt_);
-    Eigen::VectorXd eta_vec    = Eigen::Map<const Eigen::VectorXd>(free_surface_elevation_sampled_.data(),
-                                                                   static_cast<Eigen::Index>(free_surface_elevation_sampled_.size()));
-
-    std::vector<std::array<double, 3>> free_surface_3d_pts = CreateFreeSurface3DPts(eta_vec, time_index);
-    std::vector<std::array<size_t, 3>> free_surface_triangles =
-        CreateFreeSurfaceTriangles(static_cast<size_t>(time_index.size()));
-
-    WriteFreeSurfaceMeshObj(free_surface_3d_pts, free_surface_triangles, mesh_file_name_);
-}
-
-std::string IrregularWaves::GetMeshFile() {
-    return mesh_file_name_;
-}
-
-Eigen::Vector3<double> IrregularWaves::GetWaveMeshVelocity() {
-    return Eigen::Vector3d(1.0, 0, 0);
-}
-
 void IrregularWaves::CreateSpectrum() {
     int nf;
     if (params_.nfrequencies_ == 0) {
@@ -265,6 +314,37 @@ void IrregularWaves::CreateSpectrum() {
 
     auto omegas  = 2 * M_PI * spectrum_frequencies_;
     wavenumbers_ = ComputeWaveNumbers(omegas, water_depth_, g_);
+
+    // Pre-compute amplitude and omega arrays for fast GetElevation().
+    PrecomputeAmplitudes();
+}
+
+void IrregularWaves::PrecomputeAmplitudes() {
+    // -------------------------------------------------------------------------
+    // Pre-compute wave component amplitudes and angular frequencies.
+    //
+    // For each frequency component i:
+    //     A_i     = sqrt(2 · S(f_i) · Δf_i)   [m]
+    //     ω_i     = 2π · f_i                  [rad/s]
+    //
+    // where:
+    //     S(f_i)  = spectral density at frequency f_i [m²/Hz]
+    //     Δf_i    = frequency bin width [Hz]
+    //
+    // This pre-computation eliminates ~2N operations per GetElevation() call,
+    // which is critical when evaluating thousands of grid points per frame.
+    // -------------------------------------------------------------------------
+    const Eigen::Index num_frequencies = spectrum_frequencies_.size();
+    amplitudes_.resize(num_frequencies);
+    angular_freqs_.resize(num_frequencies);
+
+    for (Eigen::Index i = 0; i < num_frequencies; ++i) {
+        // Wave amplitude from spectral density: A = sqrt(2 * S * df)
+        amplitudes_[i] = std::sqrt(2.0 * spectral_densities_[i] * spectral_widths_[i]);
+        
+        // Angular frequency: omega = 2*pi*f
+        angular_freqs_[i] = 2.0 * M_PI * spectrum_frequencies_[i];
+    }
 }
 
 void IrregularWaves::CreateFreeSurfaceElevation() {
@@ -354,6 +434,25 @@ void IrregularWaves::CalculateWidthIRF() {
         auto& width_array = ex_irf_width_sampled_[b];
         width_array       = GetWidthArray(time_array);
     }
+}
+
+// Return last index of vector element below value.
+// - value: Input value
+// - ticks: Array of ticks from which to find lower-bound index (assuming ascending order)
+static size_t get_lower_index(double value, const std::vector<double>& ticks) {
+    auto it = std::upper_bound(ticks.begin(), ticks.end(), value);
+    // get nearest-below index
+    size_t idx = it - ticks.begin() - 1;
+    // remove one if equal to value
+    if (ticks[idx] == value) {
+        idx -= 1;
+    }
+    if (idx <= 0 || idx >= ticks.size() - 1) {
+        throw std::runtime_error("Could not find index for value " + std::to_string(value) + " in array with bounds (" +
+                                 std::to_string(ticks.front()) + ", " + std::to_string(ticks.back()) + ").");
+    }
+    // return index
+    return idx;
 }
 
 double IrregularWaves::ExcitationConvolution(int body, int dof, double time) {

@@ -52,7 +52,8 @@ if __name__ == '__main__':
     # Run the comparison using the template
     n1, n2, passed = run_comparison(
         ref_file, results_file, test_name, y_label, 
-        executable_patterns, pass_criteria
+        executable_patterns, pass_criteria,
+        status_name="sphere_irreg_waves_eta"
     )
     
     sys.exit(0 if passed else 1)

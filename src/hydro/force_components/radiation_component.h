@@ -80,7 +80,7 @@ private:
     Eigen::VectorXd rirf_width_vector_;
     
     // Processed RIRF tensors (for TaperedDirect mode)
-    bool rirf_processed_ready_;
+    bool rirf_processed_ready_ = false;
     std::vector<Eigen::Tensor<double, 3>> rirf_processed_;
     
     static constexpr int kDofPerBody = 6;

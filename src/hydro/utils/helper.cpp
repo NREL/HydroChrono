@@ -77,22 +77,6 @@ bool hydroc::GetCLIArguments(int argc,
     return true;
 }
 
-size_t get_lower_index(double value, const std::vector<double>& ticks) {
-    auto it = std::upper_bound(ticks.begin(), ticks.end(), value);
-    // get nearest-below index
-    size_t idx = it - ticks.begin() - 1;
-    // remove one if equal to value
-    if (ticks[idx] == value) {
-        idx -= 1;
-    }
-    if (idx <= 0 || idx >= ticks.size() - 1) {
-        throw std::runtime_error("Could not find index for value " + std::to_string(value) + " in array with bounds (" +
-                                 std::to_string(ticks.front()) + ", " + std::to_string(ticks.back()) + ").");
-    }
-    // return index
-    return idx;
-}
-
 using std::filesystem::path;
 
 static path DATADIR{};
@@ -120,6 +104,16 @@ bool hydroc::SetInitialEnvironment(const std::string& data_dir) noexcept {
     }
 
     return true;
+}
+
+double hydroc::getSimDuration(double short_duration, double long_duration) noexcept {
+    const char* env = std::getenv("HYDROCHRONO_LONG_TESTS");
+    if (env) {
+        std::string val(env);
+        if (val == "1" || val == "true" || val == "TRUE" || val == "ON")
+            return long_duration;
+    }
+    return short_duration;
 }
 
 std::string hydroc::getDataDir() noexcept {

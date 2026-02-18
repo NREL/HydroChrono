@@ -44,6 +44,21 @@ double GetEta(const Eigen::Vector3d& position,
               double phase,
               double wavenumber);
 
+/**
+ * @brief Returns ∂η/∂x for a single regular wave component.
+ *
+ * Analytic derivative of GetEta(): ∂η/∂x = −A·k·sin(k·x − ω·t + φ).
+ * Waves propagate in +X direction; ∂η/∂y = 0 by construction.
+ *
+ * @return Slope in x-direction (dimensionless).
+ */
+double GetEtaGradientX(const Eigen::Vector3d& position,
+                       double time,
+                       double omega,
+                       double amplitude,
+                       double phase,
+                       double wavenumber);
+
 double GetEtaIrregular(const Eigen::Vector3d& position,
                        double time,
                        const Eigen::VectorXd& freqs_hz,
@@ -51,6 +66,22 @@ double GetEtaIrregular(const Eigen::Vector3d& position,
                        const Eigen::VectorXd& spectral_widths,
                        const Eigen::VectorXd& wave_phases,
                        const Eigen::VectorXd& wavenumbers);
+
+/**
+ * @brief Returns ∂η/∂x for irregular (spectral) waves by summing component gradients.
+ *
+ * Analytic derivative: ∂η/∂x = Σ[−Aᵢ·kᵢ·sin(kᵢ·x − ωᵢ·t + φᵢ)].
+ * Waves propagate in +X direction; ∂η/∂y = 0 by construction.
+ *
+ * @return Slope in x-direction (dimensionless).
+ */
+double GetEtaGradientXIrregular(const Eigen::Vector3d& position,
+                                double time,
+                                const Eigen::VectorXd& freqs_hz,
+                                const Eigen::VectorXd& spectral_densities,
+                                const Eigen::VectorXd& spectral_widths,
+                                const Eigen::VectorXd& wave_phases,
+                                const Eigen::VectorXd& wavenumbers);
 
 std::vector<double> GetEtaIrregularTimeSeries(const Eigen::Vector3d& position,
                                               const std::vector<double> time_index,
@@ -117,15 +148,6 @@ Eigen::VectorXd JONSWAPSpectrumHz(Eigen::VectorXd& f,
                                   double Tp,
                                   double gamma       = 3.3,
                                   bool is_normalized = false);
-
-std::vector<std::array<double, 3>> CreateFreeSurface3DPts(const Eigen::VectorXd& eta,
-                                                          const Eigen::VectorXd& t_vec);
-
-std::vector<std::array<size_t, 3>> CreateFreeSurfaceTriangles(size_t eta_size);
-
-void WriteFreeSurfaceMeshObj(const std::vector<std::array<double, 3>>& points,
-                             const std::vector<std::array<size_t, 3>>& triangles,
-                             const std::string& file_name);
 
 Eigen::VectorXd GetWidthArray(const Eigen::VectorXd& input_array);
 

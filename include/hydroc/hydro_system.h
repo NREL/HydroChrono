@@ -17,6 +17,16 @@
 #ifndef HYDRO_SYSTEM_H
 #define HYDRO_SYSTEM_H
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Added Mass Implementation Toggle
+// ─────────────────────────────────────────────────────────────────────────────
+// By default, HydroChrono uses Chrono's built-in ChLoadHydrodynamics for
+// infinite-frequency added mass. To switch to HydroChrono's legacy
+// ChLoadAddedMass (ChLoadCustomMultiple-based) implementation, uncomment:
+//
+// #define HYDROCHRONO_USE_LEGACY_ADDED_MASS
+//
+
 // Include hydro_types.h FIRST to ensure BodyForces and GeneralizedForce are available
 // before any other includes that might conflict (e.g., config/hydro_config.h)
 #include <hydroc/core/hydro_types.h>
@@ -37,7 +47,9 @@
 // ChForce.h includes ChFunction internally, so we don't need a separate include.
 #include <chrono/physics/ChBody.h>
 #include <chrono/physics/ChForce.h>
+#ifdef HYDROCHRONO_USE_LEGACY_ADDED_MASS
 #include <chrono/physics/ChLoadContainer.h>
+#endif
 
 // Hydroc library includes
 #include <hydroc/io/h5_reader.h>
@@ -120,8 +132,8 @@ class ComponentFunc : public chrono::ChFunction {
     virtual double GetVal(double x) const override;
 
   private:
-    ForceFunc6d* base_;  ///< Pointer to the full 6D force on the body.
-    int index_;          ///< Index representing force degree of freedom on the body.
+    ForceFunc6d* base_ = nullptr;  ///< Pointer to the full 6D force on the body.
+    int index_ = 0;          ///< Index representing force degree of freedom on the body.
 };
 
 /**
@@ -181,17 +193,19 @@ class ForceFunc6d {
     
     /// Body index in the system (1-indexed, parsed from Chrono body name "bodyN").
     /// This matches Chrono's body naming convention where bodies are named body1, body2, etc.
-    int b_num_;
+    int b_num_ = 0;
     
     ComponentFunc forces_[kDofPerBody];                       ///< Forces for each degree of freedom.
     std::shared_ptr<ComponentFunc> force_ptrs_[kDofPerBody];  ///< Pointers to the forces.
     std::shared_ptr<chrono::ChForce> chrono_force_;  ///< Chrono force for the body.
     std::shared_ptr<chrono::ChForce> chrono_torque_; ///< Chrono torque for the body.
-    HydroSystem* all_hydro_forces_;                 ///< Pointer to HydroSystem for calculations.
+    HydroSystem* all_hydro_forces_ = nullptr;                 ///< Pointer to HydroSystem for calculations.
 };
 
+#ifdef HYDROCHRONO_USE_LEGACY_ADDED_MASS
 // Forward declaration of ChLoadAddedMass (defined in added_mass.h, included in .cpp)
 class ChLoadAddedMass;
+#endif
 
 // Lightweight hydrodynamics profiling stats
 struct HydroProfileStats {
@@ -463,14 +477,22 @@ class HydroSystem {
 
     // Time tracking for force caching
     double prev_time;
+    
+    // Debug counter for printing first few timesteps
+    int debug_call_count_ = 0;
+    
+    // Track if we've already reported NaN (to avoid spamming)
+    bool nan_reported_ = false;
 
     // Cached SystemState: built once per time step and reused by all force computations
     hydrochrono::hydro::SystemState cached_state_;
     double cached_state_time_ = std::numeric_limits<double>::quiet_NaN();
 
-    // Added mass related properties
+#ifdef HYDROCHRONO_USE_LEGACY_ADDED_MASS
+    // Added mass related properties (legacy ChLoadAddedMass path)
     std::shared_ptr<chrono::ChLoadContainer> my_loadcontainer;
     std::shared_ptr<ChLoadAddedMass> my_loadbodyinertia;
+#endif
 
     /**
      * @brief Returns the cached SystemState for the given time.

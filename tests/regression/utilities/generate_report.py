@@ -117,8 +117,86 @@ def get_test_summary(categorized_plots):
         'models': list(categorized_plots.keys())
     }
 
-def get_test_results(categorized_plots):
-    """Get test results by inferring from available plots and checking CTest logs."""
+def _read_status_files(build_dir):
+    """Scan for .status.json files written by comparison scripts.
+    
+    These files are the most reliable source of pass/fail information because
+    they are written by the comparison scripts themselves and persist across
+    ctest invocations (unlike LastTest.log which is overwritten each run).
+    
+    Returns:
+        dict mapping (model, status_name) -> {"status": "PASS"/"FAIL", ...}
+    """
+    import json
+    
+    build_path = Path(build_dir).resolve() if build_dir else Path.cwd()
+    models = ['sphere', 'f3of', 'oswec', 'rm3']
+    
+    results = {}
+    
+    for model in models:
+        # Status files live alongside the result .txt files
+        possible_dirs = [
+            build_path / "bin" / "Release" / "results" / "tests" / model,
+            build_path / "bin" / "results" / "tests" / model,
+            build_path / "bin" / "tests" / "regression" / model / "results",
+        ]
+        
+        for results_dir in possible_dirs:
+            if not results_dir.exists():
+                continue
+            for sf in results_dir.glob("*.status.json"):
+                try:
+                    with open(sf, 'r', encoding='utf-8') as f:
+                        payload = json.load(f)
+                    status_name = payload.get("test_name", sf.stem.replace(".status", ""))
+                    results[(model, status_name)] = payload
+                except Exception as e:
+                    print(f"Warning: could not read status file {sf}: {e}")
+    
+    return results
+
+
+# Mapping from status-file test names to the report's (model, test_type) pairs.
+# Keys are substrings matched against the status-file test_name field.
+# Canonical status-file names → report (model, test_type).
+# Each key is a prefix matched against the status-file test_name.
+# Longest prefix wins, so "sphere_irreg_waves_eta_consistency" is tried
+# before "sphere_irreg_waves_eta" which is tried before "sphere_irreg_waves".
+_STATUS_NAME_TO_REPORT_TYPE = {
+    'sphere_decay':                         ('sphere', 'decay'),
+    'sphere_reg_waves':                     ('sphere', 'regular_waves'),
+    'sphere_irreg_waves_eta_consistency':    ('sphere', 'other'),
+    'sphere_irreg_waves_eta':               ('sphere', 'irregular_waves_eta'),
+    'sphere_irreg_waves':                   ('sphere', 'irregular_waves'),
+    'f3of_dt1':                             ('f3of', 'decay'),
+    'f3of_dt2':                             ('f3of', 'decay'),
+    'f3of_dt3':                             ('f3of', 'decay'),
+    'oswec_decay':                          ('oswec', 'decay'),
+    'oswec_reg_waves':                      ('oswec', 'regular_waves'),
+    'rm3_decay':                            ('rm3', 'decay'),
+    'rm3_reg_waves':                        ('rm3', 'regular_waves'),
+}
+
+
+def _classify_status_name(model, status_name):
+    """Map a status-file test name to the report's (model, test_type) pair."""
+    # Try exact match first, then prefix match (longest prefix wins)
+    for key in sorted(_STATUS_NAME_TO_REPORT_TYPE, key=len, reverse=True):
+        if status_name == key or status_name.startswith(key):
+            mapped_model, test_type = _STATUS_NAME_TO_REPORT_TYPE[key]
+            if mapped_model == model:
+                return (model, test_type)
+    return None
+
+
+def get_test_results(categorized_plots, build_dir=None):
+    """Get test results from status files (primary) or CTest logs (fallback).
+    
+    Status files (.status.json) are written by comparison scripts and persist
+    across ctest runs.  CTest's LastTest.log is ephemeral — it only contains
+    the results from the *most recent* ctest invocation.
+    """
     test_results = {
         'sphere': {},
         'f3of': {},
@@ -126,28 +204,73 @@ def get_test_results(categorized_plots):
         'rm3': {}
     }
     
-    # First, infer PASS status from the existence of comparison plots
-    # If a comparison plot exists, it means the test ran and likely passed
+    # Default status: plots exist but we don't know pass/fail yet
     for model, model_plots in categorized_plots.items():
         if model not in test_results:
             test_results[model] = {}
-        
         for test_type, plots in model_plots.items():
-            if plots:  # If plots exist, assume PASS
-                test_results[model][test_type] = 'PASS'
-            else:
-                test_results[model][test_type] = 'NO DATA'
+            test_results[model][test_type] = 'UNKNOWN' if plots else 'NO DATA'
     
-    # Try to find and parse CTest log files for more accurate results
-    import glob
+    # -----------------------------------------------------------------
+    # 1. Primary source: persistent .status.json files
+    # -----------------------------------------------------------------
+    status_files = _read_status_files(build_dir)
+    status_found = False
+    
+    for (model, status_name), payload in status_files.items():
+        mapping = _classify_status_name(model, status_name)
+        if not mapping:
+            continue
+        m, test_type = mapping
+        status = payload.get("status", "UNKNOWN")
+        if m in test_results:
+            existing = test_results[m].get(test_type)
+            # Don't overwrite FAIL with PASS (any sub-test failure → FAIL)
+            if existing == 'FAIL':
+                continue
+            test_results[m][test_type] = status
+            status_found = True
+    
+    if status_found:
+        print("Successfully read status files from comparison scripts.")
+    
+    # Count how many slots are still UNKNOWN after reading status files
+    unknown_count = sum(
+        1 for m in test_results for t, s in test_results[m].items() if s == 'UNKNOWN'
+    )
+    
+    if unknown_count == 0:
+        return test_results
+    
+    # -----------------------------------------------------------------
+    # 2. Fallback: parse CTest LastTest.log for any remaining UNKNOWN
+    # -----------------------------------------------------------------
     import re
     
-    # Look for CTest log files in the build directory
-    build_dir = Path.cwd().parent.parent  # Go up to build directory
-    ctest_log_patterns = [
-        build_dir / "Testing" / "Temporary" / "LastTest.log",
-        build_dir / "Testing" / "Temporary" / "LastTest.log.tmp"
-    ]
+    search_roots = []
+    if build_dir:
+        search_roots.append(Path(build_dir).resolve())
+    search_roots.append(Path.cwd())
+    
+    ctest_log_patterns = []
+    for root in search_roots:
+        ctest_log_patterns.append(root / "Testing" / "Temporary" / "LastTest.log")
+        ctest_log_patterns.append(root / "Testing" / "Temporary" / "LastTest.log.tmp")
+    
+    test_name_map = {
+        'sphere_decay_regression':                      ('sphere', 'decay'),
+        'sphere_reg_waves_regression':                  ('sphere', 'regular_waves'),
+        'sphere_irreg_waves_regression':                ('sphere', 'irregular_waves'),
+        'sphere_irreg_waves_eta_regression':            ('sphere', 'irregular_waves_eta'),
+        'sphere_irreg_waves_eta_consistency_regression': ('sphere', 'other'),
+        'f3of_dt1_regression':                          ('f3of', 'decay'),
+        'f3of_dt2_regression':                          ('f3of', 'decay'),
+        'f3of_dt3_regression':                          ('f3of', 'decay'),
+        'oswec_decay_regression':                       ('oswec', 'decay'),
+        'oswec_reg_waves_regression':                   ('oswec', 'regular_waves'),
+        'rm3_decay_regression':                         ('rm3', 'decay'),
+        'rm3_reg_waves_regression':                     ('rm3', 'regular_waves'),
+    }
     
     ctest_found = False
     for log_file in ctest_log_patterns:
@@ -156,75 +279,63 @@ def get_test_results(categorized_plots):
                 with open(log_file, 'r', encoding='utf-8', errors='ignore') as f:
                     content = f.read()
                 
-                # Parse test results from CTest log
-                # Look for patterns like "Test #X: test_name .................   Passed/Failed"
-                test_pattern = r'Test #\d+:\s+(\w+)\s+\.+\s+(Passed|Failed|Not Run)'
-                matches = re.findall(test_pattern, content)
+                test_blocks = re.findall(
+                    r'\d+/\d+\s+Testing:\s+(\S+).*?Test\s+(Passed|Failed)\.',
+                    content, re.DOTALL)
                 
-                for test_name, status in matches:
-                    # Map test names to models and test types
-                    if 'sphere' in test_name.lower():
-                        model = 'sphere'
-                        if 'decay' in test_name.lower():
-                            test_type = 'decay'
-                        elif 'reg_waves' in test_name.lower():
-                            test_type = 'regular_waves'
-                        elif 'irreg_waves' in test_name.lower() and 'eta' in test_name.lower():
-                            test_type = 'irregular_waves_eta'
-                        elif 'irreg_waves' in test_name.lower():
-                            test_type = 'irregular_waves'
-                        else:
-                            continue
-                    elif 'f3of' in test_name.lower():
-                        model = 'f3of'
-                        if 'dt1' in test_name.lower():
-                            test_type = 'dt1'
-                        elif 'dt2' in test_name.lower():
-                            test_type = 'dt2'
-                        elif 'dt3' in test_name.lower():
-                            test_type = 'dt3'
-                        else:
-                            continue
-                    elif 'oswec' in test_name.lower():
-                        model = 'oswec'
-                        if 'decay' in test_name.lower():
-                            test_type = 'decay'
-                        elif 'reg_waves' in test_name.lower():
-                            test_type = 'regular_waves'
-                        else:
-                            continue
-                    elif 'rm3' in test_name.lower():
-                        model = 'rm3'
-                        if 'decay' in test_name.lower():
-                            test_type = 'decay'
-                        elif 'reg_waves' in test_name.lower():
-                            test_type = 'regular_waves'
-                        else:
-                            continue
-                    else:
+                for test_name, status in test_blocks:
+                    mapping = test_name_map.get(test_name)
+                    if not mapping:
                         continue
+                    model, test_type = mapping
                     
-                    # Convert status to our format and override inferred status
-                    if status == 'Passed':
-                        result_status = 'PASS'
-                    elif status == 'Failed':
-                        result_status = 'FAIL'
-                    else:
-                        result_status = 'NOT RUN'
-                    
-                    if model in test_results and test_type:
+                    # Only fill in slots still showing UNKNOWN
+                    if model in test_results:
+                        existing = test_results[model].get(test_type)
+                        if existing not in ('UNKNOWN',):
+                            continue
+                        result_status = 'PASS' if status == 'Passed' else 'FAIL'
                         test_results[model][test_type] = result_status
                         ctest_found = True
                                 
             except Exception as e:
                 print(f"Warning: Could not parse CTest log {log_file}: {e}")
     
+    for root in search_roots:
+        failed_log = root / "Testing" / "Temporary" / "LastTestsFailed.log"
+        if failed_log.exists():
+            try:
+                with open(failed_log, 'r', encoding='utf-8', errors='ignore') as f:
+                    for line in f:
+                        parts = line.strip().split(':', 1)
+                        if len(parts) == 2:
+                            failed_name = parts[1].strip()
+                            mapping = test_name_map.get(failed_name)
+                            if mapping:
+                                model, test_type = mapping
+                                if model in test_results:
+                                    test_results[model][test_type] = 'FAIL'
+                                    ctest_found = True
+            except Exception as e:
+                print(f"Warning: Could not parse {failed_log}: {e}")
+    
     if ctest_found:
-        print("Successfully parsed CTest results.")
-    else:
-        print("No CTest log found, using inferred results from available plots.")
+        print("Supplemented with CTest log results.")
+    
+    # Final summary
+    remaining = sum(
+        1 for m in test_results for t, s in test_results[m].items() if s == 'UNKNOWN'
+    )
+    if remaining:
+        print(f"Note: {remaining} test(s) still show UNKNOWN — re-run the regression "
+              "tests to generate status files.")
     
     return test_results
+
+def _relative_plot_path(plot_file, output_dir):
+    """Compute the relative path from the report output directory to a plot file."""
+    rel = os.path.relpath(plot_file, output_dir).replace('\\', '/')
+    return rel.replace(' ', '%20')
 
 def generate_markdown_report(categorized_plots, output_dir, build_dir, html_styling=False):
     """Generate the markdown report content."""
@@ -297,7 +408,7 @@ def generate_markdown_report(categorized_plots, output_dir, build_dir, html_styl
     content.append("")
     
     # Get test results
-    test_results = get_test_results(categorized_plots)
+    test_results = get_test_results(categorized_plots, build_dir=build_dir)
     
     # Regression Test Summary with styled table
     if html_styling:
@@ -358,10 +469,7 @@ def generate_markdown_report(categorized_plots, output_dir, build_dir, html_styl
             content.append("")
             for plot_file in model_plots['decay']:
                 plot_name = plot_file.stem.replace('_', ' ').replace('comparison', '').strip()
-                # Create path relative to report directory
-                relative_path = f"../{model}/results/plots/{plot_file.name}"
-                relative_path = relative_path.replace('\\', '/')
-                relative_path = relative_path.replace(' ', '%20')
+                relative_path = _relative_plot_path(plot_file, output_dir)
                 
                 test_type = "Decay Test"
                 # Get the actual test status
@@ -392,9 +500,7 @@ def generate_markdown_report(categorized_plots, output_dir, build_dir, html_styl
             content.append("")
             for plot_file in model_plots['regular_waves']:
                 plot_name = plot_file.stem.replace('_', ' ').replace('comparison', '').strip()
-                relative_path = f"../{model}/results/plots/{plot_file.name}"
-                relative_path = relative_path.replace('\\', '/')
-                relative_path = relative_path.replace(' ', '%20')
+                relative_path = _relative_plot_path(plot_file, output_dir)
                 
                 # Extract wave number if present
                 wave_num = ""
@@ -433,9 +539,7 @@ def generate_markdown_report(categorized_plots, output_dir, build_dir, html_styl
             content.append("")
             for plot_file in model_plots['irregular_waves']:
                 plot_name = plot_file.stem.replace('_', ' ').replace('comparison', '').strip()
-                relative_path = f"../{model}/results/plots/{plot_file.name}"
-                relative_path = relative_path.replace('\\', '/')
-                relative_path = relative_path.replace(' ', '%20')
+                relative_path = _relative_plot_path(plot_file, output_dir)
                 
                 test_type = "Irregular Waves"
                 # Get the actual test status
@@ -466,9 +570,7 @@ def generate_markdown_report(categorized_plots, output_dir, build_dir, html_styl
             content.append("")
             for plot_file in model_plots['other']:
                 plot_name = plot_file.stem.replace('_', ' ').replace('comparison', '').strip()
-                relative_path = f"../{model}/results/plots/{plot_file.name}"
-                relative_path = relative_path.replace('\\', '/')
-                relative_path = relative_path.replace(' ', '%20')
+                relative_path = _relative_plot_path(plot_file, output_dir)
                 
                 test_type = "Other Test"
                 # Get the actual test status (try to infer from filename)
@@ -827,14 +929,54 @@ def convert_to_pdf(markdown_file, output_dir):
         print(f"ERROR: PDF generation failed: {e}")
         return None
 
+def rerun_comparisons(build_dir, config="Release"):
+    """Re-run CTest comparison tests to regenerate plot images.
+    
+    This ensures plots reflect the current reference data. Without this step,
+    plots may be stale if reference data was updated after the last test run.
+    
+    Note: The comparison tests use CTest FIXTURES_REQUIRED, which means CTest
+    will skip them unless the simulation fixture tests are also selected.
+    We use -FA "." to exclude all fixture requirements so the comparison
+    scripts run directly (the simulation output files already exist on disk).
+    """
+    print("Re-running comparison tests to regenerate plots...")
+    build_path = Path(build_dir).resolve()
+    
+    cmd = [
+        "ctest",
+        "--test-dir", str(build_path),
+        "-C", config,
+        "-R", "_regression",
+        "-LE", "report",
+        "-FA", ".",
+        "--output-on-failure"
+    ]
+    
+    result = subprocess.run(cmd, capture_output=False)
+    if result.returncode != 0:
+        print("WARNING: Some comparison tests failed (plots were still regenerated).")
+    else:
+        print("All comparison tests passed.")
+    print()
+
+
 def main():
     parser = argparse.ArgumentParser(description='Generate HydroChrono regression test report')
     parser.add_argument('--output-dir', help='Output directory for reports (default: build/bin/tests/regression/report)')
     parser.add_argument('--build-dir', default='build', help='Build directory path')
     parser.add_argument('--pdf', action='store_true', help='Generate PDF using pandoc (requires pandoc to be installed)')
     parser.add_argument('--html-styling', action='store_true', help='Include HTML styling in markdown (for advanced PDF generation)')
+    parser.add_argument('--recompare', action='store_true',
+                        help='Re-run CTest comparison tests before generating the report. '
+                             'Use this after updating reference data to ensure plots are current.')
+    parser.add_argument('--config', default='Release', help='Build configuration (default: Release)')
     
     args = parser.parse_args()
+    
+    # Re-run comparison tests if requested
+    if args.recompare:
+        rerun_comparisons(args.build_dir, args.config)
     
     # Set default output directory to build/bin/tests/regression/report if not specified
     if args.output_dir is None:

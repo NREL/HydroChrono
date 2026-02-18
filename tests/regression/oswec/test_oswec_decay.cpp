@@ -1,12 +1,8 @@
-#include <hydroc/gui/guihelper.h>
 #include <hydroc/helper.h>
 #include <hydroc/hydro_system.h>
 
-#include <chrono/core/ChRealtimeStep.h>
 #include <chrono/physics/ChBodyEasy.h>
 #include <chrono/physics/ChSystemNSC.h>
-
-#include "chrono_postprocess/ChGnuPlot.h"
 
 #include <chrono>   // std::chrono::high_resolution_clock::now
 #include <iomanip>  // std::setprecision
@@ -14,11 +10,6 @@
 
 // Use the namespaces of Chrono
 using namespace chrono;
-
-// usage: ./<demos>.exe [DATADIR] [--nogui]
-//
-// If no argument is given user can set HYDROCHRONO_DATA_DIR
-// environment variable to give the data_directory.
 
 // Function to compute cross product
 std::array<double, 3> cross(std::array<double, 3> v1, std::array<double, 3> v2) {
@@ -40,19 +31,13 @@ std::array<double, 3> normalize(std::array<double, 3> v) {
 std::array<double, 3> rotate_vector_3d(std::array<double, 3> vector,
                                        std::array<double, 3> axis,
                                        double angle_in_degrees) {
-    // Convert the angle from degrees to radians
     double angle_in_radians = angle_in_degrees * CH_DEG_TO_RAD;
-
-    // Normalize the axis vector
     axis = normalize(axis);
-
-    // Apply the rotation to the vector
     std::array<double, 3> rotated_vector;
     for (int i = 0; i < 3; i++) {
         rotated_vector[i] = vector[i] * cos(angle_in_radians) + cross(axis, vector)[i] * sin(angle_in_radians) +
                             axis[i] * dot(axis, vector) * (1 - cos(angle_in_radians));
     }
-
     return rotated_vector;
 }
 
@@ -64,18 +49,11 @@ std::array<double, 3> add_vectors(std::array<double, 3> v1, std::array<double, 3
 int main(int argc, char* argv[]) {
     std::cout << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
-    // Parse CLI arguments and initialize environment
-    bool profilingOn     = true;
-    bool saveDataOn      = true;
-    bool plotOn          = true;
-    bool visualizationOn = true;
+    // Initialize environment
     std::string data_dir;
-    if (!hydroc::GetCLIArguments(argc, argv, "OSWEC decay regression test", saveDataOn, profilingOn, plotOn,
-                                 visualizationOn, data_dir))
-        return 1;
     if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
 
-    // Get model file names - use HydroChrono data directory
+    // Get model file names
     std::filesystem::path DATADIR(hydroc::getDataDir());
 
     auto body1_meshfame = (DATADIR / "demos" / "oswec" / "geometry" / "flap.obj").lexically_normal().generic_string();
@@ -87,18 +65,10 @@ int main(int argc, char* argv[]) {
 
     system.SetGravitationalAcceleration(ChVector3d(0.0, 0.0, -9.81));
     double timestep = 0.03;
-    // system.SetTimestepperType(ChTimestepper::Type::HHT);
     system.SetSolverType(ChSolver::Type::GMRES);
-    // system.GetSolver()->AsIterative()->SetMaxIterations(300);  // the higher, the easier to keep the constraints
-    // satisfied.
-    ChRealtimeStepTimer realtime_timer;
-    double simulationDuration = 400.0;
+    double simulationDuration = hydroc::getSimDuration(400.0, 800.0);
 
-    // Create user interface
-    std::shared_ptr<hydroc::gui::UI> pui = hydroc::gui::CreateUI(visualizationOn);
-    hydroc::gui::UI& ui                  = *pui.get();
-
-    // some io/viz options
+    // Output timeseries
     std::vector<double> time_vector;
     std::vector<double> flap_rot;
 
@@ -108,29 +78,17 @@ int main(int argc, char* argv[]) {
     double angle_in_degrees               = 10;
 
     std::array<double, 3> rotated_hinge_to_cg = rotate_vector_3d(hinge_to_cg, axis, angle_in_degrees);
-
     std::array<double, 3> new_cg = add_vectors(origin_to_hinge, rotated_hinge_to_cg);
-
-    std::cout << "The original vector is [" << hinge_to_cg[0] << ", " << hinge_to_cg[1] << ", " << hinge_to_cg[2] << "]"
-              << std::endl;
-    std::cout << "The rotated vector is [" << rotated_hinge_to_cg[0] << ", " << rotated_hinge_to_cg[1] << ", "
-              << rotated_hinge_to_cg[2] << "]" << std::endl;
-    std::cout << "The rotated vector is [" << new_cg[0] << ", " << new_cg[1] << ", " << new_cg[2] << "]" << std::endl;
 
     // set up body from a mesh
     std::cout << "Attempting to open mesh file: " << body1_meshfame << std::endl;
-    std::shared_ptr<ChBody> flap_body = chrono_types::make_shared<ChBodyEasyMesh>(  //
+    std::shared_ptr<ChBody> flap_body = chrono_types::make_shared<ChBodyEasyMesh>(
         body1_meshfame,
         1000,   // density
         false,  // do not evaluate mass automatically
         true,   // create visualization asset
         false   // collisions
     );
-
-    // Create a visualization material
-    auto red = chrono_types::make_shared<ChVisualMaterial>();
-    red->SetDiffuseColor(ChColor(0.3f, 0.1f, 0.1f));
-    flap_body->GetVisualShape(0)->SetMaterial(0, red);
 
     // define the float's initial conditions
     system.Add(flap_body);
@@ -140,11 +98,10 @@ int main(int argc, char* argv[]) {
     flap_body->SetRot(QuatFromAngleY(ang_rad));
     flap_body->SetMass(127000.0);
     flap_body->SetInertiaXX(ChVector3d(1.85e6, 1.85e6, 1.85e6));
-    // notes: mass and inertia added to added mass and system mass correctly.
 
     // set up body from a mesh
     std::cout << "Attempting to open mesh file: " << body2_meshfame << std::endl;
-    std::shared_ptr<ChBody> base_body = chrono_types::make_shared<ChBodyEasyMesh>(  //
+    std::shared_ptr<ChBody> base_body = chrono_types::make_shared<ChBodyEasyMesh>(
         body2_meshfame,
         1000,   // density
         false,  // do not evaluate mass automatically
@@ -152,18 +109,12 @@ int main(int argc, char* argv[]) {
         false   // collisions
     );
 
-    // Create a visualization material
-    auto blue = chrono_types::make_shared<ChVisualMaterial>();
-    blue->SetDiffuseColor(ChColor(0.3f, 0.1f, 0.6f));
-    base_body->GetVisualShape(0)->SetMaterial(0, blue);
-
     // define the plate's initial conditions
     system.Add(base_body);
     base_body->SetName("body2");
     base_body->SetPos(ChVector3d(0, 0, -10.15));
     base_body->SetMass(999);
     base_body->SetInertiaXX(ChVector3d(1, 1, 1));
-    // base_body->SetFixed(true);
 
     // create ground
     auto ground = chrono_types::make_shared<ChBody>();
@@ -172,11 +123,12 @@ int main(int argc, char* argv[]) {
     ground->SetTag(-1);
     ground->SetFixed(true);
     ground->EnableCollision(false);
-    // fix base to ground with special constraint (don't use setfixed() because of mass matrix)
+
+    // fix base to ground with special constraint
     auto anchor = chrono_types::make_shared<ChLinkMateGeneric>();
     anchor->Initialize(base_body, ground, false, base_body->GetVisualModelFrame(), base_body->GetVisualModelFrame());
     system.Add(anchor);
-    anchor->SetConstrainedCoords(true, true, true, true, true, true);  // x, y, z, Rx, Ry, Rz
+    anchor->SetConstrainedCoords(true, true, true, true, true, true);
 
     // define base-fore flap joint
     ChQuaternion<> revoluteRot = QuatFromAngleX(CH_PI / 2.0);
@@ -192,85 +144,41 @@ int main(int argc, char* argv[]) {
     bodies.push_back(base_body);
     HydroForces blah(bodies, h5fname, default_dont_add_waves);
 
-    // create output directory
-    bool saveDbgOn      = false;
-    std::string out_dir = hydroc::getTestOutDir() + "/" + RESULTS_DIR_NAME;
-    if (profilingOn || saveDataOn || saveDbgOn) {
-        std::filesystem::create_directory(std::filesystem::path(out_dir));
-        if (saveDbgOn) {
-            std::string dbg_dir = out_dir + "/dbg";
-            std::filesystem::create_directory(std::filesystem::path(dbg_dir));
-            system.EnableSolverMatrixWrite(true, dbg_dir);
-        }
-    }
-
-    std::cout << "Start simulation" << std::endl;
-    std::cout << "  Step size:  " << timestep << std::endl;
-    std::cout << "  Duration:   " << simulationDuration << std::endl;
-
-    // initialize UI
-    ui.Init(&system, "OSWEC - Decay Test");
-    ui.SetCamera(0, -50, -10, 0, 0, -10);
-    ui.simulationStarted = true;
-
     // for profiling
     auto start = std::chrono::high_resolution_clock::now();
 
     // main simulation loop
-    // int frames = 0;
     while (system.GetChTime() <= simulationDuration) {
-        if (ui.IsRunning(timestep) == false) break;
+        system.DoStepDynamics(timestep);
 
-        if (ui.simulationStarted) {
-            system.DoStepDynamics(timestep);
-
-            // append data to output vector
-            time_vector.push_back(system.GetChTime());
-            flap_rot.push_back(flap_body->GetRot().GetCardanAnglesXYZ().y());
-        }
-
-        // if (++frames >= 10) break;
+        // append data to output vector
+        time_vector.push_back(system.GetChTime());
+        flap_rot.push_back(flap_body->GetRot().GetCardanAnglesXYZ().y());
     }
 
     // for profiling
     auto end          = std::chrono::high_resolution_clock::now();
     unsigned duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    std::cout << "Simulation completed in " << duration << " ms" << std::endl;
 
-    if (profilingOn) {
-        std::ofstream profilingFile(out_dir + "/" + RESULTS_FILE_NAME + "_duration.txt");
-        if (profilingFile.is_open()) {
-            profilingFile << duration << " ms\n";
-            profilingFile.close();
-        } else {
-            std::cout << "Error: Could not open profiling file for writing." << std::endl;
-        }
-    }
+    // Save results
+    std::string out_dir = hydroc::getTestOutDir() + "/" + RESULTS_DIR_NAME;
+    std::filesystem::create_directories(std::filesystem::path(out_dir));
 
-    if (saveDataOn) {
-        std::ofstream outputFile(out_dir + "/" + RESULTS_FILE_NAME + ".txt");
-        if (outputFile.is_open()) {
-            outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(16)
-                       << "Flap Rotation y (radians)" << std::right << std::setw(16) << "Flap Rotation y (degrees)"
-                       << std::endl;
-            for (size_t i = 0; i < time_vector.size(); ++i)
-                outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
-                           << std::right << std::setw(16) << std::setprecision(4) << std::fixed << flap_rot[i]
-                           << std::right << std::setw(16) << std::setprecision(4) << std::fixed
-                           << flap_rot[i] * 360.0 / 6.28 << std::endl;
-            outputFile.close();
-        } else {
-            std::cout << "Error: Could not open output file for writing." << std::endl;
-            return 1;  // Return an error code
-        }
-    }
-
-    if (plotOn) {
-        postprocess::ChGnuPlot gplot(out_dir + "/owsec_decay.gpl");
-        gplot.SetGrid();
-        gplot.SetLabelX("time (s)");
-        gplot.SetLabelY("pitch (rad)");
-        gplot.SetTitle("OSWEC decay");
-        gplot.Plot(time_vector, flap_rot, "", " with lines lt rgb '#FF5500' lw 2");
+    std::ofstream outputFile(out_dir + "/" + RESULTS_FILE_NAME + ".txt");
+    if (outputFile.is_open()) {
+        outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(16)
+                   << "Flap Rotation y (radians)" << std::right << std::setw(16) << "Flap Rotation y (degrees)"
+                   << std::endl;
+        for (size_t i = 0; i < time_vector.size(); ++i)
+            outputFile << std::left << std::setw(10) << std::setprecision(2) << std::fixed << time_vector[i]
+                       << std::right << std::setw(16) << std::setprecision(4) << std::fixed << flap_rot[i]
+                       << std::right << std::setw(16) << std::setprecision(4) << std::fixed
+                       << flap_rot[i] * 360.0 / 6.28 << std::endl;
+        outputFile.close();
+    } else {
+        std::cout << "Error: Could not open output file for writing." << std::endl;
+        return 1;
     }
 
     return 0;

@@ -18,11 +18,9 @@
 #include <iostream>
 #include <vector>
 
-#include <chrono/core/ChRealtimeStep.h>
 #include <chrono/physics/ChBodyEasy.h>
 #include <chrono/physics/ChSystemNSC.h>
 
-#include <hydroc/gui/guihelper.h>
 #include <hydroc/helper.h>
 #include <hydroc/hydro_forces.h>
 
@@ -30,25 +28,18 @@ using namespace chrono;
 
 // Shared simulation parameters
 const double TIMESTEP      = 0.015;
-const double DURATION      = 60.0;  // Short duration for faster testing
 const double WAVE_HEIGHT   = 2.0;
 const double WAVE_PERIOD   = 12.0;
 const double RAMP_DURATION = 0.0;  // No ramp for exact comparison
 const int SEED             = 42;   // Fixed seed for reproducibility
 
 int main(int argc, char* argv[]) {
+    const double DURATION = hydroc::getSimDuration(60.0, 120.0);
     std::cout << "=== IRREGULAR WAVES ETA CONSISTENCY TEST ===" << std::endl;
     std::cout << "Validates spectrum-generated and eta-imported waves produce identical results.\n" << std::endl;
 
-    // Parse CLI arguments
-    bool profilingOn     = true;
-    bool saveDataOn      = true;
-    bool plotOn          = true;
-    bool visualizationOn = true;
+    // Initialize environment
     std::string data_dir;
-    if (!hydroc::GetCLIArguments(argc, argv, "Sphere irregular waves eta consistency test", saveDataOn, profilingOn,
-                                 plotOn, visualizationOn, data_dir))
-        return 1;
     if (!hydroc::SetInitialEnvironment(data_dir)) return 1;
 
     std::filesystem::path DATADIR(hydroc::getDataDir());
@@ -69,8 +60,7 @@ int main(int argc, char* argv[]) {
     {
         ChSystemNSC system;
         system.SetGravitationalAcceleration(ChVector3d(0.0, 0.0, -9.81));
-        system.SetSolverType(ChSolver::Type::GMRES);
-        system.GetSolver()->AsIterative()->SetMaxIterations(300);
+        system.SetSolverType(ChSolver::Type::SPARSE_QR);
 
         // Ground
         auto ground = chrono_types::make_shared<ChBody>();
@@ -136,7 +126,7 @@ int main(int argc, char* argv[]) {
                 std::cerr << "ERROR: Could not create eta file: " << eta_file << std::endl;
                 return 1;
             }
-            eta_out << std::setprecision(10);
+            eta_out << std::setprecision(17);
             for (size_t i = 0; i < fse_time.size(); ++i) {
                 eta_out << fse_time[i] << ":" << fse_elevation[i] << "\n";
             }
@@ -156,8 +146,7 @@ int main(int argc, char* argv[]) {
     {
         ChSystemNSC system;
         system.SetGravitationalAcceleration(ChVector3d(0.0, 0.0, -9.81));
-        system.SetSolverType(ChSolver::Type::GMRES);
-        system.GetSolver()->AsIterative()->SetMaxIterations(300);
+        system.SetSolverType(ChSolver::Type::SPARSE_QR);
 
         // Ground
         auto ground = chrono_types::make_shared<ChBody>();
@@ -241,23 +230,21 @@ int main(int argc, char* argv[]) {
     std::cout << "  RMS difference: " << rms_diff << " m" << std::endl;
 
     // ========== PHASE 4: Save results ==========
-    if (saveDataOn) {
-        std::string results_file = out_dir + "/" + RESULTS_DIR_NAME + "/" + RESULTS_FILE_NAME + ".txt";
-        std::ofstream out(results_file);
-        if (out.is_open()) {
-            out << std::setprecision(10);
-            out << "Time (s)    Heave_Spectrum (m)    Heave_Eta (m)    Difference (m)\n";
-            out << "--------    ------------------    -------------    --------------\n";
-            for (size_t i = 0; i < heave_spectrum.size(); ++i) {
-                double t = i * TIMESTEP;
-                out << std::setw(10) << std::fixed << std::setprecision(3) << t << std::setw(20) << std::fixed
-                    << std::setprecision(8) << heave_spectrum[i] << std::setw(18) << std::fixed << std::setprecision(8)
-                    << heave_eta[i] << std::setw(18) << std::scientific << std::setprecision(4)
-                    << (heave_spectrum[i] - heave_eta[i]) << "\n";
-            }
-            out.close();
-            std::cout << "\n  Results saved to: " << results_file << std::endl;
+    std::string results_file = out_dir + "/" + RESULTS_DIR_NAME + "/" + RESULTS_FILE_NAME + ".txt";
+    std::ofstream out(results_file);
+    if (out.is_open()) {
+        out << std::setprecision(10);
+        out << "Time (s)    Heave_Spectrum (m)    Heave_Eta (m)    Difference (m)\n";
+        out << "--------    ------------------    -------------    --------------\n";
+        for (size_t i = 0; i < heave_spectrum.size(); ++i) {
+            double t = i * TIMESTEP;
+            out << std::setw(10) << std::fixed << std::setprecision(3) << t << std::setw(20) << std::fixed
+                << std::setprecision(8) << heave_spectrum[i] << std::setw(18) << std::fixed << std::setprecision(8)
+                << heave_eta[i] << std::setw(18) << std::scientific << std::setprecision(4)
+                << (heave_spectrum[i] - heave_eta[i]) << "\n";
         }
+        out.close();
+        std::cout << "\n  Results saved to: " << results_file << std::endl;
     }
 
     // ========== PASS/FAIL determination ==========
