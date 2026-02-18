@@ -15,7 +15,6 @@
 // Wave utilities are internal implementation details
 
 struct RegularWaveParams {
-    unsigned int num_bodies_;
     double regular_wave_amplitude_;
     double regular_wave_omega_;
     double regular_wave_phase_ = 0.0;
@@ -25,7 +24,6 @@ struct RegularWaveParams {
 class RegularWave : public WaveBase {
   public:
     RegularWave();
-    explicit RegularWave(unsigned int num_b);
     explicit RegularWave(const RegularWaveParams& params);
 
     void Initialize() override;
@@ -48,7 +46,6 @@ class RegularWave : public WaveBase {
     Eigen::Vector2d GetElevationGradientXY(const Eigen::Vector3d& position, double time) const;
 
   private:
-    unsigned int num_bodies_ = 0;
     const WaveMode mode_ = WaveMode::regular;
     std::vector<HydroData::RegularWaveInfo> wave_info_;
     Eigen::VectorXd excitation_force_mag_;

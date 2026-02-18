@@ -48,21 +48,21 @@ class WaveBase {
     Eigen::Vector3d GetVelocity(const Eigen::Vector3d& position, double time);
     Eigen::Vector3d GetAcceleration(const Eigen::Vector3d& position, double time);
 
+    void SetNumBodies(unsigned int n) { num_bodies_ = n; }
+    unsigned int GetNumBodies() const { return num_bodies_; }
+
     double mwl_           = 0.0;
     double g_             = 9.81;
     double water_depth_   = 0.0;
     bool wave_stretching_ = true;
-};
 
-struct NoWaveParams {
-    unsigned int num_bodies_;
+  protected:
+    unsigned int num_bodies_ = 0;
 };
 
 class NoWave : public WaveBase {
   public:
-    NoWave();
-    explicit NoWave(unsigned int num_b);
-    explicit NoWave(const NoWaveParams& params);
+    NoWave() = default;
 
     void Initialize() override {}
     Eigen::VectorXd GetForceAtTime(double t) override;
@@ -72,7 +72,6 @@ class NoWave : public WaveBase {
     Eigen::Vector3d GetAcceleration(const Eigen::Vector3d&, double, double) override { return Eigen::Vector3d(0.0, 0.0, 0.0); }
 
   private:
-    unsigned int num_bodies_ = 0;
     const WaveMode mode_ = WaveMode::noWaveCIC;
 };
 

@@ -25,11 +25,11 @@ IrregularWaves::IrregularWaves(const IrregularWaveParams& params) : params_(para
 }
 
 void IrregularWaves::InitializeIRFVectors() {
-    ex_irf_sampled_.resize(params_.num_bodies_);
-    ex_irf_time_sampled_.resize(params_.num_bodies_);
-    ex_irf_width_sampled_.resize(params_.num_bodies_);
+    ex_irf_sampled_.resize(num_bodies_);
+    ex_irf_time_sampled_.resize(num_bodies_);
+    ex_irf_width_sampled_.resize(num_bodies_);
 
-    for (unsigned int b = 0; b < params_.num_bodies_; b++) {
+    for (unsigned int b = 0; b < num_bodies_; b++) {
         ex_irf_sampled_[b]      = GetExcitationIRF(b);
         ex_irf_time_sampled_[b] = wave_info_[b].excitation_irf_time;
         CalculateWidthIRF();
@@ -261,13 +261,13 @@ double IrregularWaves::GetElevationForVisualization(const Eigen::Vector3d& posit
 }
 
 Eigen::VectorXd IrregularWaves::GetForceAtTime(double t) {
-    unsigned int total_dofs = params_.num_bodies_ * 6;
+    unsigned int total_dofs = num_bodies_ * 6;
     Eigen::VectorXd f(total_dofs);
     for (unsigned int i = 0; i < total_dofs; i++) {
         f[i] = 0.0;
     }
 
-    for (unsigned int body = 0; body < params_.num_bodies_; body++) {
+    for (unsigned int body = 0; body < num_bodies_; body++) {
         for (int dof = 0; dof < 6; ++dof) {
             double f_dof          = ExcitationConvolution(body, dof, t);
             unsigned int b_offset = body * 6;
@@ -399,7 +399,7 @@ void IrregularWaves::CreateFreeSurfaceElevation() {
 }
 
 void IrregularWaves::ResampleIRF(double dt) {
-    for (unsigned int b = 0; b < params_.num_bodies_; b++) {
+    for (unsigned int b = 0; b < num_bodies_; b++) {
         auto& time_array = ex_irf_time_sampled_[b];
         // Note: width_array is recalculated by CalculateWidthIRF() below
         auto& val_array  = ex_irf_sampled_[b];
@@ -429,7 +429,7 @@ void IrregularWaves::ResampleIRF(double dt) {
 }
 
 void IrregularWaves::CalculateWidthIRF() {
-    for (unsigned int b = 0; b < params_.num_bodies_; b++) {
+    for (unsigned int b = 0; b < num_bodies_; b++) {
         auto& time_array  = ex_irf_time_sampled_[b];
         auto& width_array = ex_irf_width_sampled_[b];
         width_array       = GetWidthArray(time_array);

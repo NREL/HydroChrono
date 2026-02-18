@@ -106,7 +106,6 @@ int main(int argc, char* argv[]) {
     std::cout << "Defining irregular wave input parameters..." << std::endl;
     IrregularWaveParams params;
     std::cout << "bodies.size() = " << bodies.size() << std::endl;
-    params.num_bodies_          = (unsigned int)bodies.size();
     params.simulation_dt_       = timestep;
     params.simulation_duration_ = simulationDuration;
     params.ramp_duration_       = 0.0;

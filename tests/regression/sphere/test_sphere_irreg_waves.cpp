@@ -80,7 +80,6 @@ int main(int argc, char* argv[]) {
     bodies.push_back(sphereBody);
 
     IrregularWaveParams wave_inputs;
-    wave_inputs.num_bodies_          = (unsigned int)bodies.size();
     wave_inputs.simulation_dt_       = timestep;
     wave_inputs.simulation_duration_ = simulationDuration;
     wave_inputs.ramp_duration_       = 60.0;

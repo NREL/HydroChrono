@@ -127,7 +127,7 @@ int main(int argc, char* argv[]) {
     system.AddLink(base_rev);
 
     // define wave parameters
-    auto default_dont_add_waves = std::make_shared<NoWave>(3);
+    auto default_dont_add_waves = std::make_shared<NoWave>();
 
     // set up hydro forces
     std::vector<std::shared_ptr<ChBody>> bodies;

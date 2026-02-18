@@ -91,7 +91,6 @@ int main(int argc, char* argv[]) {
 
         // Create spectrum-based waves
         IrregularWaveParams spectrum_params;
-        spectrum_params.num_bodies_          = 1;
         spectrum_params.simulation_dt_       = TIMESTEP;
         spectrum_params.simulation_duration_ = DURATION;
         spectrum_params.ramp_duration_       = RAMP_DURATION;
@@ -177,7 +176,6 @@ int main(int argc, char* argv[]) {
 
         // Create eta-import waves
         IrregularWaveParams eta_params;
-        eta_params.num_bodies_          = 1;
         eta_params.simulation_dt_       = TIMESTEP;
         eta_params.simulation_duration_ = DURATION;
         eta_params.ramp_duration_       = RAMP_DURATION;

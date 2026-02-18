@@ -13,7 +13,6 @@
 #include <vector>
 
 struct IrregularWaveParams {
-    unsigned int num_bodies_ = 0;
     double simulation_dt_ = 0.0;
     double simulation_duration_ = 0.0;
     double ramp_duration_ = 0.0;

@@ -9,17 +9,11 @@
 #include <cmath>
 
 RegularWave::RegularWave()
-    : num_bodies_(1),
-      wavenumber_(0.0) {
+    : wavenumber_(0.0) {
 }
 
-RegularWave::RegularWave(unsigned int num_b)
-    : num_bodies_(num_b),
-      wavenumber_(0.0) {
-}
-
-RegularWave::RegularWave(const RegularWaveParams& params) {
-    num_bodies_ = params.num_bodies_;
+RegularWave::RegularWave(const RegularWaveParams& params)
+    : wavenumber_(0.0) {
     regular_wave_amplitude_ = params.regular_wave_amplitude_;
     regular_wave_omega_     = params.regular_wave_omega_;
     regular_wave_phase_     = params.regular_wave_phase_;

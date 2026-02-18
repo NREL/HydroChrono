@@ -38,8 +38,7 @@ namespace {
 /**
  * @brief Create a wave object from wave settings.
  */
-std::shared_ptr<WaveBase> CreateWaveFromSettings(const WaveSettings& wave_settings, 
-                                                 unsigned int num_bodies,
+std::shared_ptr<WaveBase> CreateWaveFromSettings(const WaveSettings& wave_settings,
                                                  double timestep,
                                                  double sim_duration,
                                                  double ramp_duration) {
@@ -48,11 +47,10 @@ std::shared_ptr<WaveBase> CreateWaveFromSettings(const WaveSettings& wave_settin
     std::transform(type.begin(), type.end(), type.begin(), ::tolower);
 
     if (type == "regular") {
-        auto regular_wave = std::make_shared<RegularWave>(num_bodies);
+        auto regular_wave = std::make_shared<RegularWave>();
         
-        // Set wave parameters
-        regular_wave->regular_wave_amplitude_ = wave_settings.height / 2.0;  // Convert height to amplitude
-        regular_wave->regular_wave_omega_ = 2.0 * M_PI / wave_settings.period;  // Convert period to angular frequency
+        regular_wave->regular_wave_amplitude_ = wave_settings.height / 2.0;
+        regular_wave->regular_wave_omega_ = 2.0 * M_PI / wave_settings.period;
         regular_wave->regular_wave_phase_ = wave_settings.phase;
         
         hydroc::debug::LogDebug(std::string("Attached wave model: RegularWave, H=") + std::to_string(wave_settings.height) + 
@@ -61,15 +59,12 @@ std::shared_ptr<WaveBase> CreateWaveFromSettings(const WaveSettings& wave_settin
         return regular_wave;
         
     } else if (type == "irregular") {
-        // Create irregular wave parameters
         IrregularWaveParams params;
-        params.num_bodies_ = num_bodies;
         params.simulation_dt_ = timestep;
         params.simulation_duration_ = sim_duration;
         params.ramp_duration_ = ramp_duration;
         params.wave_height_ = wave_settings.height;
         params.wave_period_ = wave_settings.period;
-        // Use YAML-provided seed if available; fall back to a default deterministic seed
         params.seed_ = (wave_settings.seed > 0 ? wave_settings.seed : 1);
         
         auto irregular_wave = std::make_shared<IrregularWaves>(params);
@@ -80,7 +75,7 @@ std::shared_ptr<WaveBase> CreateWaveFromSettings(const WaveSettings& wave_settin
         return irregular_wave;
         
     } else if (type == "no_wave" || type == "still_ci" || type == "still") {
-        auto no_wave = std::make_shared<NoWave>(num_bodies);
+        auto no_wave = std::make_shared<NoWave>();
         
         hydroc::debug::LogDebug("Attached wave model: NoWave (still water)");
         
@@ -163,9 +158,7 @@ std::unique_ptr<HydroSystem> SetupHydroFromYAML(
     }
     
     // Create wave object from settings (system-wide, not per-body)
-    auto wave = CreateWaveFromSettings(hydro_data.waves, 
-                                      static_cast<unsigned int>(matched_bodies.size()), 
-                                      timestep, sim_duration, ramp_duration);
+    auto wave = CreateWaveFromSettings(hydro_data.waves, timestep, sim_duration, ramp_duration);
     
     // Create and initialize HydroSystem (multibody: all matched bodies passed in)
     auto hydro_system = std::make_unique<HydroSystem>(matched_bodies, h5_file_path, wave);
