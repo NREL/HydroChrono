@@ -25,7 +25,7 @@ if __name__ == '__main__':
 
     if len(sys.argv) != 3:
         print("Usage: python compare.py <reference_file> <test_file>")
-    sys.exit(1)
+        sys.exit(1)
 
     # Get reference and results files
     ref_file = sys.argv[1]
