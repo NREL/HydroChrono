@@ -124,6 +124,42 @@ struct StateSpaceOptions {
     int r2_num_samples = 50;
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Kernel Fit Diagnostics (for state-space radiation)
+// ─────────────────────────────────────────────────────────────────────────────
+
+struct DofPairInfo {
+    int dof_i = 0;
+    int dof_j = 0;
+    double r_squared = 0.0;
+    int state_order = 0;
+    int num_exp_modes = 0;
+    int num_osc_modes = 0;
+};
+
+}  // namespace hydrochrono::hydro
+
+// KernelFitDiagnostics is defined outside the namespace to avoid Eigen
+// dependency in radiation_types.h when only forward-declared.
+#include <Eigen/Dense>
+#include <vector>
+
+namespace hydrochrono::hydro {
+
+struct KernelFitDiagnostics {
+    std::string body_name;
+    int body_index = 0;
+    int num_dofs = 0;
+    double min_r2 = 0.0;
+    double max_r2 = 0.0;
+    double mean_r2 = 0.0;
+    int total_modes = 0;
+    Eigen::VectorXd time;
+    Eigen::MatrixXd K_actual;
+    Eigen::MatrixXd K_fit;
+    std::vector<DofPairInfo> dof_pairs;
+};
+
 }  // namespace hydrochrono::hydro
 
 #endif  // HYDROC_RADIATION_TYPES_H

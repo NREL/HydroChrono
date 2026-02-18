@@ -476,6 +476,10 @@ void HydroSystem::SetTaperedDirectOptions(const hydrochrono::hydro::TaperedDirec
     InvalidateRadiationComponent();  // Invalidate component to recreate with new settings
 }
 
+void HydroSystem::SetOutputKernelFit(bool enabled) {
+    output_kernel_fit_ = enabled;
+}
+
 void HydroSystem::EnsureRadiationComponent() {
     if (radiation_component_) {
         return;  // Already created
@@ -527,7 +531,7 @@ std::unique_ptr<hydrochrono::hydro::IHydroForceComponent> HydroSystem::CreateRad
     if (radiation_method_ == hydrochrono::hydro::RadiationMethod::kStateSpace) {
         // State-space approximation: O(1) per timestep
         return std::make_unique<hydrochrono::hydro::RadiationStateSpaceComponent>(
-            file_info_, num_bodies_, state_space_opts_, output_kernel_fit_);
+            file_info_, num_bodies_, state_space_opts_);
     }
 
     // Default: RIRF convolution

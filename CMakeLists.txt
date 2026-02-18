@@ -322,7 +322,6 @@ set(HC_HEADERS
     ${PROJECT_BINARY_DIR}/hydroc/version.h
     include/hydroc/hydro_system.h
     include/hydroc/helper.h
-    include/hydroc/hydro_forces.h
     include/hydroc/logging.h
     include/hydroc/config/hydro_config.h
     include/hydroc/core/force_component.h

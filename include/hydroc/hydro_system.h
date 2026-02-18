@@ -410,6 +410,28 @@ class HydroSystem {
     void SetTaperedDirectOptions(const hydrochrono::hydro::TaperedDirectOptions& opts);
 
     /**
+     * @brief Enable or disable kernel fit diagnostic output.
+     * 
+     * When enabled and using state-space radiation, kernel fit quality data
+     * can be retrieved after the first force evaluation and exported to HDF5.
+     * 
+     * @param enabled True to enable kernel fit diagnostics
+     */
+    void SetOutputKernelFit(bool enabled);
+
+    /**
+     * @brief Check if kernel fit diagnostics are available.
+     * @return True if state-space radiation is active and diagnostics are ready
+     */
+    bool HasKernelFitDiagnostics() const;
+
+    /**
+     * @brief Get kernel fit diagnostics for all bodies.
+     * @return Vector of KernelFitDiagnostics (one per body)
+     */
+    std::vector<hydrochrono::hydro::KernelFitDiagnostics> GetKernelFitDiagnostics() const;
+
+    /**
      * @brief Set the directory where diagnostics (e.g., CSVs) should be written.
      */
     void SetDiagnosticsOutputDirectory(const std::string& dir) {
@@ -532,10 +554,11 @@ class HydroSystem {
     // Radiation configuration (uses canonical types from radiation module)
     // ─────────────────────────────────────────────────────────────────────────
     
-    // Top-level method selection (state-space not yet implemented)
+    // Top-level method selection
     hydrochrono::hydro::RadiationMethod radiation_method_ = 
         hydrochrono::hydro::RadiationMethod::kRirfConvolution;
     hydrochrono::hydro::StateSpaceOptions state_space_opts_;
+    bool output_kernel_fit_ = false;
     
     // Convolution kernel preprocessing (only applies when method == kRirfConvolution)
     hydrochrono::hydro::RadiationConvolutionMode convolution_mode_;

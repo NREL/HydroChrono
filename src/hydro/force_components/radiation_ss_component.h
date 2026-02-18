@@ -115,6 +115,9 @@ public:
     double min_r2() const;
     double max_r2() const;
 
+    bool HasDiagnostics() const { return false; }
+    std::vector<KernelFitDiagnostics> GetDiagnostics() const { return {}; }
+
 private:
     int num_bodies_;
     int num_dofs_;  ///< Total DOFs = 6 * num_bodies

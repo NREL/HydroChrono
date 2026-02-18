@@ -88,6 +88,11 @@ struct YAMLHydroData {
     double td_taper_end_percent = 1.0;        // end taper at 100% of total time series
     double td_taper_final_amplitude = 0.0;    // final amplitude as fraction of original (0.0 = zero, 1.0 = no change)
     bool td_export_plot_csv = false;          // dump before/after CSV summaries (false by default)
+    
+    // ─────────────────────────────────────────────────────────────────────────
+    // Diagnostics
+    // ─────────────────────────────────────────────────────────────────────────
+    bool output_kernel_fit = false;           // write kernel fit diagnostics to HDF5
 };
 
 #endif  // HYDROC_CONFIG_HYDRO_CONFIG_H
