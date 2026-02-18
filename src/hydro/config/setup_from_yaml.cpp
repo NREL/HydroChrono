@@ -60,11 +60,10 @@ std::shared_ptr<WaveBase> CreateWaveFromSettings(const WaveSettings& wave_settin
         
     } else if (type == "irregular") {
         IrregularWaveParams params;
-        params.simulation_dt_ = timestep;
-        params.simulation_duration_ = sim_duration;
         params.ramp_duration_ = ramp_duration;
         params.wave_height_ = wave_settings.height;
         params.wave_period_ = wave_settings.period;
+        params.nfrequencies_ = 1000;
         params.seed_ = (wave_settings.seed > 0 ? wave_settings.seed : 1);
         
         auto irregular_wave = std::make_shared<IrregularWaves>(params);

@@ -121,8 +121,6 @@ int main(int argc, char* argv[]) {
 
         // Use ETA file for irregular waves
         IrregularWaveParams wave_inputs;
-        wave_inputs.simulation_dt_       = timestep;
-        wave_inputs.simulation_duration_ = simulationDuration;
         wave_inputs.ramp_duration_       = 0.0;
         wave_inputs.eta_file_path_ =
             (DATADIR / "demos" / "sphere" / "eta" / "eta.txt").lexically_normal().generic_string();

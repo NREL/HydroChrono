@@ -106,8 +106,6 @@ int main(int argc, char* argv[]) {
     std::cout << "Defining irregular wave input parameters..." << std::endl;
     IrregularWaveParams params;
     std::cout << "bodies.size() = " << bodies.size() << std::endl;
-    params.simulation_dt_       = timestep;
-    params.simulation_duration_ = simulationDuration;
     params.ramp_duration_       = 0.0;
     params.eta_file_path_ = (DATADIR / "demos" / "sphere" / "eta" / "eta.txt").lexically_normal().generic_string();
     params.frequency_min_ = 0.001;

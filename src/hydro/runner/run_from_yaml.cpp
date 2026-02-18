@@ -748,8 +748,7 @@ int RunHydroChronoFromYAML(int argc, char* argv[]) {
                         auto irreg = std::static_pointer_cast<IrregularWaves>(wave_ptr);
                         std::vector<double> f = irreg->GetFrequenciesHz();
                         std::vector<double> S = irreg->GetSpectrum();
-                        std::vector<double> tvec = irreg->GetFreeSurfaceTime();
-                        std::vector<double> eta = irreg->GetFreeSurfaceElevation();
+                        auto [tvec, eta] = irreg->ComputeElevationTimeSeries(0.0, duration_hint, loop_dt);
                         exporter->WriteIrregularInputs(f, S, tvec, eta);
                     }
                 }
