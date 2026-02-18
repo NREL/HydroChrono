@@ -72,6 +72,7 @@ endfunction()
 message(STATUS "Add HydroChrono regression tests")
 
 build_regression_test(sphere  sphere_decay            FALSE)
+build_regression_test(sphere  sphere_decay_ss         FALSE)
 build_regression_test(sphere  sphere_reg_waves        TRUE)
 build_regression_test(sphere  sphere_irreg_waves      FALSE)
 build_regression_test(sphere  sphere_irreg_waves_eta  FALSE)
@@ -80,6 +81,7 @@ build_regression_test(f3of    f3of_dt1                FALSE)
 build_regression_test(f3of    f3of_dt2                FALSE)
 build_regression_test(f3of    f3of_dt3                FALSE)
 build_regression_test(oswec   oswec_decay             FALSE)
+build_regression_test(oswec   oswec_decay_ss          FALSE)
 build_regression_test(oswec   oswec_reg_waves         TRUE)
 build_regression_test(rm3     rm3_decay               FALSE)
 build_regression_test(rm3     rm3_reg_waves           FALSE)
@@ -103,5 +105,5 @@ set_tests_properties(
     PROPERTIES 
     LABELS "regression;report;documentation;core"
     ENVIRONMENT "PATH=${Python3_ROOT_DIR};$ENV{PATH};HYDROCHRONO_BUILD_DIR=${CMAKE_BINARY_DIR}"
-    DEPENDS "sphere_decay_regression;sphere_reg_waves_regression;sphere_irreg_waves_regression;sphere_irreg_waves_eta_regression;sphere_irreg_waves_eta_consistency_regression;f3of_dt1_regression;f3of_dt2_regression;f3of_dt3_regression;oswec_decay_regression;oswec_reg_waves_regression;rm3_decay_regression;rm3_reg_waves_regression"
+    DEPENDS "sphere_decay_regression;sphere_decay_ss_regression;sphere_reg_waves_regression;sphere_irreg_waves_regression;sphere_irreg_waves_eta_regression;sphere_irreg_waves_eta_consistency_regression;f3of_dt1_regression;f3of_dt2_regression;f3of_dt3_regression;oswec_decay_regression;oswec_decay_ss_regression;oswec_reg_waves_regression;rm3_decay_regression;rm3_reg_waves_regression"
 )

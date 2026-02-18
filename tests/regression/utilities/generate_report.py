@@ -164,6 +164,7 @@ def _read_status_files(build_dir):
 # Longest prefix wins, so "sphere_irreg_waves_eta_consistency" is tried
 # before "sphere_irreg_waves_eta" which is tried before "sphere_irreg_waves".
 _STATUS_NAME_TO_REPORT_TYPE = {
+    'sphere_decay_ss':                      ('sphere', 'decay_state_space'),
     'sphere_decay':                         ('sphere', 'decay'),
     'sphere_reg_waves':                     ('sphere', 'regular_waves'),
     'sphere_irreg_waves_eta_consistency':    ('sphere', 'other'),
@@ -172,6 +173,7 @@ _STATUS_NAME_TO_REPORT_TYPE = {
     'f3of_dt1':                             ('f3of', 'decay'),
     'f3of_dt2':                             ('f3of', 'decay'),
     'f3of_dt3':                             ('f3of', 'decay'),
+    'oswec_decay_ss':                       ('oswec', 'decay_state_space'),
     'oswec_decay':                          ('oswec', 'decay'),
     'oswec_reg_waves':                      ('oswec', 'regular_waves'),
     'rm3_decay':                            ('rm3', 'decay'),
@@ -258,6 +260,7 @@ def get_test_results(categorized_plots, build_dir=None):
         ctest_log_patterns.append(root / "Testing" / "Temporary" / "LastTest.log.tmp")
     
     test_name_map = {
+        'sphere_decay_ss_regression':                   ('sphere', 'decay_state_space'),
         'sphere_decay_regression':                      ('sphere', 'decay'),
         'sphere_reg_waves_regression':                  ('sphere', 'regular_waves'),
         'sphere_irreg_waves_regression':                ('sphere', 'irregular_waves'),
@@ -266,6 +269,7 @@ def get_test_results(categorized_plots, build_dir=None):
         'f3of_dt1_regression':                          ('f3of', 'decay'),
         'f3of_dt2_regression':                          ('f3of', 'decay'),
         'f3of_dt3_regression':                          ('f3of', 'decay'),
+        'oswec_decay_ss_regression':                    ('oswec', 'decay_state_space'),
         'oswec_decay_regression':                       ('oswec', 'decay'),
         'oswec_reg_waves_regression':                   ('oswec', 'regular_waves'),
         'rm3_decay_regression':                         ('rm3', 'decay'),
