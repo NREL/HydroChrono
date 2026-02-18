@@ -234,10 +234,10 @@ void GUIImplVSG::UpdateRadiationSourceBody(double t) {
         // Get wave properties from wave model if available.
         if (wave_model_) {
             // Water depth and gravity (available in all wave models).
-            if (wave_model_->water_depth_ > 0.0) {
-                rad_params.water_depth = wave_model_->water_depth_;
+            if (wave_model_->GetWaterDepth() > 0.0) {
+                rad_params.water_depth = wave_model_->GetWaterDepth();
             }
-            rad_params.gravity = wave_model_->g_;
+            rad_params.gravity = wave_model_->GetGravity();
 
             // Wave period from RegularWave.
             if (wave_model_->GetWaveMode() == WaveMode::regular) {

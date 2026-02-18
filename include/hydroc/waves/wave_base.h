@@ -6,11 +6,10 @@
 #ifndef HYDROC_WAVES_WAVE_BASE_H
 #define HYDROC_WAVES_WAVE_BASE_H
 
-#include <Eigen/Dense>
+#include <Eigen/Core>
 
-//// RADU - why is this not in some namespace?
-////      - should these classes be DLL-exported (e.g., to allow AddWave(NoWave))?
-////        if not, why is this a public headers?
+// TODO: Wrap wave classes in a namespace (e.g., hydrochrono::waves).
+// TODO: Determine if these classes need DLL-export for external wave model support.
 
 enum class WaveMode {
     noWaveCIC = 0,
@@ -36,27 +35,38 @@ enum class WaveMode {
  */
 class WaveBase {
   public:
+    static constexpr int kDofsPerBody = 6;
+
     virtual ~WaveBase() = default;
 
-    virtual void Initialize()                                                                               = 0;
-    virtual Eigen::VectorXd GetForceAtTime(double t)                                                        = 0;
-    virtual WaveMode GetWaveMode()                                                                          = 0;
-    virtual double GetElevation(const Eigen::Vector3d& position, double time)                               = 0;
-    virtual Eigen::Vector3d GetVelocity(const Eigen::Vector3d& position, double time, double elevation)     = 0;
-    virtual Eigen::Vector3d GetAcceleration(const Eigen::Vector3d& position, double time, double elevation) = 0;
+    WaveBase(const WaveBase&)            = delete;
+    WaveBase& operator=(const WaveBase&) = delete;
 
-    Eigen::Vector3d GetVelocity(const Eigen::Vector3d& position, double time);
-    Eigen::Vector3d GetAcceleration(const Eigen::Vector3d& position, double time);
+    virtual void Initialize()                                                                                     = 0;
+    virtual Eigen::VectorXd GetForceAtTime(double t) const                                                        = 0;
+    virtual WaveMode GetWaveMode() const                                                                          = 0;
+    virtual double GetElevation(const Eigen::Vector3d& position, double time) const                               = 0;
+    virtual Eigen::Vector3d GetVelocity(const Eigen::Vector3d& position, double time, double elevation) const     = 0;
+    virtual Eigen::Vector3d GetAcceleration(const Eigen::Vector3d& position, double time, double elevation) const = 0;
+
+    Eigen::Vector3d GetVelocity(const Eigen::Vector3d& position, double time) const;
+    Eigen::Vector3d GetAcceleration(const Eigen::Vector3d& position, double time) const;
 
     void SetNumBodies(unsigned int n) { num_bodies_ = n; }
     unsigned int GetNumBodies() const { return num_bodies_; }
+
+    double GetMWL() const { return mwl_; }
+    double GetGravity() const { return g_; }
+    double GetWaterDepth() const { return water_depth_; }
+    bool GetWaveStretching() const { return wave_stretching_; }
+
+  protected:
+    WaveBase() = default;
 
     double mwl_           = 0.0;
     double g_             = 9.81;
     double water_depth_   = 0.0;
     bool wave_stretching_ = true;
-
-  protected:
     unsigned int num_bodies_ = 0;
 };
 
@@ -65,14 +75,14 @@ class NoWave : public WaveBase {
     NoWave() = default;
 
     void Initialize() override {}
-    Eigen::VectorXd GetForceAtTime(double t) override;
-    WaveMode GetWaveMode() override { return mode_; }
-    double GetElevation(const Eigen::Vector3d&, double) override { return 0.0; }
-    Eigen::Vector3d GetVelocity(const Eigen::Vector3d&, double, double) override { return Eigen::Vector3d(0.0, 0.0, 0.0); }
-    Eigen::Vector3d GetAcceleration(const Eigen::Vector3d&, double, double) override { return Eigen::Vector3d(0.0, 0.0, 0.0); }
+    Eigen::VectorXd GetForceAtTime(double t) const override;
+    WaveMode GetWaveMode() const override { return mode_; }
+    double GetElevation(const Eigen::Vector3d&, double) const override { return 0.0; }
+    Eigen::Vector3d GetVelocity(const Eigen::Vector3d&, double, double) const override { return Eigen::Vector3d(0.0, 0.0, 0.0); }
+    Eigen::Vector3d GetAcceleration(const Eigen::Vector3d&, double, double) const override { return Eigen::Vector3d(0.0, 0.0, 0.0); }
 
   private:
-    const WaveMode mode_ = WaveMode::noWaveCIC;
+    static constexpr WaveMode mode_ = WaveMode::noWaveCIC;
 };
 
 #endif  // HYDROC_WAVES_WAVE_BASE_H

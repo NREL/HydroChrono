@@ -91,13 +91,13 @@ int main(int argc, char* argv[]) {
 
         // Create spectrum-based waves
         IrregularWaveParams spectrum_params;
-        spectrum_params.ramp_duration_       = RAMP_DURATION;
-        spectrum_params.wave_height_         = WAVE_HEIGHT;
-        spectrum_params.wave_period_         = WAVE_PERIOD;
-        spectrum_params.frequency_min_       = 0.001;
-        spectrum_params.frequency_max_       = 1.0;
-        spectrum_params.nfrequencies_        = 1000;
-        spectrum_params.seed_                = SEED;
+        spectrum_params.ramp_duration       = RAMP_DURATION;
+        spectrum_params.wave_height         = WAVE_HEIGHT;
+        spectrum_params.wave_period         = WAVE_PERIOD;
+        spectrum_params.frequency_min       = 0.001;
+        spectrum_params.frequency_max       = 1.0;
+        spectrum_params.nfrequencies        = 1000;
+        spectrum_params.seed                = SEED;
 
         auto spectrum_waves = std::make_shared<IrregularWaves>(spectrum_params);
 
@@ -179,11 +179,11 @@ int main(int argc, char* argv[]) {
 
         // Create eta-import waves
         IrregularWaveParams eta_params;
-        eta_params.ramp_duration_       = RAMP_DURATION;
-        eta_params.eta_file_path_       = eta_file;
-        eta_params.frequency_min_       = 0.001;
-        eta_params.frequency_max_       = 1.0;
-        eta_params.nfrequencies_        = 1000;
+        eta_params.ramp_duration       = RAMP_DURATION;
+        eta_params.eta_file_path       = eta_file;
+        eta_params.frequency_min       = 0.001;
+        eta_params.frequency_max       = 1.0;
+        eta_params.nfrequencies        = 1000;
 
         auto eta_waves = std::make_shared<IrregularWaves>(eta_params);
 

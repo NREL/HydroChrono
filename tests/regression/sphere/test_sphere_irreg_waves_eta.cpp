@@ -121,12 +121,12 @@ int main(int argc, char* argv[]) {
 
         // Use ETA file for irregular waves
         IrregularWaveParams wave_inputs;
-        wave_inputs.ramp_duration_       = 0.0;
-        wave_inputs.eta_file_path_ =
+        wave_inputs.ramp_duration       = 0.0;
+        wave_inputs.eta_file_path =
             (DATADIR / "demos" / "sphere" / "eta" / "eta.txt").lexically_normal().generic_string();
-        wave_inputs.frequency_min_ = 0.001;
-        wave_inputs.frequency_max_ = 1.0;
-        wave_inputs.nfrequencies_  = 1000;
+        wave_inputs.frequency_min = 0.001;
+        wave_inputs.frequency_max = 1.0;
+        wave_inputs.nfrequencies  = 1000;
 
         std::shared_ptr<IrregularWaves> my_hydro_inputs;
 
