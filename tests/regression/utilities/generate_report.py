@@ -169,6 +169,7 @@ _STATUS_NAME_TO_REPORT_TYPE = {
     'sphere_reg_waves':                     ('sphere', 'regular_waves'),
     'sphere_irreg_waves_eta_consistency':    ('sphere', 'other'),
     'sphere_irreg_waves_eta':               ('sphere', 'irregular_waves_eta'),
+    'sphere_irreg_waves_ss':                ('sphere', 'irregular_waves'),
     'sphere_irreg_waves':                   ('sphere', 'irregular_waves'),
     'f3of_dt1':                             ('f3of', 'decay'),
     'f3of_dt2':                             ('f3of', 'decay'),
@@ -176,6 +177,8 @@ _STATUS_NAME_TO_REPORT_TYPE = {
     'oswec_decay_ss':                       ('oswec', 'decay_state_space'),
     'oswec_decay':                          ('oswec', 'decay'),
     'oswec_reg_waves':                      ('oswec', 'regular_waves'),
+    'oswec_irreg_waves_ss':                 ('oswec', 'irregular_waves'),
+    'oswec_irreg_waves':                    ('oswec', 'irregular_waves'),
     'rm3_decay':                            ('rm3', 'decay'),
     'rm3_reg_waves':                        ('rm3', 'regular_waves'),
 }
@@ -263,6 +266,7 @@ def get_test_results(categorized_plots, build_dir=None):
         'sphere_decay_ss_regression':                   ('sphere', 'decay_state_space'),
         'sphere_decay_regression':                      ('sphere', 'decay'),
         'sphere_reg_waves_regression':                  ('sphere', 'regular_waves'),
+        'sphere_irreg_waves_ss_regression':             ('sphere', 'irregular_waves'),
         'sphere_irreg_waves_regression':                ('sphere', 'irregular_waves'),
         'sphere_irreg_waves_eta_regression':            ('sphere', 'irregular_waves_eta'),
         'sphere_irreg_waves_eta_consistency_regression': ('sphere', 'other'),
@@ -272,6 +276,8 @@ def get_test_results(categorized_plots, build_dir=None):
         'oswec_decay_ss_regression':                    ('oswec', 'decay_state_space'),
         'oswec_decay_regression':                       ('oswec', 'decay'),
         'oswec_reg_waves_regression':                   ('oswec', 'regular_waves'),
+        'oswec_irreg_waves_ss_regression':              ('oswec', 'irregular_waves'),
+        'oswec_irreg_waves_regression':                 ('oswec', 'irregular_waves'),
         'rm3_decay_regression':                         ('rm3', 'decay'),
         'rm3_reg_waves_regression':                     ('rm3', 'regular_waves'),
     }
