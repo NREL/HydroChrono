@@ -58,7 +58,24 @@ struct WaveSettings {
 struct YAMLHydroData {
     std::vector<HydroBody> bodies;
     WaveSettings waves;
-    // Optional system-wide convolution settings
+    
+    // ─────────────────────────────────────────────────────────────────────────
+    // Radiation method selection (system-wide)
+    // ─────────────────────────────────────────────────────────────────────────
+    // Top-level selection: "rirf_convolution" (default) or "state_space"
+    std::string radiation_method = "rirf_convolution";
+    
+    // ─────────────────────────────────────────────────────────────────────────
+    // State-space options (only used if radiation_method == "state_space")
+    // ─────────────────────────────────────────────────────────────────────────
+    int ss_max_order = 10;           // Maximum exponential modes per DOF pair
+    double ss_r2_threshold = 0.95;   // R² fit quality threshold
+    int ss_max_hankel_size = 200;    // Max Hankel matrix size for SVD (key performance param)
+    int ss_r2_num_samples = 50;      // Number of samples for R² check during fitting
+    
+    // ─────────────────────────────────────────────────────────────────────────
+    // Convolution settings (only used if radiation_method == "rirf_convolution")
+    // ─────────────────────────────────────────────────────────────────────────
     std::string radiation_convolution_mode = "Baseline"; // Baseline | TaperedDirect
     std::string td_smoothing = "sg";
     int td_window_length = 5;
@@ -71,6 +88,11 @@ struct YAMLHydroData {
     double td_taper_end_percent = 1.0;        // end taper at 100% of total time series
     double td_taper_final_amplitude = 0.0;    // final amplitude as fraction of original (0.0 = zero, 1.0 = no change)
     bool td_export_plot_csv = false;          // dump before/after CSV summaries (false by default)
+    
+    // ─────────────────────────────────────────────────────────────────────────
+    // Diagnostics
+    // ─────────────────────────────────────────────────────────────────────────
+    bool output_kernel_fit = false;           // write kernel fit diagnostics to HDF5
 };
 
 #endif  // HYDROC_CONFIG_HYDRO_CONFIG_H

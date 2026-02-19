@@ -24,6 +24,7 @@
 #include "chrono/chrono_state_utils.h"
 #include "force_components/hydrostatics_component.h"
 #include "force_components/radiation_component.h"
+#include "force_components/radiation_ss_component.h"
 #include "force_components/excitation_component.h"
 #include <hydroc/core/hydro_forces.h>
 #include <hydroc/coupling/chrono_coupler.h>
@@ -454,6 +455,18 @@ void HydroSystem::InvalidateRadiationComponent() {
 // Radiation configuration setters
 // ─────────────────────────────────────────────────────────────────────────
 
+void HydroSystem::SetRadiationMethod(hydrochrono::hydro::RadiationMethod method) {
+    radiation_method_ = method;
+    InvalidateRadiationComponent();  // Invalidate component to recreate with new method
+}
+
+void HydroSystem::SetStateSpaceOptions(const hydrochrono::hydro::StateSpaceOptions& opts) {
+    state_space_opts_ = opts;
+    if (radiation_method_ == hydrochrono::hydro::RadiationMethod::kStateSpace) {
+        InvalidateRadiationComponent();  // Invalidate to recreate with new options
+    }
+}
+
 void HydroSystem::SetRadiationConvolutionMode(hydrochrono::hydro::RadiationConvolutionMode mode) {
     convolution_mode_ = mode;
     InvalidateRadiationComponent();  // Invalidate component to recreate with new settings
@@ -462,6 +475,10 @@ void HydroSystem::SetRadiationConvolutionMode(hydrochrono::hydro::RadiationConvo
 void HydroSystem::SetTaperedDirectOptions(const hydrochrono::hydro::TaperedDirectOptions& opts) {
     tapered_opts_ = opts;
     InvalidateRadiationComponent();  // Invalidate component to recreate with new settings
+}
+
+void HydroSystem::SetOutputKernelFit(bool enabled) {
+    output_kernel_fit_ = enabled;
 }
 
 void HydroSystem::EnsureRadiationComponent() {
@@ -499,23 +516,27 @@ std::unique_ptr<hydrochrono::hydro::HydrostaticsComponent> HydroSystem::CreateHy
         file_info_, num_bodies_, equilibrium_, cb_minus_cg_, gravitational_acceleration);
 }
 
-std::unique_ptr<hydrochrono::hydro::RadiationComponent> HydroSystem::CreateRadiationComponent() const {
-    // Single source of truth for RadiationComponent construction.
-    // Used by EnsureRadiationComponent() and EnsureHydroForcesAndCoupler().
-    // Each RadiationComponent instance owns its own velocity history.
+std::unique_ptr<hydrochrono::hydro::IHydroForceComponent> HydroSystem::CreateRadiationComponent() const {
+    // Factory for radiation force component.
+    // Returns either:
+    //   - RadiationComponent (convolution-based, default)
+    //   - RadiationStateSpaceComponent (state-space approximation)
     //
     // Configuration inputs:
+    //   - radiation_method_: selects which component type to create
     //   - file_info_: BEM data including RIRF kernels
     //   - num_bodies_: number of bodies in system
-    //   - rirf_time_vector, rirf_width_vector: time discretization for RIRF
-    //   - convolution_mode_: Baseline or TaperedDirect
-    //   - tapered_opts_: preprocessing options for TaperedDirect mode
-    //   - diagnostics_output_dir_: where to write debug CSVs
+    //   - For convolution: convolution_mode_, tapered_opts_, diagnostics_output_dir_
+    //   - For state-space: state_space_opts_
 
+    if (radiation_method_ == hydrochrono::hydro::RadiationMethod::kStateSpace) {
+        // State-space approximation: O(1) per timestep
+        return std::make_unique<hydrochrono::hydro::RadiationStateSpaceComponent>(
+            file_info_, num_bodies_, state_space_opts_);
+    }
+
+    // Default: RIRF convolution
     const int rirf_steps = file_info_.GetRIRFDims(2);
-
-    // convolution_mode_ and tapered_opts_ are now the canonical types from
-    // hydrochrono::hydro namespace - no conversion needed (single source of truth)
     return std::make_unique<hydrochrono::hydro::RadiationComponent>(
         file_info_, num_bodies_, rirf_steps, rirf_time_vector, rirf_width_vector,
         convolution_mode_, tapered_opts_, diagnostics_output_dir_);
@@ -775,5 +796,62 @@ void HydroSystem::SetProfilingEnabled(bool enabled) {
     if (chrono_coupler_) {
         chrono_coupler_->SetProfilingEnabled(enabled);
     }
+}
+
+bool HydroSystem::HasKernelFitDiagnostics() const {
+    // Check both the dedicated radiation_component_ and the one in hydro_forces_
+    if (radiation_method_ != hydrochrono::hydro::RadiationMethod::kStateSpace) {
+        return false;
+    }
+    
+    // Try radiation_component_ first
+    if (radiation_component_) {
+        auto* ss_comp = dynamic_cast<hydrochrono::hydro::RadiationStateSpaceComponent*>(
+            radiation_component_.get());
+        if (ss_comp && ss_comp->HasDiagnostics()) {
+            return true;
+        }
+    }
+    
+    // Check components owned by hydro_forces_
+    if (hydro_forces_) {
+        for (const auto& comp : hydro_forces_->GetComponents()) {
+            if (comp->Type() == hydrochrono::hydro::HydroComponentType::Radiation) {
+                auto* ss_comp = dynamic_cast<hydrochrono::hydro::RadiationStateSpaceComponent*>(
+                    comp.get());
+                if (ss_comp && ss_comp->HasDiagnostics()) {
+                    return true;
+                }
+            }
+        }
+    }
+    
+    return false;
+}
+
+std::vector<hydrochrono::hydro::KernelFitDiagnostics> HydroSystem::GetKernelFitDiagnostics() const {
+    // Try radiation_component_ first
+    if (radiation_component_) {
+        auto* ss_comp = dynamic_cast<hydrochrono::hydro::RadiationStateSpaceComponent*>(
+            radiation_component_.get());
+        if (ss_comp && ss_comp->HasDiagnostics()) {
+            return ss_comp->GetDiagnostics();
+        }
+    }
+    
+    // Check components owned by hydro_forces_
+    if (hydro_forces_) {
+        for (const auto& comp : hydro_forces_->GetComponents()) {
+            if (comp->Type() == hydrochrono::hydro::HydroComponentType::Radiation) {
+                auto* ss_comp = dynamic_cast<hydrochrono::hydro::RadiationStateSpaceComponent*>(
+                    comp.get());
+                if (ss_comp && ss_comp->HasDiagnostics()) {
+                    return ss_comp->GetDiagnostics();
+                }
+            }
+        }
+    }
+    
+    return {};
 }
 

@@ -163,6 +163,8 @@ YAMLHydroData ReadHydroYAML(const std::string& hydro_file_path) {
     bool in_hydrodynamics = false;
     bool in_bodies = false;
     bool in_waves = false;
+    bool in_radiation = false;          // Top-level radiation: section
+    bool in_radiation_state_space = false;  // radiation.state_space: subsection
     bool in_convolution = false;
     bool in_conv_smoothing = false;
     bool in_conv_taper = false;
@@ -266,12 +268,29 @@ YAMLHydroData ReadHydroYAML(const std::string& hydro_file_path) {
             continue;
         }
 
+        if (indent == 2 && trimmed == "radiation:") {
+            // Save any pending body before switching sections
+            if (in_body && !current_body.name.empty()) {
+                data.bodies.push_back(current_body);
+            }
+            in_radiation = true;
+            in_radiation_state_space = false;
+            in_convolution = false;
+            in_bodies = false;
+            in_waves = false;
+            in_body = false;
+            in_conv_smoothing = in_conv_taper = in_conv_diag = false;
+            continue;
+        }
+
         if (indent == 2 && (trimmed == "convolution:" || trimmed == "radiation_convolution:")) {
             // Save any pending body before switching sections
             if (in_body && !current_body.name.empty()) {
                 data.bodies.push_back(current_body);
             }
             in_convolution = true;
+            in_radiation = false;
+            in_radiation_state_space = false;
             in_bodies = false;
             in_waves = false;
             in_body = false;
@@ -310,7 +329,9 @@ YAMLHydroData ReadHydroYAML(const std::string& hydro_file_path) {
             std::string key;
             std::string value;
             bool should_parse = (
-                (!in_bodies && !in_waves && in_hydrodynamics && !in_convolution && indent == 2) ||
+                (!in_bodies && !in_waves && in_hydrodynamics && !in_convolution && !in_radiation && indent == 2) ||
+                (in_radiation && indent == 4) ||
+                (in_radiation_state_space && indent == 6) ||
                 (in_convolution && indent == 4) ||
                 (in_conv_smoothing && indent == 6) ||
                 (in_conv_taper && indent == 6) ||
@@ -319,7 +340,32 @@ YAMLHydroData ReadHydroYAML(const std::string& hydro_file_path) {
                 (in_waves && (indent == 4 || (in_period_block && indent >= period_block_indent + 2)))
             );
             if (should_parse && ParseYAMLLine(line, key, value)) {
-                if (in_convolution && indent == 4) {
+                // ─────────────────────────────────────────────────────────────
+                // radiation: section parsing
+                // ─────────────────────────────────────────────────────────────
+                if (in_radiation && indent == 4) {
+                    if (key == "method") {
+                        // "rirf_convolution" or "state_space"
+                        data.radiation_method = value;
+                    } else if (key == "state_space") {
+                        // Start of nested state_space: block
+                        if (value.empty()) {
+                            in_radiation_state_space = true;
+                        }
+                    }
+                } else if (in_radiation_state_space && indent == 6) {
+                    if (key == "max_order") {
+                        try { data.ss_max_order = std::stoi(value); } catch (...) {}
+                    } else if (key == "r2_threshold") {
+                        data.ss_r2_threshold = ParseDouble(value, data.ss_r2_threshold);
+                    } else if (key == "max_hankel_size") {
+                        try { data.ss_max_hankel_size = std::stoi(value); } catch (...) {}
+                    } else if (key == "r2_num_samples") {
+                        try { data.ss_r2_num_samples = std::stoi(value); } catch (...) {}
+                    } else if (key == "output_kernel_fit") {
+                        data.output_kernel_fit = ParseBool(value, false);
+                    }
+                } else if (in_convolution && indent == 4) {
                     // Top level keys under convolution
                     if (key == "mode") {
                         data.radiation_convolution_mode = value;

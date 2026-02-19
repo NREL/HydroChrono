@@ -32,3 +32,5 @@ endfunction()
 # --- Register unit tests ---
 message(STATUS "Add HydroChrono unit tests")
 build_unit_test(test_added_mass_determinism)
+build_unit_test(test_radiation_ss_model)
+build_unit_test(test_radiation_ss_fitter)

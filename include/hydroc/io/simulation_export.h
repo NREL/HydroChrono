@@ -17,6 +17,8 @@
 #include <vector>
 #include <string>
 
+namespace hydrochrono::hydro { struct KernelFitDiagnostics; }
+
 namespace chrono { class ChSystem; class ChBody; class ChLink; }
 
 namespace hydroc {
@@ -161,6 +163,13 @@ class SimulationExporter {
                         int steps,
                         double dt_s,
                         double time_final_s);
+
+    /**
+     * @brief Write radiation kernel fit diagnostics to HDF5.
+     * @param diagnostics Vector of per-body kernel fit diagnostics
+     */
+    void WriteRadiationDiagnostics(
+        const std::vector<hydrochrono::hydro::KernelFitDiagnostics>& diagnostics);
 
   private:
     struct Impl;

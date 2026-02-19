@@ -164,7 +164,45 @@ std::unique_ptr<HydroSystem> SetupHydroFromYAML(
     
     hydroc::debug::LogDebug(std::string("Initialized HydroSystem with ") + std::to_string(matched_bodies.size()) + " bodies");
 
-    // System-wide convolution settings (applies to all bodies)
+    // ─────────────────────────────────────────────────────────────────────────
+    // Radiation method selection
+    // ─────────────────────────────────────────────────────────────────────────
+    std::string method = hydro_data.radiation_method;
+    std::transform(method.begin(), method.end(), method.begin(), ::tolower);
+    
+    if (method == "state_space") {
+        hydro_system->SetRadiationMethod(hydrochrono::hydro::RadiationMethod::kStateSpace);
+        hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "Radiation Method", "StateSpace"));
+        
+        // Set state-space options
+        hydrochrono::hydro::StateSpaceOptions ss_opts;
+        ss_opts.max_order = hydro_data.ss_max_order;
+        ss_opts.r2_threshold = hydro_data.ss_r2_threshold;
+        ss_opts.max_hankel_size = hydro_data.ss_max_hankel_size;
+        ss_opts.r2_num_samples = hydro_data.ss_r2_num_samples;
+        hydro_system->SetStateSpaceOptions(ss_opts);
+        
+        // Enable kernel fit diagnostics if requested
+        if (hydro_data.output_kernel_fit) {
+            hydro_system->SetOutputKernelFit(true);
+            hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "Kernel Fit Diagnostics", "Enabled"));
+        }
+        
+        if (hydroc::debug::IsDebugEnabled()) {
+            hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "SS Max Order", std::to_string(ss_opts.max_order)));
+            hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "SS R² Threshold", std::to_string(ss_opts.r2_threshold)));
+            hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "SS Max Hankel Size", std::to_string(ss_opts.max_hankel_size)));
+            hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "SS R² Samples", std::to_string(ss_opts.r2_num_samples)));
+        }
+    } else {
+        // Default: rirf_convolution (or any unrecognized value)
+        hydro_system->SetRadiationMethod(hydrochrono::hydro::RadiationMethod::kRirfConvolution);
+        hydroc::debug::LogDebug("Radiation method: RIRF Convolution (default)");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Convolution settings (applies when method == rirf_convolution)
+    // ─────────────────────────────────────────────────────────────────────────
     std::string mode = hydro_data.radiation_convolution_mode;
     hydroc::debug::LogDebug("Parsed convolution mode: '" + mode + "'");
     std::transform(mode.begin(), mode.end(), mode.begin(), ::tolower);

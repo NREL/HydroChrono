@@ -1,0 +1,14 @@
+hydrodynamics:
+  bodies:
+    - name: body1
+      h5_file: ../../assets/hydroData/iea_sphere.h5
+
+  waves:
+    type: still
+
+  radiation:
+    method: state_space
+    state_space:
+      max_order: 10
+      r2_threshold: 0.99
+      max_hankel_size: 200

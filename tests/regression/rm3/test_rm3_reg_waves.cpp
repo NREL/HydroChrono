@@ -1,5 +1,6 @@
 #include <hydroc/helper.h>
-#include <hydroc/hydro_forces.h>
+#include <hydroc/hydro_system.h>
+#include <hydroc/logging.h>
 
 #include <chrono/physics/ChBodyEasy.h>
 #include <chrono/physics/ChSystemNSC.h>

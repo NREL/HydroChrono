@@ -8,6 +8,7 @@
 #include <hydroc/waves/wave_base.h>
 #include <hydroc/waves/regular_wave.h>
 #include <hydroc/waves/irregular_wave.h>
+#include <hydroc/radiation/radiation_types.h>
 #include <hydroc/version.h>
 #include <hydroc/logging.h>
 
@@ -983,6 +984,114 @@ void SimulationExporter::SetRunMetadata(const std::string& started_at_utc,
     impl_->options.run_steps = steps;
     impl_->options.run_dt = dt_s;
     impl_->options.run_time_final = time_final_s;
+}
+
+void SimulationExporter::WriteRadiationDiagnostics(
+    const std::vector<hydrochrono::hydro::KernelFitDiagnostics>& diagnostics) {
+    
+    if (diagnostics.empty()) {
+        return;
+    }
+
+    // Create diagnostics group hierarchy
+    auto g_diag = impl_->writer.RequireGroup("/diagnostics");
+    auto g_rad = impl_->writer.RequireGroup("/diagnostics/radiation");
+    
+    // Write metadata
+    g_rad.WriteAttribute("description", std::string("State-space radiation kernel fit diagnostics"));
+    g_rad.WriteAttribute("num_bodies", static_cast<double>(diagnostics.size()));
+
+    // DOF names for reference
+    static const std::vector<std::string> dof_names = {
+        "surge", "sway", "heave", "roll", "pitch", "yaw"
+    };
+
+    for (const auto& diag : diagnostics) {
+        // Create group for this body
+        auto g_body = g_rad.CreateGroup(diag.body_name);
+        
+        // Write body metadata
+        g_body.WriteAttribute("body_index", static_cast<double>(diag.body_index));
+        g_body.WriteAttribute("num_dofs", static_cast<double>(diag.num_dofs));
+        g_body.WriteAttribute("min_r2", diag.min_r2);
+        g_body.WriteAttribute("max_r2", diag.max_r2);
+        g_body.WriteAttribute("mean_r2", diag.mean_r2);
+        g_body.WriteAttribute("total_modes", static_cast<double>(diag.total_modes));
+
+        // Write time vector
+        const hsize_t n_times = static_cast<hsize_t>(diag.time.size());
+        if (n_times > 0) {
+            std::vector<double> time_vec(diag.time.data(), diag.time.data() + n_times);
+            std::array<hsize_t, 1> dims_1d = {n_times};
+            g_body.WriteDataset("time", time_vec, dims_1d);
+            g_body.WriteAttribute("time_units", std::string("s"));
+        }
+
+        // Write K_actual and K_fit matrices
+        const hsize_t n_dofs = static_cast<hsize_t>(diag.K_actual.cols());
+        if (n_times > 0 && n_dofs > 0) {
+            // Convert Eigen matrices to row-major vectors for HDF5
+            // K_actual: [n_times, n_dofs]
+            std::vector<double> K_actual_vec(n_times * n_dofs);
+            std::vector<double> K_fit_vec(n_times * n_dofs);
+            
+            for (hsize_t t = 0; t < n_times; ++t) {
+                for (hsize_t d = 0; d < n_dofs; ++d) {
+                    K_actual_vec[t * n_dofs + d] = diag.K_actual(t, d);
+                    K_fit_vec[t * n_dofs + d] = diag.K_fit(t, d);
+                }
+            }
+
+            std::array<hsize_t, 2> dims_2d = {n_times, n_dofs};
+            g_body.WriteDataset("K_actual", K_actual_vec, dims_2d);
+            g_body.WriteDataset("K_fit", K_fit_vec, dims_2d);
+            g_body.WriteAttribute("K_units", std::string("kg/s^2"));
+            g_body.WriteAttribute("K_description", 
+                std::string("RIRF kernel values: K_actual=original, K_fit=state-space approximation"));
+        }
+
+        // Write per-DOF diagnostics
+        if (!diag.dof_pairs.empty()) {
+            const hsize_t n_pairs = static_cast<hsize_t>(diag.dof_pairs.size());
+            
+            std::vector<double> r_squared(n_pairs);
+            std::vector<double> state_order(n_pairs);
+            std::vector<double> num_exp_modes(n_pairs);
+            std::vector<double> num_osc_modes(n_pairs);
+            std::vector<double> dof_i(n_pairs);
+            std::vector<double> dof_j(n_pairs);
+            
+            for (hsize_t k = 0; k < n_pairs; ++k) {
+                const auto& dp = diag.dof_pairs[k];
+                r_squared[k] = dp.r_squared;
+                state_order[k] = static_cast<double>(dp.state_order);
+                num_exp_modes[k] = static_cast<double>(dp.num_exp_modes);
+                num_osc_modes[k] = static_cast<double>(dp.num_osc_modes);
+                dof_i[k] = static_cast<double>(dp.dof_i);
+                dof_j[k] = static_cast<double>(dp.dof_j);
+            }
+
+            std::array<hsize_t, 1> dims_pairs = {n_pairs};
+            g_body.WriteDataset("r_squared", r_squared, dims_pairs);
+            g_body.WriteDataset("state_order", state_order, dims_pairs);
+            g_body.WriteDataset("num_exp_modes", num_exp_modes, dims_pairs);
+            g_body.WriteDataset("num_osc_modes", num_osc_modes, dims_pairs);
+            g_body.WriteDataset("dof_i", dof_i, dims_pairs);
+            g_body.WriteDataset("dof_j", dof_j, dims_pairs);
+            
+            // Write DOF names for reference
+            std::vector<std::string> dof_labels(n_pairs);
+            for (hsize_t k = 0; k < n_pairs; ++k) {
+                int local_dof_i = static_cast<int>(dof_i[k]) % 6;
+                int local_dof_j = static_cast<int>(dof_j[k]) % 6;
+                dof_labels[k] = dof_names[local_dof_i] + "_from_" + dof_names[local_dof_j];
+            }
+            g_body.WriteStringArray("dof_labels", dof_labels);
+        }
+    }
+
+    hydroc::cli::LogInfo(std::string("HDF5: wrote radiation diagnostics for ") + 
+                         std::to_string(diagnostics.size()) + " body(ies)");
 }
 
 } // namespace hydroc

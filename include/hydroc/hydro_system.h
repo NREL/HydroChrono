@@ -63,13 +63,18 @@
 // Radiation types (canonical definitions - single source of truth)
 #include <hydroc/radiation/radiation_types.h>
 
+// Force component interface (for radiation component)
+#include <hydroc/core/force_component.h>
+
 namespace hydrochrono::hydro {
 // Forward declarations
 class HydrostaticsComponent;
 class RadiationComponent;
+class RadiationStateSpaceComponent;
 class ExcitationComponent;
 class HydroForces;
 class ChronoHydroCoupler;
+class IHydroForceComponent;
 // Types GeneralizedForce and BodyForces are defined in hydro_types.h (included above)
 }
 
@@ -351,25 +356,80 @@ class HydroSystem {
     double GetRIRFval(int row, int col, int st);
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Radiation Convolution Configuration
+    // Radiation Configuration
     // ─────────────────────────────────────────────────────────────────────────
     // These types are defined in the radiation module (single source of truth):
-    //   - hydrochrono::hydro::RadiationConvolutionMode (enum)
+    //   - hydrochrono::hydro::RadiationMethod (enum: kRirfConvolution, kStateSpace)
+    //   - hydrochrono::hydro::RadiationConvolutionMode (enum: Baseline, TaperedDirect)
     //   - hydrochrono::hydro::TaperedDirectOptions (struct)
-    // See: src/hydro/force_components/radiation_component.h
-    //      src/hydro/radiation/radiation_rirf_processing.h
+    //   - hydrochrono::hydro::StateSpaceOptions (struct)
+    // See: include/hydroc/radiation/radiation_types.h
+
+    /**
+     * @brief Set the radiation damping calculation method.
+     * 
+     * Selects the overall approach:
+     *   - kRirfConvolution: Direct RIRF convolution (default)
+     *   - kStateSpace: State-space exponential approximation
+     * 
+     * @note State-space method not yet implemented. This value is stored but
+     *       currently has no effect; runtime always uses RIRF convolution.
+     * 
+     * @param method RadiationMethod::kRirfConvolution or ::kStateSpace
+     */
+    void SetRadiationMethod(hydrochrono::hydro::RadiationMethod method);
+
+    /**
+     * @brief Set options for state-space radiation approximation.
+     * 
+     * Only applies when RadiationMethod == kStateSpace.
+     * 
+     * @note State-space method not yet implemented. Options stored for future use.
+     * 
+     * @param opts StateSpaceOptions struct with max_order and r2_threshold
+     */
+    void SetStateSpaceOptions(const hydrochrono::hydro::StateSpaceOptions& opts);
 
     /**
      * @brief Set the radiation convolution mode. Default is Baseline.
+     * 
+     * Only applies when RadiationMethod == kRirfConvolution.
+     * 
      * @param mode RadiationConvolutionMode::Baseline or ::TaperedDirect
      */
     void SetRadiationConvolutionMode(hydrochrono::hydro::RadiationConvolutionMode mode);
 
     /**
      * @brief Set options for TaperedDirect preprocessing.
+     * 
+     * Only applies when RadiationMethod == kRirfConvolution and
+     * RadiationConvolutionMode == TaperedDirect.
+     * 
      * @param opts TaperedDirectOptions struct with smoothing, tapering, and export settings
      */
     void SetTaperedDirectOptions(const hydrochrono::hydro::TaperedDirectOptions& opts);
+
+    /**
+     * @brief Enable or disable kernel fit diagnostic output.
+     * 
+     * When enabled and using state-space radiation, kernel fit quality data
+     * can be retrieved after the first force evaluation and exported to HDF5.
+     * 
+     * @param enabled True to enable kernel fit diagnostics
+     */
+    void SetOutputKernelFit(bool enabled);
+
+    /**
+     * @brief Check if kernel fit diagnostics are available.
+     * @return True if state-space radiation is active and diagnostics are ready
+     */
+    bool HasKernelFitDiagnostics() const;
+
+    /**
+     * @brief Get kernel fit diagnostics for all bodies.
+     * @return Vector of KernelFitDiagnostics (one per body)
+     */
+    std::vector<hydrochrono::hydro::KernelFitDiagnostics> GetKernelFitDiagnostics() const;
 
     /**
      * @brief Set the directory where diagnostics (e.g., CSVs) should be written.
@@ -474,8 +534,8 @@ class HydroSystem {
     // Hydrostatics force component
     std::unique_ptr<hydrochrono::hydro::HydrostaticsComponent> hydrostatics_component_;
 
-    // Radiation damping force component
-    std::unique_ptr<hydrochrono::hydro::RadiationComponent> radiation_component_;
+    // Radiation damping force component (convolution or state-space based on radiation_method_)
+    std::unique_ptr<hydrochrono::hydro::IHydroForceComponent> radiation_component_;
 
     // Wave excitation force component
     std::unique_ptr<hydrochrono::hydro::ExcitationComponent> excitation_component_;
@@ -490,8 +550,17 @@ class HydroSystem {
     // Profiling enable flag: stored here because chrono_coupler_ is created lazily.
     bool profiling_enabled_ = false;
 
-    // Convolution kernel preprocessing (optional)
-    // Uses canonical types from radiation module (single source of truth)
+    // ─────────────────────────────────────────────────────────────────────────
+    // Radiation configuration (uses canonical types from radiation module)
+    // ─────────────────────────────────────────────────────────────────────────
+    
+    // Top-level method selection
+    hydrochrono::hydro::RadiationMethod radiation_method_ = 
+        hydrochrono::hydro::RadiationMethod::kRirfConvolution;
+    hydrochrono::hydro::StateSpaceOptions state_space_opts_;
+    bool output_kernel_fit_ = false;
+    
+    // Convolution kernel preprocessing (only applies when method == kRirfConvolution)
     hydrochrono::hydro::RadiationConvolutionMode convolution_mode_;
     bool rirf_processed_ready_ = false;
     std::vector<Eigen::Tensor<double, 3>> rirf_processed_; // per body [dof x col x step]
@@ -517,11 +586,12 @@ class HydroSystem {
     // to ensure consistent construction.
     std::unique_ptr<hydrochrono::hydro::HydrostaticsComponent> CreateHydrostaticsComponent() const;
 
-    // Factory: creates RadiationComponent with current BEM data and convolution settings.
+    // Factory: creates radiation force component based on radiation_method_.
+    // Returns RadiationComponent (convolution) or RadiationStateSpaceComponent (state-space).
     // Used by both EnsureRadiationComponent() and EnsureHydroForcesAndCoupler()
     // to ensure consistent construction.
-    // Note: Each instance owns its own velocity history (they are independent).
-    std::unique_ptr<hydrochrono::hydro::RadiationComponent> CreateRadiationComponent() const;
+    // Note: Each instance owns its own internal state (they are independent).
+    std::unique_ptr<hydrochrono::hydro::IHydroForceComponent> CreateRadiationComponent() const;
 
     // Internal helper: constructs hydro_forces_ and chrono_coupler_ once.
     // Subsequent calls are no-ops. Called automatically by CoordinateFuncForBody().

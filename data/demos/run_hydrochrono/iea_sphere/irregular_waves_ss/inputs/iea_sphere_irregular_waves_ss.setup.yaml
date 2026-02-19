@@ -1,0 +1,5 @@
+model_file: iea_sphere_irregular_waves_ss.model.yaml
+simulation_file: iea_sphere_irregular_waves_ss.simulation.yaml
+hydro_file: iea_sphere_irregular_waves_ss.hydro.yaml
+
+output_directory: ../outputs

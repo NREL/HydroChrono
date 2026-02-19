@@ -90,6 +90,14 @@ def find_ref(model: str, test_type: str) -> str | None:
     return None
 
 
+def _find_output_h5(model: str, test_type: str) -> Path | None:
+	"""Locate the simulation output H5 (results.still.h5, results.irregular.h5, etc.)."""
+	outputs_dir = THIS / model / test_type / "outputs"
+	for p in outputs_dir.glob("results.*.h5"):
+		return p
+	return None
+
+
 def run_case(exe: str, model: str, test_type: str, tol: float, update_baseline: bool, quiet: bool, show: bool, gui: bool) -> int:
 	"""Run a single test: simulate, then compare and plot. Returns exit code."""
 	inputs_setup = THIS / model / test_type / "inputs" / f"{model}_{test_type}.setup.yaml"
@@ -116,7 +124,8 @@ def run_case(exe: str, model: str, test_type: str, tol: float, update_baseline: 
 		return r1.returncode
 	# 2) compare
 	ref = find_ref(model, test_type)
-	outputs_h5 = (THIS / model / test_type / "outputs" / "results.still.h5").resolve()
+	outputs_h5_found = _find_output_h5(model, test_type)
+	outputs_h5 = outputs_h5_found.resolve() if outputs_h5_found else (THIS / model / test_type / "outputs" / "results.still.h5").resolve()
 	plots_dir = (THIS / model / test_type / "outputs" / "plots").resolve()
 	# Neutral/adapter-driven comparison path
 	if outputs_h5.exists():
@@ -201,7 +210,8 @@ def run_case(exe: str, model: str, test_type: str, tol: float, update_baseline: 
 					print(f"Adapter compare failed for {model}/{test_type}: {e}", file=sys.stderr)
 	# Default path (legacy adapter mode)
 	# Use explicit simple-mode compare for all other tests too (heave of first body by default)
-	outputs_h5 = (THIS / model / test_type / "outputs" / "results.still.h5").resolve()
+	outputs_h5_found = _find_output_h5(model, test_type)
+	outputs_h5 = outputs_h5_found.resolve() if outputs_h5_found else (THIS / model / test_type / "outputs" / "results.still.h5").resolve()
 	plots_dir = (THIS / model / test_type / "outputs" / "plots").resolve()
 	cmd = [
 		"python",
@@ -242,6 +252,8 @@ def main() -> int:
 	parser.add_argument("--all-tests", dest="all", action="store_true", help="Alias for --all")
 	parser.add_argument("--all_tests", dest="all", action="store_true", help="Alias for --all")
 	parser.add_argument("--sphere-decay", action="store_true", help="Run IEA sphere decay")
+	parser.add_argument("--sphere-decay-ss", action="store_true", help="Run IEA sphere decay (state-space)")
+	parser.add_argument("--sphere-irregular-ss", action="store_true", help="Run IEA sphere irregular waves (state-space)")
 	parser.add_argument("--oswec-decay", action="store_true", help="Run OSWEC decay")
 	parser.add_argument("--rm3-decay", action="store_true", help="Run RM3 decay")
 	parser.add_argument("--f3of-dt1", action="store_true", help="Run F3OF decay test 1 (DT1 surge)")
@@ -253,6 +265,8 @@ def main() -> int:
 	if args.all:
 		selections.extend([
 			("iea_sphere", "decay"),
+			("iea_sphere", "decay_ss"),
+			("iea_sphere", "irregular_waves_ss"),
 			("oswec", "decay"),
 			("rm3", "decay"),
 			("f3of", "decay_dt1"),
@@ -262,6 +276,10 @@ def main() -> int:
 	else:
 		if args.sphere_decay:
 			selections.append(("iea_sphere", "decay"))
+		if args.sphere_decay_ss:
+			selections.append(("iea_sphere", "decay_ss"))
+		if args.sphere_irregular_ss:
+			selections.append(("iea_sphere", "irregular_waves_ss"))
 		if args.oswec_decay:
 			selections.append(("oswec", "decay"))
 		if args.rm3_decay:

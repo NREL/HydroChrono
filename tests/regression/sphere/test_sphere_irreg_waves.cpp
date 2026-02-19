@@ -7,7 +7,7 @@
 #include <chrono/physics/ChSystemNSC.h>
 
 #include <hydroc/helper.h>
-#include <hydroc/hydro_forces.h>
+#include <hydroc/hydro_system.h>
 
 // Use the namespaces of Chrono
 using namespace chrono;

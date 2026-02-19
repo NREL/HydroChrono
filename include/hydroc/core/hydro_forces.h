@@ -110,6 +110,14 @@ public:
      */
     bool ProfilingEnabled() const { return profiling_enabled_; }
 
+    /**
+     * @brief Access the internal force components (read-only).
+     * @return Const reference to the vector of force components
+     */
+    const std::vector<std::unique_ptr<IHydroForceComponent>>& GetComponents() const {
+        return components_;
+    }
+
 private:
     int num_bodies_;
     std::vector<std::unique_ptr<IHydroForceComponent>> components_;
