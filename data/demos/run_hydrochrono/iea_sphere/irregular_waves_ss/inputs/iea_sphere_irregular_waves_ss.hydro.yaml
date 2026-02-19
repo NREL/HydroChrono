@@ -1,0 +1,17 @@
+hydrodynamics:
+  bodies:
+    - name: body1
+      h5_file: ../../assets/hydroData/iea_sphere.h5
+
+  waves:
+    type: irregular
+    height: 2.0
+    period: 8.0
+    seed: 42
+
+  radiation:
+    method: state_space
+    state_space:
+      max_order: 10
+      r2_threshold: 0.99
+      max_hankel_size: 200
