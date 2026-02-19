@@ -16,7 +16,9 @@
  *   3. Form discrete-time A, B, C, D matrices
  *   4. Convert discrete to continuous using bilinear (Tustin) transform
  *   5. Compute R² to assess fit quality
- *   6. Iterate on order until R² threshold is met or max_order is reached
+ *   6. Try all orders up to max_order, keeping the best R²
+ *      (does not stop early -- higher orders can add fast-decaying poles
+ *      that improve initial transient accuracy)
  *
  * USAGE:
  *   StateSpaceOptions opts;

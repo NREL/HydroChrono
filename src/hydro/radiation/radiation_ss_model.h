@@ -4,8 +4,9 @@
  *
  * This class implements a state-space approximation of the radiation
  * impulse response function (RIRF) supporting both:
- *   - Pure exponential modes: K(t) = H * exp(-α * t)
+ *   - Pure exponential modes: K(t) = H * b * exp(-α*t)
  *   - Oscillatory modes: K(t) = exp(-α*t) * (H_c*cos(ω*t) + H_s*sin(ω*t))
+ *     (with b_c, b_s input gains folded into the response)
  *
  * This enables O(1) per-timestep computation for any kernel, including those
  * with damped oscillations (complex conjugate poles), which are typical for
@@ -13,7 +14,7 @@
  *
  * THEORY:
  *   Pure exponential mode (real eigenvalue λ = -α):
- *       ż(t) = -α z(t) + v(t)
+ *       ż(t) = -α z(t) + b * v(t)
  *       f_contribution = H * z
  *
  *   Oscillatory mode (complex conjugate pair λ = -α ± jω):
