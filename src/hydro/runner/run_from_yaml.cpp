@@ -671,10 +671,9 @@ int RunHydroChronoFromYAML(int argc, char* argv[]) {
         system_info_lines.push_back(hydroc::cli::CreateAlignedLine("⚙️", "Constraints", std::to_string(system->GetLinks().size())));
         system_info_lines.push_back(hydroc::cli::CreateAlignedLine("⏱️", "Time Step", hydroc::FormatNumber(loop_dt, 4) + " s"));
         
-        // Calculate approximate DOF (6 * num_bodies - constraint equations)
+        // Calculate approximate DOF (6 * num_bodies)
         int num_bodies = system->GetBodies().size();
-        int num_constraints = system->GetLinks().size();
-        int approx_dof = num_bodies * 6;  // Rough estimate
+        int approx_dof = num_bodies * 6;
         system_info_lines.push_back(hydroc::cli::CreateAlignedLine("🎯", "Est. Degrees of Freedom", std::to_string(approx_dof)));
         
         hydroc::cli::ShowSectionBox("System Configuration", system_info_lines);

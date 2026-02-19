@@ -244,7 +244,6 @@ Eigen::VectorXd RadiationStateSpaceFitter::ReconstructKernel(
         return Eigen::VectorXd::Zero(num_samples);
     }
 
-    const int O = result.order;
     Eigen::VectorXd K(num_samples);
 
     // K[k] = C * expm(A * dt * k) * B

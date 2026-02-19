@@ -46,7 +46,7 @@ int main(int argc, char* argv[]) {
     sphereBody->SetMass(261.8e3);
     system.Add(sphereBody);
 
-    auto default_dont_add_waves = std::make_shared<NoWave>(1);
+    auto default_dont_add_waves = std::make_shared<NoWave>();
 
     std::vector<std::shared_ptr<ChBody>> bodies;
     bodies.push_back(sphereBody);

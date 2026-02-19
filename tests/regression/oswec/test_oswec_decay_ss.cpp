@@ -118,7 +118,7 @@ int main(int argc, char* argv[]) {
     revolute->Initialize(base_body, flap_body, ChFramed(ChVector3d(0.0, 0.0, -8.9), revoluteRot));
     system.AddLink(revolute);
 
-    auto default_dont_add_waves = std::make_shared<NoWave>(2);
+    auto default_dont_add_waves = std::make_shared<NoWave>();
 
     std::vector<std::shared_ptr<ChBody>> bodies;
     bodies.push_back(flap_body);
