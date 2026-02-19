@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] — 2026-02-19
+
+### Added
+
+- **State-space radiation damping** — alternative to convolution-based radiation that approximates RIRF kernels as a sum of exponential and oscillatory modes, reducing per-timestep cost from O(N) to O(1). New classes: `RadiationStateSpaceModel`, `RadiationStateSpaceFitter`, `RadiationStateSpaceComponent`
+- **`RadiationMethod` enum and `StateSpaceOptions` configuration struct** for selecting between convolution and state-space radiation at runtime
+- **YAML configuration keys** — `radiation_method`, `ss_max_order`, `ss_r2_threshold`, `output_kernel_fit`
+- **Kernel-fit diagnostics** — R² values and mode counts per DOF pair, optionally written to HDF5 output via `output_kernel_fit: true`
+- **Unit tests** for `RadiationStateSpaceModel` and `RadiationStateSpaceFitter`
+- **Regression tests** comparing state-space vs convolution for sphere decay, OSWEC decay, sphere irregular waves, and OSWEC irregular waves
+- **Frequency-domain excitation transfer function** for irregular waves — replaces time-domain convolution with a pre-computed transfer function, evaluating in O(N_freq) per DOF per timestep instead of O(N_irf × N_freq)
+
+### Changed
+
+- **Irregular wave model decoupled from simulation parameters** — removed `simulation_dt_` and `simulation_duration_` from `IrregularWaveParams`, eliminating the dependency that prevented adaptive time integration. `nfrequencies_` is now a required parameter.
+- **Removed redundant `num_bodies` from wave classes** — ownership moved to `WaveBase`, set automatically in `HydroSystem::AddWaves()`, simplifying the wave creation API and eliminating a source of configuration errors
+- Wave class code quality cleanup
+
+### Removed
+
+- Stale `include/hydroc/hydro_forces.h` (replaced by `hydro_system.h`)
+- Duplicate demo `demos/sphere/sphere_irreg_waves.cpp`
+
+### Fixed
+
+- **State-space fitter: order-1 fits were rejected** — the fitting loop started at order 2 and `FitFromSVD` explicitly rejected order < 2, so single-exponential kernels (rank-1 Hankel matrix) always returned invalid results
+
 ## [0.5.0] — 2026-02-16
 
 ### Added
