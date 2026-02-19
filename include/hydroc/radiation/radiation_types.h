@@ -92,7 +92,8 @@ struct StateSpaceOptions {
     /**
      * @brief Minimum R² (coefficient of determination) threshold for fit acceptance.
      * 
-     * The fitter adds modes until either R² >= r2_threshold or max_order is reached.
+     * The fitter tries all orders up to max_order and keeps the best R².
+     * Higher orders can add fast-decaying poles that improve transient accuracy.
      * Values closer to 1.0 require better fits but may need more modes.
      * Typical values: 0.90-0.99. Default: 0.95.
      */

@@ -165,22 +165,20 @@ bool TestTwoModeExponential() {
     TEST_ASSERT(result.order >= 2, "Should find at least 2 modes");
     TEST_ASSERT(result.r2 >= 0.98, "R² should be >= 0.98");
 
-    // Verify reconstruction
+    // Verify reconstruction using peak-normalized absolute error.
+    // Relative error is a poor metric for decaying kernels (blows up in the tail).
     Eigen::VectorXd K_fit = RadiationStateSpaceFitter::ReconstructKernel(result, dt, N);
 
-    double max_rel_error = 0.0;
-    for (int k = 0; k < N; ++k) {
-        if (std::abs(K(k)) > 0.01) {
-            double rel_error = std::abs(K(k) - K_fit(k)) / std::abs(K(k));
-            max_rel_error = std::max(max_rel_error, rel_error);
-        }
-    }
-
-    TEST_ASSERT(max_rel_error < 0.1, "Max relative error should be < 10%");
+    const double K_peak = K.lpNorm<Eigen::Infinity>();
+    double max_abs_error = (K - K_fit).lpNorm<Eigen::Infinity>();
+    double normalized_error = max_abs_error / K_peak;
 
     std::cout << "    R² = " << std::fixed << std::setprecision(6) << result.r2 << std::endl;
     std::cout << "    Order = " << result.order << std::endl;
-    std::cout << "    Max relative error = " << max_rel_error << std::endl;
+    std::cout << "    Max abs error = " << max_abs_error 
+              << " (" << std::setprecision(2) << 100.0 * normalized_error << "% of peak)" << std::endl;
+
+    TEST_ASSERT(normalized_error < 0.05, "Peak-normalized error should be < 5%");
     std::cout << "  PASSED" << std::endl;
     return true;
 }

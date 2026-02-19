@@ -121,7 +121,7 @@ StateSpaceFitResult RadiationStateSpaceFitter::FitKernel(
     // enough" R² prevents these fast poles from getting through, causing a
     // characteristic slight lag after the first response lobe.
     // =========================================================================
-    for (int order = 2; order <= max_possible_order; ++order) {
+    for (int order = 1; order <= max_possible_order; ++order) {
         StateSpaceFitResult candidate = FitFromSVD(K, dt, order, y, U, V, svh, hankel_size);
         
         if (candidate.IsValid() && candidate.r2 > result.r2) {
@@ -150,7 +150,7 @@ StateSpaceFitResult RadiationStateSpaceFitter::FitFromSVD(
     const int N = static_cast<int>(K.size());
     const int O = order;
 
-    if (svh.size() < O || O < 2) {
+    if (svh.size() < O || O < 1) {
         return result;
     }
 
