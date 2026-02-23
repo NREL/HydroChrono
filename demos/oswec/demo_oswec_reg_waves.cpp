@@ -199,8 +199,8 @@ int main(int argc, char* argv[]) {
         bodies.push_back(base_body);
 
         auto my_hydro_inputs = std::make_shared<RegularWave>();
-        my_hydro_inputs->regular_wave_amplitude_ = 0.01;
-        my_hydro_inputs->regular_wave_omega_     = (2 * CH_PI) / (periods[reg_wave_num - 1]);
+        my_hydro_inputs->SetAmplitude(0.01);
+        my_hydro_inputs->SetPeriod(periods[reg_wave_num - 1]);
 
         //// attach hydrodynamic forces to body
         /*std::vector<std::shared_ptr<ChBody>> bodies;
@@ -260,8 +260,8 @@ int main(int argc, char* argv[]) {
             outputFile.precision(10);
             outputFile.width(12);
             outputFile << "Wave #: \t" << reg_wave_num << "\n";
-            outputFile << "Wave amplitude (m): \t" << my_hydro_inputs->regular_wave_amplitude_ << "\n";
-            outputFile << "Wave omega (rad/s): \t" << my_hydro_inputs->regular_wave_omega_ << "\n";
+            outputFile << "Wave amplitude (m): \t" << my_hydro_inputs->GetAmplitude() << "\n";
+            outputFile << "Wave omega (rad/s): \t" << my_hydro_inputs->GetOmega() << "\n";
             outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(12) << "Pitch (rads)"
                        << std::endl;
             for (size_t i = 0; i < time_vector.size(); ++i)

@@ -89,9 +89,9 @@ int main(int argc, char* argv[]) {
         spring_1->SetDampingCoefficient(damping_coef);
         system.AddLink(spring_1);
 
-        auto my_hydro_inputs                     = std::make_shared<RegularWave>();
-        my_hydro_inputs->regular_wave_amplitude_ = task10_wave_amps[reg_wave_num - 1];
-        my_hydro_inputs->regular_wave_omega_     = task10_wave_omegas[reg_wave_num - 1];
+        auto my_hydro_inputs = std::make_shared<RegularWave>();
+        my_hydro_inputs->SetAmplitude(task10_wave_amps[reg_wave_num - 1]);
+        my_hydro_inputs->SetOmega(task10_wave_omegas[reg_wave_num - 1]);
 
         std::vector<std::shared_ptr<ChBody>> bodies;
         bodies.push_back(sphereBody);
@@ -124,8 +124,8 @@ int main(int argc, char* argv[]) {
             outputFile.precision(10);
             outputFile.width(12);
             outputFile << "Wave #: \t" << reg_wave_num << "\n";
-            outputFile << "Wave amplitude (m): \t" << my_hydro_inputs->regular_wave_amplitude_ << "\n";
-            outputFile << "Wave omega (rad/s): \t" << my_hydro_inputs->regular_wave_omega_ << "\n";
+            outputFile << "Wave amplitude (m): \t" << my_hydro_inputs->GetAmplitude() << "\n";
+            outputFile << "Wave omega (rad/s): \t" << my_hydro_inputs->GetOmega() << "\n";
             outputFile << std::left << std::setw(10) << "Time (s)" << std::right << std::setw(12) << "Heave (m)" << "\n";
             outputFile << std::left << std::setw(10) << "----------" << std::right << std::setw(12) << "----------" << "\n";
 

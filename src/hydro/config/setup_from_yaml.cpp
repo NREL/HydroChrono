@@ -51,10 +51,9 @@ std::shared_ptr<WaveBase> CreateWaveFromSettings(const WaveSettings& wave_settin
 
     if (type == "regular") {
         auto regular_wave = std::make_shared<RegularWave>();
-        
-        regular_wave->regular_wave_amplitude_ = wave_settings.height / 2.0;
-        regular_wave->regular_wave_omega_ = 2.0 * M_PI / wave_settings.period;
-        regular_wave->regular_wave_phase_ = wave_settings.phase;
+        regular_wave->SetAmplitude(wave_settings.height / 2.0);
+        regular_wave->SetPeriod(wave_settings.period);
+        regular_wave->SetPhase(wave_settings.phase);
         
         hydroc::debug::LogDebug(std::string("Attached wave model: RegularWave, H=") + std::to_string(wave_settings.height) + 
                             "m, T=" + std::to_string(wave_settings.period) + "s");

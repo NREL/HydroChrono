@@ -7,6 +7,11 @@
 #include "wave_utilities.h"
 
 #include <cmath>
+#include <stdexcept>
+
+namespace {
+constexpr double kTwoPi = 2.0 * 3.14159265358979323846;
+}  // namespace
 
 RegularWave::RegularWave()
     : wavenumber_(0.0) {
@@ -14,10 +19,67 @@ RegularWave::RegularWave()
 
 RegularWave::RegularWave(const RegularWaveParams& params)
     : wavenumber_(0.0) {
+    const bool has_omega  = params.regular_wave_omega > 0.0;
+    const bool has_period = params.regular_wave_period > 0.0;
+
+    if (has_omega && has_period) {
+        throw std::invalid_argument(
+            "RegularWaveParams: specify either regular_wave_omega or "
+            "regular_wave_period, not both.");
+    }
+
     regular_wave_amplitude_ = params.regular_wave_amplitude;
-    regular_wave_omega_     = params.regular_wave_omega;
     regular_wave_phase_     = params.regular_wave_phase;
     wave_stretching_        = params.wave_stretching;
+
+    if (has_period) {
+        regular_wave_omega_ = kTwoPi / params.regular_wave_period;
+    } else {
+        regular_wave_omega_ = params.regular_wave_omega;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Setters
+// ---------------------------------------------------------------------------
+
+void RegularWave::SetAmplitude(double amplitude) {
+    if (amplitude < 0.0) {
+        throw std::invalid_argument(
+            "RegularWave::SetAmplitude: amplitude must be non-negative.");
+    }
+    regular_wave_amplitude_ = amplitude;
+}
+
+void RegularWave::SetOmega(double omega) {
+    if (omega <= 0.0) {
+        throw std::invalid_argument(
+            "RegularWave::SetOmega: omega must be positive.");
+    }
+    regular_wave_omega_ = omega;
+}
+
+void RegularWave::SetPeriod(double period) {
+    if (period <= 0.0) {
+        throw std::invalid_argument(
+            "RegularWave::SetPeriod: period must be positive.");
+    }
+    regular_wave_omega_ = kTwoPi / period;
+}
+
+void RegularWave::SetPhase(double phase) {
+    regular_wave_phase_ = phase;
+}
+
+// ---------------------------------------------------------------------------
+// Getters
+// ---------------------------------------------------------------------------
+
+double RegularWave::GetPeriod() const {
+    if (regular_wave_omega_ <= 0.0) {
+        return 0.0;
+    }
+    return kTwoPi / regular_wave_omega_;
 }
 
 void RegularWave::Initialize() {

@@ -14,9 +14,14 @@
 // Forward declaration for internal utilities (not exposed in public API)
 // Wave utilities are internal implementation details
 
+/// Parameters for constructing a RegularWave.
+///
+/// Specify the wave frequency as either omega (rad/s) or period (s), but not
+/// both.  If both are non-zero, the constructor throws std::invalid_argument.
 struct RegularWaveParams {
     double regular_wave_amplitude = 0.0;
     double regular_wave_omega     = 0.0;
+    double regular_wave_period    = 0.0;
     double regular_wave_phase     = 0.0;
     bool wave_stretching          = true;
 };
@@ -30,10 +35,21 @@ class RegularWave : public WaveBase {
     Eigen::VectorXd GetForceAtTime(double t) const override;
     WaveMode GetWaveMode() const override { return mode_; }
 
-    // TODO: Eliminate public members; use RegularWaveParams struct (consistent with IrregularWaves).
-    double regular_wave_amplitude_;
-    double regular_wave_omega_;
-    double regular_wave_phase_ = 0.0;
+    /// @name Mutators
+    /// @{
+    void SetAmplitude(double amplitude);
+    void SetOmega(double omega);
+    void SetPeriod(double period);
+    void SetPhase(double phase);
+    /// @}
+
+    /// @name Accessors
+    /// @{
+    double GetAmplitude() const { return regular_wave_amplitude_; }
+    double GetOmega() const { return regular_wave_omega_; }
+    double GetPeriod() const;
+    double GetPhase() const { return regular_wave_phase_; }
+    /// @}
 
     void AddH5Data(std::vector<HydroData::RegularWaveInfo>& reg_h5_data, const HydroData::SimulationParameters& sim_data);
 
@@ -47,6 +63,11 @@ class RegularWave : public WaveBase {
 
   private:
     static constexpr WaveMode mode_ = WaveMode::regular;
+
+    double regular_wave_amplitude_ = 0.0;
+    double regular_wave_omega_     = 0.0;
+    double regular_wave_phase_     = 0.0;
+
     std::vector<HydroData::RegularWaveInfo> wave_info_;
     Eigen::VectorXd excitation_force_mag_;
     Eigen::VectorXd excitation_force_phase_;

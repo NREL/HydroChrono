@@ -109,9 +109,9 @@ int main(int argc, char* argv[]) {
     bodies.push_back(plate_body2);
 
     // define wave parameters
-    auto my_hydro_inputs                     = std::make_shared<RegularWave>();
-    my_hydro_inputs->regular_wave_amplitude_ = 1.0;
-    my_hydro_inputs->regular_wave_omega_     = 2.10;
+    auto my_hydro_inputs = std::make_shared<RegularWave>();
+    my_hydro_inputs->SetAmplitude(1.0);
+    my_hydro_inputs->SetOmega(2.10);
 
     HydroForces hydro_forces(bodies, h5fname);
     hydro_forces.AddWaves(my_hydro_inputs);

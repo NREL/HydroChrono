@@ -268,8 +268,8 @@ void GUIImplVSG::UpdateRadiationSourceBody(double t) {
             // Wave period from RegularWave.
             if (wave_model_->GetWaveMode() == WaveMode::regular) {
                 auto* reg_wave = dynamic_cast<RegularWave*>(wave_model_.get());
-                if (reg_wave && reg_wave->regular_wave_omega_ > 0.0) {
-                    rad_params.wave_period = (2.0 * M_PI) / reg_wave->regular_wave_omega_;
+                if (reg_wave && reg_wave->GetOmega() > 0.0) {
+                    rad_params.wave_period = reg_wave->GetPeriod();
                 }
             }
             // Peak period from IrregularWaves (JONSWAP).
