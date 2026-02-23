@@ -63,7 +63,7 @@ void GUIImplVSG::Init(UI& ui, chrono::ChSystem* system, const char* title) {
     // pVis->EnableShadows();
 
     // Skybox provides sky/horizon context, contrasting with dark water plane.
-    pVis->EnableSkyBox();
+    pVis->EnableSkyTexture(chrono::SkyMode::BOX);
 
     // Grid disabled: water plane provides the marine context instead.
     // (Keeping this comment for easy re-enable if needed later.)

@@ -19,14 +19,6 @@ from datetime import datetime
 import subprocess
 from collections import defaultdict
 
-# pypandoc is optional - only needed for PDF generation
-try:
-    import pypandoc
-    PYPANDOC_AVAILABLE = True
-except ImportError:
-    pypandoc = None
-    PYPANDOC_AVAILABLE = False
-
 def natural_sort_key(filename):
     """Sort key for natural sorting of filenames with numbers."""
     import re
@@ -612,332 +604,54 @@ def generate_markdown_report(categorized_plots, output_dir, build_dir, html_styl
     
     return '\n'.join(content)
 
-def convert_to_pdf_with_pandoc(markdown_file, output_dir):
-    """Convert markdown to PDF using pandoc directly."""
+def convert_to_pdf(markdown_file, output_dir):
+    """Convert markdown to PDF using pandoc + LaTeX."""
     pdf_file = Path(output_dir) / "regression_test_report.pdf"
-    css_file = Path(__file__).parent / "report_style.css"
-    
+
     try:
-        import subprocess
-        
-        # Check if pandoc is available
         result = subprocess.run(['pandoc', '--version'], capture_output=True, text=True)
         if result.returncode != 0:
-            print("ERROR: pandoc not found. Please install pandoc:")
-            print("  - Windows: Download from https://pandoc.org/installing.html")
-            print("  - Or use: winget install JohnMacFarlane.Pandoc")
-            return None
-            
-        print("Converting markdown to PDF using pandoc...")
-        
-        # Run pandoc from the report directory so relative image paths work correctly
-        report_dir = Path(output_dir)
-        markdown_filename = Path(markdown_file).name
-        pdf_filename = Path(pdf_file).name
-        
-        # Build pandoc command - let pandoc choose the best available PDF engine
-        cmd = [
-            'pandoc',
-            markdown_filename,
-            '-o', pdf_filename,
-            '--standalone',
-            '--toc',
-            '--toc-depth=3',
-            '--metadata', f'title=HydroChrono Regression Test Report',
-            '--metadata', f'date={datetime.now().strftime("%B %d, %Y")}'
-        ]
-        
-        # Add CSS if available (need absolute path when running from different directory)
-        if css_file.exists():
-            cmd.extend(['--css', str(css_file.resolve())])
-        
-        result = subprocess.run(cmd, capture_output=True, text=True, cwd=report_dir)
-        
-        if result.returncode == 0:
-            print(f"SUCCESS: PDF generated successfully: {pdf_file}")
-            return pdf_file
-        else:
-            print(f"ERROR: pandoc failed: {result.stderr}")
-            return None
-                
-    except ImportError:
-        print("subprocess module not available")
-        return None
-    except Exception as e:
-        print(f"ERROR: PDF generation failed: {e}")
+            raise FileNotFoundError("pandoc")
+    except FileNotFoundError:
+        print("ERROR: pandoc is required for PDF report generation but was not found.")
+        print("Install pandoc:")
+        print("  Windows:  winget install JohnMacFarlane.Pandoc")
+        print("  macOS:    brew install pandoc")
+        print("  Linux:    sudo apt install pandoc")
         return None
 
-def convert_to_pdf(markdown_file, output_dir):
-    """Convert markdown to PDF using pypandoc via HTML (no LaTeX required)."""
-    pdf_file = Path(output_dir) / "regression_test_report.pdf"
-    html_file = Path(output_dir) / "regression_test_report.html"
-    css_file = Path(__file__).parent / "report_style.css"
-    
-    if not PYPANDOC_AVAILABLE:
-        print("ERROR: pypandoc is not available. Install with: pip install pypandoc")
-        return None
-    
-    try:
-        
-        # Ensure pandoc is available; download if necessary
-        try:
-            _ = pypandoc.get_pandoc_version()
-        except OSError:
-            print("Pandoc not found locally. Downloading pandoc...")
-            pypandoc.download_pandoc()
+    report_dir = Path(output_dir)
+    markdown_filename = Path(markdown_file).name
+    pdf_filename = Path(pdf_file).name
 
-        # First convert markdown to HTML with embedded CSS
-        print("Converting markdown to HTML...")
-        
-        # Prepare pandoc arguments - no title metadata to avoid duplicate titles
-        pandoc_args = [
-            '--standalone',
-            '--embed-resources',
-            '--toc',
-            '--toc-depth=3'
-        ]
-        
-        # Add CSS if available
-        if css_file.exists():
-            pandoc_args.append(f'--css={css_file}')
-        
-        # Convert markdown to HTML
-        html_content = pypandoc.convert_file(
-            str(markdown_file),
-            'html',
-            extra_args=pandoc_args
-        )
-        
-        # Enhance HTML with additional styling and structure
-        # Remove any auto-generated title from pandoc to avoid duplicates
-        import re
-        # Remove pandoc-generated title if it exists
-        html_content = re.sub(r'<h1[^>]*class="title"[^>]*>.*?</h1>', '', html_content, flags=re.DOTALL)
-        html_content = re.sub(r'<header[^>]*>.*?</header>', '', html_content, flags=re.DOTALL)
-        
-        # Fix TOC placement - move it after our custom header
-        # Extract our header div
-        header_match = re.search(r'(<div class="header">.*?</div>)', html_content, flags=re.DOTALL)
-        toc_match = re.search(r'(<nav[^>]*id="TOC"[^>]*>.*?</nav>)', html_content, flags=re.DOTALL)
-        
-        if header_match and toc_match:
-            header_content = header_match.group(1)
-            toc_content = toc_match.group(1)
-            
-            # Remove both from their current positions
-            html_content = re.sub(r'<div class="header">.*?</div>', '', html_content, flags=re.DOTALL)
-            html_content = re.sub(r'<nav[^>]*id="TOC"[^>]*>.*?</nav>', '', html_content, flags=re.DOTALL)
-            
-            # Insert header first, then TOC at the beginning of body
-            body_start = html_content.find('<body>')
-            if body_start != -1:
-                body_start += len('<body>')
-                html_content = (html_content[:body_start] + 
-                              '\n' + header_content + '\n' + toc_content + '\n' + 
-                              html_content[body_start:])
-        elif header_match:
-            # If no TOC, just ensure header is at the top
-            header_content = header_match.group(1)
-            html_content = re.sub(r'<div class="header">.*?</div>', '', html_content, flags=re.DOTALL)
-            
-            body_start = html_content.find('<body>')
-            if body_start != -1:
-                body_start += len('<body>')
-                html_content = (html_content[:body_start] + 
-                              '\n' + header_content + '\n' + 
-                              html_content[body_start:])
-        
-        enhanced_html = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HydroChrono Regression Test Report</title>
-    <style>
-        body {{
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
-            background: #FFFFFF;
-        }}
-        
-        @media print {{
-            body {{
-                max-width: none;
-                margin: 0;
-                padding: 1rem;
-            }}
-        }}
-    </style>
-</head>
-<body>
-{html_content}
-</body>
-</html>"""
-        
-        # Write enhanced HTML to file
-        with open(html_file, 'w', encoding='utf-8') as f:
-            f.write(enhanced_html)
-        
-        print(f"HTML report generated: {html_file}")
-        
-        # Try to convert HTML to PDF using weasyprint (CSS-based, no LaTeX needed)
-        try:
-            import weasyprint
-            print("Converting HTML to PDF using weasyprint...")
-            
-            # Configure weasyprint for better rendering
-            html_doc = weasyprint.HTML(filename=str(html_file))
-            css_string = None
-            
-            if css_file.exists():
-                with open(css_file, 'r', encoding='utf-8') as f:
-                    css_string = f.read()
-                    
-                # Add print-specific optimizations
-                css_string += """
-                @page {
-                    size: A4;
-                    margin: 1in;
-                }
-                
-                .model-section {
-                    page-break-before: always;
-                }
-                
-                .image-container {
-                    page-break-inside: avoid;
-                    margin: 1rem 0;
-                }
-                
-                .test-subsection {
-                    page-break-inside: avoid;
-                }
-                
-                .header {
-                    page-break-after: always;
-                }
-                """
-                
-                css_doc = weasyprint.CSS(string=css_string)
-                html_doc.write_pdf(str(pdf_file), stylesheets=[css_doc])
-            else:
-                html_doc.write_pdf(str(pdf_file))
-            
-            print(f"SUCCESS: PDF generated successfully: {pdf_file}")
-            return pdf_file
-            
-        except ImportError:
-            print("weasyprint not available, trying alternative method...")
-        except Exception as e:
-            print(f"weasyprint failed: {e}, trying alternative method...")
-        
-        # Alternative: Try pdfkit (requires wkhtmltopdf)
-        try:
-            import pdfkit
-            print("Converting HTML to PDF using pdfkit...")
-            
-            options = {
-                'page-size': 'A4',
-                'margin-top': '1in',
-                'margin-right': '1in',
-                'margin-bottom': '1in',
-                'margin-left': '1in',
-                'encoding': "UTF-8",
-                'no-outline': None,
-                'enable-local-file-access': None
-            }
-            
-            pdfkit.from_file(str(html_file), str(pdf_file), options=options)
-            print(f"SUCCESS: PDF generated successfully: {pdf_file}")
-            return pdf_file
-            
-        except ImportError:
-            print("pdfkit not available, trying reportlab...")
-        except Exception as e:
-            print(f"pdfkit failed: {e}, trying reportlab...")
-        
-        # Alternative: Use reportlab for basic PDF generation
-        try:
-            from reportlab.pdfgen import canvas
-            from reportlab.lib.pagesizes import letter, A4
-            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
-            from reportlab.lib.units import inch
-            from reportlab.lib.colors import HexColor
-            import re
-            
-            print("Converting to PDF using reportlab...")
-            
-            # Create PDF with reportlab (enhanced styling)
-            doc = SimpleDocTemplate(str(pdf_file), pagesize=A4, 
-                                  rightMargin=72, leftMargin=72, 
-                                  topMargin=72, bottomMargin=72)
-            
-            # Custom styles
-            styles = getSampleStyleSheet()
-            title_style = ParagraphStyle(
-                'CustomTitle',
-                parent=styles['Title'],
-                fontSize=24,
-                textColor=HexColor('#007AFF'),
-                spaceAfter=30
-            )
-            
-            heading_style = ParagraphStyle(
-                'CustomHeading',
-                parent=styles['Heading1'],
-                fontSize=18,
-                textColor=HexColor('#1D1D1F'),
-                spaceAfter=20
-            )
-            
-            story = []
-            
-            # Read markdown content and convert to styled text
-            with open(markdown_file, 'r', encoding='utf-8') as f:
-                content = f.read()
-            
-            # Enhanced markdown to text conversion
-            lines = content.split('\n')
-            for line in lines:
-                line = line.strip()
-                if line.startswith('# ') and 'HydroChrono' in line:
-                    story.append(Paragraph(line[2:], title_style))
-                elif line.startswith('## '):
-                    story.append(Paragraph(line[3:], heading_style))
-                elif line.startswith('### '):
-                    story.append(Paragraph(line[4:], styles['Heading2']))
-                elif line.startswith('!['):
-                    # Skip images for text-only PDF but add placeholder
-                    story.append(Paragraph(f"[Comparison Plot: {line[2:line.find(']')]}]", styles['Italic']))
-                elif line and not line.startswith('---') and not line.startswith('<'):
-                    story.append(Paragraph(line, styles['Normal']))
-                    
-                if line.endswith('Tests'):
-                    story.append(PageBreak())
-                else:
-                    story.append(Spacer(1, 0.1*inch))
-            
-            doc.build(story)
-            print(f"SUCCESS: Basic PDF generated successfully: {pdf_file}")
-            return pdf_file
-            
-        except ImportError:
-            print("reportlab not available either.")
-        except Exception as e:
-            print(f"reportlab failed: {e}")
-        
-        print("WARNING: No PDF generation library available.")
-        print("To generate PDFs, install one of:")
-        print("  pip install weasyprint")
-        print("  pip install pdfkit")  
-        print("  pip install reportlab")
+    cmd = [
+        'pandoc',
+        markdown_filename,
+        '-o', pdf_filename,
+        '--standalone',
+        '--toc',
+        '--toc-depth=3',
+        '--metadata', f'title=HydroChrono Regression Test Report',
+        '--metadata', f'date={datetime.now().strftime("%B %d, %Y")}'
+    ]
+
+    print("Converting markdown to PDF via pandoc + LaTeX...")
+    result = subprocess.run(cmd, capture_output=True, text=True, cwd=report_dir)
+
+    if result.returncode == 0:
+        print(f"SUCCESS: PDF generated: {pdf_file}")
+        return pdf_file
+
+    if 'pdflatex not found' in result.stderr or 'xelatex not found' in result.stderr:
+        print("ERROR: LaTeX is required for PDF report generation but was not found.")
+        print("Install a LaTeX distribution:")
+        print("  Windows:  winget install MiKTeX.MiKTeX")
+        print("  macOS:    brew install --cask mactex")
+        print("  Linux:    sudo apt install texlive-latex-recommended texlive-fonts-recommended")
         return None
-        
-    except Exception as e:
-        print(f"ERROR: PDF generation failed: {e}")
-        return None
+
+    print(f"ERROR: pandoc failed: {result.stderr.strip()}")
+    return None
 
 def rerun_comparisons(build_dir, config="Release"):
     """Re-run CTest comparison tests to regenerate plot images.
@@ -975,8 +689,8 @@ def main():
     parser = argparse.ArgumentParser(description='Generate HydroChrono regression test report')
     parser.add_argument('--output-dir', help='Output directory for reports (default: build/bin/tests/regression/report)')
     parser.add_argument('--build-dir', default='build', help='Build directory path')
-    parser.add_argument('--pdf', action='store_true', help='Generate PDF using pandoc (requires pandoc to be installed)')
-    parser.add_argument('--html-styling', action='store_true', help='Include HTML styling in markdown (for advanced PDF generation)')
+    parser.add_argument('--pdf', action='store_true', help='Generate PDF report (requires pandoc + LaTeX)')
+    parser.add_argument('--html-styling', action='store_true', help='Include HTML styling in markdown')
     parser.add_argument('--recompare', action='store_true',
                         help='Re-run CTest comparison tests before generating the report. '
                              'Use this after updating reference data to ensure plots are current.')
@@ -1023,7 +737,7 @@ def main():
     
     # Generate PDF if requested
     if args.pdf:
-        pdf_file = convert_to_pdf_with_pandoc(markdown_file, output_dir)
+        pdf_file = convert_to_pdf(markdown_file, output_dir)
         if pdf_file:
             print(f"Report available in both formats:")
             print(f"   - Markdown: {markdown_file}")
@@ -1032,7 +746,7 @@ def main():
             print(f"PDF generation failed. Report available as markdown: {markdown_file}")
     else:
         print(f"Report available as clean markdown: {markdown_file}")
-        print("Use --pdf flag to generate PDF (requires pandoc)")
+        print("Use --pdf flag to generate PDF (requires pandoc + LaTeX)")
 
 if __name__ == "__main__":
     main() 
