@@ -69,6 +69,7 @@
 // MoorDyn mooring configuration
 #ifdef HYDROCHRONO_HAVE_MOORDYN
 #include <hydroc/config/moordyn_config.h>
+#include <hydroc/gui/mooring_viz_data.h>
 #endif
 
 namespace hydrochrono::hydro {
@@ -454,6 +455,15 @@ class HydroSystem {
     void SetMoorDynConfig(const MoorDynConfig& config) {
         moordyn_config_ = config;
     }
+
+    /**
+     * @brief Get current mooring line node positions for visualization.
+     *
+     * Returns one entry per MoorDyn line, each containing the ordered node
+     * positions along the line.  Returns an empty vector when MoorDyn is
+     * not active or no lines exist.
+     */
+    std::vector<hydroc::gui::MooringLineVizData> GetMooringLineStates() const;
 #endif
 
     /**

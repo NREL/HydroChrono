@@ -15,6 +15,7 @@
 
 #include <hydroc/core/system_state.h>
 #include <hydroc/core/hydro_types.h>
+#include <hydroc/gui/mooring_viz_data.h>
 
 #include <string>
 #include <vector>
@@ -63,6 +64,10 @@ public:
               BodyForces& out_forces);
 
     bool IsInitialized() const { return initialized_; }
+
+    /// Extract current node positions for every line in the MoorDyn system.
+    /// Safe to call any time after Initialize().
+    std::vector<hydroc::gui::MooringLineVizData> GetLineStates() const;
 
 private:
     void PackState(const SystemState& state,

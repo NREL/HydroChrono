@@ -54,6 +54,13 @@ void MooringComponent::Compute(const SystemState& state,
     ApplyCachedForces(inout_forces);
 }
 
+std::vector<hydroc::gui::MooringLineVizData> MooringComponent::GetMooringLineStates() const {
+    if (!wrapper_ || !wrapper_->IsInitialized()) {
+        return {};
+    }
+    return wrapper_->GetLineStates();
+}
+
 void MooringComponent::ApplyCachedForces(BodyForces& inout_forces) const {
     for (size_t i = 0; i < cached_forces_.size(); ++i) {
         if (cached_forces_[i].size() == 0) continue;

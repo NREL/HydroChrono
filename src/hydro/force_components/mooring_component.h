@@ -8,6 +8,7 @@
 
 #include <hydroc/core/force_component.h>
 #include <hydroc/core/system_state.h>
+#include <hydroc/gui/mooring_viz_data.h>
 #include <memory>
 #include <vector>
 
@@ -34,6 +35,9 @@ public:
     void Compute(const SystemState& state,
                  double time,
                  BodyForces& inout_forces) override;
+
+    /// Return current node positions for all mooring lines (forwarded from MoorDynWrapper).
+    std::vector<hydroc::gui::MooringLineVizData> GetMooringLineStates() const;
 
 private:
     void ApplyCachedForces(BodyForces& inout_forces) const;

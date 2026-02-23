@@ -38,6 +38,10 @@ void UI::SetWaterGridExtent(double /*width*/, double /*length*/,
     // Default (headless) UI does not render water surface.
 }
 
+void UI::SetMooringLineProvider(MooringVizProvider /*provider*/) {
+    // Default (headless) UI does not render mooring lines.
+}
+
 // -----------------------------------------------------------------------------
 
 GUI::GUI() {
@@ -71,4 +75,8 @@ void GUI::SetWaveModel(std::shared_ptr<WaveBase> wave) {
 
 void GUI::SetWaterGridExtent(double width, double length, double center_x, double center_y) {
     pImpl->SetWaterGridExtent(width, length, center_x, center_y);
+}
+
+void GUI::SetMooringLineProvider(MooringVizProvider provider) {
+    pImpl->SetMooringLineProvider(std::move(provider));
 }

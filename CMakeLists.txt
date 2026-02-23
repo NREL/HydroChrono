@@ -509,6 +509,7 @@ if(HYDROCHRONO_ENABLE_VSG)
       src/gui/vsg_gui_component.cpp
       src/gui/vsg_lighting.cpp
       src/gui/vsg_materials.cpp
+      src/gui/vsg_mooring_lines.cpp
       src/gui/vsg_water_surface.cpp
       src/gui/vsg_radiation_surface.cpp
   )
@@ -517,6 +518,7 @@ if(HYDROCHRONO_ENABLE_VSG)
       src/gui/vsg_gui_component.h
       src/gui/vsg_lighting.h
       src/gui/vsg_materials.h
+      src/gui/vsg_mooring_lines.h
       src/gui/vsg_water_surface.h
       src/gui/vsg_radiation_surface.h
   )

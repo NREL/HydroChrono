@@ -874,3 +874,15 @@ std::vector<hydrochrono::hydro::KernelFitDiagnostics> HydroSystem::GetKernelFitD
     return {};
 }
 
+#ifdef HYDROCHRONO_HAVE_MOORDYN
+std::vector<hydroc::gui::MooringLineVizData> HydroSystem::GetMooringLineStates() const {
+    if (!hydro_forces_) return {};
+
+    for (const auto& comp : hydro_forces_->GetComponents()) {
+        if (comp->Type() != hydrochrono::hydro::HydroComponentType::Mooring) continue;
+        auto* mooring = dynamic_cast<hydrochrono::hydro::MooringComponent*>(comp.get());
+        if (mooring) return mooring->GetMooringLineStates();
+    }
+    return {};
+}
+#endif

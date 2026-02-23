@@ -135,6 +135,12 @@ int main(int argc, char* argv[]) {
     ui.SetCamera(0, -50, -10, 0, 0, -10);
     ui.SetWaveModel(my_hydro_inputs);
 
+#ifdef HYDROCHRONO_HAVE_MOORDYN
+    ui.SetMooringLineProvider([&hydro_forces]() {
+        return hydro_forces.GetMooringLineStates();
+    });
+#endif
+
     while (system.GetChTime() <= simulationDuration) {
         if (ui.IsRunning(timestep) == false) break;
 

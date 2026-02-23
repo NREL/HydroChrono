@@ -114,6 +114,75 @@ void MoorDynWrapper::Step(const SystemState& state, double time, double dt,
     }
 }
 
+std::vector<hydroc::gui::MooringLineVizData> MoorDynWrapper::GetLineStates() const {
+    using hydroc::gui::MooringPointType;
+
+    if (!initialized_ || !system_) return {};
+
+    unsigned int num_lines = 0;
+    if (MoorDyn_GetNumberLines(system_, &num_lines) != 0 || num_lines == 0) {
+        return {};
+    }
+
+    std::vector<hydroc::gui::MooringLineVizData> result(num_lines);
+
+    // Collect line handles (1-indexed in MoorDyn) so we can later match them
+    // against the attachments reported by each point.
+    std::vector<MoorDynLine> line_handles(num_lines, nullptr);
+    for (unsigned int li = 1; li <= num_lines; ++li) {
+        MoorDynLine line = MoorDyn_GetLine(system_, li);
+        line_handles[li - 1] = line;
+        if (!line) continue;
+
+        unsigned int num_nodes = 0;
+        if (MoorDyn_GetLineNumberNodes(line, &num_nodes) != 0) continue;
+
+        auto& viz = result[li - 1];
+        viz.node_positions.resize(num_nodes);
+        for (unsigned int ni = 0; ni < num_nodes; ++ni) {
+            double pos[3];
+            if (MoorDyn_GetLineNodePos(line, ni, pos) == 0) {
+                viz.node_positions[ni] = {pos[0], pos[1], pos[2]};
+            }
+        }
+    }
+
+    // Walk every point to tag each line's start/end with the connection type.
+    unsigned int num_points = 0;
+    if (MoorDyn_GetNumberPoints(system_, &num_points) != 0) return result;
+
+    for (unsigned int pi = 1; pi <= num_points; ++pi) {
+        MoorDynPoint point = MoorDyn_GetPoint(system_, pi);
+        if (!point) continue;
+
+        int raw_type = 0;
+        if (MoorDyn_GetPointType(point, &raw_type) != 0) continue;
+        const auto pt = static_cast<MooringPointType>(raw_type);
+
+        unsigned int n_attached = 0;
+        if (MoorDyn_GetPointNAttached(point, &n_attached) != 0) continue;
+
+        for (unsigned int ai = 0; ai < n_attached; ++ai) {
+            MoorDynLine attached_line = nullptr;
+            int end_id = 0;  // MoorDyn convention: 0 = end A, 1 = end B
+            if (MoorDyn_GetPointAttached(point, ai, &attached_line, &end_id) != 0) {
+                continue;
+            }
+            for (unsigned int li = 0; li < num_lines; ++li) {
+                if (line_handles[li] == attached_line) {
+                    if (end_id == 0)
+                        result[li].start_point_type = pt;
+                    else
+                        result[li].end_point_type = pt;
+                    break;
+                }
+            }
+        }
+    }
+
+    return result;
+}
+
 void MoorDynWrapper::PackState(const SystemState& state,
                                std::vector<double>& x,
                                std::vector<double>& xd) const {

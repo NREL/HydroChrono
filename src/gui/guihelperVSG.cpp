@@ -11,6 +11,7 @@
 #include "vsg_gui_component.h"
 #include "vsg_lighting.h"
 #include "vsg_materials.h"
+#include "vsg_mooring_lines.h"
 #include "vsg_radiation_surface.h"
 #include "vsg_water_surface.h"
 
@@ -128,6 +129,10 @@ void GUIImplVSG::SetWaterGridExtent(double width, double length, double center_x
               << ", center: (" << center_x << ", " << center_y << ")" << std::endl;
 }
 
+void GUIImplVSG::SetMooringLineProvider(MooringVizProvider provider) {
+    mooring_provider_ = std::move(provider);
+}
+
 void GUIImplVSG::EnsureWaterSurface() {
     // Require both system and visual system to be valid.
     if (!system_ || !pVis) {
@@ -179,8 +184,29 @@ bool GUIImplVSG::IsRunning(double timestep) {
         return false;
     }
 
-    // Ensure water surface exists (every frame check; returns early if already done).
+    // Reserve a scene-graph group for mooring geometry before the water
+    // surface is created, so opaque mooring lines are rendered first and
+    // remain visible through the transparent free surface.
+    if (mooring_provider_ && !mooring_scene_group_) {
+        if (auto scene = pVis->GetVSGScene()) {
+            mooring_scene_group_ = vsg::Group::create();
+            scene->addChild(mooring_scene_group_);
+        }
+    }
+
     EnsureWaterSurface();
+
+    // Mooring line visualisation (lazy-initialised on first valid data).
+    if (mooring_provider_) {
+        auto line_data = mooring_provider_();
+        if (!line_data.empty()) {
+            if (!mooring_viz_)
+                mooring_viz_ = std::make_unique<MooringLinesViz>();
+            if (!mooring_viz_->IsInitializedFor(pVis.get()))
+                mooring_viz_->Initialize(pVis.get(), line_data, mooring_scene_group_);
+            mooring_viz_->Update(line_data);
+        }
+    }
 
     // Handle viewer settings changes.
     if (viewer_settings_ && animated_water_) {
