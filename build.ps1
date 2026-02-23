@@ -22,6 +22,7 @@ param(
     [switch]$Package,
     [switch]$NoIrrlicht,    # Disable Irrlicht (auto-enabled if Chrono has it)
     [switch]$NoVSG,         # Disable VSG (auto-enabled if Chrono has it)
+    [switch]$MoorDyn,       # Enable MoorDyn mooring coupling
     [switch]$NoDemos,
     [switch]$NoTests,
     [switch]$Help,
@@ -62,6 +63,7 @@ if ($Help) {
     Write-Host "  -Package           Create distributable ZIP after building"
     Write-Host "  -NoIrrlicht        Disable Irrlicht (enabled by default if Chrono has it)"
     Write-Host "  -NoVSG             Disable VSG (enabled by default if Chrono has it)"
+    Write-Host "  -MoorDyn           Enable MoorDyn mooring coupling (requires extern/MoorDyn)"
     Write-Host "  -NoDemos           Skip demo executables"
     Write-Host "  -NoTests           Skip test targets"
     Write-Host "  -ConfigPath <path> Custom config file (default: build-config.json)`n"
@@ -149,6 +151,20 @@ if (-not $hasHDF5) {
     Write-Warn "Chrono built without HDF5 - build may fail"
 }
 
+# Eigen3: extract include path from Chrono config so FindEigen3.cmake can
+# bypass Eigen3ConfigVersion.cmake (Eigen 5.x rejects the "3.3" request).
+$eigen3Include = $null
+if ($chronoContent -match 'Eigen3_DIR\s+"([^"]+)"') {
+    $eigen3Root = Split-Path (Split-Path $Matches[1])
+    $candidate = Join-Path $eigen3Root "include/eigen3"
+    if (Test-Path (Join-Path $candidate "Eigen")) {
+        $eigen3Include = $candidate
+        Write-OK "Eigen3: $eigen3Include"
+    } else {
+        Write-Warn "Eigen3 headers not found at $candidate"
+    }
+}
+
 # =============================================================================
 # Check CMake
 # =============================================================================
@@ -194,8 +210,14 @@ $cmakeArgs = @(
     "-DHYDROCHRONO_ENABLE_DEMOS=$(if($NoDemos){'OFF'}else{'ON'})",
     "-DHYDROCHRONO_ENABLE_IRRLICHT=$(if($useIrrlicht){'ON'}else{'OFF'})",
     "-DHYDROCHRONO_ENABLE_VSG=$(if($useVSG){'ON'}else{'OFF'})",
-    "-DCMAKE_BUILD_TYPE=$BuildType"
+    "-DCMAKE_BUILD_TYPE=$BuildType",
+    "-DHYDROCHRONO_ENABLE_MOORDYN=$(if($MoorDyn){'ON'}else{'OFF'})"
 )
+
+# Add Eigen3 include path if extracted from Chrono config
+if ($eigen3Include) {
+    $cmakeArgs += "-DEIGEN3_INCLUDE_DIR=`"$($eigen3Include -replace '\\','/')`""
+}
 
 # Add Python if specified
 if ($PythonRoot -and (Test-Path $PythonRoot)) {
@@ -213,7 +235,7 @@ if ($useIrrlicht) {
     }
 }
 
-Write-Detail "Build: $BuildType | Tests: $(if($NoTests){'OFF'}else{'ON'}) | Demos: $(if($NoDemos){'OFF'}else{'ON'})"
+Write-Detail "Build: $BuildType | Tests: $(if($NoTests){'OFF'}else{'ON'}) | Demos: $(if($NoDemos){'OFF'}else{'ON'}) | MoorDyn: $(if($MoorDyn){'ON'}else{'OFF'})"
 
 if ($Verbose) {
     cmake @cmakeArgs
@@ -307,6 +329,45 @@ if ($useVSG) {
         }
     } else {
         Write-Warn "VSG enabled but could not find VSG DLL directory"
+    }
+}
+
+# Copy HDF5 and its dependencies (szip, zlib) from vcpkg
+if ($chronoContent -match 'HDF5_DIR\s+"([^"]+)"') {
+    $hdf5Root = Split-Path (Split-Path $Matches[1])
+    $hdf5BinDir = Join-Path $hdf5Root "bin"
+    if (Test-Path $hdf5BinDir) {
+        $hdf5Dlls = Get-ChildItem -Path $hdf5BinDir -Include "hdf5*.dll","szip*.dll","zlib*.dll" -Recurse -ErrorAction SilentlyContinue
+        $copiedCount = 0
+        foreach ($dll in $hdf5Dlls) {
+            $destDll = Join-Path $binPath $dll.Name
+            if (-not (Test-Path $destDll)) {
+                Copy-Item $dll.FullName $destDll -Force
+                $copiedCount++
+            }
+        }
+        if ($copiedCount -gt 0) {
+            Write-OK "Copied $copiedCount HDF5/compression DLLs from $hdf5BinDir"
+        }
+    }
+}
+
+# Verify MoorDyn DLL is in the output directory
+if ($MoorDyn) {
+    $moordynDll = Join-Path $binPath "moordyn.dll"
+    if (Test-Path $moordynDll) {
+        Write-OK "MoorDyn DLL: moordyn.dll"
+    } else {
+        # CMake places moordyn.dll in bin/<config> alongside other targets,
+        # but fall back to searching the build tree if not found.
+        $found = Get-ChildItem -Path ".\build" -Filter "moordyn.dll" -Recurse -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+        if ($found) {
+            Copy-Item $found.FullName $moordynDll -Force
+            Write-OK "MoorDyn DLL: copied from $($found.Directory.Name)"
+        } else {
+            Write-Warn "MoorDyn enabled but moordyn.dll not found in build tree"
+        }
     }
 }
 

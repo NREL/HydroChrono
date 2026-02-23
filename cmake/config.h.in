@@ -15,6 +15,9 @@
 // If HydroChrono was built with VSG support, define HYDROCHRONO_HAVE_VSG
 @HC_HAS_VSG@
 
+// If HydroChrono was built with MoorDyn mooring support, define HYDROCHRONO_HAVE_MOORDYN
+@HC_HAS_MOORDYN@
+
 // Path to HydroChrono data directory
 @HC_DATA_DIR@
 

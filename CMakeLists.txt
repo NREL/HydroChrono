@@ -52,10 +52,10 @@ configure_file(${CMAKE_SOURCE_DIR}/cmake/version.h.in
 # Add the cmake folder so the FindSphinx module is found
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 
-# Deterministic dependency discovery (avoid ambient PATH/registry drift)
+# Prefer config-mode package discovery (finds vcpkg *-config.cmake files
+# instead of CMake's built-in Find*.cmake modules which may not understand vcpkg).
 set(CMAKE_FIND_PACKAGE_PREFER_CONFIG ON)
 set(CMAKE_FIND_USE_PACKAGE_REGISTRY OFF)
-set(CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH OFF)
 
 # Force Release by default so CI builds are optimized and users get good performance
 if(NOT DEFINED HYDROCHRONO_DEFAULT_BUILD_TYPE)
@@ -79,6 +79,7 @@ option(HYDROCHRONO_ENABLE_IRRLICHT "Enable Irrlicht visualization library" OFF)
 option(HYDROCHRONO_ENABLE_VSG "Enable VSG visualization library" OFF)
 option(HYDROCHRONO_ENABLE_DEMOS "Enable demo executables" OFF)
 option(HYDROCHRONO_ENABLE_YAML_RUNNER "Enable YAML-based CLI runner" OFF)
+option(HYDROCHRONO_ENABLE_MOORDYN "Enable MoorDyn mooring coupling" OFF)
 
 # ===============================================================================
 # ------ Build setup ------------------------------------------------------------
@@ -167,6 +168,16 @@ if(NOT Chrono_DIR)
     return()
 endif()
 
+# Chrono's export file may reference hdf5::hdf5_tools-{shared,static} which is
+# absent from some HDF5 installations (e.g., vcpkg). Provide empty shims so
+# ChronoTargets.cmake loads without errors. Must be created BEFORE find_package(Chrono).
+if(NOT TARGET hdf5::hdf5_tools-shared)
+    add_library(hdf5::hdf5_tools-shared INTERFACE IMPORTED)
+endif()
+if(NOT TARGET hdf5::hdf5_tools-static)
+    add_library(hdf5::hdf5_tools-static INTERFACE IMPORTED)
+endif()
+
 find_package(Chrono
              CONFIG REQUIRED
              COMPONENTS Parsers)
@@ -239,7 +250,33 @@ endif()
 find_package(OpenMP REQUIRED COMPONENTS CXX)
 
 # -- HDF5 Integration --
-find_package(HDF5 REQUIRED COMPONENTS CXX)
+# Prefer config-mode (vcpkg, official HDF5 installer).  Fall back to CMake's
+# built-in FindHDF5 module for system-installed packages (apt, yum, brew, etc.).
+find_package(HDF5 CONFIG QUIET)
+if(NOT HDF5_FOUND)
+    find_package(HDF5 REQUIRED COMPONENTS CXX)
+endif()
+
+# -- MoorDyn mooring library (optional) --
+if(HYDROCHRONO_ENABLE_MOORDYN)
+    message(STATUS "\n---- MoorDyn mooring library")
+    set(EXTERNAL_EIGEN OFF CACHE BOOL "Use MoorDyn bundled Eigen" FORCE)
+    set(PYTHON_WRAPPER OFF CACHE BOOL "Disable MoorDyn Python wrapper" FORCE)
+    set(FORTRAN_WRAPPER OFF CACHE BOOL "Disable MoorDyn Fortran wrapper" FORCE)
+    set(MATLAB_WRAPPER OFF CACHE BOOL "Disable MoorDyn MATLAB wrapper" FORCE)
+    set(RUST_WRAPPER OFF CACHE BOOL "Disable MoorDyn Rust wrapper" FORCE)
+    set(BUILD_TESTING_SAVED ${BUILD_TESTING})
+    set(BUILD_TESTING OFF)
+    add_subdirectory(extern/MoorDyn)
+    set(BUILD_TESTING ${BUILD_TESTING_SAVED})
+    # MoorDyn is a shared library (DLL) -- its internal Eigen usage must not
+    # leak into HydroChrono's include paths (HydroChrono uses Chrono's Eigen).
+    set_target_properties(moordyn PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES ""
+    )
+    message(STATUS "MoorDyn mooring coupling: ENABLED")
+    message(STATUS "----\n")
+endif()
 
 # ===============================================================================
 # ----- Create HydroChrono configuration header ---------------------------------
@@ -259,6 +296,12 @@ if(HYDROCHRONO_ENABLE_VSG)
   set(HC_HAS_VSG "#define HYDROCHRONO_HAVE_VSG")
 else()
   set(HC_HAS_VSG "#undef HYDROCHRONO_HAVE_VSG")
+endif()
+
+if(HYDROCHRONO_ENABLE_MOORDYN)
+  set(HC_HAS_MOORDYN "#define HYDROCHRONO_HAVE_MOORDYN")
+else()
+  set(HC_HAS_MOORDYN "#undef HYDROCHRONO_HAVE_MOORDYN")
 endif()
 
 # For BUILD tree
@@ -317,6 +360,33 @@ set(HC_SOURCES
     src/hydro/logging/logging.cpp
 )
 
+# MoorDyn mooring sources (conditionally compiled).
+# The wrapper is built as a separate OBJECT library so that MoorDyn's
+# bundled Eigen headers stay isolated and don't conflict with the
+# system/Chrono Eigen used by HydroChrono.
+if(HYDROCHRONO_ENABLE_MOORDYN)
+    add_library(moordyn_bridge OBJECT
+        src/hydro/mooring/moordyn_wrapper.cpp
+    )
+    target_include_directories(moordyn_bridge PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/extern/MoorDyn/source"
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    )
+    target_link_libraries(moordyn_bridge PRIVATE moordyn)
+    target_compile_features(moordyn_bridge PUBLIC cxx_std_17)
+    # Pick up HydroChrono's public headers (system_state.h, hydro_types.h)
+    target_include_directories(moordyn_bridge PUBLIC
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+    )
+    # Chrono headers needed for Eigen (used by hydro_types.h)
+    target_link_libraries(moordyn_bridge PUBLIC Chrono::Chrono_core)
+
+    list(APPEND HC_SOURCES
+        src/hydro/force_components/mooring_component.cpp
+    )
+endif()
+
 set(HC_HEADERS
     ${PROJECT_BINARY_DIR}/hydroc/config.h
     ${PROJECT_BINARY_DIR}/hydroc/version.h
@@ -324,6 +394,7 @@ set(HC_HEADERS
     include/hydroc/helper.h
     include/hydroc/logging.h
     include/hydroc/config/hydro_config.h
+    include/hydroc/config/moordyn_config.h
     include/hydroc/core/force_component.h
     include/hydroc/core/hydro_forces.h
     include/hydroc/core/hydro_types.h
@@ -361,19 +432,23 @@ if(TARGET hdf5::hdf5-static)
   target_link_libraries(HydroChrono PUBLIC hdf5::hdf5_cpp-static)
   target_link_libraries(HydroChrono PUBLIC hdf5::hdf5_hl-static)
   target_link_libraries(HydroChrono PUBLIC hdf5::hdf5_hl_cpp-static)
-  target_link_libraries(HydroChrono PUBLIC hdf5::hdf5_tools-static)
+  if(TARGET hdf5::hdf5_tools-static)
+    target_link_libraries(HydroChrono PUBLIC hdf5::hdf5_tools-static)
+  endif()
 elseif(TARGET hdf5::hdf5-shared)
   message(STATUS "Linking shared libraries hdf5::hdf5-shared")
   target_link_libraries(HydroChrono PUBLIC hdf5::hdf5-shared)
   target_link_libraries(HydroChrono PUBLIC hdf5::hdf5_cpp-shared)
   target_link_libraries(HydroChrono PUBLIC hdf5::hdf5_hl-shared)
   target_link_libraries(HydroChrono PUBLIC hdf5::hdf5_hl_cpp-shared)
-  target_link_libraries(HydroChrono PUBLIC hdf5::hdf5_tools-shared)
   list(APPEND HDF5_TARGETS hdf5::hdf5-shared)
   list(APPEND HDF5_TARGETS hdf5::hdf5_cpp-shared)
   list(APPEND HDF5_TARGETS hdf5::hdf5_hl-shared)
   list(APPEND HDF5_TARGETS hdf5::hdf5_hl_cpp-shared)
-  list(APPEND HDF5_TARGETS hdf5::hdf5_tools-shared)
+  if(TARGET hdf5::hdf5_tools-shared)
+    target_link_libraries(HydroChrono PUBLIC hdf5::hdf5_tools-shared)
+    list(APPEND HDF5_TARGETS hdf5::hdf5_tools-shared)
+  endif()
 elseif(TARGET HDF5::HDF5)
   message(STATUS "Linking HDF5::HDF5")
   target_link_libraries(HydroChrono PUBLIC HDF5::HDF5)
@@ -390,6 +465,15 @@ target_include_directories(HydroChrono
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
+
+# Add MoorDyn (optional mooring coupling)
+if(HYDROCHRONO_ENABLE_MOORDYN AND TARGET moordyn)
+    # Link moordyn import lib for DLL binding; moordyn_bridge provides
+    # the compiled wrapper objects with MoorDyn headers isolated from HC.
+    target_link_libraries(HydroChrono PRIVATE $<TARGET_LINKER_FILE:moordyn>)
+    target_sources(HydroChrono PRIVATE $<TARGET_OBJECTS:moordyn_bridge>)
+    target_compile_definitions(HydroChrono PUBLIC HYDROCHRONO_HAVE_MOORDYN)
+endif()
 
 # Library-specific compile definitions
 target_compile_definitions(HydroChrono
@@ -513,6 +597,12 @@ function(configure_test_environment)
     if(HYDROCHRONO_ENABLE_VSG)
         message(STATUS "  VSG DLL directory:                ${VSG_DLL_DIR}")
         list(APPEND DLL_DIRS ${VSG_DLL_DIR})
+    endif()
+
+    # MoorDyn DLL path
+    if(HYDROCHRONO_ENABLE_MOORDYN AND TARGET moordyn)
+        list(APPEND DLL_DIRS "$<TARGET_FILE_DIR:moordyn>")
+        message(STATUS "  MoorDyn DLL directory:            (via target)")
     endif()
 
     set(TEST_ENVIRONMENT "PATH=${DLL_DIRS};$ENV{PATH}" PARENT_SCOPE)
@@ -715,6 +805,21 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
         endforeach()
     endif()
 
+    # MoorDyn DLL
+    if(HYDROCHRONO_ENABLE_MOORDYN AND TARGET moordyn)
+        install(TARGETS moordyn
+            CONFIGURATIONS Release
+            RUNTIME DESTINATION bin COMPONENT runtime)
+        message(STATUS "  MoorDyn DLL (via target)")
+    endif()
+
+endif()
+
+# MoorDyn license bundling
+if(HYDROCHRONO_ENABLE_MOORDYN)
+    install(FILES "${CMAKE_SOURCE_DIR}/extern/MoorDyn/LICENSE.txt"
+            RENAME MoorDyn_LICENSE.txt
+            DESTINATION licenses COMPONENT runtime)
 endif()
 
 # Public, user-facing regression test suite only
@@ -750,6 +855,13 @@ if(MSVC AND OpenMP_CXX_FOUND)
     endif()
 endif()
 include(InstallRequiredSystemLibraries)
+
+# Third-party license notices
+if(EXISTS "${CMAKE_SOURCE_DIR}/THIRD_PARTY_NOTICES.txt")
+    install(FILES "${CMAKE_SOURCE_DIR}/THIRD_PARTY_NOTICES.txt"
+            DESTINATION . COMPONENT runtime)
+endif()
+
 set(CPACK_GENERATOR "ZIP")
 set(CPACK_PACKAGE_NAME "HydroChrono")
 set(CPACK_COMPONENTS_ALL runtime python-tests dev-demos)
