@@ -9,6 +9,9 @@
 #include "setup_from_yaml.h"
 #include "config_loader.h"
 #include <hydroc/hydro_system.h> // For HydroSystem
+#ifdef HYDROCHRONO_HAVE_MOORDYN
+#include <hydroc/config/moordyn_config.h>
+#endif
 #include <hydroc/waves/wave_base.h>
 #include <hydroc/waves/regular_wave.h>
 #include <hydroc/waves/irregular_wave.h>
@@ -243,7 +246,46 @@ std::unique_ptr<HydroSystem> SetupHydroFromYAML(
         hydroc::debug::LogDebug("Radiation convolution mode: Baseline");
         hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "Convolution Mode", "Baseline"));
     }
-    
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // MoorDyn mooring coupling (optional)
+    // ─────────────────────────────────────────────────────────────────────────
+#ifdef HYDROCHRONO_HAVE_MOORDYN
+    if (hydro_data.moordyn_enabled && !hydro_data.moordyn_input_file.empty()) {
+        MoorDynConfig md_cfg;
+        md_cfg.enabled = true;
+        md_cfg.input_file = hydro_data.moordyn_input_file;
+
+        // Resolve body names to 0-based indices in matched_bodies
+        for (const auto& bname : hydro_data.moordyn_body_names) {
+            bool found = false;
+            for (size_t i = 0; i < matched_bodies.size(); ++i) {
+                if (matched_bodies[i]->GetName() == bname) {
+                    md_cfg.coupled_body_indices.push_back(static_cast<int>(i));
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                throw std::runtime_error(
+                    "MoorDyn config references body '" + bname +
+                    "' which was not found among hydrodynamic bodies");
+            }
+        }
+
+        hydro_system->SetMoorDynConfig(md_cfg);
+        hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine(
+            "+", "MoorDyn", hydro_data.moordyn_input_file +
+            " (" + std::to_string(md_cfg.coupled_body_indices.size()) + " bodies)"));
+    }
+#else
+    if (hydro_data.moordyn_enabled) {
+        hydroc::cli::LogWarning(
+            "MoorDyn is enabled in YAML but HydroChrono was built without "
+            "HYDROCHRONO_ENABLE_MOORDYN. Mooring forces will be ignored.");
+    }
+#endif
+
     return hydro_system;
 }
 

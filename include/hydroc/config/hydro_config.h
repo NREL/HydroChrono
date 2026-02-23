@@ -93,6 +93,13 @@ struct YAMLHydroData {
     // Diagnostics
     // ─────────────────────────────────────────────────────────────────────────
     bool output_kernel_fit = false;           // write kernel fit diagnostics to HDF5
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // MoorDyn mooring coupling (optional)
+    // ─────────────────────────────────────────────────────────────────────────
+    bool moordyn_enabled = false;
+    std::string moordyn_input_file;
+    std::vector<std::string> moordyn_body_names;  // e.g. ["body1"]
 };
 
 #endif  // HYDROC_CONFIG_HYDRO_CONFIG_H

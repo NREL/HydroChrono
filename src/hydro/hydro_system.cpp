@@ -26,6 +26,10 @@
 #include "force_components/radiation_component.h"
 #include "force_components/radiation_ss_component.h"
 #include "force_components/excitation_component.h"
+#ifdef HYDROCHRONO_HAVE_MOORDYN
+#include "force_components/mooring_component.h"
+#include "mooring/moordyn_wrapper.h"
+#endif
 #include <hydroc/core/hydro_forces.h>
 #include <hydroc/coupling/chrono_coupler.h>
 #include "radiation/radiation_rirf_processing.h"
@@ -566,6 +570,21 @@ void HydroSystem::EnsureHydroForcesAndCoupler() {
 
     // Excitation component (uses shared factory for consistent construction)
     components.push_back(CreateExcitationComponent());
+
+#ifdef HYDROCHRONO_HAVE_MOORDYN
+    if (moordyn_config_.enabled) {
+        // Build initial state from current Chrono body positions
+        hydrochrono::hydro::SystemState init_state;
+        hydrochrono::hydro::chrono_coupling::BuildSystemStateFromChronoBodies(
+            bodies_, init_state);
+
+        auto wrapper = std::make_unique<hydrochrono::hydro::MoorDynWrapper>(
+            moordyn_config_.input_file, moordyn_config_.coupled_body_indices);
+        wrapper->Initialize(init_state);
+        components.push_back(
+            std::make_unique<hydrochrono::hydro::MooringComponent>(std::move(wrapper)));
+    }
+#endif
 
     // Construct HydroForces (takes ownership of components)
     hydro_forces_ = std::make_unique<hydrochrono::hydro::HydroForces>(

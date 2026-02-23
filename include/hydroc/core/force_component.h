@@ -25,7 +25,8 @@ namespace hydrochrono::hydro {
 enum class HydroComponentType {
     Hydrostatics,   ///< Hydrostatic restoring forces and buoyancy
     Radiation,      ///< Radiation damping (RIRF convolution)
-    Excitation      ///< Wave excitation forces
+    Excitation,     ///< Wave excitation forces
+    Mooring         ///< Mooring forces (e.g. MoorDyn)
 };
 
 /**

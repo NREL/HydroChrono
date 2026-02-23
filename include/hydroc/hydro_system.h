@@ -66,6 +66,11 @@
 // Force component interface (for radiation component)
 #include <hydroc/core/force_component.h>
 
+// MoorDyn mooring configuration
+#ifdef HYDROCHRONO_HAVE_MOORDYN
+#include <hydroc/config/moordyn_config.h>
+#endif
+
 namespace hydrochrono::hydro {
 // Forward declarations
 class HydrostaticsComponent;
@@ -439,6 +444,18 @@ class HydroSystem {
         InvalidateRadiationComponent();  // Invalidate component to recreate with new settings
     }
 
+#ifdef HYDROCHRONO_HAVE_MOORDYN
+    /**
+     * @brief Set MoorDyn mooring configuration.
+     *
+     * Must be called before the first DoStepDynamics() so that the mooring
+     * component is included in the initial HydroForces construction.
+     */
+    void SetMoorDynConfig(const MoorDynConfig& config) {
+        moordyn_config_ = config;
+    }
+#endif
+
     /**
      * @brief Calculates or retrieves the total force on a specific body in a particular degree of freedom.
      *
@@ -596,6 +613,10 @@ class HydroSystem {
     // Internal helper: constructs hydro_forces_ and chrono_coupler_ once.
     // Subsequent calls are no-ops. Called automatically by CoordinateFuncForBody().
     void EnsureHydroForcesAndCoupler();
+
+#ifdef HYDROCHRONO_HAVE_MOORDYN
+    MoorDynConfig moordyn_config_;
+#endif
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

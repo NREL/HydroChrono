@@ -170,6 +170,7 @@ YAMLHydroData ReadHydroYAML(const std::string& hydro_file_path) {
     bool in_conv_taper = false;
     bool in_conv_diag = false;
     bool in_body = false;
+    bool in_moordyn = false;
     HydroBody current_body;
     int line_number = 0;
     
@@ -293,6 +294,22 @@ YAMLHydroData ReadHydroYAML(const std::string& hydro_file_path) {
             in_radiation_state_space = false;
             in_bodies = false;
             in_waves = false;
+            in_body = false;
+            in_moordyn = false;
+            in_conv_smoothing = in_conv_taper = in_conv_diag = false;
+            continue;
+        }
+
+        if (indent == 2 && trimmed == "moordyn:") {
+            if (in_body && !current_body.name.empty()) {
+                data.bodies.push_back(current_body);
+            }
+            in_moordyn = true;
+            in_bodies = false;
+            in_waves = false;
+            in_radiation = false;
+            in_radiation_state_space = false;
+            in_convolution = false;
             in_body = false;
             in_conv_smoothing = in_conv_taper = in_conv_diag = false;
             continue;
@@ -576,6 +593,35 @@ YAMLHydroData ReadHydroYAML(const std::string& hydro_file_path) {
                         data.waves.spectrum = value;
                     } else if (!in_period_block && key_lower == "seed") {
                         try { data.waves.seed = std::stoi(value); } catch (...) { data.waves.seed = -1; }
+                    }
+                } else if (in_moordyn) {
+                    std::string key_lower = key;
+                    std::transform(key_lower.begin(), key_lower.end(), key_lower.begin(), ::tolower);
+                    if (key_lower == "enabled") {
+                        std::string val_lower = value;
+                        std::transform(val_lower.begin(), val_lower.end(), val_lower.begin(), ::tolower);
+                        data.moordyn_enabled = (val_lower == "true" || val_lower == "1" || val_lower == "yes");
+                    } else if (key_lower == "input_file") {
+                        data.moordyn_input_file = value;
+                    } else if (key_lower == "bodies") {
+                        // Parse [body1, body2] list
+                        std::string list_str = value;
+                        // Strip brackets
+                        size_t lb = list_str.find('[');
+                        size_t rb = list_str.find(']');
+                        if (lb != std::string::npos && rb != std::string::npos && rb > lb) {
+                            list_str = list_str.substr(lb + 1, rb - lb - 1);
+                        }
+                        // Split by commas
+                        std::istringstream iss(list_str);
+                        std::string token;
+                        while (std::getline(iss, token, ',')) {
+                            token.erase(0, token.find_first_not_of(" \t"));
+                            token.erase(token.find_last_not_of(" \t") + 1);
+                            if (!token.empty()) {
+                                data.moordyn_body_names.push_back(token);
+                            }
+                        }
                     }
                 }
             }

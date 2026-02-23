@@ -29,14 +29,16 @@ struct HydroForcesProfileStats {
     double hydrostatics_seconds = 0.0;
     double radiation_seconds    = 0.0;
     double excitation_seconds   = 0.0;
+    double mooring_seconds      = 0.0;
     int hydrostatics_calls      = 0;
     int radiation_calls         = 0;
     int excitation_calls        = 0;
+    int mooring_calls           = 0;
     
     /// Reset all counters to zero
     void Reset() {
-        hydrostatics_seconds = radiation_seconds = excitation_seconds = 0.0;
-        hydrostatics_calls = radiation_calls = excitation_calls = 0;
+        hydrostatics_seconds = radiation_seconds = excitation_seconds = mooring_seconds = 0.0;
+        hydrostatics_calls = radiation_calls = excitation_calls = mooring_calls = 0;
     }
 };
 
