@@ -158,8 +158,8 @@ void HydroChronoGuiComponent::RenderMooringPanel() {
         }
 
         ImGui::TextDisabled("Range: %.3g .. %.3g N",
-                            mooring_viz_->ScalarMin(),
-                            mooring_viz_->ScalarMax());
+                            mooring_viz_->TensionMin(),
+                            mooring_viz_->TensionMax());
 
         ImGui::Unindent();
     }
@@ -185,31 +185,20 @@ void HydroChronoGuiComponent::RenderColorBar() {
     // Draw the gradient as a stack of thin horizontal strips.
     constexpr int kStrips = 64;
     const float strip_h = bar_h / kStrips;
+
+    auto turbo_to_im = [](float t) -> ImU32 {
+        const auto c = MooringLinesViz::TurboColormap(t);
+        return IM_COL32(static_cast<int>(c.r * 255),
+                        static_cast<int>(c.g * 255),
+                        static_cast<int>(c.b * 255), 255);
+    };
+
     for (int i = 0; i < kStrips; ++i) {
         const float t_top = 1.0f - static_cast<float>(i) / kStrips;
         const float t_bot = 1.0f - static_cast<float>(i + 1) / kStrips;
 
-        auto to_im = [](float t) -> ImU32 {
-            t = std::clamp(t, 0.0f, 1.0f);
-            const float r = std::clamp(
-                0.13572138f + t * (4.61539260f + t * (-42.66032258f +
-                t * (132.13108234f + t * (-152.54895899f + t * 59.28637943f)))),
-                0.0f, 1.0f);
-            const float g = std::clamp(
-                0.09140261f + t * (2.26418794f + t * (4.11868525f +
-                t * (-44.58319668f + t * (70.41698018f - t * 33.26974748f)))),
-                0.0f, 1.0f);
-            const float b = std::clamp(
-                0.10667330f + t * (12.75191895f + t * (-60.25290628f +
-                t * (109.04872043f + t * (-89.38040853f + t * 27.13073700f)))),
-                0.0f, 1.0f);
-            return IM_COL32(static_cast<int>(r * 255),
-                            static_cast<int>(g * 255),
-                            static_cast<int>(b * 255), 255);
-        };
-
-        ImU32 col_top = to_im(t_top);
-        ImU32 col_bot = to_im(t_bot);
+        const ImU32 col_top = turbo_to_im(t_top);
+        const ImU32 col_bot = turbo_to_im(t_bot);
         dl->AddRectFilledMultiColor(
             ImVec2(x0, y0 + i * strip_h),
             ImVec2(x0 + bar_w, y0 + (i + 1) * strip_h),
@@ -222,11 +211,11 @@ void HydroChronoGuiComponent::RenderColorBar() {
 
     // Labels.
     char buf[64];
-    std::snprintf(buf, sizeof(buf), "%.3g N", mooring_viz_->ScalarMax());
+    std::snprintf(buf, sizeof(buf), "%.3g N", mooring_viz_->TensionMax());
     dl->AddText(ImVec2(x0 - label_gap - ImGui::CalcTextSize(buf).x, y0 - 2.0f),
                 IM_COL32(220, 220, 220, 255), buf);
 
-    std::snprintf(buf, sizeof(buf), "%.3g N", mooring_viz_->ScalarMin());
+    std::snprintf(buf, sizeof(buf), "%.3g N", mooring_viz_->TensionMin());
     dl->AddText(ImVec2(x0 - label_gap - ImGui::CalcTextSize(buf).x,
                         y0 + bar_h - ImGui::GetTextLineHeight() + 2.0f),
                 IM_COL32(220, 220, 220, 255), buf);

@@ -42,7 +42,7 @@ class MooringLinesViz {
                     const std::vector<MooringLineVizData>& initial_lines,
                     vsg::ref_ptr<vsg::Group> parent_group = {});
 
-    /// Reposition tube vertices and (optionally) recolour by scalar field.
+    /// Reposition tube vertices and (optionally) recolour by tension.
     /// @param color_enabled  When false, colours are reset to the default cable
     ///                       tan and the adaptive range is left untouched.
     /// @param range_locked   When true the adaptive min/max is frozen.
@@ -54,9 +54,14 @@ class MooringLinesViz {
         return initialized_ && bound_vis_ == vis;
     }
 
-    /// Current adaptive scalar range (for the GUI colour bar).
-    float ScalarMin() const { return adaptive_min_; }
-    float ScalarMax() const { return adaptive_max_; }
+    /// Current adaptive tension range [N] (for the GUI colour bar).
+    float TensionMin() const { return tension_min_; }
+    float TensionMax() const { return tension_max_; }
+
+    /// Evaluate the Turbo colour map at normalised parameter @p t in [0, 1].
+    /// Exposed as a public static so the GUI colour bar can reuse the same
+    /// polynomial without duplicating coefficients.
+    static vsg::vec4 TurboColormap(float t);
 
   private:
     static constexpr int kSides = 8;
@@ -104,9 +109,9 @@ class MooringLinesViz {
     chrono::vsg3d::ChVisualSystemVSG* bound_vis_ = nullptr;
     bool initialized_ = false;
 
-    float adaptive_min_ = 0.0f;
-    float adaptive_max_ = 1.0f;
-    bool adaptive_initialized_ = false;
+    float tension_min_ = 0.0f;
+    float tension_max_ = 1.0f;
+    bool range_initialized_ = false;
     int hold_frames_remaining_ = 0;
 };
 

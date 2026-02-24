@@ -10,6 +10,7 @@
 #include <chrono_vsg/utils/ChShapeBuilderVSG.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <iostream>
 #include <limits>
@@ -116,9 +117,7 @@ static chrono::ChColor PointTypeColor(int point_type) {
     return {0.05f, 0.05f, 0.05f};  // intermediate node -- near black
 }
 
-/// Attempt to match the Google Turbo colour map (Mikhailov, 2019).
-/// Input @p t is clamped to [0, 1].  Returns an opaque RGBA colour.
-static vsg::vec4 TurboColormap(float t) {
+vsg::vec4 MooringLinesViz::TurboColormap(float t) {
     t = std::clamp(t, 0.0f, 1.0f);
 
     // Polynomial coefficients fitted to the 256-entry Turbo LUT.
@@ -174,36 +173,36 @@ void MooringLinesViz::Update(const std::vector<MooringLineVizData>& lines,
     if (!initialized_) return;
     const size_t count = std::min(lines.size(), line_meshes_.size());
 
-    // Adaptive range: min fixed at 0 (all fields are non-negative magnitudes),
+    // Adaptive range: min fixed at 0 (tension magnitude is non-negative),
     // max uses high-water-mark behaviour -- snaps to new peaks instantly but
     // decays very slowly so the colour scale stays stable.
     if (color_enabled && !range_locked) {
         float frame_max = 0.0f;
         for (size_t li = 0; li < count; ++li) {
-            for (double s : lines[li].node_tensions) {
-                frame_max = std::max(frame_max, static_cast<float>(s));
+            for (double t : lines[li].node_tensions) {
+                frame_max = std::max(frame_max, static_cast<float>(t));
             }
         }
 
         const float padded_max = frame_max * (1.0f + kRangePadding);
 
-        if (!adaptive_initialized_) {
-            adaptive_max_ = std::max(padded_max, 1.0f);
-            adaptive_initialized_ = true;
+        if (!range_initialized_) {
+            tension_max_ = std::max(padded_max, 1.0f);
+            range_initialized_ = true;
             hold_frames_remaining_ = kRangeHoldFrames;
-        } else if (padded_max > adaptive_max_) {
-            adaptive_max_ = padded_max;
+        } else if (padded_max > tension_max_) {
+            tension_max_ = padded_max;
             hold_frames_remaining_ = kRangeHoldFrames;
         } else if (hold_frames_remaining_ > 0) {
             --hold_frames_remaining_;
         } else {
-            adaptive_max_ += kRangeDecayAlpha * (padded_max - adaptive_max_);
+            tension_max_ += kRangeDecayAlpha * (padded_max - tension_max_);
         }
 
-        adaptive_min_ = 0.0f;
+        tension_min_ = 0.0f;
 
-        if (adaptive_max_ < 1e-6f) {
-            adaptive_max_ = 1.0f;
+        if (tension_max_ < 1e-6f) {
+            tension_max_ = 1.0f;
         }
     }
 
@@ -211,7 +210,7 @@ void MooringLinesViz::Update(const std::vector<MooringLineVizData>& lines,
         if (lines[li].node_positions.size() < 2) continue;
         if (!line_meshes_[li].vertices) continue;
         UpdateTubeMesh(lines[li], line_meshes_[li],
-                       color_enabled, adaptive_min_, adaptive_max_);
+                       color_enabled, tension_min_, tension_max_);
     }
 }
 
@@ -391,20 +390,26 @@ void MooringLinesViz::UpdateTubeMesh(const MooringLineVizData& line_data,
     const size_t ring_verts = num_nodes * static_cast<size_t>(kSides);
     if (lm.vertices->size() < ring_verts + 2) return;
 
-    const bool has_scalars =
+    const bool has_tensions =
         color_enabled && lm.colors &&
         line_data.node_tensions.size() == num_nodes;
     const float inv_range =
         (range_max - range_min > 1e-12f) ? 1.0f / (range_max - range_min)
                                          : 1.0f;
 
-    std::vector<double> cos_table(kSides);
-    std::vector<double> sin_table(kSides);
-    for (int s = 0; s < kSides; ++s) {
-        const double angle = 2.0 * M_PI * s / kSides;
-        cos_table[s] = std::cos(angle);
-        sin_table[s] = std::sin(angle);
-    }
+    // kSides is a compile-time constant, so the trig table never changes.
+    static const auto cos_table = [] {
+        std::array<double, kSides> t{};
+        for (int s = 0; s < kSides; ++s)
+            t[s] = std::cos(2.0 * M_PI * s / kSides);
+        return t;
+    }();
+    static const auto sin_table = [] {
+        std::array<double, kSides> t{};
+        for (int s = 0; s < kSides; ++s)
+            t[s] = std::sin(2.0 * M_PI * s / kSides);
+        return t;
+    }();
 
     for (size_t ni = 0; ni < num_nodes; ++ni) {
         const vsg::dvec3 tang = Tangent(pts, ni);
@@ -416,7 +421,7 @@ void MooringLinesViz::UpdateTubeMesh(const MooringLineVizData& line_data,
         const auto centre_z = static_cast<float>(pts[ni][2]);
 
         vsg::vec4 col = kDefaultCableColorVec4;
-        if (has_scalars) {
+        if (has_tensions) {
             const float t =
                 (static_cast<float>(line_data.node_tensions[ni]) - range_min)
                 * inv_range;
@@ -467,7 +472,7 @@ void MooringLinesViz::UpdateTubeMesh(const MooringLineVizData& line_data,
     if (lm.colors) {
         vsg::vec4 cap0_col = kDefaultCableColorVec4;
         vsg::vec4 capN_col = kDefaultCableColorVec4;
-        if (has_scalars) {
+        if (has_tensions) {
             cap0_col = TurboColormap(
                 (static_cast<float>(line_data.node_tensions.front()) - range_min)
                 * inv_range);
