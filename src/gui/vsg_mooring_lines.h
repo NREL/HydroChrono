@@ -42,19 +42,30 @@ class MooringLinesViz {
                     const std::vector<MooringLineVizData>& initial_lines,
                     vsg::ref_ptr<vsg::Group> parent_group = {});
 
-    /// Reposition tube vertices to match current node positions.
-    void Update(const std::vector<MooringLineVizData>& lines);
+    /// Reposition tube vertices and (optionally) recolour by scalar field.
+    /// @param color_enabled  When false, colours are reset to the default cable
+    ///                       tan and the adaptive range is left untouched.
+    /// @param range_locked   When true the adaptive min/max is frozen.
+    void Update(const std::vector<MooringLineVizData>& lines,
+                bool color_enabled = true, bool range_locked = false);
 
     bool IsInitialized() const { return initialized_; }
     bool IsInitializedFor(chrono::vsg3d::ChVisualSystemVSG* vis) const {
         return initialized_ && bound_vis_ == vis;
     }
 
+    /// Current adaptive scalar range (for the GUI colour bar).
+    float ScalarMin() const { return adaptive_min_; }
+    float ScalarMax() const { return adaptive_max_; }
+
   private:
     static constexpr int kSides = 8;
     static constexpr double kTubeRadius = 0.15;
     static constexpr double kEndpointRadius = 0.5;
     static constexpr double kNodeMarkerRadius = 0.20;
+    static constexpr float kRangeDecayAlpha = 0.00008f;
+    static constexpr float kRangePadding    = 0.10f;
+    static constexpr int   kRangeHoldFrames = 180;
 
     /// A PBR sphere used to mark an endpoint or intermediate node.
     struct PointMarker {
@@ -62,11 +73,12 @@ class MooringLinesViz {
         vsg::ref_ptr<vsg::Node> node;
     };
 
-    /// Per-line rendering state: VSG node, extracted vertex/normal buffers
-    /// (for dynamic updates), and small sphere markers at key positions.
+    /// Per-line rendering state: VSG node, extracted vertex/normal/color
+    /// buffers (for dynamic updates), and small sphere markers.
     struct LineMesh {
         vsg::ref_ptr<vsg::vec3Array> vertices;
         vsg::ref_ptr<vsg::vec3Array> normals;
+        vsg::ref_ptr<vsg::vec4Array> colors;
         vsg::ref_ptr<vsg::Node> node;
         size_t num_nodes = 0;
         PointMarker start_marker;
@@ -76,7 +88,8 @@ class MooringLinesViz {
 
     void BuildTubeMesh(const MooringLineVizData& line_data, LineMesh& lm,
                        chrono::vsg3d::ChVisualSystemVSG* vis);
-    void UpdateTubeMesh(const MooringLineVizData& line_data, LineMesh& lm);
+    void UpdateTubeMesh(const MooringLineVizData& line_data, LineMesh& lm,
+                        bool color_enabled, float range_min, float range_max);
 
     PointMarker CreateSphereMarker(chrono::vsg3d::ChVisualSystemVSG* vis,
                                    double x, double y, double z,
@@ -90,6 +103,11 @@ class MooringLinesViz {
     vsg::ref_ptr<vsg::Group> scene_;
     chrono::vsg3d::ChVisualSystemVSG* bound_vis_ = nullptr;
     bool initialized_ = false;
+
+    float adaptive_min_ = 0.0f;
+    float adaptive_max_ = 1.0f;
+    bool adaptive_initialized_ = false;
+    int hold_frames_remaining_ = 0;
 };
 
 }  // namespace gui

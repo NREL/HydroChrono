@@ -36,7 +36,7 @@ public:
                  double time,
                  BodyForces& inout_forces) override;
 
-    /// Return current node positions for all mooring lines (forwarded from MoorDynWrapper).
+    /// Return current node positions and tension for all mooring lines.
     std::vector<hydroc::gui::MooringLineVizData> GetMooringLineStates() const;
 
 private:

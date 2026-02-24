@@ -126,8 +126,6 @@ std::vector<hydroc::gui::MooringLineVizData> MoorDynWrapper::GetLineStates() con
 
     std::vector<hydroc::gui::MooringLineVizData> result(num_lines);
 
-    // Collect line handles (1-indexed in MoorDyn) so we can later match them
-    // against the attachments reported by each point.
     std::vector<MoorDynLine> line_handles(num_lines, nullptr);
     for (unsigned int li = 1; li <= num_lines; ++li) {
         MoorDynLine line = MoorDyn_GetLine(system_, li);
@@ -139,11 +137,24 @@ std::vector<hydroc::gui::MooringLineVizData> MoorDynWrapper::GetLineStates() con
 
         auto& viz = result[li - 1];
         viz.node_positions.resize(num_nodes);
+        viz.node_tensions.resize(num_nodes, 0.0);
+
         for (unsigned int ni = 0; ni < num_nodes; ++ni) {
             double pos[3];
             if (MoorDyn_GetLineNodePos(line, ni, pos) == 0) {
                 viz.node_positions[ni] = {pos[0], pos[1], pos[2]};
             }
+
+            double t[3] = {};
+            if (MoorDyn_GetLineNodeTen(line, ni, t) == 0) {
+                viz.node_tensions[ni] =
+                    std::sqrt(t[0] * t[0] + t[1] * t[1] + t[2] * t[2]);
+            }
+        }
+
+        double max_ten = 0.0;
+        if (MoorDyn_GetLineMaxTen(line, &max_ten) == 0) {
+            viz.line_max_tension = max_ten;
         }
     }
 

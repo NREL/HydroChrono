@@ -9,8 +9,10 @@
 #include <chrono/geometry/ChTriangleMeshConnected.h>
 #include <chrono_vsg/utils/ChShapeBuilderVSG.h>
 
+#include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <limits>
 
 namespace hydroc {
 namespace gui {
@@ -36,6 +38,24 @@ class FindVec3Buffer : public vsg::Visitor {
 
   private:
     vsg::ref_ptr<vsg::vec3Array> result_;
+};
+
+/// Same as FindVec3Buffer but for `vsg::vec4Array` (vertex colours at slot 3).
+template <int N>
+class FindVec4Buffer : public vsg::Visitor {
+  public:
+    void apply(vsg::Object& object) override { object.traverse(*this); }
+    void apply(vsg::VertexIndexDraw& vid) override {
+        if (static_cast<int>(vid.arrays.size()) <= N) return;
+        vid.arrays[N]->data->accept(*this);
+    }
+    void apply(vsg::vec4Array& arr) override {
+        if (!result_) result_ = &arr;
+    }
+    vsg::ref_ptr<vsg::vec4Array> Result() { return result_; }
+
+  private:
+    vsg::ref_ptr<vsg::vec4Array> result_;
 };
 
 /// Finite-difference tangent (central where possible, one-sided at ends).
@@ -96,6 +116,30 @@ static chrono::ChColor PointTypeColor(int point_type) {
     return {0.05f, 0.05f, 0.05f};  // intermediate node -- near black
 }
 
+/// Attempt to match the Google Turbo colour map (Mikhailov, 2019).
+/// Input @p t is clamped to [0, 1].  Returns an opaque RGBA colour.
+static vsg::vec4 TurboColormap(float t) {
+    t = std::clamp(t, 0.0f, 1.0f);
+
+    // Polynomial coefficients fitted to the 256-entry Turbo LUT.
+    const float r = std::clamp(
+        0.13572138f + t * (4.61539260f + t * (-42.66032258f +
+        t * (132.13108234f + t * (-152.54895899f + t * 59.28637943f)))),
+        0.0f, 1.0f);
+    const float g = std::clamp(
+        0.09140261f + t * (2.26418794f + t * (4.11868525f +
+        t * (-44.58319668f + t * (70.41698018f - t * 33.26974748f)))),
+        0.0f, 1.0f);
+    const float b = std::clamp(
+        0.10667330f + t * (12.75191895f + t * (-60.25290628f +
+        t * (109.04872043f + t * (-89.38040853f + t * 27.13073700f)))),
+        0.0f, 1.0f);
+
+    return {r, g, b, 1.0f};
+}
+
+static const vsg::vec4 kDefaultCableColorVec4{0.55f, 0.45f, 0.35f, 1.0f};
+
 // ---------------------------------------------------------------------------
 // Lifetime
 // ---------------------------------------------------------------------------
@@ -125,13 +169,49 @@ void MooringLinesViz::Initialize(
               << " mooring line(s)\n";
 }
 
-void MooringLinesViz::Update(const std::vector<MooringLineVizData>& lines) {
+void MooringLinesViz::Update(const std::vector<MooringLineVizData>& lines,
+                             bool color_enabled, bool range_locked) {
     if (!initialized_) return;
     const size_t count = std::min(lines.size(), line_meshes_.size());
+
+    // Adaptive range: min fixed at 0 (all fields are non-negative magnitudes),
+    // max uses high-water-mark behaviour -- snaps to new peaks instantly but
+    // decays very slowly so the colour scale stays stable.
+    if (color_enabled && !range_locked) {
+        float frame_max = 0.0f;
+        for (size_t li = 0; li < count; ++li) {
+            for (double s : lines[li].node_tensions) {
+                frame_max = std::max(frame_max, static_cast<float>(s));
+            }
+        }
+
+        const float padded_max = frame_max * (1.0f + kRangePadding);
+
+        if (!adaptive_initialized_) {
+            adaptive_max_ = std::max(padded_max, 1.0f);
+            adaptive_initialized_ = true;
+            hold_frames_remaining_ = kRangeHoldFrames;
+        } else if (padded_max > adaptive_max_) {
+            adaptive_max_ = padded_max;
+            hold_frames_remaining_ = kRangeHoldFrames;
+        } else if (hold_frames_remaining_ > 0) {
+            --hold_frames_remaining_;
+        } else {
+            adaptive_max_ += kRangeDecayAlpha * (padded_max - adaptive_max_);
+        }
+
+        adaptive_min_ = 0.0f;
+
+        if (adaptive_max_ < 1e-6f) {
+            adaptive_max_ = 1.0f;
+        }
+    }
+
     for (size_t li = 0; li < count; ++li) {
         if (lines[li].node_positions.size() < 2) continue;
         if (!line_meshes_[li].vertices) continue;
-        UpdateTubeMesh(lines[li], line_meshes_[li]);
+        UpdateTubeMesh(lines[li], line_meshes_[li],
+                       color_enabled, adaptive_min_, adaptive_max_);
     }
 }
 
@@ -225,13 +305,16 @@ void MooringLinesViz::BuildTubeMesh(const MooringLineVizData& line_data,
         mesh, transform, kCableColor, /*wireframe=*/false);
     if (!lm.node) return;
 
-    // Extract the VSG vertex / normal arrays for per-frame writes.
+    // Extract the VSG vertex / normal / colour arrays for per-frame writes.
     lm.vertices = vsg::visit<FindVec3Buffer<0>>(lm.node).Result();
     lm.normals  = vsg::visit<FindVec3Buffer<1>>(lm.node).Result();
+    lm.colors   = vsg::visit<FindVec4Buffer<3>>(lm.node).Result();
     if (lm.vertices)
         lm.vertices->properties.dataVariance = vsg::DataVariance::DYNAMIC_DATA;
     if (lm.normals)
         lm.normals->properties.dataVariance = vsg::DataVariance::DYNAMIC_DATA;
+    if (lm.colors)
+        lm.colors->properties.dataVariance = vsg::DataVariance::DYNAMIC_DATA;
 
     scene_->addChild(lm.node);
 
@@ -298,13 +381,22 @@ void MooringLinesViz::UpdateMarkerPosition(PointMarker& marker,
 // ---------------------------------------------------------------------------
 
 void MooringLinesViz::UpdateTubeMesh(const MooringLineVizData& line_data,
-                                     LineMesh& lm) {
+                                     LineMesh& lm,
+                                     bool color_enabled,
+                                     float range_min, float range_max) {
     const auto& pts        = line_data.node_positions;
     const size_t num_nodes = pts.size();
     if (num_nodes != lm.num_nodes || !lm.vertices) return;
 
     const size_t ring_verts = num_nodes * static_cast<size_t>(kSides);
     if (lm.vertices->size() < ring_verts + 2) return;
+
+    const bool has_scalars =
+        color_enabled && lm.colors &&
+        line_data.node_tensions.size() == num_nodes;
+    const float inv_range =
+        (range_max - range_min > 1e-12f) ? 1.0f / (range_max - range_min)
+                                         : 1.0f;
 
     std::vector<double> cos_table(kSides);
     std::vector<double> sin_table(kSides);
@@ -323,6 +415,14 @@ void MooringLinesViz::UpdateTubeMesh(const MooringLineVizData& line_data,
         const auto centre_y = static_cast<float>(pts[ni][1]);
         const auto centre_z = static_cast<float>(pts[ni][2]);
 
+        vsg::vec4 col = kDefaultCableColorVec4;
+        if (has_scalars) {
+            const float t =
+                (static_cast<float>(line_data.node_tensions[ni]) - range_min)
+                * inv_range;
+            col = TurboColormap(t);
+        }
+
         for (int s = 0; s < kSides; ++s) {
             const double cs = cos_table[s];
             const double sn = sin_table[s];
@@ -339,6 +439,9 @@ void MooringLinesViz::UpdateTubeMesh(const MooringLineVizData& line_data,
             const float nlen = std::sqrt(nx * nx + ny * ny + nz * nz);
             if (nlen > 1e-6f) { nx /= nlen; ny /= nlen; nz /= nlen; }
             (*lm.normals)[idx] = vsg::vec3(nx, ny, nz);
+
+            if (lm.colors && idx < lm.colors->size())
+                (*lm.colors)[idx] = col;
         }
     }
 
@@ -360,6 +463,24 @@ void MooringLinesViz::UpdateTubeMesh(const MooringLineVizData& line_data,
     (*lm.normals)[ring_verts + 1] = vsg::vec3(
         static_cast<float>(tN.x), static_cast<float>(tN.y),
         static_cast<float>(tN.z));
+
+    if (lm.colors) {
+        vsg::vec4 cap0_col = kDefaultCableColorVec4;
+        vsg::vec4 capN_col = kDefaultCableColorVec4;
+        if (has_scalars) {
+            cap0_col = TurboColormap(
+                (static_cast<float>(line_data.node_tensions.front()) - range_min)
+                * inv_range);
+            capN_col = TurboColormap(
+                (static_cast<float>(line_data.node_tensions.back()) - range_min)
+                * inv_range);
+        }
+        if (ring_verts < lm.colors->size())
+            (*lm.colors)[ring_verts] = cap0_col;
+        if (ring_verts + 1 < lm.colors->size())
+            (*lm.colors)[ring_verts + 1] = capN_col;
+        lm.colors->dirty();
+    }
 
     lm.vertices->dirty();
     lm.normals->dirty();

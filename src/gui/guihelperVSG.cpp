@@ -95,8 +95,13 @@ void GUIImplVSG::Init(UI& ui, chrono::ChSystem* system, const char* title) {
         }
     }
 
-    pVis->AddGuiComponent(std::make_shared<HydroChronoGuiComponent>(pVis.get(), ui.simulationStarted,
-                                                                    viewer_settings_.get()));
+    // Create mooring viz early so the GUI component can read its adaptive range.
+    if (!mooring_viz_)
+        mooring_viz_ = std::make_unique<MooringLinesViz>();
+
+    pVis->AddGuiComponent(std::make_shared<HydroChronoGuiComponent>(
+        pVis.get(), ui.simulationStarted, viewer_settings_.get(),
+        mooring_viz_.get()));
 
     pVis->Initialize();
 
@@ -204,7 +209,10 @@ bool GUIImplVSG::IsRunning(double timestep) {
                 mooring_viz_ = std::make_unique<MooringLinesViz>();
             if (!mooring_viz_->IsInitializedFor(pVis.get()))
                 mooring_viz_->Initialize(pVis.get(), line_data, mooring_scene_group_);
-            mooring_viz_->Update(line_data);
+
+            const bool color_on  = viewer_settings_ && viewer_settings_->show_mooring_colors;
+            const bool range_lock = viewer_settings_ && viewer_settings_->mooring_range_locked;
+            mooring_viz_->Update(line_data, color_on, range_lock);
         }
     }
 

@@ -457,11 +457,11 @@ class HydroSystem {
     }
 
     /**
-     * @brief Get current mooring line node positions for visualization.
+     * @brief Get current mooring line node positions and tension for visualization.
      *
      * Returns one entry per MoorDyn line, each containing the ordered node
-     * positions along the line.  Returns an empty vector when MoorDyn is
-     * not active or no lines exist.
+     * positions along the line plus per-node tension magnitudes.  Returns an
+     * empty vector when MoorDyn is not active or no lines exist.
      */
     std::vector<hydroc::gui::MooringLineVizData> GetMooringLineStates() const;
 #endif

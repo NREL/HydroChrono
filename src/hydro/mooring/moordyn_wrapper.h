@@ -65,7 +65,7 @@ public:
 
     bool IsInitialized() const { return initialized_; }
 
-    /// Extract current node positions for every line in the MoorDyn system.
+    /// Extract current node positions and tension for every line.
     /// Safe to call any time after Initialize().
     std::vector<hydroc::gui::MooringLineVizData> GetLineStates() const;
 
