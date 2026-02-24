@@ -63,7 +63,8 @@ if ($Help) {
     Write-Host "  -Package           Create distributable ZIP after building"
     Write-Host "  -NoIrrlicht        Disable Irrlicht (enabled by default if Chrono has it)"
     Write-Host "  -NoVSG             Disable VSG (enabled by default if Chrono has it)"
-    Write-Host "  -MoorDyn           Enable MoorDyn mooring coupling (requires extern/MoorDyn)"
+    Write-Host "  -MoorDyn           Enable MoorDyn mooring coupling"
+    Write-Host "                     Requires: git submodule update --init extern/MoorDyn"
     Write-Host "  -NoDemos           Skip demo executables"
     Write-Host "  -NoTests           Skip test targets"
     Write-Host "  -ConfigPath <path> Custom config file (default: build-config.json)`n"
@@ -80,6 +81,8 @@ if ($Help) {
     Write-Host "CONFIG FILE:" -ForegroundColor Yellow
     Write-Host '  { "ChronoDir": "C:/path/to/chrono/build/cmake" }' -ForegroundColor Gray
     Write-Host ""
+    Write-Host "DOCS:" -ForegroundColor Yellow
+    Write-Host "  Full setup guide: docs/_main_pages/developer_docs/build_instructions.md`n"
     exit 0
 }
 
@@ -185,6 +188,13 @@ try {
     Write-OK "CMake $cmakeVer"
 } catch {
     Write-Fail "CMake not found"
+    exit 1
+}
+
+# MoorDyn submodule check
+if ($MoorDyn -and -not (Test-Path ".\extern\MoorDyn\CMakeLists.txt")) {
+    Write-Fail "MoorDyn submodule not found at extern/MoorDyn"
+    Write-Host "   Run: git submodule update --init extern/MoorDyn" -ForegroundColor Yellow
     exit 1
 }
 

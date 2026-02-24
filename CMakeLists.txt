@@ -220,6 +220,20 @@ else()
   message(STATUS "Set C++ standard to: ${HC_CXX_STANDARD}")
 endif()
 
+# Detect whether Chrono has the newer ChLoadHydrodynamics API.
+# If not, fall back to HydroChrono's legacy added-mass implementation.
+set(CHRONO_HAS_LOAD_HYDRODYNAMICS FALSE)
+get_target_property(_chrono_inc_dirs Chrono::Chrono_core INTERFACE_INCLUDE_DIRECTORIES)
+foreach(_dir ${_chrono_inc_dirs})
+    if(EXISTS "${_dir}/chrono/physics/ChLoadHydrodynamics.h")
+        set(CHRONO_HAS_LOAD_HYDRODYNAMICS TRUE)
+        break()
+    endif()
+endforeach()
+if(NOT CHRONO_HAS_LOAD_HYDRODYNAMICS)
+    message(STATUS "ChLoadHydrodynamics not found in Chrono -- using legacy added-mass implementation")
+endif()
+
 # Enable Irrlicht support if requested and available
 if(HYDROCHRONO_ENABLE_IRRLICHT AND NOT TARGET Chrono::Chrono_irrlicht)
   message(FATAL_ERROR "HYDROCHRONO_ENABLE_IRRLICHT is ON but Chrono::Chrono_irrlicht target not found. Ensure Chrono was built with Irrlicht support.")
@@ -265,6 +279,23 @@ endif()
 # -- MoorDyn mooring library (optional) --
 if(HYDROCHRONO_ENABLE_MOORDYN)
     message(STATUS "\n---- MoorDyn mooring library")
+    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/extern/MoorDyn/CMakeLists.txt")
+        message(FATAL_ERROR
+            "MoorDyn submodule not found at extern/MoorDyn.\n"
+            "Run:  git submodule update --init extern/MoorDyn")
+    endif()
+    # MoorDyn's CMakeLists.txt uses CMAKE_SOURCE_DIR (which resolves to
+    # HydroChrono's root) for its config template and CPack license.
+    # Copy the files it expects so the configure step succeeds.
+    if(NOT EXISTS "${CMAKE_SOURCE_DIR}/cmake/MoorDynConfig.cmake")
+        file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/extern/MoorDyn/cmake/MoorDynConfig.cmake"
+             DESTINATION "${CMAKE_SOURCE_DIR}/cmake/")
+    endif()
+    if(NOT EXISTS "${CMAKE_SOURCE_DIR}/LICENSE.txt")
+        file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/extern/MoorDyn/LICENSE.txt"
+             DESTINATION "${CMAKE_SOURCE_DIR}/")
+    endif()
+
     set(EXTERNAL_EIGEN OFF CACHE BOOL "Use MoorDyn bundled Eigen" FORCE)
     set(PYTHON_WRAPPER OFF CACHE BOOL "Disable MoorDyn Python wrapper" FORCE)
     set(FORTRAN_WRAPPER OFF CACHE BOOL "Disable MoorDyn Fortran wrapper" FORCE)
@@ -485,6 +516,7 @@ target_compile_definitions(HydroChrono
     PUBLIC
         "HYDROCHRONO_VERSION=\"${PROJECT_VERSION}\""
         "HYDROCHRONO_BUILD_TYPE=\"$<IF:$<CONFIG:Debug>,Debug,$<IF:$<CONFIG:Release>,Release,$<IF:$<CONFIG:RelWithDebInfo>,RelWithDebInfo,$<IF:$<CONFIG:MinSizeRel>,MinSizeRel,Unknown>>>>\""
+        $<$<NOT:$<BOOL:${CHRONO_HAS_LOAD_HYDRODYNAMICS}>>:HYDROCHRONO_USE_LEGACY_ADDED_MASS>
     PRIVATE 
         $<$<BOOL:${HYDROCHRONO_ENABLE_LOGGING}>:HYDROCHRONO_ENABLE_LOGGING="1">
 )

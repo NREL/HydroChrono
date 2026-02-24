@@ -8,15 +8,24 @@ parent_section: Developer Documentation
 
 A PowerShell script (`build.ps1`) is provided to build HydroChrono from the command line. The steps to configure, build, and test with this script are outlined below. Alternatively, you can use the CMake GUI with Visual Studio; those instructions appear later on this page.
 
-## Prerequisites (download/install these)
+## Prerequisites
+
+**Required:**
 
 - Visual Studio 2022 (Desktop development with C++)
 - CMake ≥ 3.18
-- Project Chrono (built from source; enable Parsers and Irrlicht modules)
-- HDF5 1.10.8 (CMake package)
-- Eigen 3.4 (headers)
-- Irrlicht 1.8.4 (if GUI)
-- Python 3.12 (only for tests/docs)
+- Project Chrono (built from source; enable the Parsers module at minimum)
+- HDF5 (C++ libraries, any recent version with CMake config support)
+
+**Auto-detected from Chrono** (you do not need to install these separately):
+
+- Eigen (header-only linear algebra library, bundled or referenced by Chrono)
+- Irrlicht / VSG (visualization backends, detected if Chrono was built with them)
+
+**Optional:**
+
+- Python 3.x (only needed for regression tests and building documentation)
+- MoorDyn (mooring dynamics library, included as a git submodule -- see [MoorDyn setup](#moordyn-mooring-library) below)
 
 ## Quick build with build.ps1 (recommended)
 
@@ -24,12 +33,11 @@ A PowerShell script (`build.ps1`) is provided to build HydroChrono from the comm
 ```json
 {
   "ChronoDir": "C:/path/to/chrono/build/cmake",
-  "Hdf5Dir": "C:/path/to/hdf5/share/cmake",
-  "EigenDir": "C:/path/to/eigen-3.4.0",
-  "IrrlichtDir": "C:/path/to/irrlicht-1.8.4",
   "PythonRoot": "C:/path/to/python/env"
 }
 ```
+
+`ChronoDir` is the only required key. Eigen, HDF5, and visualization library paths are auto-detected from Chrono's build configuration. `PythonRoot` is optional and only needed if Python isn't on your PATH.
 
 2) From the repo root, run (first build) - use `-Verbose` for a more detailed output:
 ```powershell
@@ -41,18 +49,22 @@ A PowerShell script (`build.ps1`) is provided to build HydroChrono from the comm
 ./build.ps1 -Verbose -Package
 ```
 
-### Useful switches
+### Switches
 
-- `-BuildType Release|Debug|RelWithDebInfo|MinSizeRel` (default: Release)
-- `-YamlRunner ON|OFF` to include/exclude the YAML runner target (default: ON)
-- `-Clean` remove existing `build/` before configuring
-- `-Package` run `cmake --install` and `cpack` (ZIP)
-- `-ConfigPath <file>` use a different JSON config
+| Switch | Description |
+|---|---|
+| `-BuildType <type>` | `Release` (default), `Debug`, `RelWithDebInfo`, or `MinSizeRel` |
+| `-Clean` | Remove existing `build/` before configuring |
+| `-Verbose` | Show full CMake and MSBuild output |
+| `-Package` | Run `cmake --install` and `cpack` to create a ZIP |
+| `-NoIrrlicht` | Disable Irrlicht visualization (auto-enabled if Chrono has it) |
+| `-NoVSG` | Disable VSG visualization (auto-enabled if Chrono has it) |
+| `-MoorDyn` | Enable MoorDyn mooring coupling (requires submodule, see [below](#moordyn-mooring-library)) |
+| `-NoDemos` | Skip building demo executables |
+| `-NoTests` | Skip building test targets |
+| `-ConfigPath <file>` | Use a different JSON config (default: `build-config.json`) |
 
-What it does:
-- Passes your dependency paths to CMake
-- Builds with VS/MSBuild
-- For `-Package`: stages a flat install tree and creates a ZIP
+Run `.\build.ps1 -Help` for the full reference.
 
 Install tree layout:
 ```
@@ -62,6 +74,22 @@ install/
   tests/  # public regression suite (run_hydrochrono)
 ```
 
+## MoorDyn mooring library
+
+[MoorDyn](https://github.com/FloatingArrayDesign/MoorDyn) is an optional mooring dynamics library included as a git submodule. To enable it:
+
+1) Initialize the submodule (one-time setup, clones MoorDyn into `extern/MoorDyn`):
+```powershell
+git submodule update --init extern/MoorDyn
+```
+
+2) Build with the `-MoorDyn` flag:
+```powershell
+./build.ps1 -MoorDyn -Verbose
+```
+
+The submodule pins a specific MoorDyn version tested with HydroChrono. Running `git submodule update` after pulling new commits will keep it in sync.
+
 ## Alternative: CMake GUI + Visual Studio
 
 1. Open CMake (GUI)
@@ -69,9 +97,11 @@ install/
     - Build: `<repo>/build`
 
 2. Configure:
-    - Set `Chrono_DIR` to `<chrono>/build/cmake`
-    - Set `HDF5_DIR`, `Irrlicht_ROOT`, `Python3_ROOT_DIR`, `EIGEN3_INCLUDE_DIR`
-    - Ensure your HydroChrono `CMAKE_MSVC_RUNTIME_LIBRARY` matches Chrono
+    - Set `Chrono_DIR` to `<chrono>/build/cmake` (required)
+    - Eigen, Irrlicht, and VSG paths are auto-detected from Chrono's build
+    - `HDF5_DIR` may need to be set if CMake doesn't find it automatically
+    - Set `HYDROCHRONO_ENABLE_MOORDYN` to `ON` if using MoorDyn (requires submodule, see [above](#moordyn-mooring-library))
+    - Ensure your `CMAKE_MSVC_RUNTIME_LIBRARY` matches the one used to build Chrono
 
 3. Generate → Open in Visual Studio → Build `run_hydrochrono` (choose the matching config, e.g., Release)
 
@@ -85,24 +115,24 @@ After a local build, you have two regression test suites - **Option A** uses CTe
 
 **Option A** - CTest:
 ```powershell
-ctest -C Release -L regression
+ctest -C Release -L regression --test-dir build
 ```
 
   - Common CTest options/examples:
 
 ```powershell
 # Show failing test output
-ctest -C Release -L regression --output-on-failure
+ctest -C Release -L regression --test-dir build --output-on-failure
 
 # Extra verbose output
-ctest -C Release -L regression -VV
+ctest -C Release -L regression --test-dir build -VV
 
 # Only run specific tests
-ctest -C Release -R f3of -L regression
-ctest -C Release -R rm3  -L regression
+ctest -C Release -R f3of -L regression --test-dir build
+ctest -C Release -R rm3  -L regression --test-dir build
 
 # Run in parallel
-ctest -C Release -j 6 -L regression
+ctest -C Release -j 6 -L regression --test-dir build
 ```
 
 **Option B** — Python-based YAML tests for the main executable:

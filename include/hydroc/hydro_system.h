@@ -20,12 +20,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Added Mass Implementation Toggle
 // ─────────────────────────────────────────────────────────────────────────────
-// By default, HydroChrono uses Chrono's built-in ChLoadHydrodynamics for
-// infinite-frequency added mass. To switch to HydroChrono's legacy
-// ChLoadAddedMass (ChLoadCustomMultiple-based) implementation, uncomment:
-//
-// #define HYDROCHRONO_USE_LEGACY_ADDED_MASS
-//
+// HYDROCHRONO_USE_LEGACY_ADDED_MASS is auto-detected at configure time based
+// on whether Chrono provides ChLoadHydrodynamics. When defined (legacy mode),
+// HydroChrono uses its own ChLoadAddedMass (ChLoadCustomMultiple-based)
+// implementation instead of Chrono's built-in ChLoadHydrodynamics.
 
 // Include hydro_types.h FIRST to ensure BodyForces and GeneralizedForce are available
 // before any other includes that might conflict (e.g., config/hydro_config.h)
