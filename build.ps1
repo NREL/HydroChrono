@@ -154,12 +154,21 @@ if (-not $hasHDF5) {
 # Eigen3: extract include path from Chrono config so FindEigen3.cmake can
 # bypass Eigen3ConfigVersion.cmake (Eigen 5.x rejects the "3.3" request).
 $eigen3Include = $null
-if ($chronoContent -match 'Eigen3_DIR\s+"([^"]+)"') {
+if ($chronoContent -match 'Eigen3_DIR\s+"([^"]+)"' -and $Matches[1] -notmatch 'NOTFOUND') {
     $eigen3Root = Split-Path (Split-Path $Matches[1])
     $candidate = Join-Path $eigen3Root "include/eigen3"
     if (Test-Path (Join-Path $candidate "Eigen")) {
         $eigen3Include = $candidate
         Write-OK "Eigen3: $eigen3Include"
+    } else {
+        Write-Warn "Eigen3 headers not found at $candidate"
+    }
+}
+if (-not $eigen3Include -and $chronoContent -match 'EIGEN3_INCLUDE_DIR\s+"([^"]+)"' -and $Matches[1] -notmatch 'NOTFOUND') {
+    $candidate = $Matches[1]
+    if (Test-Path (Join-Path $candidate "Eigen")) {
+        $eigen3Include = $candidate
+        Write-OK "Eigen3: $eigen3Include (via EIGEN3_INCLUDE_DIR)"
     } else {
         Write-Warn "Eigen3 headers not found at $candidate"
     }

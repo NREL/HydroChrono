@@ -168,6 +168,12 @@ if(NOT Chrono_DIR)
     return()
 endif()
 
+# Pre-load HDF5 targets so the shims below are only created when genuinely
+# needed (i.e., when HDF5 config-mode doesn't provide hdf5_tools).
+# Without this, installers that define all HDF5 targets as a batch
+# (e.g., HDF Group installer) error out on the partial pre-definition.
+find_package(HDF5 CONFIG QUIET)
+
 # Chrono's export file may reference hdf5::hdf5_tools-{shared,static} which is
 # absent from some HDF5 installations (e.g., vcpkg). Provide empty shims so
 # ChronoTargets.cmake loads without errors. Must be created BEFORE find_package(Chrono).
@@ -250,9 +256,8 @@ endif()
 find_package(OpenMP REQUIRED COMPONENTS CXX)
 
 # -- HDF5 Integration --
-# Prefer config-mode (vcpkg, official HDF5 installer).  Fall back to CMake's
-# built-in FindHDF5 module for system-installed packages (apt, yum, brew, etc.).
-find_package(HDF5 CONFIG QUIET)
+# Config-mode discovery runs early (before Chrono) to avoid target conflicts
+# with the hdf5_tools shims. Fall back to module-mode here if it wasn't found.
 if(NOT HDF5_FOUND)
     find_package(HDF5 REQUIRED COMPONENTS CXX)
 endif()
