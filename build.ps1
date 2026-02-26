@@ -140,7 +140,7 @@ $chronoContent = Get-Content $chronoConfig -Raw
 # Auto-detect available modules
 $hasIrrlicht = $chronoContent -match 'Chrono_IRRLICHT_AVAILABLE\s+ON'
 $hasVSG = $chronoContent -match 'Chrono_VSG_AVAILABLE\s+ON'
-$hasHDF5 = $chronoContent -match 'CHRONO_HDF5_AVAILABLE\s+TRUE'
+$hasHDF5 = $chronoContent -match 'CHRONO_HDF5_AVAILABLE\s+(ON|TRUE|1)'
 
 # Enable features by default if Chrono has them (unless user disabled)
 $useIrrlicht = $hasIrrlicht -and (-not $NoIrrlicht)
@@ -151,7 +151,7 @@ Write-Detail "VSG: $(if($hasVSG){if($useVSG){'ON'}else{'OFF (disabled)'}}else{'n
 Write-Detail "HDF5: $(if($hasHDF5){'available'}else{'not available'})"
 
 if (-not $hasHDF5) {
-    Write-Warn "Chrono built without HDF5 - build may fail"
+    Write-Warn "Chrono built without HDF5 - HydroChrono requires HDF5 for .h5 data loading"
 }
 
 # Eigen3: extract include path from Chrono config so FindEigen3.cmake can
@@ -174,6 +174,19 @@ if (-not $eigen3Include -and $chronoContent -match 'EIGEN3_INCLUDE_DIR\s+"([^"]+
         Write-OK "Eigen3: $eigen3Include (via EIGEN3_INCLUDE_DIR)"
     } else {
         Write-Warn "Eigen3 headers not found at $candidate"
+    }
+}
+
+# HDF5: extract HDF5_DIR from Chrono config so CMake can find the vcpkg
+# (or other non-system) HDF5 installation before the early pre-load step.
+$hdf5Dir = $null
+if ($chronoContent -match 'HDF5_DIR\s+"([^"]+)"' -and $Matches[1] -notmatch 'NOTFOUND') {
+    $candidate = $Matches[1]
+    if (Test-Path (Join-Path $candidate "hdf5-config.cmake")) {
+        $hdf5Dir = $candidate
+        Write-OK "HDF5: $hdf5Dir"
+    } else {
+        Write-Warn "HDF5 config not found at $candidate"
     }
 }
 
@@ -236,6 +249,11 @@ $cmakeArgs = @(
 # Add Eigen3 include path if extracted from Chrono config
 if ($eigen3Include) {
     $cmakeArgs += "-DEIGEN3_INCLUDE_DIR=`"$($eigen3Include -replace '\\','/')`""
+}
+
+# Add HDF5 config path if extracted from Chrono config
+if ($hdf5Dir) {
+    $cmakeArgs += "-DHDF5_DIR=`"$($hdf5Dir -replace '\\','/')`""
 }
 
 # Add Python if specified

@@ -188,6 +188,16 @@ find_package(Chrono
              CONFIG REQUIRED
              COMPONENTS Parsers)
 
+# If the early HDF5 find failed but Chrono has now set HDF5_DIR, retry.
+# The early find may have cached HDF5_DIR-NOTFOUND, blocking Chrono's
+# non-FORCE cache set.  Clear it and retry with the Chrono-provided path.
+if(NOT HDF5_FOUND AND DEFINED CACHE{HDF5_DIR})
+    if("${HDF5_DIR}" MATCHES "NOTFOUND")
+        unset(HDF5_DIR CACHE)
+        find_package(HDF5 CONFIG QUIET)
+    endif()
+endif()
+
 message(STATUS "----\n")
 
 message(STATUS "Chrono targets: ${CHRONO_TARGETS}")
