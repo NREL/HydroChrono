@@ -11,11 +11,7 @@
 #include <Eigen/Dense>  // Need for the container function
 
 #include <hydroc/logging.h>
-
-//// RADU - why not use constants from Chrono?
-#ifndef M_PI
-    #define M_PI 3.14159265358979323846
-#endif
+#include <hydroc/math_constants.h>
 
 /**@brief Base namespace for HydroChrono library
  *

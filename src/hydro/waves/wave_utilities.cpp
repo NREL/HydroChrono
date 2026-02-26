@@ -3,11 +3,8 @@
  * @brief Helper routines shared by wave models.
  *********************************************************************/
 
-#ifndef _USE_MATH_DEFINES
-#define _USE_MATH_DEFINES
-#endif
-
 #include "wave_utilities.h"
+#include <hydroc/math_constants.h>
 
 #include <cmath>
 #include <algorithm>
