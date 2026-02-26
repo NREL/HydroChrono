@@ -9,6 +9,7 @@ Here, you'll find verification cases and tests conducted to ensure the accuracy 
 
 - [Sphere Model (IEA OES Task 10) - Verification]({{ site.baseurl }}/verification/sphere)
 - [Oscillating Surge Wave Energy Converter (OSWEC) Verification]({{ site.baseurl }}/verification/oswec)
+- [RM3 Mooring (WEC-Sim/MoorDyn) Verification]({{ site.baseurl }}/verification/rm3_mooring)
 
 Related publication: Ogden, 2023 — HydroChrono background, theory, and implementation details - [PDF]({{ site.baseurl }}/assets/papers/Ogden2023%20-%20HydroChrono.pdf)
 

@@ -676,6 +676,7 @@ if(HYDROCHRONO_ENABLE_TESTS)
     endif()
 
     add_subdirectory(tests/regression)
+    add_subdirectory(tests/verification)
     add_subdirectory(tests/unit)
 endif()
 

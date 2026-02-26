@@ -446,13 +446,15 @@ Write-Host "========================================`n" -ForegroundColor Green
 
 Write-Host "Output: $binPath" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "Tests:  ctest -C $BuildType -L regression --test-dir build" -ForegroundColor Gray
-Write-Host "        ctest -C $BuildType -L unit       --test-dir build" -ForegroundColor Gray
+Write-Host "Tests:  ctest -C $BuildType -L regression    --test-dir build" -ForegroundColor Gray
+Write-Host "        ctest -C $BuildType -L unit          --test-dir build" -ForegroundColor Gray
+Write-Host "        ctest -C $BuildType -L verification  --test-dir build" -ForegroundColor Gray
+Write-Host "        Cross-code verification (requires specific features, e.g. -MoorDyn)" -ForegroundColor DarkGray
 Write-Host "        Add -V for verbose output, --output-on-failure for failures only" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "Long:   `$env:HYDROCHRONO_LONG_TESTS='1'" -ForegroundColor Gray
 Write-Host "        ctest -C $BuildType -L regression --test-dir build" -ForegroundColor Gray
-Write-Host "        Runs with extended simulation durations" -ForegroundColor DarkGray
+Write-Host "        Runs with extended simulation durations (also applies to verification)" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "Report: python tests/regression/utilities/generate_report.py --build-dir build --pdf" -ForegroundColor Gray
 Write-Host "        Generates regression test report (markdown + PDF) in build/bin/report/" -ForegroundColor DarkGray
