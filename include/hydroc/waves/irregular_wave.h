@@ -12,17 +12,36 @@
 #include <string>
 #include <vector>
 
+namespace hydrochrono::waves {
+
+/// Excitation force ramp shape applied during [0, ramp_duration].
+enum class ExcitationRampType {
+    kLinear,  ///< f(t) = t / T_ramp  (HydroChrono default)
+    kCosine   ///< f(t) = 0.5 * (1 - cos(pi * t / T_ramp))  (WEC-Sim convention)
+};
+
+}  // namespace hydrochrono::waves
+
+using hydrochrono::waves::ExcitationRampType;
+
 struct IrregularWaveParams {
+    static constexpr double kDefaultFreqMin     = 0.001;  // Hz
+    static constexpr double kDefaultFreqMax     = 1.0;    // Hz
+    static constexpr int    kDefaultNFrequencies = 1000;
+
     double wave_height             = 0.0;
     double wave_period             = 0.0;
-    double frequency_min           = 0.001;
-    double frequency_max           = 1.0;
+    double frequency_min           = kDefaultFreqMin;
+    double frequency_max           = kDefaultFreqMax;
     int    nfrequencies            = 0;
     double peak_enhancement_factor = 1.0;
     bool   is_normalized           = false;
     int    seed                    = 1;
     bool   wave_stretching         = true;
     double ramp_duration           = 0.0;
+    ExcitationRampType ramp_type   = ExcitationRampType::kLinear;
+    double excitation_truncation_time = 0.0;  ///< Truncate excitation IRF to [-T, T] seconds.
+                                              ///< 0 = use full IRF from H5 data.
     std::string eta_file_path;
 };
 
@@ -48,6 +67,10 @@ class IrregularWaves : public WaveBase {
     void AddH5Data(std::vector<HydroData::IrregularWaveInfo>& irreg_h5_data, const HydroData::SimulationParameters& sim_data);
 
     double GetIRFTimeMax() const { return irf_time_max_; }
+
+    void SetExcitationTruncationTime(double seconds) override {
+        params_.excitation_truncation_time = seconds;
+    }
 
     double GetElevation(const Eigen::Vector3d& position, double time) const override;
     Eigen::Vector3d GetVelocity(const Eigen::Vector3d& position, double time, double elevation) const override;
@@ -106,6 +129,9 @@ class IrregularWaves : public WaveBase {
     void PrecomputeAmplitudes();
     void PrecomputeExcitationTransfer();
     std::vector<double> ReadEtaFromFile();
+
+    /// Evaluate the excitation ramp factor at time t (0 -> 1 over ramp_duration).
+    double RampFactor(double t) const;
 
     const Eigen::MatrixXd& GetExcitationIRF(int b) const;
     void CalculateWidthIRF();

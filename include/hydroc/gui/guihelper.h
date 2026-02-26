@@ -1,5 +1,7 @@
 #pragma once
 
+#include <hydroc/gui/mooring_viz_data.h>
+
 #include <memory>
 
 namespace chrono {
@@ -61,6 +63,14 @@ class UI {
     virtual void SetWaterGridExtent(double width, double length,
                                     double center_x = 0.0, double center_y = 0.0);
 
+    /**@brief Set a callback that provides mooring line node positions each frame.
+     *
+     * When set, the GUI will call the provider every frame to obtain line
+     * geometry and render tube meshes for each mooring line.
+     * Call after Init() and before the simulation loop.
+     */
+    virtual void SetMooringLineProvider(MooringVizProvider provider);
+
     /**@brief return the internal system.
      *
      * Should be called after init.
@@ -90,6 +100,7 @@ class GUI : public UI {
     void SetWaveModel(std::shared_ptr<WaveBase> wave) override;
     void SetWaterGridExtent(double width, double length,
                             double center_x = 0.0, double center_y = 0.0) override;
+    void SetMooringLineProvider(MooringVizProvider provider) override;
 
   private:
     std::shared_ptr<hydroc::gui::GUIImpl> pImpl;

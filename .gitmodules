@@ -1,0 +1,3 @@
+[submodule "extern/MoorDyn"]
+	path = extern/MoorDyn
+	url = https://github.com/FloatingArrayDesign/MoorDyn.git

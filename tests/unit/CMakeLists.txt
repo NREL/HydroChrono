@@ -31,6 +31,10 @@ endfunction()
 
 # --- Register unit tests ---
 message(STATUS "Add HydroChrono unit tests")
-build_unit_test(test_added_mass_determinism)
+if(CHRONO_HAS_LOAD_HYDRODYNAMICS)
+    build_unit_test(test_added_mass_determinism)
+else()
+    message(STATUS "  Skipping test_added_mass_determinism (requires ChLoadHydrodynamics)")
+endif()
 build_unit_test(test_radiation_ss_model)
 build_unit_test(test_radiation_ss_fitter)

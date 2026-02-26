@@ -1,0 +1,47 @@
+Mooring line data file for MoorDyn in libmoordyn.dll
+---------------------- LINE TYPES -----------------------------------------------------
+LineType  Diam      Mass/m        EA          BA/-zeta   EI         Cd     Ca    CdAx     CaAx    
+(-)       (m)       (kg/m)        (N)          (N-s/-)  (N-m^2)    (-)     (-)    (-)     (-) 
+Chain      0.144      126.0     583.376E6       -0.8      0        1.6     1.0    0.05     0.0
+---------------------------- BODIES -----------------------------------------------------
+ID   Attachment  X0     Y0    Z0     r0      p0     y0     Mass  CG*   I*      Volume   CdA*   Ca
+(#)     (-)      (m)    (m)   (m)   (deg)   (deg)  (deg)   (kg)  (m)  (kg-m^2)  (m^3)   (m^2)  (-)
+1       Coupled     0    0     -21.5    0       0      0     0.0   0    0         0       0      0
+---------------------- POINTS  -----------------------------------------------------
+ID      Attachment    X      Y     Z            Mass   Volume     CdA     CA
+(#)     (word/ID)    (m)    (m)   (m)           (kg)   (mˆ3)      (m^2)   (-)
+1         Body1     -3.0     0      11.50       0        0         0      0
+2         Fixed     -267.0   0      -70.00       0        0         0      0
+3         Body1     1.5     2.598   11.50       0        0         0      0
+4         Fixed     133.5   231.23  -70.00       0        0         0      0
+5         Body1     1.5    -2.598   11.50       0        0         0      0
+6         Fixed     133.5  -231.23  -70.00       0        0         0      0
+7         Free      -40.0     0     -10.00     16755   33.510     12.566   1
+8         Free      20.0   34.642   -10.00     16755   33.510     12.566   1
+9         Free      20.0  -34.642   -10.00     16755   33.510     12.566   1
+---------------------- LINES -----------------------------------------------------
+ID     LineType  AttachA  AttachB  UnstrLen     NumSegs   LineOutputs
+(#)      (-)       (#)      (#)       (m)         (-)       (-)
+1        Chain     2         7        240.0        15        tp
+2        Chain     4         8        240.0        15        tp
+3        Chain     6         9        240.0        15        tp
+4        Chain     7         1         40.0         5        tp
+5        Chain     8         3         40.0         5        tp
+6        Chain     9         5         40.0         5        tp
+---------------------- SOLVER OPTIONS-----------------------------------------
+0.0005   dtM          - time step to use in mooring integration
+0        WaveKin      - wave kinematics flag (0=neglect, the only option currently supported)
+3.0e6    kBot         - bottom stiffness
+3.0e5    cBot         - bottom damping
+70       WtrDpth      - water depth
+5.0      CdScaleIC    - factor by which to scale drag coefficients during dynamic relaxation IC gen
+0.001    threshIC     - threshold for IC con
+200.0    TmaxIC       - max time for ic gen (s)
+2        writeLog     - Write a log file
+0        WriteUnits   - 0: do not write the units header on the output files
+1        disableOutTime - 1: do not write timesteps to command window
+-------------------------- OUTPUTS --------------------------------
+FairTen4
+FairTen5
+FairTen6
+--------------------- need this line ------------------

@@ -4,8 +4,7 @@
  *
  * MAIN TYPES:
  *   - RadiationMethod: Selects the radiation damping calculation method
- *   - RadiationConvolutionMode: Baseline vs TaperedDirect RIRF processing
- *   - TaperedDirectOptions: Smoothing, tapering, and export settings
+ *   - RadiationKernelProcessing: Composable smoothing + tapering for RIRF kernels
  *   - StateSpaceOptions: Settings for state-space radiation approximation
  *********************************************************************/
 
@@ -23,8 +22,8 @@ namespace hydrochrono::hydro {
  *   - kRirfConvolution: Direct convolution of RIRF kernels with velocity history (default)
  *   - kStateSpace: State-space approximation using exponential decay modes
  * 
- * When using kRirfConvolution, additional options are available via
- * RadiationConvolutionMode (Baseline vs TaperedDirect).
+ * RIRF truncation (SetRadiationTruncationTime) is applied before either method.
+ * Kernel processing (smoothing/tapering) is applied only for kRirfConvolution.
  */
 enum class RadiationMethod {
     kRirfConvolution,  ///< Direct RIRF convolution (default, existing method)
@@ -32,34 +31,32 @@ enum class RadiationMethod {
 };
 
 /**
- * @brief Convolution mode for radiation damping.
+ * @brief Composable RIRF kernel processing options (smoothing and/or tapering).
  * 
- * Only applies when RadiationMethod == kRirfConvolution.
+ * Applied after RIRF truncation (which is handled separately via
+ * HydroSystem::SetRadiationTruncationTime). Smoothing is applied first,
+ * then tapering.
+ * 
+ * Defaults are no-ops: smoothing is "none" and taper is disabled. If neither
+ * is configured, no kernel processing occurs.
  */
-enum class RadiationConvolutionMode {
-    Baseline,
-    TaperedDirect
-};
+struct RadiationKernelProcessing {
+    /// Smoothing type: "none" (default), "sg" (Savitzky-Golay), or "moving_average"
+    std::string smoothing_type = "none";
+    int smoothing_window = 5;              ///< Smoothing window length (odd, >= 3)
 
-/**
- * @brief Options for TaperedDirect RIRF preprocessing.
- * 
- * Only applies when RadiationMethod == kRirfConvolution and
- * RadiationConvolutionMode == TaperedDirect.
- */
-struct TaperedDirectOptions {
-    // smoothing: "sg" (Savitzky–Golay) or "moving_average"
-    std::string smoothing = "sg";
-    int window_length = 5;                 // odd, >= 3
-    
-    // RIRF truncation
-    double rirf_end_time = -1.0;           // end RIRF at this time (seconds), -1.0 = use full length
-    
-    // Simple taper control - sensible defaults for improved stability
-    double taper_start_percent = 0.8;      // start taper at 80% (taper last 20%)
-    double taper_end_percent = 1.0;        // end taper at 100% of total time series  
-    double taper_final_amplitude = 0.0;    // final amplitude as fraction of original (0.0 = zero, 1.0 = no change)
-    bool export_plot_csv = false;          // dump before/after CSV summaries (false by default)
+    /// Tapering: when enabled, applies a half-cosine taper window near the end of the RIRF
+    bool taper_enabled = false;
+    double taper_start_percent = 0.8;      ///< Start taper at this fraction of RIRF length
+    double taper_end_percent = 1.0;        ///< End taper at this fraction of RIRF length
+    double taper_final_amplitude = 0.0;    ///< Final amplitude (0.0 = zero, 1.0 = no change)
+
+    bool export_csv = false;               ///< Export before/after CSV for diagnostics
+
+    /// Returns true if any processing (smoothing or tapering) is configured.
+    bool RequiresProcessing() const {
+        return smoothing_type != "none" || taper_enabled;
+    }
 };
 
 /**

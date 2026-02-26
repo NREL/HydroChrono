@@ -19,13 +19,11 @@ RadiationComponent::RadiationComponent(
     int rirf_steps,
     const Eigen::VectorXd& rirf_time_vector,
     const Eigen::VectorXd& rirf_width_vector,
-    RadiationConvolutionMode convolution_mode,
-    const TaperedDirectOptions& tapered_opts,
+    const RadiationKernelProcessing& kernel_processing,
     const std::string& diagnostics_output_dir)
     : file_info_(file_info),
       num_bodies_(num_bodies),
-      convolution_mode_(convolution_mode),
-      tapered_opts_(tapered_opts),
+      kernel_processing_(kernel_processing),
       diagnostics_output_dir_(diagnostics_output_dir),
       convolution_(std::make_unique<RadiationRirfConvolution>(
           num_bodies, rirf_steps, rirf_time_vector, rirf_width_vector)),
@@ -63,16 +61,14 @@ void RadiationComponent::EnsureProcessedRIRF() {
         return;
     }
 
-    const int steps = file_info_.GetRIRFDims(2);
-    
-    // Create lambda to get RIRF values from file_info_
+    const int steps = static_cast<int>(rirf_time_vector_.size());
+
     auto get_rirf_val = [this](int body, int row_dof, int col, int step) -> double {
         return file_info_.GetRIRFVal(body, row_dof, col, step);
     };
 
-    // Process RIRF kernels using the dedicated module
     rirf_processed_ = ProcessRirfKernels(
-        num_bodies_, steps, rirf_time_vector_, get_rirf_val, tapered_opts_, diagnostics_output_dir_);
+        num_bodies_, steps, rirf_time_vector_, get_rirf_val, kernel_processing_, diagnostics_output_dir_);
 
     rirf_processed_ready_ = true;
 }
@@ -86,9 +82,8 @@ double RadiationComponent::GetRIRFval(int row, int col, int st) {
     int body_index = row / kDofPerBody;
     int row_dof    = row % kDofPerBody;
 
-    if (convolution_mode_ == RadiationConvolutionMode::TaperedDirect) {
+    if (kernel_processing_.RequiresProcessing()) {
         EnsureProcessedRIRF();
-        // processed tensor is scaled by rho already
         const auto& tensor = rirf_processed_[body_index];
         return tensor(row_dof, col, st);
     }
@@ -111,8 +106,7 @@ void RadiationComponent::Compute(const SystemState& state,
             std::to_string(num_bodies_) + ", got " + std::to_string(inout_forces.size()) + ")");
     }
 
-    // If using TaperedDirect, ensure processed kernel is ready
-    if (convolution_mode_ == RadiationConvolutionMode::TaperedDirect) {
+    if (kernel_processing_.RequiresProcessing()) {
         EnsureProcessedRIRF();
     }
 
@@ -129,14 +123,12 @@ void RadiationComponent::Compute(const SystemState& state,
     // Record velocities in the convolution module
     convolution_->RecordVelocities(time, body_velocities);
 
-    // Create lambda to get RIRF values (for Baseline mode)
     auto get_rirf_val = [this](int row, int col, int step) -> double {
         return GetRIRFval(row, col, step);
     };
 
-    // Compute forces using the convolution module
     const std::vector<Eigen::Tensor<double, 3>>* processed_rirf = 
-        (convolution_mode_ == RadiationConvolutionMode::TaperedDirect && rirf_processed_ready_) 
+        (kernel_processing_.RequiresProcessing() && rirf_processed_ready_) 
         ? &rirf_processed_ : nullptr;
 
     std::vector<double> force_flat = convolution_->ComputeForces(get_rirf_val, processed_rirf);

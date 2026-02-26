@@ -41,7 +41,7 @@ Banner comments separate sections so it’s easy to navigate and reason about ch
 - Project `HydroChrono` (C++)
 - Default build type: Release (Debug/MinSizeRel/RelWithDebInfo supported)
 - `cmake/` added to `CMAKE_MODULE_PATH` (local modules)
-- Generates `version.h` under `build/generated/`
+- Generates `version.h` under `build/hydroc/`
 
 ---
 
@@ -52,6 +52,7 @@ Banner comments separate sections so it’s easy to navigate and reason about ch
 - `HYDROCHRONO_ENABLE_VSG` - Enable VSG visualization
 - `HYDROCHRONO_ENABLE_DEMOS` - Enable demo executables
 - `HYDROCHRONO_ENABLE_YAML_RUNNER` - Enable YAML-based CLI runner
+- `HYDROCHRONO_ENABLE_MOORDYN` - Enable MoorDyn mooring coupling (requires `extern/MoorDyn` submodule)
 
 Enable lean builds (e.g., CI) or developer variants.
 
@@ -61,14 +62,14 @@ Enable lean builds (e.g., CI) or developer variants.
 
 ### Chrono
 
-- `find_package(Chrono CONFIG REQUIRED)`
-- If Irrlicht is enabled, find `Irrlicht` first so `Chrono::Chrono_irrlicht` exists
-- Extend `CMAKE_MODULE_PATH` with `Chrono_DIR` when needed
+- `find_package(Chrono CONFIG REQUIRED COMPONENTS Parsers)`
+- Irrlicht and VSG targets are checked if the corresponding `HYDROCHRONO_ENABLE_*` option is ON
+- HDF5 targets are pre-loaded before Chrono to avoid conflicts with `hdf5_tools` shim targets
 
 ### HDF5 & Eigen
 
-- HDF5 required: `find_package(HDF5 REQUIRED COMPONENTS CXX)`; link static to avoid DLL issues
-- Eigen via config or module mode
+- HDF5: first tries config mode (`find_package(HDF5 CONFIG QUIET)`), falls back to module mode (`find_package(HDF5 REQUIRED COMPONENTS CXX)`). Prefers static libraries when available.
+- Eigen: auto-detected from Chrono's build configuration
 
 ### Platform notes
 
@@ -80,15 +81,15 @@ Enable lean builds (e.g., CI) or developer variants.
 
 Libraries:
 
-- `HydroChrono` — core hydrodynamics (HDF5 I/O, YAML, utilities)
-- `HydroChronoGUI` — GUI helpers when Irrlicht is enabled
+- `HydroChrono` — core hydrodynamics (HDF5 I/O, YAML, radiation, waves, utilities)
+- `HydroChronoGUI` — GUI helpers for Irrlicht and/or VSG visualization
 
-`configure_hydro_target(<tgt>)` centralizes: C++ standard, PIC, include dirs, Chrono links.
+Each target is configured directly with C++ standard, PIC, include dirs, and Chrono links.
 
 Key links:
 
-- `HydroChrono` → `Chrono::Chrono_core` (+ HDF5)
-- `HydroChronoGUI` → Chrono (+ `Chrono::Chrono_irrlicht` when enabled)
+- `HydroChrono` → `Chrono::Chrono_core`, OpenMP, HDF5 (+ MoorDyn when enabled)
+- `HydroChronoGUI` → `Chrono::Chrono_core` (+ `Chrono::Chrono_irrlicht` and/or `Chrono::Chrono_vsg` when enabled)
 
 
 ---
@@ -109,8 +110,8 @@ Key links:
 
 ### Tests & Demos
 
-- If enabled, tests are added via `add_subdirectory(tests)` and `add_subdirectory(tests/regression)`
-- A helper `configure_test_environment()` assembles PATH on Windows so Chrono/Irrlicht DLLs are found when tests run from the build tree
+- If enabled, tests are added via `add_subdirectory(tests/regression)` and `add_subdirectory(tests/unit)`
+- A helper `configure_test_environment()` assembles PATH on Windows so Chrono, HDF5, Irrlicht, VSG, and MoorDyn DLLs are found when tests run from the build tree
 - Demos can be included behind `HYDROCHRONO_ENABLE_DEMOS`
 
 Runtime concerns that affect tests:

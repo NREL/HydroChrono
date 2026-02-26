@@ -22,6 +22,7 @@ param(
     [switch]$Package,
     [switch]$NoIrrlicht,    # Disable Irrlicht (auto-enabled if Chrono has it)
     [switch]$NoVSG,         # Disable VSG (auto-enabled if Chrono has it)
+    [switch]$MoorDyn,       # Enable MoorDyn mooring coupling
     [switch]$NoDemos,
     [switch]$NoTests,
     [switch]$Help,
@@ -62,6 +63,8 @@ if ($Help) {
     Write-Host "  -Package           Create distributable ZIP after building"
     Write-Host "  -NoIrrlicht        Disable Irrlicht (enabled by default if Chrono has it)"
     Write-Host "  -NoVSG             Disable VSG (enabled by default if Chrono has it)"
+    Write-Host "  -MoorDyn           Enable MoorDyn mooring coupling"
+    Write-Host "                     Requires: git submodule update --init extern/MoorDyn"
     Write-Host "  -NoDemos           Skip demo executables"
     Write-Host "  -NoTests           Skip test targets"
     Write-Host "  -ConfigPath <path> Custom config file (default: build-config.json)`n"
@@ -78,6 +81,8 @@ if ($Help) {
     Write-Host "CONFIG FILE:" -ForegroundColor Yellow
     Write-Host '  { "ChronoDir": "C:/path/to/chrono/build/cmake" }' -ForegroundColor Gray
     Write-Host ""
+    Write-Host "DOCS:" -ForegroundColor Yellow
+    Write-Host "  Full setup guide: docs/_main_pages/developer_docs/build_instructions.md`n"
     exit 0
 }
 
@@ -135,7 +140,7 @@ $chronoContent = Get-Content $chronoConfig -Raw
 # Auto-detect available modules
 $hasIrrlicht = $chronoContent -match 'Chrono_IRRLICHT_AVAILABLE\s+ON'
 $hasVSG = $chronoContent -match 'Chrono_VSG_AVAILABLE\s+ON'
-$hasHDF5 = $chronoContent -match 'CHRONO_HDF5_AVAILABLE\s+TRUE'
+$hasHDF5 = $chronoContent -match 'CHRONO_HDF5_AVAILABLE\s+(ON|TRUE|1)'
 
 # Enable features by default if Chrono has them (unless user disabled)
 $useIrrlicht = $hasIrrlicht -and (-not $NoIrrlicht)
@@ -146,7 +151,43 @@ Write-Detail "VSG: $(if($hasVSG){if($useVSG){'ON'}else{'OFF (disabled)'}}else{'n
 Write-Detail "HDF5: $(if($hasHDF5){'available'}else{'not available'})"
 
 if (-not $hasHDF5) {
-    Write-Warn "Chrono built without HDF5 - build may fail"
+    Write-Warn "Chrono built without HDF5 - HydroChrono requires HDF5 for .h5 data loading"
+}
+
+# Eigen3: extract include path from Chrono config so FindEigen3.cmake can
+# bypass Eigen3ConfigVersion.cmake (Eigen 5.x rejects the "3.3" request).
+$eigen3Include = $null
+if ($chronoContent -match 'Eigen3_DIR\s+"([^"]+)"' -and $Matches[1] -notmatch 'NOTFOUND') {
+    $eigen3Root = Split-Path (Split-Path $Matches[1])
+    $candidate = Join-Path $eigen3Root "include/eigen3"
+    if (Test-Path (Join-Path $candidate "Eigen")) {
+        $eigen3Include = $candidate
+        Write-OK "Eigen3: $eigen3Include"
+    } else {
+        Write-Warn "Eigen3 headers not found at $candidate"
+    }
+}
+if (-not $eigen3Include -and $chronoContent -match 'EIGEN3_INCLUDE_DIR\s+"([^"]+)"' -and $Matches[1] -notmatch 'NOTFOUND') {
+    $candidate = $Matches[1]
+    if (Test-Path (Join-Path $candidate "Eigen")) {
+        $eigen3Include = $candidate
+        Write-OK "Eigen3: $eigen3Include (via EIGEN3_INCLUDE_DIR)"
+    } else {
+        Write-Warn "Eigen3 headers not found at $candidate"
+    }
+}
+
+# HDF5: extract HDF5_DIR from Chrono config so CMake can find the vcpkg
+# (or other non-system) HDF5 installation before the early pre-load step.
+$hdf5Dir = $null
+if ($chronoContent -match 'HDF5_DIR\s+"([^"]+)"' -and $Matches[1] -notmatch 'NOTFOUND') {
+    $candidate = $Matches[1]
+    if (Test-Path (Join-Path $candidate "hdf5-config.cmake")) {
+        $hdf5Dir = $candidate
+        Write-OK "HDF5: $hdf5Dir"
+    } else {
+        Write-Warn "HDF5 config not found at $candidate"
+    }
 }
 
 # =============================================================================
@@ -160,6 +201,13 @@ try {
     Write-OK "CMake $cmakeVer"
 } catch {
     Write-Fail "CMake not found"
+    exit 1
+}
+
+# MoorDyn submodule check
+if ($MoorDyn -and -not (Test-Path ".\extern\MoorDyn\CMakeLists.txt")) {
+    Write-Fail "MoorDyn submodule not found at extern/MoorDyn"
+    Write-Host "   Run: git submodule update --init extern/MoorDyn" -ForegroundColor Yellow
     exit 1
 }
 
@@ -194,8 +242,19 @@ $cmakeArgs = @(
     "-DHYDROCHRONO_ENABLE_DEMOS=$(if($NoDemos){'OFF'}else{'ON'})",
     "-DHYDROCHRONO_ENABLE_IRRLICHT=$(if($useIrrlicht){'ON'}else{'OFF'})",
     "-DHYDROCHRONO_ENABLE_VSG=$(if($useVSG){'ON'}else{'OFF'})",
-    "-DCMAKE_BUILD_TYPE=$BuildType"
+    "-DCMAKE_BUILD_TYPE=$BuildType",
+    "-DHYDROCHRONO_ENABLE_MOORDYN=$(if($MoorDyn){'ON'}else{'OFF'})"
 )
+
+# Add Eigen3 include path if extracted from Chrono config
+if ($eigen3Include) {
+    $cmakeArgs += "-DEIGEN3_INCLUDE_DIR=`"$($eigen3Include -replace '\\','/')`""
+}
+
+# Add HDF5 config path if extracted from Chrono config
+if ($hdf5Dir) {
+    $cmakeArgs += "-DHDF5_DIR=`"$($hdf5Dir -replace '\\','/')`""
+}
 
 # Add Python if specified
 if ($PythonRoot -and (Test-Path $PythonRoot)) {
@@ -213,7 +272,7 @@ if ($useIrrlicht) {
     }
 }
 
-Write-Detail "Build: $BuildType | Tests: $(if($NoTests){'OFF'}else{'ON'}) | Demos: $(if($NoDemos){'OFF'}else{'ON'})"
+Write-Detail "Build: $BuildType | Tests: $(if($NoTests){'OFF'}else{'ON'}) | Demos: $(if($NoDemos){'OFF'}else{'ON'}) | MoorDyn: $(if($MoorDyn){'ON'}else{'OFF'})"
 
 if ($Verbose) {
     cmake @cmakeArgs
@@ -310,6 +369,45 @@ if ($useVSG) {
     }
 }
 
+# Copy HDF5 and its dependencies (szip, zlib) from vcpkg
+if ($chronoContent -match 'HDF5_DIR\s+"([^"]+)"') {
+    $hdf5Root = Split-Path (Split-Path $Matches[1])
+    $hdf5BinDir = Join-Path $hdf5Root "bin"
+    if (Test-Path $hdf5BinDir) {
+        $hdf5Dlls = Get-ChildItem -Path $hdf5BinDir -Include "hdf5*.dll","szip*.dll","zlib*.dll" -Recurse -ErrorAction SilentlyContinue
+        $copiedCount = 0
+        foreach ($dll in $hdf5Dlls) {
+            $destDll = Join-Path $binPath $dll.Name
+            if (-not (Test-Path $destDll)) {
+                Copy-Item $dll.FullName $destDll -Force
+                $copiedCount++
+            }
+        }
+        if ($copiedCount -gt 0) {
+            Write-OK "Copied $copiedCount HDF5/compression DLLs from $hdf5BinDir"
+        }
+    }
+}
+
+# Verify MoorDyn DLL is in the output directory
+if ($MoorDyn) {
+    $moordynDll = Join-Path $binPath "moordyn.dll"
+    if (Test-Path $moordynDll) {
+        Write-OK "MoorDyn DLL: moordyn.dll"
+    } else {
+        # CMake places moordyn.dll in bin/<config> alongside other targets,
+        # but fall back to searching the build tree if not found.
+        $found = Get-ChildItem -Path ".\build" -Filter "moordyn.dll" -Recurse -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+        if ($found) {
+            Copy-Item $found.FullName $moordynDll -Force
+            Write-OK "MoorDyn DLL: copied from $($found.Directory.Name)"
+        } else {
+            Write-Warn "MoorDyn enabled but moordyn.dll not found in build tree"
+        }
+    }
+}
+
 # =============================================================================
 # Verify
 # =============================================================================
@@ -366,13 +464,15 @@ Write-Host "========================================`n" -ForegroundColor Green
 
 Write-Host "Output: $binPath" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "Tests:  ctest -C $BuildType -L regression --test-dir build" -ForegroundColor Gray
-Write-Host "        ctest -C $BuildType -L unit       --test-dir build" -ForegroundColor Gray
+Write-Host "Tests:  ctest -C $BuildType -L regression    --test-dir build" -ForegroundColor Gray
+Write-Host "        ctest -C $BuildType -L unit          --test-dir build" -ForegroundColor Gray
+Write-Host "        ctest -C $BuildType -L verification  --test-dir build" -ForegroundColor Gray
+Write-Host "        Cross-code verification (requires specific features, e.g. -MoorDyn)" -ForegroundColor DarkGray
 Write-Host "        Add -V for verbose output, --output-on-failure for failures only" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "Long:   `$env:HYDROCHRONO_LONG_TESTS='1'" -ForegroundColor Gray
 Write-Host "        ctest -C $BuildType -L regression --test-dir build" -ForegroundColor Gray
-Write-Host "        Runs with extended simulation durations" -ForegroundColor DarkGray
+Write-Host "        Runs with extended simulation durations (also applies to verification)" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "Report: python tests/regression/utilities/generate_report.py --build-dir build --pdf" -ForegroundColor Gray
 Write-Host "        Generates regression test report (markdown + PDF) in build/bin/report/" -ForegroundColor DarkGray

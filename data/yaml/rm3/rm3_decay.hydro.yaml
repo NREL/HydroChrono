@@ -8,8 +8,3 @@ hydrodynamics:
 
   waves:
     type: still
-
-  moordyn:
-    enabled: true
-    input_file: mooring/lines_rm3.txt
-    bodies: [body1]

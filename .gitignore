@@ -42,6 +42,10 @@ doc/user/_verification/demos/sphere_decay/*.png
 doc/user/_verification/demos/sphere_decay/*.hires.png
 _build/
 
+# MoorDyn workaround (copied at configure time, see CMakeLists.txt)
+/cmake/MoorDynConfig.cmake
+/LICENSE.txt
+
 # General
 build/
 demos/F3OF/f3of/

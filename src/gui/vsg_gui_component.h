@@ -12,6 +12,8 @@
 namespace hydroc {
 namespace gui {
 
+class MooringLinesViz;  // forward declaration
+
 /// Runtime-adjustable water visualization settings.
 ///
 /// Allows tuning water appearance without recompiling. Owned by GUIImplVSG
@@ -47,6 +49,10 @@ struct ViewerSettings {
     // amplitude scales with body velocity and size.
     bool show_radiation_viz = false;       ///< Enable radiated wave visualization
     float radiation_visual_scale = 1.0f;   ///< Visual amplification [0.1x - 5x]
+
+    // --- Mooring Colour Mapping ---
+    bool show_mooring_colors = true;       ///< Colour lines by tension magnitude
+    bool mooring_range_locked = false;     ///< Freeze the adaptive min/max range
 };
 
 /// ImGui component for HydroChrono visualization overlay.
@@ -57,17 +63,24 @@ class HydroChronoGuiComponent : public chrono::vsg3d::ChGuiComponentVSG {
     /// @param vsys Pointer to the VSG visual system (for potential future use).
     /// @param button_pressed Reference to the simulation running state (toggled by button).
     /// @param settings Pointer to viewer settings (owned by GUIImplVSG).
+    /// @param mooring_viz Pointer to the mooring renderer (for reading the
+    ///                    adaptive scalar range for the colour bar).
     HydroChronoGuiComponent(chrono::vsg3d::ChVisualSystemVSG* vsys, bool& button_pressed,
-                            ViewerSettings* settings = nullptr);
+                            ViewerSettings* settings = nullptr,
+                            MooringLinesViz* mooring_viz = nullptr);
 
     /// Render the ImGui overlay.
     /// Called each frame by the VSG rendering loop.
     void render(vsg::CommandBuffer& cb) override;
 
   private:
+    void RenderMooringPanel();
+    void RenderColorBar();
+
     chrono::vsg3d::ChVisualSystemVSG* vsys_;
     bool& pressed_;
-    ViewerSettings* settings_;  ///< Viewer settings (may be null)
+    ViewerSettings* settings_;
+    MooringLinesViz* mooring_viz_;
 };
 
 }  // namespace gui

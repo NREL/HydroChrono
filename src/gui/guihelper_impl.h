@@ -48,6 +48,7 @@ class GUIImpl {
     virtual void SetWaveModel(std::shared_ptr<WaveBase> /*wave*/) {}
     virtual void SetWaterGridExtent(double /*width*/, double /*length*/,
                                      double /*center_x*/, double /*center_y*/) {}
+    virtual void SetMooringLineProvider(MooringVizProvider /*provider*/) {}
 };
 
 #ifdef HYDROCHRONO_HAVE_IRRLICHT
@@ -70,8 +71,9 @@ class GUIImplIRR : public GUIImpl {
 #endif
 
 #ifdef HYDROCHRONO_HAVE_VSG
-// Forward declarations (defined in vsg_water_surface.h, vsg_gui_component.h).
+// Forward declarations (defined in vsg_water_surface.h, vsg_gui_component.h, vsg_mooring_lines.h).
 class AnimatedWaterSurface;
+class MooringLinesViz;
 struct ViewerSettings;
 
 class GUIImplVSG : public GUIImpl {
@@ -86,6 +88,7 @@ class GUIImplVSG : public GUIImpl {
     virtual bool IsRunning(double timestep) override;
     virtual void SetWaveModel(std::shared_ptr<WaveBase> wave) override;
     virtual void SetWaterGridExtent(double width, double length, double center_x, double center_y) override;
+    virtual void SetMooringLineProvider(MooringVizProvider provider) override;
 
   private:
     /// Ensure water surface is created (animated if wave model set, static otherwise).
@@ -100,6 +103,10 @@ class GUIImplVSG : public GUIImpl {
     chrono::ChSystem* system_ = nullptr;
     std::unique_ptr<AnimatedWaterSurface> animated_water_;
     std::unique_ptr<ViewerSettings> viewer_settings_;
+
+    MooringVizProvider mooring_provider_;
+    std::unique_ptr<MooringLinesViz> mooring_viz_;
+    vsg::ref_ptr<vsg::Group> mooring_scene_group_;
 };
 #endif
 

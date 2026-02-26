@@ -11,6 +11,7 @@
 #ifndef HYDROC_CONFIG_HYDRO_CONFIG_H
 #define HYDROC_CONFIG_HYDRO_CONFIG_H
 
+#include <hydroc/radiation/radiation_types.h>
 #include <string>
 #include <vector>
 #include <array>
@@ -23,15 +24,6 @@ struct HydroBody {
     std::string h5_file = "";
     bool include_excitation = true;
     bool include_radiation = true;
-    std::string radiation_calculation = "convolution";  // "convolution" or "state_space"
-    // Optional convolution mode for radiation kernel preprocessing: "Baseline" (default) or "TaperedDirect"
-    std::string radiation_convolution_mode = "Baseline";
-    // Optional TaperedDirect tuning
-    std::string td_smoothing = "sg";            // "sg" or "moving_average"
-    int td_window_length = 5;                    // odd >= 3
-    double td_rms_threshold_factor = 0.02;       // e.g. 0.02
-    double td_taper_fraction_remaining = 0.25;   // e.g. 0.25
-    bool td_export_plot_csv = false;             // export CSV for before/after
     // TODO: Add nonlinear buoyancy fields
     // TODO: Add drag coefficient fields
 };
@@ -49,6 +41,14 @@ struct WaveSettings {
     int seed = -1; // optional irregular seed; -1 means unset
     // Sweep support (expanded values) for period; if empty, use 'period'
     std::vector<double> period_values;
+    // Elevation import (if non-empty, overrides spectral generation)
+    std::string eta_file;
+    // Excitation ramp shape: "linear" (default) or "cosine" (WEC-Sim convention)
+    std::string ramp_type    = "linear";
+    double ramp_duration     = 0.0;   // Ramp duration [s]; 0 = no ramp (overrides function param if > 0)
+    double frequency_min  = 0.0;   // 0 = use IrregularWaveParams::kDefaultFreqMin
+    double frequency_max  = 0.0;   // 0 = use IrregularWaveParams::kDefaultFreqMax
+    int    nfrequencies   = 0;     // 0 = use IrregularWaveParams::kDefaultNFrequencies
     // TODO: Add spectrum parameters (peak enhancement factor, etc.)
 };
 
@@ -60,40 +60,40 @@ struct YAMLHydroData {
     WaveSettings waves;
     
     // ─────────────────────────────────────────────────────────────────────────
+    // Convolution truncation (system-wide, wave-type-independent)
+    // ─────────────────────────────────────────────────────────────────────────
+    double excitation_truncation_time = 0.0;  ///< Excitation IRF truncation [s]; 0 = full
+    double radiation_truncation_time = 0.0;   ///< Radiation RIRF truncation [s]; 0 = full
+    
+    // ─────────────────────────────────────────────────────────────────────────
     // Radiation method selection (system-wide)
     // ─────────────────────────────────────────────────────────────────────────
-    // Top-level selection: "rirf_convolution" (default) or "state_space"
-    std::string radiation_method = "rirf_convolution";
+    std::string radiation_method = "rirf_convolution";  ///< "rirf_convolution" or "state_space"
+    
+    // ─────────────────────────────────────────────────────────────────────────
+    // Radiation kernel processing (smoothing + tapering, composable)
+    // ─────────────────────────────────────────────────────────────────────────
+    hydrochrono::hydro::RadiationKernelProcessing radiation_kernel_processing;
     
     // ─────────────────────────────────────────────────────────────────────────
     // State-space options (only used if radiation_method == "state_space")
     // ─────────────────────────────────────────────────────────────────────────
-    int ss_max_order = 10;           // Maximum exponential modes per DOF pair
-    double ss_r2_threshold = 0.95;   // R² fit quality threshold
-    int ss_max_hankel_size = 200;    // Max Hankel matrix size for SVD (key performance param)
-    int ss_r2_num_samples = 50;      // Number of samples for R² check during fitting
-    
-    // ─────────────────────────────────────────────────────────────────────────
-    // Convolution settings (only used if radiation_method == "rirf_convolution")
-    // ─────────────────────────────────────────────────────────────────────────
-    std::string radiation_convolution_mode = "Baseline"; // Baseline | TaperedDirect
-    std::string td_smoothing = "sg";
-    int td_window_length = 5;
-    
-    // RIRF truncation
-    double td_rirf_end_time = -1.0;
-    
-    // Simple taper control - sensible defaults for improved stability
-    double td_taper_start_percent = 0.8;      // start taper at 80% (taper last 20%)
-    double td_taper_end_percent = 1.0;        // end taper at 100% of total time series
-    double td_taper_final_amplitude = 0.0;    // final amplitude as fraction of original (0.0 = zero, 1.0 = no change)
-    bool td_export_plot_csv = false;          // dump before/after CSV summaries (false by default)
+    int ss_max_order = 10;
+    double ss_r2_threshold = 0.95;
+    int ss_max_hankel_size = 200;
+    int ss_r2_num_samples = 50;
     
     // ─────────────────────────────────────────────────────────────────────────
     // Diagnostics
     // ─────────────────────────────────────────────────────────────────────────
-    bool output_kernel_fit = false;           // write kernel fit diagnostics to HDF5
+    bool output_kernel_fit = false;
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // MoorDyn mooring coupling (optional)
+    // ─────────────────────────────────────────────────────────────────────────
+    bool moordyn_enabled = false;
+    std::string moordyn_input_file;
+    std::vector<std::string> moordyn_body_names;  // e.g. ["body1"]
 };
 
 #endif  // HYDROC_CONFIG_HYDRO_CONFIG_H
-

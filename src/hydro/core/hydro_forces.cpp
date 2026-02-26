@@ -61,6 +61,10 @@ BodyForces HydroForces::Evaluate(const SystemState& state, double time) {
                     profile_stats_.excitation_seconds += elapsed;
                     profile_stats_.excitation_calls++;
                     break;
+                case HydroComponentType::Mooring:
+                    profile_stats_.mooring_seconds += elapsed;
+                    profile_stats_.mooring_calls++;
+                    break;
             }
         } else {
             // Fast path: no timing overhead

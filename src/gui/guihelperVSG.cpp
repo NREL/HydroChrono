@@ -11,6 +11,7 @@
 #include "vsg_gui_component.h"
 #include "vsg_lighting.h"
 #include "vsg_materials.h"
+#include "vsg_mooring_lines.h"
 #include "vsg_radiation_surface.h"
 #include "vsg_water_surface.h"
 
@@ -63,7 +64,7 @@ void GUIImplVSG::Init(UI& ui, chrono::ChSystem* system, const char* title) {
     // pVis->EnableShadows();
 
     // Skybox provides sky/horizon context, contrasting with dark water plane.
-    pVis->EnableSkyBox();
+    pVis->EnableSkyTexture(chrono::SkyMode::BOX);
 
     // Grid disabled: water plane provides the marine context instead.
     // (Keeping this comment for easy re-enable if needed later.)
@@ -94,8 +95,13 @@ void GUIImplVSG::Init(UI& ui, chrono::ChSystem* system, const char* title) {
         }
     }
 
-    pVis->AddGuiComponent(std::make_shared<HydroChronoGuiComponent>(pVis.get(), ui.simulationStarted,
-                                                                    viewer_settings_.get()));
+    // Create mooring viz early so the GUI component can read its adaptive range.
+    if (!mooring_viz_)
+        mooring_viz_ = std::make_unique<MooringLinesViz>();
+
+    pVis->AddGuiComponent(std::make_shared<HydroChronoGuiComponent>(
+        pVis.get(), ui.simulationStarted, viewer_settings_.get(),
+        mooring_viz_.get()));
 
     pVis->Initialize();
 
@@ -126,6 +132,10 @@ void GUIImplVSG::SetWaterGridExtent(double width, double length, double center_x
 
     std::cout << "[WaterSurface] Grid extent: " << width << " x " << length << " m"
               << ", center: (" << center_x << ", " << center_y << ")" << std::endl;
+}
+
+void GUIImplVSG::SetMooringLineProvider(MooringVizProvider provider) {
+    mooring_provider_ = std::move(provider);
 }
 
 void GUIImplVSG::EnsureWaterSurface() {
@@ -179,8 +189,32 @@ bool GUIImplVSG::IsRunning(double timestep) {
         return false;
     }
 
-    // Ensure water surface exists (every frame check; returns early if already done).
+    // Reserve a scene-graph group for mooring geometry before the water
+    // surface is created, so opaque mooring lines are rendered first and
+    // remain visible through the transparent free surface.
+    if (mooring_provider_ && !mooring_scene_group_) {
+        if (auto scene = pVis->GetVSGScene()) {
+            mooring_scene_group_ = vsg::Group::create();
+            scene->addChild(mooring_scene_group_);
+        }
+    }
+
     EnsureWaterSurface();
+
+    // Mooring line visualisation (lazy-initialised on first valid data).
+    if (mooring_provider_) {
+        auto line_data = mooring_provider_();
+        if (!line_data.empty()) {
+            if (!mooring_viz_)
+                mooring_viz_ = std::make_unique<MooringLinesViz>();
+            if (!mooring_viz_->IsInitializedFor(pVis.get()))
+                mooring_viz_->Initialize(pVis.get(), line_data, mooring_scene_group_);
+
+            const bool color_on  = viewer_settings_ && viewer_settings_->show_mooring_colors;
+            const bool range_lock = viewer_settings_ && viewer_settings_->mooring_range_locked;
+            mooring_viz_->Update(line_data, color_on, range_lock);
+        }
+    }
 
     // Handle viewer settings changes.
     if (viewer_settings_ && animated_water_) {
@@ -242,8 +276,8 @@ void GUIImplVSG::UpdateRadiationSourceBody(double t) {
             // Wave period from RegularWave.
             if (wave_model_->GetWaveMode() == WaveMode::regular) {
                 auto* reg_wave = dynamic_cast<RegularWave*>(wave_model_.get());
-                if (reg_wave && reg_wave->regular_wave_omega_ > 0.0) {
-                    rad_params.wave_period = (2.0 * M_PI) / reg_wave->regular_wave_omega_;
+                if (reg_wave && reg_wave->GetOmega() > 0.0) {
+                    rad_params.wave_period = reg_wave->GetPeriod();
                 }
             }
             // Peak period from IrregularWaves (JONSWAP).

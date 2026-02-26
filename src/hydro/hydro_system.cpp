@@ -26,6 +26,10 @@
 #include "force_components/radiation_component.h"
 #include "force_components/radiation_ss_component.h"
 #include "force_components/excitation_component.h"
+#ifdef HYDROCHRONO_HAVE_MOORDYN
+#include "force_components/mooring_component.h"
+#include "mooring/moordyn_wrapper.h"
+#endif
 #include <hydroc/core/hydro_forces.h>
 #include <hydroc/coupling/chrono_coupler.h>
 #include "radiation/radiation_rirf_processing.h"
@@ -243,9 +247,7 @@ HydroSystem::HydroSystem(std::vector<std::shared_ptr<ChBody>> user_bodies,
       num_bodies_(static_cast<int>(bodies_.size())),
       file_info_(H5FileInfo(h5_file_name, num_bodies_).ReadH5Data()),
       hydro_forces_(nullptr),
-      chrono_coupler_(nullptr),
-      convolution_mode_(hydrochrono::hydro::RadiationConvolutionMode::Baseline),
-      tapered_opts_() {
+      chrono_coupler_(nullptr) {
     prev_time = -1;
 
     // Set up time vector
@@ -334,6 +336,11 @@ HydroSystem::HydroSystem(std::vector<std::shared_ptr<ChBody>> user_bodies,
 void HydroSystem::AddWaves(std::shared_ptr<WaveBase> waves) {
     user_waves_ = waves;
     user_waves_->SetNumBodies(static_cast<unsigned int>(num_bodies_));
+
+    // Forward excitation truncation time to the wave model (no-op for regular/no-wave)
+    if (excitation_truncation_time_ > 0.0) {
+        user_waves_->SetExcitationTruncationTime(excitation_truncation_time_);
+    }
 
     switch (user_waves_->GetWaveMode()) {
         case WaveMode::regular: {
@@ -425,24 +432,20 @@ std::vector<double> HydroSystem::ComputeForceHydrostatics() {
 
 // Legacy helper functions removed - now in RadiationRirfConvolution class
 
-// Preprocess the radiation kernel K(t) per body for TaperedDirect mode.
+// Preprocess the radiation kernel K(t) per body when smoothing/tapering is configured.
 void HydroSystem::EnsureProcessedRIRF() {
     if (rirf_processed_ready_) {
         return;
     }
 
-    const int steps = file_info_.GetRIRFDims(2);
-    
-    // tapered_opts_ is now the canonical type (single source of truth) - no conversion needed
+    const int steps = static_cast<int>(rirf_time_vector.size());
 
-    // Create lambda to get RIRF values from file_info_
     auto get_rirf_val = [this](int body, int row_dof, int col, int step) -> double {
         return file_info_.GetRIRFVal(body, row_dof, col, step);
     };
 
-    // Process RIRF kernels using the dedicated module
     rirf_processed_ = hydrochrono::hydro::ProcessRirfKernels(
-        num_bodies_, steps, rirf_time_vector, get_rirf_val, tapered_opts_, diagnostics_output_dir_);
+        num_bodies_, steps, rirf_time_vector, get_rirf_val, kernel_processing_, diagnostics_output_dir_);
 
     rirf_processed_ready_ = true;
 }
@@ -452,29 +455,37 @@ void HydroSystem::InvalidateRadiationComponent() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Radiation configuration setters
+// Convolution truncation and radiation configuration setters
 // ─────────────────────────────────────────────────────────────────────────
+
+void HydroSystem::SetExcitationTruncationTime(double seconds) {
+    excitation_truncation_time_ = seconds;
+    if (user_waves_) {
+        user_waves_->SetExcitationTruncationTime(seconds);
+    }
+}
+
+void HydroSystem::SetRadiationTruncationTime(double seconds) {
+    radiation_truncation_time_ = seconds;
+    InvalidateRadiationComponent();
+}
 
 void HydroSystem::SetRadiationMethod(hydrochrono::hydro::RadiationMethod method) {
     radiation_method_ = method;
-    InvalidateRadiationComponent();  // Invalidate component to recreate with new method
+    InvalidateRadiationComponent();
 }
 
 void HydroSystem::SetStateSpaceOptions(const hydrochrono::hydro::StateSpaceOptions& opts) {
     state_space_opts_ = opts;
     if (radiation_method_ == hydrochrono::hydro::RadiationMethod::kStateSpace) {
-        InvalidateRadiationComponent();  // Invalidate to recreate with new options
+        InvalidateRadiationComponent();
     }
 }
 
-void HydroSystem::SetRadiationConvolutionMode(hydrochrono::hydro::RadiationConvolutionMode mode) {
-    convolution_mode_ = mode;
-    InvalidateRadiationComponent();  // Invalidate component to recreate with new settings
-}
-
-void HydroSystem::SetTaperedDirectOptions(const hydrochrono::hydro::TaperedDirectOptions& opts) {
-    tapered_opts_ = opts;
-    InvalidateRadiationComponent();  // Invalidate component to recreate with new settings
+void HydroSystem::SetRadiationKernelProcessing(const hydrochrono::hydro::RadiationKernelProcessing& opts) {
+    kernel_processing_ = opts;
+    rirf_processed_ready_ = false;
+    InvalidateRadiationComponent();
 }
 
 void HydroSystem::SetOutputKernelFit(bool enabled) {
@@ -517,29 +528,33 @@ std::unique_ptr<hydrochrono::hydro::HydrostaticsComponent> HydroSystem::CreateHy
 }
 
 std::unique_ptr<hydrochrono::hydro::IHydroForceComponent> HydroSystem::CreateRadiationComponent() const {
-    // Factory for radiation force component.
-    // Returns either:
-    //   - RadiationComponent (convolution-based, default)
-    //   - RadiationStateSpaceComponent (state-space approximation)
-    //
-    // Configuration inputs:
-    //   - radiation_method_: selects which component type to create
-    //   - file_info_: BEM data including RIRF kernels
-    //   - num_bodies_: number of bodies in system
-    //   - For convolution: convolution_mode_, tapered_opts_, diagnostics_output_dir_
-    //   - For state-space: state_space_opts_
+    // Apply radiation truncation: chop rirf_time_vector / rirf_width_vector to [0, T].
+    // The truncated copies are used for component construction.
+    Eigen::VectorXd trunc_time = rirf_time_vector;
+    Eigen::VectorXd trunc_width = rirf_width_vector;
+    if (radiation_truncation_time_ > 0.0 && trunc_time.size() > 0) {
+        Eigen::Index keep = trunc_time.size();
+        for (Eigen::Index i = 0; i < trunc_time.size(); ++i) {
+            if (trunc_time[i] > radiation_truncation_time_) {
+                keep = i;
+                break;
+            }
+        }
+        if (keep < trunc_time.size()) {
+            trunc_time = trunc_time.head(keep).eval();
+            trunc_width = trunc_width.head(keep).eval();
+        }
+    }
+    const int trunc_steps = static_cast<int>(trunc_time.size());
 
     if (radiation_method_ == hydrochrono::hydro::RadiationMethod::kStateSpace) {
-        // State-space approximation: O(1) per timestep
         return std::make_unique<hydrochrono::hydro::RadiationStateSpaceComponent>(
             file_info_, num_bodies_, state_space_opts_);
     }
 
-    // Default: RIRF convolution
-    const int rirf_steps = file_info_.GetRIRFDims(2);
     return std::make_unique<hydrochrono::hydro::RadiationComponent>(
-        file_info_, num_bodies_, rirf_steps, rirf_time_vector, rirf_width_vector,
-        convolution_mode_, tapered_opts_, diagnostics_output_dir_);
+        file_info_, num_bodies_, trunc_steps, trunc_time, trunc_width,
+        kernel_processing_, diagnostics_output_dir_);
 }
 
 // ------------------------------------------------------------
@@ -566,6 +581,21 @@ void HydroSystem::EnsureHydroForcesAndCoupler() {
 
     // Excitation component (uses shared factory for consistent construction)
     components.push_back(CreateExcitationComponent());
+
+#ifdef HYDROCHRONO_HAVE_MOORDYN
+    if (moordyn_config_.enabled) {
+        // Build initial state from current Chrono body positions
+        hydrochrono::hydro::SystemState init_state;
+        hydrochrono::hydro::chrono_coupling::BuildSystemStateFromChronoBodies(
+            bodies_, init_state);
+
+        auto wrapper = std::make_unique<hydrochrono::hydro::MoorDynWrapper>(
+            moordyn_config_.input_file, moordyn_config_.coupled_body_indices);
+        wrapper->Initialize(init_state);
+        components.push_back(
+            std::make_unique<hydrochrono::hydro::MooringComponent>(std::move(wrapper)));
+    }
+#endif
 
     // Construct HydroForces (takes ownership of components)
     hydro_forces_ = std::make_unique<hydrochrono::hydro::HydroForces>(
@@ -651,9 +681,8 @@ double HydroSystem::GetRIRFval(int row, int col, int st) {
     int body_index = row / kDofPerBody;
     int row_dof    = row % kDofPerBody;
 
-    if (convolution_mode_ == hydrochrono::hydro::RadiationConvolutionMode::TaperedDirect) {
+    if (kernel_processing_.RequiresProcessing()) {
         EnsureProcessedRIRF();
-        // processed tensor is scaled by rho already
         const auto& tensor = rirf_processed_[body_index];
         return tensor(row_dof, col, st);
     }
@@ -855,3 +884,15 @@ std::vector<hydrochrono::hydro::KernelFitDiagnostics> HydroSystem::GetKernelFitD
     return {};
 }
 
+#ifdef HYDROCHRONO_HAVE_MOORDYN
+std::vector<hydroc::gui::MooringLineVizData> HydroSystem::GetMooringLineStates() const {
+    if (!hydro_forces_) return {};
+
+    for (const auto& comp : hydro_forces_->GetComponents()) {
+        if (comp->Type() != hydrochrono::hydro::HydroComponentType::Mooring) continue;
+        auto* mooring = dynamic_cast<hydrochrono::hydro::MooringComponent*>(comp.get());
+        if (mooring) return mooring->GetMooringLineStates();
+    }
+    return {};
+}
+#endif

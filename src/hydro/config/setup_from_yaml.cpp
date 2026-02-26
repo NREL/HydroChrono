@@ -8,22 +8,19 @@
 
 #include "setup_from_yaml.h"
 #include "config_loader.h"
-#include <hydroc/hydro_system.h> // For HydroSystem
+#include <hydroc/hydro_system.h>
+#ifdef HYDROCHRONO_HAVE_MOORDYN
+#include <hydroc/config/moordyn_config.h>
+#endif
 #include <hydroc/waves/wave_base.h>
 #include <hydroc/waves/regular_wave.h>
 #include <hydroc/waves/irregular_wave.h>
-#include <hydroc/logging.h>         // For Logger
-#include "../radiation/radiation_rirf_processing.h" // For TaperedDirectOptions (canonical type)
-#include "../force_components/radiation_component.h" // For RadiationConvolutionMode (canonical type)
+#include <hydroc/logging.h>
+#include <hydroc/radiation/radiation_types.h>
 #include <filesystem>
 #include <iostream>
 #include <stdexcept>
-#include <cmath> // For M_PI
 #include <unordered_map>
-
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 using namespace chrono;
 
@@ -48,10 +45,9 @@ std::shared_ptr<WaveBase> CreateWaveFromSettings(const WaveSettings& wave_settin
 
     if (type == "regular") {
         auto regular_wave = std::make_shared<RegularWave>();
-        
-        regular_wave->regular_wave_amplitude_ = wave_settings.height / 2.0;
-        regular_wave->regular_wave_omega_ = 2.0 * M_PI / wave_settings.period;
-        regular_wave->regular_wave_phase_ = wave_settings.phase;
+        regular_wave->SetAmplitude(wave_settings.height / 2.0);
+        regular_wave->SetPeriod(wave_settings.period);
+        regular_wave->SetPhase(wave_settings.phase);
         
         hydroc::debug::LogDebug(std::string("Attached wave model: RegularWave, H=") + std::to_string(wave_settings.height) + 
                             "m, T=" + std::to_string(wave_settings.period) + "s");
@@ -60,17 +56,32 @@ std::shared_ptr<WaveBase> CreateWaveFromSettings(const WaveSettings& wave_settin
         
     } else if (type == "irregular") {
         IrregularWaveParams params;
-        params.ramp_duration = ramp_duration;
-        params.wave_height = wave_settings.height;
-        params.wave_period = wave_settings.period;
-        params.nfrequencies = 1000;
-        params.seed = (wave_settings.seed > 0 ? wave_settings.seed : 1);
-        
+        params.ramp_duration = (wave_settings.ramp_duration > 0.0) ? wave_settings.ramp_duration : ramp_duration;
+        params.wave_height   = wave_settings.height;
+        params.wave_period   = wave_settings.period;
+        params.nfrequencies  = (wave_settings.nfrequencies > 0)
+                               ? wave_settings.nfrequencies
+                               : IrregularWaveParams::kDefaultNFrequencies;
+        params.seed          = (wave_settings.seed > 0 ? wave_settings.seed : 1);
+        params.eta_file_path = wave_settings.eta_file;
+        if (wave_settings.frequency_min > 0.0) params.frequency_min = wave_settings.frequency_min;
+        if (wave_settings.frequency_max > 0.0) params.frequency_max = wave_settings.frequency_max;
+
+        std::string ramp_lower = wave_settings.ramp_type;
+        std::transform(ramp_lower.begin(), ramp_lower.end(), ramp_lower.begin(), ::tolower);
+        if (ramp_lower == "cosine")
+            params.ramp_type = ExcitationRampType::kCosine;
+
         auto irregular_wave = std::make_shared<IrregularWaves>(params);
-        
-        hydroc::debug::LogDebug(std::string("Attached wave model: IrregularWaves, H=") + std::to_string(wave_settings.height) + 
-                            "m, T=" + std::to_string(wave_settings.period) + "s");
-        
+
+        if (!wave_settings.eta_file.empty()) {
+            hydroc::debug::LogDebug(std::string("Attached wave model: IrregularWaves (elevation import), eta_file=") +
+                                wave_settings.eta_file);
+        } else {
+            hydroc::debug::LogDebug(std::string("Attached wave model: IrregularWaves, H=") + std::to_string(wave_settings.height) +
+                                "m, T=" + std::to_string(wave_settings.period) + "s");
+        }
+
         return irregular_wave;
         
     } else if (type == "no_wave" || type == "still_ci" || type == "still") {
@@ -165,6 +176,20 @@ std::unique_ptr<HydroSystem> SetupHydroFromYAML(
     hydroc::debug::LogDebug(std::string("Initialized HydroSystem with ") + std::to_string(matched_bodies.size()) + " bodies");
 
     // ─────────────────────────────────────────────────────────────────────────
+    // Convolution truncation (excitation + radiation)
+    // ─────────────────────────────────────────────────────────────────────────
+    if (hydro_data.excitation_truncation_time > 0.0) {
+        hydro_system->SetExcitationTruncationTime(hydro_data.excitation_truncation_time);
+        hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine(
+            "•", "Excitation Truncation", std::to_string(hydro_data.excitation_truncation_time) + "s"));
+    }
+    if (hydro_data.radiation_truncation_time > 0.0) {
+        hydro_system->SetRadiationTruncationTime(hydro_data.radiation_truncation_time);
+        hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine(
+            "•", "Radiation Truncation", std::to_string(hydro_data.radiation_truncation_time) + "s"));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // Radiation method selection
     // ─────────────────────────────────────────────────────────────────────────
     std::string method = hydro_data.radiation_method;
@@ -174,7 +199,6 @@ std::unique_ptr<HydroSystem> SetupHydroFromYAML(
         hydro_system->SetRadiationMethod(hydrochrono::hydro::RadiationMethod::kStateSpace);
         hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "Radiation Method", "StateSpace"));
         
-        // Set state-space options
         hydrochrono::hydro::StateSpaceOptions ss_opts;
         ss_opts.max_order = hydro_data.ss_max_order;
         ss_opts.r2_threshold = hydro_data.ss_r2_threshold;
@@ -182,7 +206,6 @@ std::unique_ptr<HydroSystem> SetupHydroFromYAML(
         ss_opts.r2_num_samples = hydro_data.ss_r2_num_samples;
         hydro_system->SetStateSpaceOptions(ss_opts);
         
-        // Enable kernel fit diagnostics if requested
         if (hydro_data.output_kernel_fit) {
             hydro_system->SetOutputKernelFit(true);
             hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "Kernel Fit Diagnostics", "Enabled"));
@@ -195,55 +218,71 @@ std::unique_ptr<HydroSystem> SetupHydroFromYAML(
             hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "SS R² Samples", std::to_string(ss_opts.r2_num_samples)));
         }
     } else {
-        // Default: rirf_convolution (or any unrecognized value)
         hydro_system->SetRadiationMethod(hydrochrono::hydro::RadiationMethod::kRirfConvolution);
         hydroc::debug::LogDebug("Radiation method: RIRF Convolution (default)");
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Convolution settings (applies when method == rirf_convolution)
+    // Radiation kernel processing (smoothing + tapering, composable)
     // ─────────────────────────────────────────────────────────────────────────
-    std::string mode = hydro_data.radiation_convolution_mode;
-    hydroc::debug::LogDebug("Parsed convolution mode: '" + mode + "'");
-    std::transform(mode.begin(), mode.end(), mode.begin(), ::tolower);
-    hydroc::debug::LogDebug("Lowercase mode: '" + mode + "'");
-    if (mode == "tapereddirect") {
-        hydro_system->SetRadiationConvolutionMode(hydrochrono::hydro::RadiationConvolutionMode::TaperedDirect);
-        hydroc::debug::LogDebug("Radiation convolution mode: TaperedDirect");
-        hydrochrono::hydro::TaperedDirectOptions opts;
-        opts.smoothing = !hydro_data.td_smoothing.empty() ? hydro_data.td_smoothing : opts.smoothing;
-        opts.window_length = std::max(3, hydro_data.td_window_length != 0 ? hydro_data.td_window_length : opts.window_length);
-        if (opts.window_length % 2 == 0) opts.window_length += 1; // enforce odd
-        
-        // RIRF truncation
-        opts.rirf_end_time = hydro_data.td_rirf_end_time;
-        
-        // Simple taper control
-        opts.taper_start_percent = hydro_data.td_taper_start_percent;
-        opts.taper_end_percent = hydro_data.td_taper_end_percent;
-        opts.taper_final_amplitude = hydro_data.td_taper_final_amplitude;
-        opts.export_plot_csv = hydro_data.td_export_plot_csv;
-        hydro_system->SetTaperedDirectOptions(opts);
+    auto kp = hydro_data.radiation_kernel_processing;
+    kp.smoothing_window = std::max(3, kp.smoothing_window);
+    if (kp.smoothing_window % 2 == 0) kp.smoothing_window += 1;  // enforce odd
 
-        // CLI inline bullets near main summary
-        hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "Convolution Mode", "TaperedDirect"));
-        if (hydroc::debug::IsDebugEnabled()) {
-            hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "Conv Smoothing", opts.smoothing));
-            hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "Conv Window Length", std::to_string(opts.window_length)));
-            if (opts.rirf_end_time > 0.0) {
-                hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "Conv RIRF End Time", std::to_string(opts.rirf_end_time) + "s"));
-            }
-            hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "Conv Taper Start %", std::to_string(opts.taper_start_percent)));
-            hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "Conv Taper End %", std::to_string(opts.taper_end_percent)));
-            hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "Conv Taper Final Amp", std::to_string(opts.taper_final_amplitude)));
-            hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "Conv Export CSV", (opts.export_plot_csv ? "true" : "false")));
+    if (kp.RequiresProcessing()) {
+        hydro_system->SetRadiationKernelProcessing(kp);
+        if (kp.smoothing_type != "none") {
+            hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "RIRF Smoothing", kp.smoothing_type));
         }
-    } else {
-        hydro_system->SetRadiationConvolutionMode(hydrochrono::hydro::RadiationConvolutionMode::Baseline);
-        hydroc::debug::LogDebug("Radiation convolution mode: Baseline");
-        hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "Convolution Mode", "Baseline"));
+        if (kp.taper_enabled) {
+            hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "RIRF Taper", "enabled"));
+            if (hydroc::debug::IsDebugEnabled()) {
+                hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "Taper Start %", std::to_string(kp.taper_start_percent)));
+                hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "Taper End %", std::to_string(kp.taper_end_percent)));
+                hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine("•", "Taper Final Amp", std::to_string(kp.taper_final_amplitude)));
+            }
+        }
     }
-    
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // MoorDyn mooring coupling (optional)
+    // ─────────────────────────────────────────────────────────────────────────
+#ifdef HYDROCHRONO_HAVE_MOORDYN
+    if (hydro_data.moordyn_enabled && !hydro_data.moordyn_input_file.empty()) {
+        MoorDynConfig md_cfg;
+        md_cfg.enabled = true;
+        md_cfg.input_file = hydro_data.moordyn_input_file;
+
+        // Resolve body names to 0-based indices in matched_bodies
+        for (const auto& bname : hydro_data.moordyn_body_names) {
+            bool found = false;
+            for (size_t i = 0; i < matched_bodies.size(); ++i) {
+                if (matched_bodies[i]->GetName() == bname) {
+                    md_cfg.coupled_body_indices.push_back(static_cast<int>(i));
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                throw std::runtime_error(
+                    "MoorDyn config references body '" + bname +
+                    "' which was not found among hydrodynamic bodies");
+            }
+        }
+
+        hydro_system->SetMoorDynConfig(md_cfg);
+        hydroc::cli::LogInfo(hydroc::cli::CreateAlignedLine(
+            "+", "MoorDyn", hydro_data.moordyn_input_file +
+            " (" + std::to_string(md_cfg.coupled_body_indices.size()) + " bodies)"));
+    }
+#else
+    if (hydro_data.moordyn_enabled) {
+        hydroc::cli::LogWarning(
+            "MoorDyn is enabled in YAML but HydroChrono was built without "
+            "HYDROCHRONO_ENABLE_MOORDYN. Mooring forces will be ignored.");
+    }
+#endif
+
     return hydro_system;
 }
 

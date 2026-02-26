@@ -56,13 +56,27 @@ function(build_regression_test TEST_GROUP TEST_NAME MULTIPLE)
        COMMAND ${Python3_EXECUTABLE} ${COMPARE_SCRIPT} ${FILE_REF} $<TARGET_FILE_DIR:${TEST_EXE}>/${FILE_RST}
    )
    
-   set_tests_properties(
-       ${TEST_REF}
-       PROPERTIES 
-       LABELS "regression;${TEST_GROUP};reference"
-       FIXTURES_REQUIRED ${FIXTURE_FILE}
-       ENVIRONMENT "PATH=${Python3_ROOT_DIR};$ENV{PATH};HYDROCHRONO_BUILD_DIR=${CMAKE_BINARY_DIR}"
-   )
+   if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.22")
+       set_tests_properties(
+           ${TEST_REF}
+           PROPERTIES
+           LABELS "regression;${TEST_GROUP};reference"
+           FIXTURES_REQUIRED ${FIXTURE_FILE}
+           ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:${Python3_ROOT_DIR};PATH=path_list_prepend:${Python3_ROOT_DIR}/Library/bin;PATH=path_list_prepend:${Python3_ROOT_DIR}/DLLs"
+           ENVIRONMENT "HYDROCHRONO_BUILD_DIR=${CMAKE_BINARY_DIR}"
+       )
+   else()
+       # CMake < 3.22 lacks ENVIRONMENT_MODIFICATION; set only the Python root in
+       # PATH (semicolons inside values can't be escaped).  Users on older CMake
+       # should activate their Python environment before running ctest.
+       set_tests_properties(
+           ${TEST_REF}
+           PROPERTIES
+           LABELS "regression;${TEST_GROUP};reference"
+           FIXTURES_REQUIRED ${FIXTURE_FILE}
+           ENVIRONMENT "PATH=${Python3_ROOT_DIR};HYDROCHRONO_BUILD_DIR=${CMAKE_BINARY_DIR}"
+       )
+   endif()
 
 endfunction()
 
@@ -103,10 +117,21 @@ add_test(
 )
 
 # Make sure report generation runs after all other regression tests
-set_tests_properties(
-    regression_report_generation
-    PROPERTIES 
-    LABELS "regression;report;documentation;core"
-    ENVIRONMENT "PATH=${Python3_ROOT_DIR};$ENV{PATH};HYDROCHRONO_BUILD_DIR=${CMAKE_BINARY_DIR}"
-    DEPENDS "sphere_decay_regression;sphere_decay_ss_regression;sphere_reg_waves_regression;sphere_irreg_waves_regression;sphere_irreg_waves_ss_regression;sphere_irreg_waves_eta_regression;sphere_irreg_waves_eta_consistency_regression;f3of_dt1_regression;f3of_dt2_regression;f3of_dt3_regression;oswec_decay_regression;oswec_decay_ss_regression;oswec_irreg_waves_regression;oswec_irreg_waves_ss_regression;oswec_reg_waves_regression;rm3_decay_regression;rm3_reg_waves_regression"
-)
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.22")
+    set_tests_properties(
+        regression_report_generation
+        PROPERTIES
+        LABELS "regression;report;documentation;core"
+        ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:${Python3_ROOT_DIR};PATH=path_list_prepend:${Python3_ROOT_DIR}/Library/bin;PATH=path_list_prepend:${Python3_ROOT_DIR}/DLLs"
+        ENVIRONMENT "HYDROCHRONO_BUILD_DIR=${CMAKE_BINARY_DIR}"
+        DEPENDS "sphere_decay_regression;sphere_decay_ss_regression;sphere_reg_waves_regression;sphere_irreg_waves_regression;sphere_irreg_waves_ss_regression;sphere_irreg_waves_eta_regression;sphere_irreg_waves_eta_consistency_regression;f3of_dt1_regression;f3of_dt2_regression;f3of_dt3_regression;oswec_decay_regression;oswec_decay_ss_regression;oswec_irreg_waves_regression;oswec_irreg_waves_ss_regression;oswec_reg_waves_regression;rm3_decay_regression;rm3_reg_waves_regression"
+    )
+else()
+    set_tests_properties(
+        regression_report_generation
+        PROPERTIES
+        LABELS "regression;report;documentation;core"
+        ENVIRONMENT "PATH=${Python3_ROOT_DIR};HYDROCHRONO_BUILD_DIR=${CMAKE_BINARY_DIR}"
+        DEPENDS "sphere_decay_regression;sphere_decay_ss_regression;sphere_reg_waves_regression;sphere_irreg_waves_regression;sphere_irreg_waves_ss_regression;sphere_irreg_waves_eta_regression;sphere_irreg_waves_eta_consistency_regression;f3of_dt1_regression;f3of_dt2_regression;f3of_dt3_regression;oswec_decay_regression;oswec_decay_ss_regression;oswec_irreg_waves_regression;oswec_irreg_waves_ss_regression;oswec_reg_waves_regression;rm3_decay_regression;rm3_reg_waves_regression"
+    )
+endif()
