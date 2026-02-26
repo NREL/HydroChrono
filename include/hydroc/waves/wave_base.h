@@ -55,6 +55,10 @@ class WaveBase {
     void SetNumBodies(unsigned int n) { num_bodies_ = n; }
     unsigned int GetNumBodies() const { return num_bodies_; }
 
+    /// Set excitation IRF truncation time [s]. 0 = full IRF.
+    /// Default implementation is a no-op (regular waves and NoWave don't use IRF).
+    virtual void SetExcitationTruncationTime(double /*seconds*/) {}
+
     double GetMWL() const { return mwl_; }
     double GetGravity() const { return g_; }
     double GetWaterDepth() const { return water_depth_; }

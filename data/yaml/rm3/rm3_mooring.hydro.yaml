@@ -7,7 +7,16 @@ hydrodynamics:
       h5_file: hydroData/rm3.h5
 
   waves:
-    type: still
+    type: irregular
+    eta_file: ../../verification/rm3_mooring/inputs/eta_rm3_mooring.txt
+    ramp_duration: 40.0
+    ramp_type: cosine
+    frequency_min: 0.001
+    frequency_max: 1.0
+    nfrequencies: 1000
+
+  excitation:
+    truncation_time: 20.0
 
   moordyn:
     enabled: true

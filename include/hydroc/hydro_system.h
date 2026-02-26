@@ -360,14 +360,34 @@ class HydroSystem {
     double GetRIRFval(int row, int col, int st);
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Radiation Configuration
+    // Convolution Truncation and Radiation Configuration
     // ─────────────────────────────────────────────────────────────────────────
-    // These types are defined in the radiation module (single source of truth):
+    // Types from include/hydroc/radiation/radiation_types.h:
     //   - hydrochrono::hydro::RadiationMethod (enum: kRirfConvolution, kStateSpace)
-    //   - hydrochrono::hydro::RadiationConvolutionMode (enum: Baseline, TaperedDirect)
-    //   - hydrochrono::hydro::TaperedDirectOptions (struct)
+    //   - hydrochrono::hydro::RadiationKernelProcessing (struct: smoothing + tapering)
     //   - hydrochrono::hydro::StateSpaceOptions (struct)
-    // See: include/hydroc/radiation/radiation_types.h
+
+    /**
+     * @brief Truncate excitation IRF to [-T, T] seconds.
+     * 
+     * 0 = use full IRF from H5 data. Only affects wave modes that use IRF
+     * convolution (irregular waves). Safe to call for any wave type.
+     * Must be called before the first timestep.
+     * 
+     * @param seconds Truncation time in seconds (0 = no truncation)
+     */
+    void SetExcitationTruncationTime(double seconds);
+
+    /**
+     * @brief Truncate radiation RIRF to [0, T] seconds.
+     * 
+     * 0 = use full RIRF from H5 data. Applied before any kernel processing
+     * (smoothing/tapering). Works with all radiation methods (convolution and
+     * state-space). Must be called before the first timestep.
+     * 
+     * @param seconds Truncation time in seconds (0 = no truncation)
+     */
+    void SetRadiationTruncationTime(double seconds);
 
     /**
      * @brief Set the radiation damping calculation method.
@@ -375,9 +395,6 @@ class HydroSystem {
      * Selects the overall approach:
      *   - kRirfConvolution: Direct RIRF convolution (default)
      *   - kStateSpace: State-space exponential approximation
-     * 
-     * @note State-space method not yet implemented. This value is stored but
-     *       currently has no effect; runtime always uses RIRF convolution.
      * 
      * @param method RadiationMethod::kRirfConvolution or ::kStateSpace
      */
@@ -388,30 +405,20 @@ class HydroSystem {
      * 
      * Only applies when RadiationMethod == kStateSpace.
      * 
-     * @note State-space method not yet implemented. Options stored for future use.
-     * 
      * @param opts StateSpaceOptions struct with max_order and r2_threshold
      */
     void SetStateSpaceOptions(const hydrochrono::hydro::StateSpaceOptions& opts);
 
     /**
-     * @brief Set the radiation convolution mode. Default is Baseline.
+     * @brief Configure RIRF kernel processing (smoothing and/or tapering).
      * 
+     * Applied after truncation (SetRadiationTruncationTime). Smoothing and
+     * tapering are composable: either, both, or neither can be enabled.
      * Only applies when RadiationMethod == kRirfConvolution.
      * 
-     * @param mode RadiationConvolutionMode::Baseline or ::TaperedDirect
+     * @param opts RadiationKernelProcessing with smoothing/taper settings
      */
-    void SetRadiationConvolutionMode(hydrochrono::hydro::RadiationConvolutionMode mode);
-
-    /**
-     * @brief Set options for TaperedDirect preprocessing.
-     * 
-     * Only applies when RadiationMethod == kRirfConvolution and
-     * RadiationConvolutionMode == TaperedDirect.
-     * 
-     * @param opts TaperedDirectOptions struct with smoothing, tapering, and export settings
-     */
-    void SetTaperedDirectOptions(const hydrochrono::hydro::TaperedDirectOptions& opts);
+    void SetRadiationKernelProcessing(const hydrochrono::hydro::RadiationKernelProcessing& opts);
 
     /**
      * @brief Enable or disable kernel fit diagnostic output.
@@ -576,8 +583,11 @@ class HydroSystem {
     bool profiling_enabled_ = false;
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Radiation configuration (uses canonical types from radiation module)
+    // Convolution truncation and radiation configuration
     // ─────────────────────────────────────────────────────────────────────────
+    
+    double excitation_truncation_time_ = 0.0;   ///< Excitation IRF truncation [s], 0 = full
+    double radiation_truncation_time_ = 0.0;    ///< Radiation RIRF truncation [s], 0 = full
     
     // Top-level method selection
     hydrochrono::hydro::RadiationMethod radiation_method_ = 
@@ -585,11 +595,10 @@ class HydroSystem {
     hydrochrono::hydro::StateSpaceOptions state_space_opts_;
     bool output_kernel_fit_ = false;
     
-    // Convolution kernel preprocessing (only applies when method == kRirfConvolution)
-    hydrochrono::hydro::RadiationConvolutionMode convolution_mode_;
+    // Kernel processing (smoothing + tapering, composable, defaults are no-ops)
+    hydrochrono::hydro::RadiationKernelProcessing kernel_processing_;
     bool rirf_processed_ready_ = false;
     std::vector<Eigen::Tensor<double, 3>> rirf_processed_; // per body [dof x col x step]
-    hydrochrono::hydro::TaperedDirectOptions tapered_opts_;
     std::string diagnostics_output_dir_;
 
     void EnsureProcessedRIRF();

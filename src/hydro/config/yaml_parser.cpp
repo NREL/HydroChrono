@@ -163,12 +163,12 @@ YAMLHydroData ReadHydroYAML(const std::string& hydro_file_path) {
     bool in_hydrodynamics = false;
     bool in_bodies = false;
     bool in_waves = false;
-    bool in_radiation = false;          // Top-level radiation: section
+    bool in_excitation = false;             // excitation: section
+    bool in_radiation = false;              // radiation: section
     bool in_radiation_state_space = false;  // radiation.state_space: subsection
-    bool in_convolution = false;
-    bool in_conv_smoothing = false;
-    bool in_conv_taper = false;
-    bool in_conv_diag = false;
+    bool in_radiation_smoothing = false;    // radiation.smoothing: subsection
+    bool in_radiation_taper = false;        // radiation.taper: subsection
+    bool in_radiation_diagnostics = false;  // radiation.diagnostics: subsection
     bool in_body = false;
     bool in_moordyn = false;
     HydroBody current_body;
@@ -237,8 +237,11 @@ YAMLHydroData ReadHydroYAML(const std::string& hydro_file_path) {
             in_bodies = false;
             in_waves = false;
             in_body = false;
-            in_convolution = false;
-            in_conv_smoothing = in_conv_taper = in_conv_diag = false;
+            in_excitation = false;
+            in_radiation = false;
+            in_radiation_state_space = false;
+            in_radiation_smoothing = in_radiation_taper = in_radiation_diagnostics = false;
+            in_moordyn = false;
             continue;
         }
         
@@ -251,52 +254,56 @@ YAMLHydroData ReadHydroYAML(const std::string& hydro_file_path) {
             in_bodies = true;
             in_waves = false;
             in_body = false;
-            in_convolution = false;
-            in_conv_smoothing = in_conv_taper = in_conv_diag = false;
+            in_excitation = false;
+            in_radiation = false;
+            in_radiation_state_space = false;
+            in_radiation_smoothing = in_radiation_taper = in_radiation_diagnostics = false;
+            in_moordyn = false;
             continue;
         }
         
         if (indent == 2 && trimmed == "waves:") {
-            // Save current body before switching to waves section
             if (in_body && !current_body.name.empty()) {
                 data.bodies.push_back(current_body);
             }
             in_waves = true;
             in_bodies = false;
             in_body = false;
-            in_convolution = false;
-            in_conv_smoothing = in_conv_taper = in_conv_diag = false;
+            in_excitation = false;
+            in_radiation = false;
+            in_radiation_state_space = false;
+            in_radiation_smoothing = in_radiation_taper = in_radiation_diagnostics = false;
+            in_moordyn = false;
+            continue;
+        }
+
+        if (indent == 2 && trimmed == "excitation:") {
+            if (in_body && !current_body.name.empty()) {
+                data.bodies.push_back(current_body);
+            }
+            in_excitation = true;
+            in_radiation = false;
+            in_radiation_state_space = false;
+            in_radiation_smoothing = in_radiation_taper = in_radiation_diagnostics = false;
+            in_bodies = false;
+            in_waves = false;
+            in_body = false;
+            in_moordyn = false;
             continue;
         }
 
         if (indent == 2 && trimmed == "radiation:") {
-            // Save any pending body before switching sections
             if (in_body && !current_body.name.empty()) {
                 data.bodies.push_back(current_body);
             }
             in_radiation = true;
             in_radiation_state_space = false;
-            in_convolution = false;
-            in_bodies = false;
-            in_waves = false;
-            in_body = false;
-            in_conv_smoothing = in_conv_taper = in_conv_diag = false;
-            continue;
-        }
-
-        if (indent == 2 && (trimmed == "convolution:" || trimmed == "radiation_convolution:")) {
-            // Save any pending body before switching sections
-            if (in_body && !current_body.name.empty()) {
-                data.bodies.push_back(current_body);
-            }
-            in_convolution = true;
-            in_radiation = false;
-            in_radiation_state_space = false;
+            in_radiation_smoothing = in_radiation_taper = in_radiation_diagnostics = false;
+            in_excitation = false;
             in_bodies = false;
             in_waves = false;
             in_body = false;
             in_moordyn = false;
-            in_conv_smoothing = in_conv_taper = in_conv_diag = false;
             continue;
         }
 
@@ -307,11 +314,11 @@ YAMLHydroData ReadHydroYAML(const std::string& hydro_file_path) {
             in_moordyn = true;
             in_bodies = false;
             in_waves = false;
+            in_excitation = false;
             in_radiation = false;
             in_radiation_state_space = false;
-            in_convolution = false;
+            in_radiation_smoothing = in_radiation_taper = in_radiation_diagnostics = false;
             in_body = false;
-            in_conv_smoothing = in_conv_taper = in_conv_diag = false;
             continue;
         }
         
@@ -346,29 +353,78 @@ YAMLHydroData ReadHydroYAML(const std::string& hydro_file_path) {
             std::string key;
             std::string value;
             bool should_parse = (
-                (!in_bodies && !in_waves && in_hydrodynamics && !in_convolution && !in_radiation && indent == 2) ||
+                (!in_bodies && !in_waves && in_hydrodynamics && !in_excitation && !in_radiation && indent == 2) ||
+                (in_excitation && indent == 4) ||
                 (in_radiation && indent == 4) ||
                 (in_radiation_state_space && indent == 6) ||
-                (in_convolution && indent == 4) ||
-                (in_conv_smoothing && indent == 6) ||
-                (in_conv_taper && indent == 6) ||
-                (in_conv_diag && indent == 6) ||
+                (in_radiation_smoothing && indent == 6) ||
+                (in_radiation_taper && indent == 6) ||
+                (in_radiation_diagnostics && indent == 6) ||
                 (in_body && indent == 6) ||
                 (in_waves && (indent == 4 || (in_period_block && indent >= period_block_indent + 2)))
             );
             if (should_parse && ParseYAMLLine(line, key, value)) {
                 // ─────────────────────────────────────────────────────────────
+                // excitation: section parsing
+                // ─────────────────────────────────────────────────────────────
+                if (in_excitation && indent == 4) {
+                    if (key == "truncation_time") {
+                        data.excitation_truncation_time = ParseDouble(value, 0.0);
+                    }
+                }
+                // ─────────────────────────────────────────────────────────────
                 // radiation: section parsing
                 // ─────────────────────────────────────────────────────────────
-                if (in_radiation && indent == 4) {
+                else if (in_radiation && indent == 4) {
                     if (key == "method") {
-                        // "rirf_convolution" or "state_space"
                         data.radiation_method = value;
+                    } else if (key == "truncation_time") {
+                        data.radiation_truncation_time = ParseDouble(value, 0.0);
+                    } else if (key == "smoothing") {
+                        if (!value.empty()) {
+                            data.radiation_kernel_processing.smoothing_type = value;
+                        } else {
+                            in_radiation_smoothing = true;
+                            in_radiation_taper = in_radiation_diagnostics = in_radiation_state_space = false;
+                        }
+                    } else if (key == "taper") {
+                        in_radiation_taper = true;
+                        in_radiation_smoothing = in_radiation_diagnostics = in_radiation_state_space = false;
+                    } else if (key == "diagnostics") {
+                        in_radiation_diagnostics = true;
+                        in_radiation_smoothing = in_radiation_taper = in_radiation_state_space = false;
                     } else if (key == "state_space") {
-                        // Start of nested state_space: block
                         if (value.empty()) {
                             in_radiation_state_space = true;
+                            in_radiation_smoothing = in_radiation_taper = in_radiation_diagnostics = false;
                         }
+                    }
+                } else if (in_radiation_smoothing && indent == 6) {
+                    auto& kp = data.radiation_kernel_processing;
+                    if (key == "type") {
+                        kp.smoothing_type = value;
+                    } else if (key == "window_length") {
+                        try { kp.smoothing_window = std::stoi(value); } catch (...) {}
+                    }
+                } else if (in_radiation_taper && indent == 6) {
+                    auto& kp = data.radiation_kernel_processing;
+                    if (key == "enabled") {
+                        kp.taper_enabled = ParseBool(value, false);
+                    } else if (key == "start_percent") {
+                        kp.taper_enabled = true;
+                        kp.taper_start_percent = ParseDouble(value, kp.taper_start_percent);
+                    } else if (key == "end_percent") {
+                        kp.taper_enabled = true;
+                        kp.taper_end_percent = ParseDouble(value, kp.taper_end_percent);
+                    } else if (key == "final_amplitude") {
+                        kp.taper_enabled = true;
+                        kp.taper_final_amplitude = ParseDouble(value, kp.taper_final_amplitude);
+                    }
+                } else if (in_radiation_diagnostics && indent == 6) {
+                    if (key == "export_csv") {
+                        data.radiation_kernel_processing.export_csv = ParseBool(value, false);
+                    } else if (key == "output_kernel_fit") {
+                        data.output_kernel_fit = ParseBool(value, false);
                     }
                 } else if (in_radiation_state_space && indent == 6) {
                     if (key == "max_order") {
@@ -379,60 +435,13 @@ YAMLHydroData ReadHydroYAML(const std::string& hydro_file_path) {
                         try { data.ss_max_hankel_size = std::stoi(value); } catch (...) {}
                     } else if (key == "r2_num_samples") {
                         try { data.ss_r2_num_samples = std::stoi(value); } catch (...) {}
-                    } else if (key == "output_kernel_fit") {
-                        data.output_kernel_fit = ParseBool(value, false);
                     }
-                } else if (in_convolution && indent == 4) {
-                    // Top level keys under convolution
-                    if (key == "mode") {
-                        data.radiation_convolution_mode = value;
-                    } else if (key == "smoothing") {
-                        // Either inline value or start of nested block
-                        if (!value.empty()) {
-                            data.td_smoothing = value;
-                        } else {
-                            in_conv_smoothing = true; in_conv_taper = in_conv_diag = false;
-                        }
-                    } else if (key == "taper") {
-                        in_conv_taper = true; in_conv_smoothing = in_conv_diag = false;
-                    } else if (key == "diagnostics") {
-                        in_conv_diag = true; in_conv_smoothing = in_conv_taper = false;
-                    }
-                } else if (in_conv_smoothing && indent == 6) {
-                    if (key == "type") {
-                        data.td_smoothing = value;
-                    } else if (key == "window_length") {
-                        try { data.td_window_length = std::stoi(value); } catch (...) {}
-                    } else if (key == "order") {
-                        // accepted but ignored (we currently use quadratic)
-                    }
-                } else if (in_conv_taper && indent == 6) {
-                    if (key == "start_percent") {
-                        data.td_taper_start_percent = ParseDouble(value, data.td_taper_start_percent);
-                    } else if (key == "end_percent") {
-                        data.td_taper_end_percent = ParseDouble(value, data.td_taper_end_percent);
-                    } else if (key == "final_amplitude") {
-                        data.td_taper_final_amplitude = ParseDouble(value, data.td_taper_final_amplitude);
-                    } else if (key == "end_time") {
-                        data.td_rirf_end_time = ParseDouble(value, data.td_rirf_end_time);
-                    }
-                } else if (in_conv_diag && indent == 6) {
-                    if (key == "export_csv") {
-                        data.td_export_plot_csv = ParseBool(value, false);
-                    }
-                } else if (!in_bodies && !in_waves && in_hydrodynamics && !in_convolution && indent == 2) {
-                    // Global hydrodynamics properties (system-wide convolution settings)
-                    if (key == "radiation_convolution_mode") {
-                        data.radiation_convolution_mode = value;
-                    } else if (key == "td_smoothing") {
-                        data.td_smoothing = value;
-                    } else if (key == "td_window_length") {
-                        try { data.td_window_length = std::stoi(value); } catch (...) {}
-                    } else if (key == "td_export_plot_csv") {
-                        data.td_export_plot_csv = ParseBool(value, false);
+                } else if (!in_bodies && !in_waves && in_hydrodynamics && !in_excitation && !in_radiation && indent == 2) {
+                    // Global hydrodynamics properties at top level (e.g. radiation_method)
+                    if (key == "radiation_method") {
+                        data.radiation_method = value;
                     }
                 } else if (in_body) {
-                    // Parse body properties
                     if (key == "name") {
                         current_body.name = value;
                     } else if (key == "h5_file") {
@@ -441,20 +450,6 @@ YAMLHydroData ReadHydroYAML(const std::string& hydro_file_path) {
                         current_body.include_excitation = ParseBool(value, true);
                     } else if (key == "include_radiation") {
                         current_body.include_radiation = ParseBool(value, true);
-                    } else if (key == "radiation_calculation") {
-                        current_body.radiation_calculation = value;
-                    } else if (key == "radiation_convolution_mode") {
-                        current_body.radiation_convolution_mode = value;
-                    } else if (key == "td_smoothing") {
-                        current_body.td_smoothing = value;
-                    } else if (key == "td_window_length") {
-                        try { current_body.td_window_length = std::stoi(value); } catch (...) {}
-                    } else if (key == "td_rms_threshold_factor") {
-                        current_body.td_rms_threshold_factor = ParseDouble(value, current_body.td_rms_threshold_factor);
-                    } else if (key == "td_taper_fraction_remaining") {
-                        current_body.td_taper_fraction_remaining = ParseDouble(value, current_body.td_taper_fraction_remaining);
-                    } else if (key == "td_export_plot_csv") {
-                        current_body.td_export_plot_csv = ParseBool(value, false);
                     }
                 } else if (in_waves) {
                     // Parse wave properties
@@ -593,6 +588,18 @@ YAMLHydroData ReadHydroYAML(const std::string& hydro_file_path) {
                         data.waves.spectrum = value;
                     } else if (!in_period_block && key_lower == "seed") {
                         try { data.waves.seed = std::stoi(value); } catch (...) { data.waves.seed = -1; }
+                    } else if (!in_period_block && (key_lower == "eta_file" || key_lower == "eta_file_path")) {
+                        data.waves.eta_file = ResolvePath(value, hydro_file_path);
+                    } else if (!in_period_block && key_lower == "ramp_type") {
+                        data.waves.ramp_type = value;
+                    } else if (!in_period_block && key_lower == "ramp_duration") {
+                        data.waves.ramp_duration = ParseDouble(value, 0.0);
+                    } else if (!in_period_block && key_lower == "frequency_min") {
+                        data.waves.frequency_min = ParseDouble(value, 0.0);
+                    } else if (!in_period_block && key_lower == "frequency_max") {
+                        data.waves.frequency_max = ParseDouble(value, 0.0);
+                    } else if (!in_period_block && key_lower == "nfrequencies") {
+                        try { data.waves.nfrequencies = std::stoi(value); } catch (...) { data.waves.nfrequencies = 0; }
                     }
                 } else if (in_moordyn) {
                     std::string key_lower = key;
@@ -602,7 +609,7 @@ YAMLHydroData ReadHydroYAML(const std::string& hydro_file_path) {
                         std::transform(val_lower.begin(), val_lower.end(), val_lower.begin(), ::tolower);
                         data.moordyn_enabled = (val_lower == "true" || val_lower == "1" || val_lower == "yes");
                     } else if (key_lower == "input_file") {
-                        data.moordyn_input_file = value;
+                        data.moordyn_input_file = ResolvePath(value, hydro_file_path);
                     } else if (key_lower == "bodies") {
                         // Parse [body1, body2] list
                         std::string list_str = value;

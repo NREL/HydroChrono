@@ -3,11 +3,8 @@
  * @brief Irregular wave model implementation.
  *********************************************************************/
 
-#ifndef _USE_MATH_DEFINES
-#define _USE_MATH_DEFINES
-#endif
-
 #include <hydroc/waves/irregular_wave.h>
+#include <hydroc/math_constants.h>
 #include "wave_utilities.h"
 
 #include <Eigen/Core>
@@ -31,6 +28,26 @@ void IrregularWaves::InitializeIRFVectors() {
         ex_irf_sampled_[b]      = GetExcitationIRF(b);
         ex_irf_time_sampled_[b] = wave_info_[b].excitation_irf_time;
     }
+
+    // Truncate excitation IRF to [-T, T] if requested.
+    if (params_.excitation_truncation_time > 0.0) {
+        for (unsigned int b = 0; b < num_bodies_; b++) {
+            auto& t_vec = ex_irf_time_sampled_[b];
+            auto& irf   = ex_irf_sampled_[b];
+            Eigen::Index n = t_vec.size();
+            Eigen::Index j0 = 0, j1 = n - 1;
+            while (j0 < n && t_vec[j0] < -params_.excitation_truncation_time) ++j0;
+            while (j1 > j0 && t_vec[j1] > params_.excitation_truncation_time)  --j1;
+            Eigen::Index keep = j1 - j0 + 1;
+            if (keep < n) {
+                Eigen::VectorXd t_trunc = t_vec.segment(j0, keep);
+                Eigen::MatrixXd irf_trunc = irf.middleCols(j0, keep);
+                t_vec = std::move(t_trunc);
+                irf   = std::move(irf_trunc);
+            }
+        }
+    }
+
     CalculateWidthIRF();
 
     // Cache maximum IRF time span (used for ramp boundary check and eta padding).
@@ -265,6 +282,9 @@ Eigen::VectorXd IrregularWaves::GetForceAtTime(double t) const {
                 f[b_offset + dof] = ExcitationConvolution(body, dof, t);
             }
         }
+        // WEC-Sim convention: ramp the total excitation force at current time t,
+        // rather than ramping individual eta values inside the convolution.
+        f *= RampFactor(t);
         return f;
     }
 
@@ -291,11 +311,7 @@ Eigen::VectorXd IrregularWaves::GetForceAtTime(double t) const {
 
             for (Eigen::Index j = 0; j < eta.size(); ++j) {
                 double t_eval = t - irf_time[j];
-                if (t_eval <= 0.0) {
-                    eta[j] = 0.0;
-                } else if (t_eval < params_.ramp_duration) {
-                    eta[j] *= t_eval / params_.ramp_duration;
-                }
+                eta[j] *= RampFactor(t_eval);
             }
 
             Eigen::VectorXd eta_w = eta.array() * irf_width.array();
@@ -536,3 +552,13 @@ double IrregularWaves::ExcitationConvolution(int body, int dof, double time) con
     return f_ex;
 }
 
+double IrregularWaves::RampFactor(double t) const {
+    if (params_.ramp_duration <= 0.0 || t >= params_.ramp_duration)
+        return 1.0;
+    if (t <= 0.0)
+        return 0.0;
+    double r = t / params_.ramp_duration;
+    if (params_.ramp_type == ExcitationRampType::kCosine)
+        return 0.5 * (1.0 - std::cos(M_PI * r));
+    return r;  // linear (default)
+}
