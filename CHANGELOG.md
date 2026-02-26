@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] — 2026-02-26
+
+### Added
+
+- **MoorDyn v2.6.1 mooring integration** — coupled MoorDyn as a Git submodule, enabling catenary and taut mooring analysis. New `MoorDynConfig` struct and `HydroSystem::SetMoorDynConfig()` API for mooring configuration.
+- **MoorDyn force coupling into HydroSystem** — mooring forces from MoorDyn are applied at each timestep alongside hydrostatic, radiation, and excitation forces
+- **RM3 mooring demonstration** — YAML-driven RM3 two-body point absorber with 3-line catenary mooring (6 MoorDyn segments: anchor–clump + clump–fairlead per line), runnable via `run_hydrochrono`
+- **Real-time mooring line visualization** — VSG GUI renders mooring line node positions queried from MoorDyn at each frame, with dynamic tension color mapping (blue-to-red gradient scaled to current tension range)
+- **RM3 mooring verification test** — automated CTest comparison against WEC-Sim/MoorDyn co-simulation reference data for body heave and fairlead tensions (correlation ≈ 0.998, max tension error ≈ 1.8% of mean)
+- **`hydroc/math_constants.h`** — centralised `M_PI` definition replacing scattered per-file definitions
+
+### Changed
+
+- **IRF truncation separated from smoothing and tapering** — `RadiationKernelProcessing` now treats truncation as a distinct step from the smoothing/tapering pipeline
+- **`RegularWave` encapsulation** — members made private with `SetPeriod()`/`SetOmega()` accessors
+
+### Fixed
+
+- **Cross-machine build robustness** — resolved HDF5 target name conflicts and Eigen3 detection issues affecting some build environments
+- **Chrono API and test infrastructure compatibility** — updated for recent Chrono API changes
+
 ## [0.6.0] — 2026-02-19
 
 ### Added
